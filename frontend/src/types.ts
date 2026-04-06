@@ -82,6 +82,16 @@ export type CtrMessageMeta = {
   intent_alignment?: number | null
   memory_alignment?: number | null
   contradiction_detected?: boolean | null
+  contradiction_entry?: {
+    old_memory_id?: string
+    new_memory_id?: string
+    old_text?: string
+    new_text?: string
+    old_trust?: number
+    new_trust?: number
+    contradiction_type?: string
+    resolution_method?: string
+  } | null
   unresolved_contradictions_total?: number | null
   unresolved_hard_conflicts?: number | null
   retrieved_memories?: RetrievedMemory[]

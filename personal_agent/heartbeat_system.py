@@ -670,17 +670,25 @@ Be specific and evidence-based. If no evidence exists for a field, say "Insuffic
 Output ONLY valid JSON, nothing else."""
 
     def _run_self_reflection(self, thread_id: str) -> None:
-        """Run a self-reflection LLM pass and update the self-model."""
+        """Run a self-reflection LLM pass and update the self-model.
+
+        Uses Claude CLI for reflection quality (local LLMs produce generic
+        "calibrating" boilerplate). Includes a change gate to skip writes
+        when slot values haven't meaningfully changed.
+        """
         from personal_agent.self_model import get_self_model
         from personal_agent.db_utils import get_db_connection
 
         self_model = get_self_model()
 
-        # ── gather evidence signals ──────────────────────────────────────────
+        # ── gather evidence signals (enriched with concrete examples) ────────
         gate_fails_lines: List[str] = []
         negative_feedback_lines: List[str] = []
         trust_delta_lines: List[str] = []
+        correction_lines: List[str] = []
         open_contradictions = 0
+        total_interactions = 0
+        total_gate_events = 0
 
         al_db = Path("personal_agent/active_learning.db")
         if al_db.exists():
@@ -688,6 +696,7 @@ Output ONLY valid JSON, nothing else."""
                 with get_db_connection(str(al_db)) as conn:
                     since = time.time() - 86400  # last 24h
 
+                    # Gate fails with actual query context
                     rows = conn.execute(
                         """SELECT payload_json FROM turn_telemetry
                            WHERE event_type = 'gate_fail' AND ts > ?
@@ -697,12 +706,13 @@ Output ONLY valid JSON, nothing else."""
                     for r in rows:
                         try:
                             p = json.loads(r[0] or "{}")
-                            gate_fails_lines.append(
-                                f"- {p.get('gate_reason', 'unknown')}"
-                            )
+                            query = p.get('query', '')[:60]
+                            reason = p.get('gate_reason', 'unknown')
+                            gate_fails_lines.append(f"- query=\"{query}\" reason={reason}")
                         except Exception:
                             pass
 
+                    # Negative feedback with actual context
                     rows = conn.execute(
                         """SELECT payload_json, severity FROM turn_telemetry
                            WHERE event_type = 'feedback_down' AND ts > ?
@@ -713,12 +723,14 @@ Output ONLY valid JSON, nothing else."""
                         try:
                             p = json.loads(r[0] or "{}")
                             cat = p.get("category", "general")
+                            query = p.get("query", "")[:60]
                             negative_feedback_lines.append(
-                                f"- {cat} (severity {float(r[1] or 0):.2f})"
+                                f"- {cat} (severity {float(r[1] or 0):.2f}) query=\"{query}\""
                             )
                         except Exception:
                             pass
 
+                    # Trust deltas with specific memory text
                     rows = conn.execute(
                         """SELECT memory_ids_json, payload_json FROM turn_telemetry
                            WHERE event_type = 'trust_delta_batch' AND ts > ?
@@ -733,6 +745,25 @@ Output ONLY valid JSON, nothing else."""
                             )
                         except Exception:
                             pass
+
+                    # Corrections with actual content
+                    rows = conn.execute(
+                        """SELECT query, incorrect_value, correct_value, user_comment
+                           FROM corrections ORDER BY rowid DESC LIMIT 5""",
+                    ).fetchall()
+                    for r in rows:
+                        q = (r[0] or "")[:50]
+                        wrong = (r[1] or "")[:30]
+                        right = (r[2] or "")[:30]
+                        comment = (r[3] or "")[:40]
+                        correction_lines.append(f"- \"{q}\" was=\"{wrong}\" corrected=\"{right}\" note=\"{comment}\"")
+
+                    # Aggregate stats
+                    row = conn.execute("SELECT COUNT(*) FROM interaction_logs").fetchone()
+                    total_interactions = int(row[0]) if row else 0
+                    row = conn.execute("SELECT COUNT(*) FROM gate_events").fetchone()
+                    total_gate_events = int(row[0]) if row else 0
+
             except Exception as exc:
                 logger.debug("[SELF_REFLECTION] signal read failed: %s", exc)
 
@@ -753,7 +784,25 @@ Output ONLY valid JSON, nothing else."""
                 except Exception:
                     pass
 
-        # ── call LLM ─────────────────────────────────────────────────────────
+        # Top memories by trust (what the system is most confident about)
+        top_memory_lines: List[str] = []
+        try:
+            from personal_agent.crt_memory import CRTMemorySystem
+            _mem_db = Path(os.getenv("CRT_SHARED_MEMORY", "personal_agent/crt_memory_shared.db"))
+            if _mem_db.exists():
+                _ms = CRTMemorySystem(str(_mem_db))
+                _all = _ms._load_all_memories()
+                _sorted = sorted(
+                    [m for m in _all if not getattr(m, 'deprecated', False)],
+                    key=lambda m: m.trust, reverse=True
+                )
+                for m in _sorted[:5]:
+                    kind = getattr(m, 'kind', 'observation')
+                    top_memory_lines.append(f"- T:{m.trust:.2f} [{kind}] {m.text[:60]}")
+        except Exception:
+            pass
+
+        # ── call LLM (Claude CLI for quality) ────────────────────────────────
         current_model = self_model.read_model()
         current_model_text = "\n".join(
             f"  {k}: {v or '(not yet set)'}"
@@ -786,11 +835,25 @@ Output ONLY valid JSON, nothing else."""
             current_self_model=current_model_text,
         )
 
-        llm_response = self._call_llm(
-            prompt=prompt,
-            max_tokens=600,
-            temperature=0.4,
-        )
+        # Append enriched evidence that local LLMs miss
+        prompt += f"""
+
+Additional evidence:
+User corrections (concrete): {chr(10).join(correction_lines) or "(none)"}
+Top trusted memories: {chr(10).join(top_memory_lines) or "(none loaded)"}
+System scale: {total_interactions} total interactions, {total_gate_events} gate events
+"""
+
+        # Use Claude CLI for reflection — local LLMs produce generic boilerplate.
+        llm_response = self._call_reflection_llm(prompt)
+
+        if not llm_response:
+            # Fallback to local LLM
+            llm_response = self._call_llm(
+                prompt=prompt,
+                max_tokens=600,
+                temperature=0.4,
+            )
 
         if not llm_response:
             logger.debug("[SELF_REFLECTION] no LLM response, skipping")
@@ -862,6 +925,8 @@ Output ONLY valid JSON, nothing else."""
         delta: Dict[str, str] = {}
 
         from personal_agent.self_model import SELF_MODEL_SLOTS
+        _slots_updated = 0
+        _slots_skipped = 0
         if _cloud_reflection_skip:
             logger.info("[SELF_REFLECTION] Skipping self-model update (cloud validation rejected)")
         else:
@@ -869,14 +934,28 @@ Output ONLY valid JSON, nothing else."""
                 value = str(data.get(slot) or "").strip()
                 if not value or value == "(not yet set)":
                     continue
-                # Compute delta from last snapshot
+                # Change gate: skip if new value is not meaningfully different
                 old_val = last_snapshot.get(slot, "")
+                if old_val and not self._slot_meaningfully_changed(old_val, value):
+                    _slots_skipped += 1
+                    new_snapshot[slot] = old_val  # keep old value in snapshot
+                    continue
+                # Compute delta from last snapshot
                 if old_val and old_val != value:
                     delta[slot] = f"{old_val[:60]} → {value[:60]}"
                 new_snapshot[slot] = value
                 # Severity-weighted trust: use negative feedback density as evidence quality
                 trust = max(0.35, min(0.80, 0.55 + len(negative_feedback_lines) * 0.03))
                 self_model.update_slot(slot, value, trust=trust, thread_id=thread_id)
+                _slots_updated += 1
+
+        if _slots_skipped > 0:
+            logger.info("[SELF_REFLECTION] Change gate: %d slots updated, %d skipped (unchanged)", _slots_updated, _slots_skipped)
+
+        # Skip checkpoint write entirely if nothing changed
+        if _slots_updated == 0 and not _cloud_reflection_skip:
+            logger.info("[SELF_REFLECTION] No meaningful changes — skipping checkpoint write")
+            return
 
         # ── write checkpoint ─────────────────────────────────────────────────
         notable = data.get("notable_events") or []
@@ -922,6 +1001,49 @@ Output ONLY valid JSON, nothing else."""
         except Exception as e:
             logger.warning(f"[HEARTBEAT] Failed to record heartbeat for {thread_id}: {e}")
     
+    def _call_reflection_llm(self, prompt: str) -> Optional[str]:
+        """Call Claude CLI for self-reflection (higher quality than local LLMs).
+
+        Falls back to None if Claude CLI is unavailable, letting the caller
+        fall back to local LLM.
+        """
+        try:
+            from personal_agent.cookie_orchestrator import ClaudeCliBrain
+            brain = ClaudeCliBrain(model="claude-sonnet-4-20250514", timeout=60)
+            result = brain.complete(
+                system="You are a self-governance calibration system. Output ONLY valid JSON.",
+                prompt=prompt,
+                max_tokens=600,
+            )
+            if result.error:
+                logger.debug("[SELF_REFLECTION] Claude CLI failed: %s", result.error)
+                return None
+            if result.content and result.content.strip():
+                logger.info("[SELF_REFLECTION] Used Claude CLI (%.0fms)", result.latency_ms)
+                return result.content
+            return None
+        except Exception as e:
+            logger.debug("[SELF_REFLECTION] Claude CLI unavailable: %s", e)
+            return None
+
+    @staticmethod
+    def _slot_meaningfully_changed(old_val: str, new_val: str) -> bool:
+        """Return True if the new slot value is meaningfully different from the old.
+
+        Prevents writing 11,000 identical "calibrating" checkpoints. Uses simple
+        text comparison — if >60% of words overlap, it's the same thing.
+        """
+        if not old_val or not new_val:
+            return True  # always write if one side is empty
+        old_words = set(old_val.lower().split())
+        new_words = set(new_val.lower().split())
+        if not old_words or not new_words:
+            return True
+        overlap = len(old_words & new_words)
+        max_words = max(len(old_words), len(new_words))
+        similarity = overlap / max_words
+        return similarity < 0.60  # >60% overlap = not meaningfully different
+
     def _call_llm(
         self,
         prompt: str,
@@ -936,14 +1058,14 @@ Output ONLY valid JSON, nothing else."""
 
             llm_model = model or os.getenv("CRT_OLLAMA_MODEL") or "llama3.2:latest"
             client = get_default_llm_client(llm_model)
-            
+
             response = client.generate(
                 prompt=prompt,
                 max_tokens=max_tokens,
                 temperature=temperature,
             )
             return response
-        
+
         except Exception as e:
             logger.warning(f"[HEARTBEAT] LLM call failed: {e}")
             return None

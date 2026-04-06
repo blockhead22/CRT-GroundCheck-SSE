@@ -10,6 +10,7 @@ State is in-memory (resets on server restart). No DB tables needed.
 from __future__ import annotations
 
 import logging
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -67,6 +68,31 @@ _DEFAULT_ESCALATION_CONFIG: Dict[str, Any] = {
         "gate_boost_threshold": 0.10,
     },
 }
+
+# Patterns that indicate a query requires deep reasoning regardless of token count.
+# Local models (gemma3/llama3.2) reliably underperform on these — they need cloud depth.
+_DEEP_REASONING_PATTERNS: List[re.Pattern] = [
+    # Architecture / pipeline questions
+    re.compile(r"\bhow\s+many\s+steps\b", re.IGNORECASE),
+    re.compile(r"\b(pipeline|architecture)\s+(steps?|overhead|cost|work|function)", re.IGNORECASE),
+    # System self-assessment / certainty
+    re.compile(r"\bhow\s+certain\s+are\s+you\b", re.IGNORECASE),
+    re.compile(r"\bhow\s+(does|do)\s+(the\s+)?(fact\s+retrieval|retrieval|embedding|memory\s+system)\b", re.IGNORECASE),
+    # Comparison to other systems / standard RAG
+    re.compile(r"\b(vs\.?\s+a?\s+standard|compared\s+to\s+standard|standard\s+(rag|model|llm|approach))\b", re.IGNORECASE),
+    re.compile(r"\bhow\s+does.*appear\s+to\s+you\b", re.IGNORECASE),
+    # Probability / feasibility assessment
+    re.compile(r"\b(odds|probability|realistic\s+(path|shot|chance))\b", re.IGNORECASE),
+    re.compile(r"\brealistic.*\b(path|shot|chance|vision|goal)\b", re.IGNORECASE),
+    # Questions about the system's long-term vision / business
+    re.compile(r"\blong.?term\s+(vision|goal|plan)\b", re.IGNORECASE),
+    re.compile(r"\bprofitable\b.*\b(path|route|business)\b|\b(business|path)\b.*\bprofitable\b", re.IGNORECASE),
+    # Questions explicitly about AI safety / AGI
+    re.compile(r"\b(agi|artificial\s+general\s+intelligence|safer\s+ai)\b", re.IGNORECASE),
+    # Meta-questions about model behavior or output quality
+    re.compile(r"\b(standard\s+model|typical\s+llm|gpt.?4|chatgpt)\s+would\s+(respond|say|do|answer)\b", re.IGNORECASE),
+    re.compile(r"\bwhat\s+are\s+the\s+odds\b", re.IGNORECASE),
+]
 
 
 # ---------------------------------------------------------------------------
@@ -172,6 +198,22 @@ class EscalationPolicy:
                 gate_boost,
                 self.gate_boost_threshold,
             )
+
+        # 4. Query-aware routing — deep reasoning content detection
+        # Local models underperform on architecture questions, comparative analysis,
+        # probability assessments, and philosophical self-reference — escalate regardless
+        # of token count.
+        if "local" not in skip and query:
+            for _pat in _DEEP_REASONING_PATTERNS:
+                if _pat.search(query):
+                    skip.append("local")
+                    reasons.append(f"deep_reasoning_pattern:{_pat.pattern[:40]}")
+                    boosted = True
+                    logger.info(
+                        "[ESCALATION] Deep reasoning pattern matched — routing to cloud (pattern=%s)",
+                        _pat.pattern[:60],
+                    )
+                    break
 
         # Determine start tier
         if "local" in skip:

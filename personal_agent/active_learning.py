@@ -604,7 +604,8 @@ class ActiveLearningCoordinator:
             if success:
                 # Hot-reload the new model
                 self._hot_reload_model()
-                print(f"[ActiveLearning] Training complete! Accuracy: {accuracy:.1%}")
+                _acc_str = f"{accuracy:.1%}" if accuracy is not None else "unknown"
+                print(f"[ActiveLearning] Training complete! Accuracy: {_acc_str}")
             else:
                 print(f"[ActiveLearning] Training failed: {result.stderr}")
         

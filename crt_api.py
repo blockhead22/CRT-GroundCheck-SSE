@@ -1479,6 +1479,15 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.warning(f"[STARTUP] Failed to seed self-knowledge: {e}")
 
+        # Write verified execution state to memory (prevents stale beliefs
+        # like "agent loop is disabled" persisting across restarts)
+        try:
+            from personal_agent.self_model import write_execution_state_to_memory
+            write_execution_state_to_memory()
+            logger.info("[STARTUP] Execution state written to memory")
+        except Exception as e:
+            logger.warning(f"[STARTUP] Failed to write execution state: {e}")
+
         # Initialize cloud feature service (optional — degrades gracefully)
         try:
             from personal_agent.cloud_features import init_cloud_feature_service

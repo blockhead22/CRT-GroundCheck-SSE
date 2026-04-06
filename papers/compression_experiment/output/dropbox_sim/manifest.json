@@ -1,0 +1,84 @@
+{
+  "total_files": 5,
+  "all_verified": true,
+  "total_original_bytes": 16242060,
+  "total_compressed_bytes": 7548705,
+  "compression_ratio": 2.1516352804885077,
+  "files": [
+    {
+      "file": "_DSC4393.jpg",
+      "original_bytes": 3558120,
+      "compressed_bytes": 2552829,
+      "png_bytes": 2255876,
+      "ratio": 1.39379488402866,
+      "verified": true,
+      "compress_time": 15.829310417175293,
+      "decompress_time": 12.474802255630493,
+      "dimensions": [
+        995,
+        1192,
+        3
+      ]
+    },
+    {
+      "file": "test_image.jpg",
+      "original_bytes": 4598028,
+      "compressed_bytes": 2206718,
+      "png_bytes": 1749458,
+      "ratio": 2.083650017809253,
+      "verified": true,
+      "compress_time": 20.651795387268066,
+      "decompress_time": 8.280307054519653,
+      "dimensions": [
+        1516,
+        1011,
+        3
+      ]
+    },
+    {
+      "file": "48f575a583a4.jpg",
+      "original_bytes": 3558120,
+      "compressed_bytes": 2552829,
+      "png_bytes": 2255876,
+      "ratio": 1.39379488402866,
+      "verified": true,
+      "compress_time": 15.983785152435303,
+      "decompress_time": 13.601545810699463,
+      "dimensions": [
+        995,
+        1192,
+        3
+      ]
+    },
+    {
+      "file": "ab2c9e72a225.png",
+      "original_bytes": 3205800,
+      "compressed_bytes": 165473,
+      "png_bytes": 123458,
+      "ratio": 19.373553389374703,
+      "verified": true,
+      "compress_time": 6.291040897369385,
+      "decompress_time": 4.87477445602417,
+      "dimensions": [
+        975,
+        822,
+        4
+      ]
+    },
+    {
+      "file": "ca709e137572.png",
+      "original_bytes": 1321992,
+      "compressed_bytes": 70856,
+      "png_bytes": 54185,
+      "ratio": 18.657446087840125,
+      "verified": true,
+      "compress_time": 2.686398983001709,
+      "decompress_time": 1.8846237659454346,
+      "dimensions": [
+        387,
+        854,
+        4
+      ]
+    }
+  ]
+}

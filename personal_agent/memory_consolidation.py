@@ -193,7 +193,7 @@ def _auto_resolve_if_clear(
     if authority_a == "locked" or authority_b == "locked":
         return None
 
-    # Check if A is clearly weaker
+    # Check if A is clearly weaker (original rule: must be model_output vs principal)
     a_weaker = (
         trust_a < trust_b - AUTO_RESOLVE_TRUST_DELTA
         and ts_a < ts_b - AUTO_RESOLVE_MIN_AGE_DELTA
@@ -201,13 +201,24 @@ def _auto_resolve_if_clear(
         and source_b in ("principal", "user")
     )
 
-    # Check if B is clearly weaker
+    # Check if B is clearly weaker (original rule)
     b_weaker = (
         trust_b < trust_a - AUTO_RESOLVE_TRUST_DELTA
         and ts_b < ts_a - AUTO_RESOLVE_MIN_AGE_DELTA
         and source_b in ("model_output", "fallback")
         and source_a in ("principal", "user")
     )
+
+    # Trust-dominant rule: resolve same-source conflicts when trust differential is large.
+    # Handles cases like yellow/orange/red favorite color where all entries are "principal"
+    # but one clearly dominates (e.g., trust=0.85 vs trust=0.49). Requires extreme delta
+    # (0.30) to avoid silently discarding valid held contradictions.
+    _TRUST_DOMINANT_DELTA = 0.30
+    if not a_weaker and not b_weaker:
+        if trust_a < trust_b - _TRUST_DOMINANT_DELTA and source_a == source_b:
+            a_weaker = True
+        elif trust_b < trust_a - _TRUST_DOMINANT_DELTA and source_a == source_b:
+            b_weaker = True
 
     if a_weaker:
         mid = getattr(mem_a, "memory_id", None)

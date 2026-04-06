@@ -4188,9 +4188,14 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                         "id": str(m.get("memory_id") or m.get("id") or ""),
                         "text": (str(m.get("text") or ""))[:120],
                         "trust": round(float(m.get("trust") or 0.5), 3),
+                        "kind": str(m.get("kind") or "observation"),
+                        "pca_x": float(m.get("pca_x") or 0.0),
+                        "pca_y": float(m.get("pca_y") or 0.0),
+                        "score": round(float(m.get("score") or 0.0), 3),
                     }
                     for m in _retrieval_mems[:8]
-                ]
+                ],
+                "edges": result.get("retrieval_edges") or [],
             },
         })
 
@@ -5721,6 +5726,8 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         "model_override": model_override,
         "product_mode": ((runtime_config.get("product_mode") or {}).get("mode") if isinstance(runtime_config, dict) else None),
         "generation_provider": (model_route or {}).get("provider") if isinstance(model_route, dict) else None,
+        "pre_gen_belief": result.get("pre_gen_belief"),
+        "contradiction_entry": result.get("contradiction_entry"),
         "generation_source": result.get("generation_source"),
         "escalation": result.get("escalation"),
         "gpt_reference_used": isinstance(result.get("gpt_reference_packet"), dict),
@@ -8638,22 +8645,18 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 metadata.setdefault("gate_checks", {"slot": "none", "nli": "none", "gap": "safe"})
 
             # Inject belief confidence into done metadata
+            # pre_gen_belief is computed at the structural gate and stored in the
+            # shared_response.metadata by _run_shared_chat_pipeline. We read it
+            # from shared_response.metadata (NOT from `result` which is in a
+            # different scope/thread).
             try:
-                _final_belief = metadata.get("governance_tier")
                 if "belief_confidence" not in metadata:
-                    # Use the governance belief if computed, otherwise estimate from retrieval
-                    if "_conv_belief" in dir():
-                        metadata["belief_confidence"] = round(_conv_belief, 3)
-                    elif "_legacy_belief" in dir():
-                        metadata["belief_confidence"] = round(_legacy_belief, 3)
-                    else:
-                        # Estimate from retrieved memory trust scores
-                        _ret_mems = metadata.get("retrieved_memories") or metadata.get("prompt_memories") or []
-                        if _ret_mems:
-                            _avg_trust = sum(m.get("trust", 0.5) for m in _ret_mems if isinstance(m, dict)) / max(len(_ret_mems), 1)
-                            metadata["belief_confidence"] = round(min(0.85, 0.3 + 0.05 * len(_ret_mems) + _avg_trust * 0.2), 3)
-                        else:
-                            metadata["belief_confidence"] = 0.4  # No memories = low confidence
+                    # Try shared_response.metadata first (set by pipeline)
+                    _pgb = (shared_response.metadata or {}).get("pre_gen_belief") if hasattr(shared_response, "metadata") else None
+                    # Fallback: try result if it exists in scope
+                    if _pgb is None and "result" in dir() and isinstance(result, dict):
+                        _pgb = result.get("pre_gen_belief")
+                    metadata["belief_confidence"] = round(float(_pgb or 0.4), 3)
             except Exception:
                 metadata.setdefault("belief_confidence", 0.4)
 

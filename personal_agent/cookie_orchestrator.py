@@ -1513,6 +1513,25 @@ class Orchestrator:
             raw = brain_result.content or ""
             print(f"  [BRAIN:{brain_result.provider}] ({brain_result.latency_ms:.0f}ms) {raw[:200]}")
 
+            # Track cost for brain calls so the frontend cost display works.
+            # The brain bypasses litellm_client, so we estimate tokens and
+            # update the request cost accumulator directly.
+            try:
+                from personal_agent.cloud_usage_logger import _estimate_cost, _estimate_tokens
+                from personal_agent.litellm_client import get_default_llm_client
+                _brain_model = getattr(self.brain, '_model', '') or ''
+                _brain_input_tokens = _estimate_tokens(context) + _estimate_tokens(
+                    _system_prompt if isinstance(_system_prompt, str)
+                    else "\n".join(b.get("text", "") for b in _system_prompt if isinstance(b, dict))
+                )
+                _brain_output_tokens = _estimate_tokens(raw)
+                _brain_cost = _estimate_cost(_brain_model, _brain_input_tokens, _brain_output_tokens)
+                get_default_llm_client()._request_cost_usd += _brain_cost
+                if _brain_cost > 0:
+                    print(f"  [BRAIN_COST] {brain_result.provider}: ~{_brain_input_tokens} in + ~{_brain_output_tokens} out = ${_brain_cost:.6f}")
+            except Exception as _cost_err:
+                pass  # cost tracking is best-effort
+
             if brain_result.error and not raw:
                 print(f"  [BRAIN ERROR] {brain_result.error}")
                 yield {"type": "response", "content": f"Orchestrator error: {brain_result.error}"}

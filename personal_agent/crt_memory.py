@@ -2041,6 +2041,30 @@ class CRTMemorySystem:
             except Exception:
                 pass
 
+        # Indirect probe expansion: queries like "what did you mention about X" or
+        # "dreams about future goals" use abstract nouns that don't match specific
+        # memory vocabulary. Extract the topic noun phrase and encode it directly.
+        _INDIRECT_MARKERS = re.compile(
+            r"\b(mention(?:ed)?|reference[d]?|talk(?:ed)?\s+about|you\s+said|earlier|"
+            r"dreams?\s+about|goals?\s+about|things?\s+you\s+know\s+about|surfaced)\b",
+            re.IGNORECASE,
+        )
+        if _INDIRECT_MARKERS.search(_query_clean):
+            # Extract noun phrase after the marker or after "about"
+            _topic_re = re.compile(
+                r"\b(?:about|mention(?:ed)?|reference[d]?|surfaced)\s+([a-z][\w\s]{2,40}?)(?:\?|$|\.|\band\b)",
+                re.IGNORECASE,
+            )
+            _topic_match = _topic_re.search(_query_clean)
+            if _topic_match:
+                _topic = _topic_match.group(1).strip()
+                if _topic and len(_topic) >= 3:
+                    try:
+                        expanded_vectors.append(encode_vector(_topic))
+                        print(f"[RETRIEVAL] Indirect probe expansion: topic={_topic!r}")
+                    except Exception:
+                        pass
+
         # Compute scores — tier-aware: fold query to each memory's dimensionality
         t_now = time.time()
         from personal_agent.memory_compression import (

@@ -13,8 +13,109 @@ import { PipelineCollapse, type PipelineStep } from './PipelineCollapse'
 import { MessageRatingBar } from './MessageRatingBar'
 import { ContradictionResolutionCard } from './ContradictionResolutionCard'
 import { TrustDeltaStrip } from './TrustDeltaStrip'
+import { cleanMemoryText } from '../../lib/memoryUtils'
 import { ContradictionDrawer } from './ContradictionDrawer'
 import { resolveContradiction } from '../../lib/api'
+
+// ─────────────────────────────────────────────────────────────
+// Contradiction Mini-Graph — animated node-pair resolution
+// ─────────────────────────────────────────────────────────────
+
+function ContradictionMiniGraph({ entry }: {
+  entry: NonNullable<import('../../types').CtrMessageMeta['contradiction_entry']>
+}) {
+  const oldText = cleanMemoryText(entry.old_text || 'previous belief')
+  const newText = cleanMemoryText(entry.new_text || 'new information')
+  const oldTrust = entry.old_trust ?? 0.5
+  const newTrust = entry.new_trust ?? 0.5
+  const type = entry.contradiction_type || 'conflict'
+  const resolved = !!entry.resolution_method
+
+  // Winner is higher trust
+  const oldWins = oldTrust >= newTrust
+  const winColor = '#34d399'
+  const loseColor = 'rgba(212,112,88,0.6)'
+  const W = 260, H = 70
+
+  return (
+    <div
+      style={{
+        borderRadius: 8,
+        background: 'rgba(212,112,88,0.06)',
+        border: '1px solid rgba(212,112,88,0.15)',
+        padding: '8px 10px',
+        fontSize: 10,
+        fontFamily: 'var(--font-mono, monospace)',
+      }}
+    >
+      <div className="flex items-center gap-1.5 mb-1" style={{ color: 'rgba(212,112,88,0.7)' }}>
+        <span>⚡</span>
+        <span className="uppercase tracking-widest text-[9px]">
+          {type === 'REVISION' ? 'revision' : type === 'TEMPORAL' ? 'temporal shift' : 'contradiction'} detected
+          {resolved && <span style={{ color: winColor, marginLeft: 6 }}>✓ resolved</span>}
+        </span>
+      </div>
+      <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`}>
+        {/* Dashed red edge between nodes */}
+        <motion.line
+          x1={50} y1={28} x2={210} y2={28}
+          stroke="rgba(212,112,88,0.4)" strokeWidth={1.5}
+          strokeDasharray="5 4"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        />
+        {/* Old memory node */}
+        <motion.g
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1, type: 'spring', damping: 15 }}
+        >
+          <circle cx={50} cy={28} r={oldWins ? 14 : 10}
+            fill={oldWins ? winColor : loseColor} opacity={oldWins ? 0.8 : 0.4} />
+          <text x={50} y={55} textAnchor="middle" fill="rgba(240,235,225,0.5)" fontSize={8}>
+            T:{oldTrust.toFixed(2)}
+          </text>
+        </motion.g>
+        {/* New memory node */}
+        <motion.g
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.3, type: 'spring', damping: 15 }}
+        >
+          <circle cx={210} cy={28} r={!oldWins ? 14 : 10}
+            fill={!oldWins ? winColor : loseColor} opacity={!oldWins ? 0.8 : 0.4} />
+          <text x={210} y={55} textAnchor="middle" fill="rgba(240,235,225,0.5)" fontSize={8}>
+            T:{newTrust.toFixed(2)}
+          </text>
+        </motion.g>
+        {/* Labels */}
+        <text x={50} y={65} textAnchor="middle" fill="rgba(240,235,225,0.3)" fontSize={7}>prior</text>
+        <text x={210} y={65} textAnchor="middle" fill="rgba(240,235,225,0.3)" fontSize={7}>new</text>
+        {/* Resolution arrow */}
+        {resolved && (
+          <motion.text
+            x={130} y={22} textAnchor="middle" fill={winColor} fontSize={10}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
+          >
+            {oldWins ? '←' : '→'} resolved
+          </motion.text>
+        )}
+      </svg>
+      {/* Text previews */}
+      <div className="flex gap-3 mt-0.5">
+        <div className="flex-1 truncate" style={{ color: oldWins ? 'rgba(52,211,153,0.7)' : 'rgba(212,112,88,0.5)' }}>
+          {oldText.slice(0, 50)}
+        </div>
+        <div className="flex-1 truncate text-right" style={{ color: !oldWins ? 'rgba(52,211,153,0.7)' : 'rgba(212,112,88,0.5)' }}>
+          {newText.slice(0, 50)}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 /** Detect if text looks like a file or directory path */
 const FILE_PATH_RE = /^[A-Za-z]:[/\\][\w./\\ -]+(?:\.\w+)?$|^[\w./\\-]+\.(?:py|tsx?|jsx?|json|md|ya?ml|toml|rs|go|css|html|txt|cfg|ini|sh|bat)$/
@@ -389,6 +490,21 @@ export function MessageBubble(props: {
           )}
         </AnimatePresence>
 
+        {/* Contradiction mini-graph — animated node-pair when contradiction detected */}
+        <AnimatePresence>
+          {contradictionDetected && meta?.contradiction_entry && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="mb-2"
+            >
+              <ContradictionMiniGraph entry={meta.contradiction_entry} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Contradiction resolution card — shown inline when contradiction detected */}
         <AnimatePresence>
           {contradictionDetected && ledgerId && !contraResolved && (
@@ -434,26 +550,112 @@ export function MessageBubble(props: {
           )
         })()}
 
-        {/* Cited memories — compact list of memories that grounded this response */}
-        {isAssistant && (meta?.retrieved_memories as any[])?.length > 0 && (
-          <details className="mt-2 text-[11px]" style={{ color: 'rgba(240,235,225,0.4)' }}>
-            <summary className="cursor-pointer hover:text-white/60 transition-colors font-mono">
-              ↑↓{(meta!.retrieved_memories as any[]).length} memories cited
-            </summary>
-            <div className="mt-1.5 pl-3 flex flex-col gap-1" style={{ borderLeft: '1px solid rgba(224,160,128,0.15)' }}>
-              {(meta!.retrieved_memories as any[]).slice(0, 5).map((mem: any, i: number) => (
-                <div key={i} className="flex items-start gap-2">
-                  <span className="font-mono flex-shrink-0" style={{ color: '#E0A080' }}>
-                    T:{typeof mem.trust === 'number' ? mem.trust.toFixed(2) : '?'}
-                  </span>
-                  <span className="truncate" style={{ color: 'rgba(240,235,225,0.5)' }}>
-                    {String(mem.text || '').slice(0, 120)}
-                  </span>
-                </div>
-              ))}
+        {/* Cited memories — animated cards with trust visualization */}
+        {isAssistant && (meta?.retrieved_memories as any[])?.length > 0 && (() => {
+          const mems = (meta!.retrieved_memories as any[]).slice(0, 6)
+          const [memOpen, setMemOpen] = useState(false)
+          return (
+            <div className="mt-2">
+              <button
+                onClick={() => setMemOpen(!memOpen)}
+                className="flex items-center gap-2 text-[11px] font-mono cursor-pointer hover:opacity-80 transition-opacity"
+                style={{ color: 'rgba(240,235,225,0.4)', background: 'none', border: 'none', padding: 0 }}
+              >
+                <span style={{ transform: memOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', display: 'inline-block' }}>&#9656;</span>
+                <span>{mems.length} memories cited</span>
+                {/* Mini trust dots preview */}
+                <span className="flex gap-0.5 ml-1">
+                  {mems.map((m: any, i: number) => {
+                    const t = typeof m.trust === 'number' ? m.trust : 0.5
+                    return (
+                      <span key={i} style={{
+                        width: 5, height: 5, borderRadius: '50%', display: 'inline-block',
+                        background: t >= 0.7 ? '#34d399' : t >= 0.4 ? '#c9a45c' : 'rgba(240,235,225,0.3)',
+                      }} />
+                    )
+                  })}
+                </span>
+              </button>
+              <AnimatePresence>
+                {memOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <div className="mt-2 flex flex-col gap-1.5">
+                      {mems.map((mem: any, i: number) => {
+                        const trust = typeof mem.trust === 'number' ? mem.trust : 0.5
+                        const trustColor = trust >= 0.7 ? '#34d399' : trust >= 0.4 ? '#c9a45c' : 'rgba(240,235,225,0.35)'
+                        const trustBg = trust >= 0.7 ? 'rgba(52,211,153,0.06)' : trust >= 0.4 ? 'rgba(201,164,92,0.06)' : 'rgba(240,235,225,0.03)'
+                        const kind = String(mem.kind || mem.memory_type || '').replace(/_/g, ' ')
+                        const memId = mem.memory_id || mem.id || ''
+                        return (
+                          <motion.div
+                            key={memId || i}
+                            initial={{ opacity: 0, x: -12 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.06, duration: 0.15 }}
+                            onClick={() => {
+                              if (memId && props.onOpenSourceInspector) {
+                                props.onOpenSourceInspector(memId)
+                              }
+                            }}
+                            className="flex items-start gap-2 rounded-md px-2.5 py-1.5 text-[11px] transition-colors hover:brightness-125"
+                            style={{
+                              background: trustBg,
+                              border: `1px solid ${trustColor}15`,
+                              cursor: memId && props.onOpenSourceInspector ? 'pointer' : 'default',
+                            }}
+                            title={memId ? 'Click to inspect memory' : undefined}
+                          >
+                            {/* Trust dot */}
+                            <span style={{
+                              width: 7, height: 7, borderRadius: '50%', flexShrink: 0, marginTop: 4,
+                              background: trustColor,
+                              boxShadow: trust >= 0.7 ? `0 0 6px ${trustColor}40` : 'none',
+                            }} />
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono" style={{ color: trustColor, fontSize: 10 }}>
+                                  {trust.toFixed(2)}
+                                </span>
+                                {kind && (
+                                  <span style={{
+                                    fontSize: 9, color: 'rgba(240,235,225,0.3)',
+                                    background: 'rgba(240,235,225,0.04)',
+                                    padding: '0 4px', borderRadius: 3,
+                                  }}>
+                                    {kind}
+                                  </span>
+                                )}
+                                {mem.alias_boost && (
+                                  <span style={{
+                                    fontSize: 8, color: '#818cf8',
+                                    background: 'rgba(129,140,248,0.08)',
+                                    padding: '0 4px', borderRadius: 3,
+                                  }}>
+                                    alias
+                                  </span>
+                                )}
+                              </div>
+                              <div className="truncate mt-0.5" style={{ color: 'rgba(240,235,225,0.5)', fontSize: 11 }}>
+                                {cleanMemoryText(String(mem.text || '')).slice(0, 140)}
+                              </div>
+                            </div>
+                          </motion.div>
+                        )
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          </details>
-        )}
+          )
+        })()}
 
         {/* Citations */}
         {meta?.research_packet ? (

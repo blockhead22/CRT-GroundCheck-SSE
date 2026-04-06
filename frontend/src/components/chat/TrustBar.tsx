@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { cleanMemoryText } from '../../lib/memoryUtils'
 
 export type TrustShift = {
   memoryId: string
@@ -76,7 +77,7 @@ export function TrustBar({
           style={{ color: 'rgba(240,235,225,0.35)' }}
           title={text}
         >
-          {text.length > 60 ? text.slice(0, 60) + '\u2026' : text}
+          {(() => { const c = cleanMemoryText(text); return c.length > 60 ? c.slice(0, 60) + '\u2026' : c })()}
         </span>
       )}
 

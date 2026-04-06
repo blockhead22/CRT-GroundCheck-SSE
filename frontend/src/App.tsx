@@ -1112,7 +1112,7 @@ export default function App() {
               })
             },
             // Live belief state events
-            onRetrieval: (memories) => {
+            onRetrieval: (memories, edges) => {
               setRetrievedMemories(memories.map(m => ({
                 id: m.id,
                 text: m.text,
@@ -1122,6 +1122,7 @@ export default function App() {
               setPipelineSteps(prev => [...prev, {
                 kind: 'retrieval' as const,
                 memories,
+                edges,
               }])
             },
             onTrustShift: (shift) => {

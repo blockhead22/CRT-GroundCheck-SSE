@@ -85,7 +85,7 @@ export type StreamCallbacks = {
   onThinkingToken?: (token: string) => void
   onThinking?: (fullThinking: string) => void
   onThinkingEnd?: () => void
-  onRetrieval?: (memories: Array<{ id: string; text: string; trust: number }>) => void
+  onRetrieval?: (memories: Array<{ id: string; text: string; trust: number; kind?: string; pca_x?: number; pca_y?: number; score?: number }>, edges?: Array<{ from: string; to: string; sim: number }>) => void
   onTrustShift?: (shift: { memoryId: string; from: number; to: number; reason: string; text: string }) => void
   onVerification?: (result: { verdict: string; confidence: number }) => void
   onEpistemicEvent?: (eventType: 'drift' | 'contradiction', content: string, data: Record<string, unknown>) => void
@@ -210,8 +210,11 @@ export function dispatchStreamEvent(event: StreamEvent, callbacks: StreamCallbac
       callbacks.onThinkingEnd?.()
       break
     case 'retrieval': {
-      const meta = event.metadata as { memories?: Array<{ id: string; text: string; trust: number }> } | undefined
-      callbacks.onRetrieval?.(meta?.memories ?? [])
+      const meta = event.metadata as {
+        memories?: Array<{ id: string; text: string; trust: number; kind?: string; pca_x?: number; pca_y?: number; score?: number }>
+        edges?: Array<{ from: string; to: string; sim: number }>
+      } | undefined
+      callbacks.onRetrieval?.(meta?.memories ?? [], meta?.edges)
       break
     }
     case 'trust_shift': {

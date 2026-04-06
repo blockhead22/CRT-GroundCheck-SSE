@@ -6847,6 +6847,46 @@ class CRTEnhancedRAG:
                 response_embedding=_r_emb,
             )
         
+        # 7b. Compute PCA 2D projection + pairwise similarities for epistemic graph
+        _pca_coords = {}  # memory_id -> (x, y)
+        _sim_edges = []   # [{from, to, sim}]
+        try:
+            _vecs_for_pca = []
+            _ids_for_pca = []
+            for mem, _sc in retrieved:
+                if mem.vector is not None and len(mem.vector) == 384:
+                    _vecs_for_pca.append(mem.vector)
+                    _ids_for_pca.append(mem.memory_id)
+            if len(_vecs_for_pca) >= 2:
+                _pca_matrix = np.array(_vecs_for_pca)
+                # Simple 2D projection: PCA for >= 3 points, direct for 2
+                if len(_vecs_for_pca) >= 3:
+                    from sklearn.decomposition import PCA as _PCA
+                    _proj = _PCA(n_components=2).fit_transform(_pca_matrix)
+                else:
+                    _proj = _pca_matrix[:, :2]
+                # Normalize to [-1, 1]
+                for dim in range(2):
+                    _vmin, _vmax = _proj[:, dim].min(), _proj[:, dim].max()
+                    _span = _vmax - _vmin
+                    if _span > 1e-8:
+                        _proj[:, dim] = 2.0 * (_proj[:, dim] - _vmin) / _span - 1.0
+                for _i, _mid in enumerate(_ids_for_pca):
+                    _pca_coords[_mid] = (round(float(_proj[_i, 0]), 4), round(float(_proj[_i, 1]), 4))
+                # Pairwise cosine similarities for graph edges
+                for _i in range(len(_vecs_for_pca)):
+                    for _j in range(_i + 1, len(_vecs_for_pca)):
+                        _dot = float(np.dot(_vecs_for_pca[_i], _vecs_for_pca[_j]))
+                        _norm = float(np.linalg.norm(_vecs_for_pca[_i]) * np.linalg.norm(_vecs_for_pca[_j]) + 1e-8)
+                        _csim = _dot / _norm
+                        if abs(_csim) > 0.3:  # only meaningful edges
+                            _sim_edges.append({
+                                "from": _ids_for_pca[_i], "to": _ids_for_pca[_j],
+                                "sim": round(_csim, 3),
+                            })
+        except Exception:
+            pass  # epistemic graph is best-effort
+
         # 8. Return comprehensive result
         return self._add_reintroduction_flags({
             # User-facing
@@ -6885,10 +6925,14 @@ class CRTEnhancedRAG:
                     'source': mem.source.value,
                     'sse_mode': mem.sse_mode.value,
                     'score': score,
+                    'kind': getattr(mem, 'kind', 'observation'),
+                    'pca_x': _pca_coords.get(mem.memory_id, (0.0, 0.0))[0],
+                    'pca_y': _pca_coords.get(mem.memory_id, (0.0, 0.0))[1],
                     'reintroduced_claim': self.ledger.has_open_contradiction(mem.memory_id) if hasattr(self.ledger, 'has_open_contradiction') else False,  # INVARIANT FLAG
                 }
                 for mem, score in retrieved
             ],
+            'retrieval_edges': _sim_edges,
 
             # Prompt context (resolved) for debugging/analysis
             'prompt_memories': [

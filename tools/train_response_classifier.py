@@ -205,12 +205,15 @@ def main():
     questions, labels, metadata = load_training_data(args.input)
     
     print(f"Total examples: {len(questions)}")
+    if len(questions) < 5:
+        print(f"Not enough training data ({len(questions)} samples, need at least 5). Skipping training.")
+        return
     from collections import Counter
     label_counts = Counter(labels)
     print("Label distribution:")
     for label, count in label_counts.most_common():
         print(f"  {label}: {count} ({count/len(labels)*100:.1f}%)")
-    
+
     # Split train/val
     from sklearn.model_selection import train_test_split
     

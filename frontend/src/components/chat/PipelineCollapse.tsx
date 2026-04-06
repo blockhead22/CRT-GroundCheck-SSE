@@ -4,6 +4,7 @@ import { ChevronRight, ChevronDown, AlertTriangle, Zap } from 'lucide-react'
 import { TrustBar, type TrustShift } from './TrustBar'
 import { ToolRow } from './ToolRow'
 import type { ToolResult } from './ToolResultCard'
+import { cleanMemoryText } from '../../lib/memoryUtils'
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -13,11 +14,15 @@ export type PipelineStep =
   | { kind: 'thinking'; content: string; alignment?: number }
   | { kind: 'tool'; result: ToolResult }
   | { kind: 'trust_shift'; shift: TrustShift }
-  | { kind: 'retrieval'; memories: Array<{ id: string; text: string; trust: number }> }
+  | { kind: 'retrieval'; memories: Array<RetrievalMemory>; edges?: RetrievalEdge[] }
   | { kind: 'status'; content: string }
   | { kind: 'epistemic'; eventType: 'drift' | 'contradiction'; content: string; alignment?: number; avgAlignment?: number; stepA?: number; stepB?: number }
 
-type RetrievalMemory = { id: string; text: string; trust: number }
+type RetrievalMemory = {
+  id: string; text: string; trust: number
+  kind?: string; pca_x?: number; pca_y?: number; score?: number
+}
+type RetrievalEdge = { from: string; to: string; sim: number }
 
 type AgentLoopItem =
   | { kind: 'thinking'; content: string; alignment?: number; index: number }
@@ -30,6 +35,7 @@ type AgentLoopItem =
 
 function groupSteps(steps: PipelineStep[]) {
   const memories: RetrievalMemory[] = []
+  const retrievalEdges: RetrievalEdge[] = []
   const agentLoop: AgentLoopItem[] = []
   const trustShifts: TrustShift[] = []
   const sessionNotes: string[] = []
@@ -40,6 +46,7 @@ function groupSteps(steps: PipelineStep[]) {
     switch (step.kind) {
       case 'retrieval':
         memories.push(...step.memories)
+        if (step.edges) retrievalEdges.push(...step.edges)
         break
       case 'status': {
         const v = step.content
@@ -71,7 +78,7 @@ function groupSteps(steps: PipelineStep[]) {
     }
   }
 
-  return { memories, agentLoop, trustShifts, verification, sessionNotes }
+  return { memories, retrievalEdges, agentLoop, trustShifts, verification, sessionNotes }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -128,7 +135,7 @@ export function PipelineCollapse({
 
   if (steps.length === 0) return null
 
-  const { memories, agentLoop, trustShifts, verification, sessionNotes } = groupSteps(steps)
+  const { memories, retrievalEdges, agentLoop, trustShifts, verification, sessionNotes } = groupSteps(steps)
 
   // Merge trust shifts into memory bars by id
   const shiftById: Record<string, TrustShift> = {}
@@ -195,6 +202,7 @@ export function PipelineCollapse({
               {hasRetrieval && (
                 <RetrievalSection
                   memories={memories}
+                  backendEdges={retrievalEdges}
                   shiftById={shiftById}
                   hasTrustShifts={trustShifts.length > 0}
                 />
@@ -241,15 +249,114 @@ export function PipelineCollapse({
 // Section: Retrieval
 // ─────────────────────────────────────────────────────────────
 
+// Kind → color palette for domain clustering
+const KIND_COLORS: Record<string, string> = {
+  user_fact: '#34d399',       // green
+  preference: '#c9a45c',     // gold
+  identity_constant: '#818cf8', // purple
+  narrative_note: '#f472b6', // pink
+  observation: 'rgba(240,235,225,0.5)', // muted
+  ops: '#60a5fa',            // blue
+  learned: '#fb923c',        // orange
+}
+const KIND_LABELS: Record<string, string> = {
+  user_fact: 'fact',
+  preference: 'pref',
+  identity_constant: 'identity',
+  narrative_note: 'note',
+  observation: 'obs',
+  ops: 'ops',
+  learned: 'learned',
+}
+
 function RetrievalSection({
   memories,
+  backendEdges,
   shiftById,
   hasTrustShifts,
 }: {
   memories: RetrievalMemory[]
+  backendEdges: RetrievalEdge[]
   shiftById: Record<string, TrustShift>
   hasTrustShifts: boolean
 }) {
+  const hasPCA = memories.some(m => m.pca_x !== undefined && m.pca_x !== 0)
+  const W = 280, H = 190, CX = W / 2, CY = H / 2, PAD = 28
+
+  // Compute node positions — use real PCA if available, fallback to hash circle
+  const nodes = memories.map((mem, i) => {
+    const trust = shiftById[mem.id] ? shiftById[mem.id].to : mem.trust
+    const prevTrust = shiftById[mem.id] ? mem.trust : undefined
+    const reason = shiftById[mem.id]?.reason
+    const kind = mem.kind || 'observation'
+
+    let cx: number, cy: number
+    if (hasPCA && mem.pca_x !== undefined && mem.pca_y !== undefined) {
+      // PCA coords are [-1, 1] → map to viewBox with padding
+      cx = PAD + ((mem.pca_x + 1) / 2) * (W - 2 * PAD)
+      cy = PAD + ((mem.pca_y + 1) / 2) * (H - 2 * PAD)
+    } else {
+      // Fallback: arrange in a circle with hash-based spread
+      const textHash = mem.text.split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0)
+      const angle = (i / memories.length) * Math.PI * 2
+      const radius = 65 + (Math.abs(textHash % 30))
+      cx = CX + Math.cos(angle) * radius
+      cy = CY + Math.sin(angle) * radius * 0.7
+    }
+    return { ...mem, trust, prevTrust, reason, kind, cx, cy, radius: Math.max(5, trust * 14 + 3), index: i }
+  })
+
+  // Build edges from backend cosine similarities (preferred) or fallback to word overlap
+  const nodeById = new Map(nodes.map(n => [n.id, n]))
+  type GraphEdge = { from: typeof nodes[0]; to: typeof nodes[0]; type: 'similar' | 'contradiction'; strength: number }
+  const edges: GraphEdge[] = []
+
+  if (backendEdges.length > 0) {
+    for (const be of backendEdges) {
+      const a = nodeById.get(be.from)
+      const b = nodeById.get(be.to)
+      if (!a || !b) continue
+      const trustDiff = Math.abs(a.trust - b.trust)
+      const isContradiction = be.sim > 0.6 && trustDiff > 0.35
+      edges.push({
+        from: a, to: b,
+        type: isContradiction ? 'contradiction' : 'similar',
+        strength: Math.min(1, Math.abs(be.sim)),
+      })
+    }
+  } else {
+    // Fallback: word overlap
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i].text.toLowerCase()
+        const b = nodes[j].text.toLowerCase()
+        const wordsA = new Set(a.split(/\s+/).filter(w => w.length > 3))
+        const wordsB = new Set(b.split(/\s+/).filter(w => w.length > 3))
+        const overlap = [...wordsA].filter(w => wordsB.has(w)).length
+        const maxWords = Math.max(wordsA.size, wordsB.size, 1)
+        const similarity = overlap / maxWords
+        if (similarity > 0.15) {
+          const hasNegation = (a.includes('not') && !b.includes('not')) || (!a.includes('not') && b.includes('not'))
+          const trustDiff = Math.abs(nodes[i].trust - nodes[j].trust)
+          edges.push({
+            from: nodes[i], to: nodes[j],
+            type: (hasNegation || trustDiff > 0.4) ? 'contradiction' : 'similar',
+            strength: similarity,
+          })
+        }
+      }
+    }
+  }
+
+  // Collect unique kinds for centroid labels
+  const kindCentroids = new Map<string, { x: number; y: number; count: number }>()
+  for (const n of nodes) {
+    const k = n.kind
+    const c = kindCentroids.get(k) || { x: 0, y: 0, count: 0 }
+    c.x += n.cx; c.y += n.cy; c.count++
+    kindCentroids.set(k, c)
+  }
+
   return (
     <div>
       {/* Section header */}
@@ -262,32 +369,136 @@ function RetrievalSection({
       >
         <span className="opacity-60">◆</span>
         <span className="tracking-widest uppercase text-[10px]">
-          Retrieving {memories.length} {memories.length === 1 ? 'memory' : 'memories'}
+          {memories.length} {memories.length === 1 ? 'memory' : 'memories'} retrieved
+          {hasPCA && <span className="opacity-40 ml-1">(PCA)</span>}
         </span>
       </motion.div>
 
-      {/* Staggered bars */}
-      <div className="ml-3 space-y-0.5">
-        {memories.map((mem, i) => {
-          const shift = shiftById[mem.id]
-          const displayTrust = shift ? shift.to : mem.trust
-          const prevTrust = shift ? mem.trust : undefined
-          const reason = shift?.reason
+      {/* Epistemic graph */}
+      <div style={{ position: 'relative', height: 200, borderRadius: 8, background: 'rgba(20,18,16,0.6)', border: '1px solid rgba(240,235,225,0.05)', overflow: 'hidden', marginBottom: 4 }}>
+        <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} style={{ position: 'absolute', top: 0, left: 0 }}>
+          {/* Query pulse — golden ring expanding from center */}
+          <motion.circle
+            cx={CX} cy={CY} r={8}
+            fill="none" stroke="rgba(201,164,92,0.4)" strokeWidth={1.5}
+            initial={{ r: 4, opacity: 0.8 }}
+            animate={{ r: 80, opacity: 0 }}
+            transition={{ duration: 1.5, ease: 'easeOut' }}
+          />
 
+          {/* Centroid labels — domain clusters */}
+          {[...kindCentroids.entries()].filter(([, c]) => c.count >= 1).map(([kind, c]) => {
+            const x = c.x / c.count, y = c.y / c.count
+            const color = KIND_COLORS[kind] || 'rgba(240,235,225,0.3)'
+            return (
+              <motion.g key={`centroid-${kind}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.8, duration: 0.4 }}
+              >
+                {/* Centroid halo — soft circle showing cluster boundary */}
+                <circle cx={x} cy={y} r={c.count > 1 ? 35 : 22}
+                  fill="none" stroke={color} strokeWidth={0.5} opacity={0.15}
+                  strokeDasharray="3 4" />
+                {/* Label */}
+                <text x={x} y={y - (c.count > 1 ? 38 : 25)}
+                  textAnchor="middle" fill={color}
+                  fontSize={7} fontFamily="var(--font-mono, monospace)" opacity={0.5}>
+                  {KIND_LABELS[kind] || kind}
+                </text>
+              </motion.g>
+            )
+          })}
+
+          {/* Edges — connections between memories */}
+          {edges.map((edge, i) => {
+            const color = edge.type === 'contradiction'
+              ? 'rgba(212,112,88,0.5)'
+              : `rgba(52,211,153,${0.1 + edge.strength * 0.4})`
+            return (
+              <motion.line
+                key={`e-${i}`}
+                x1={edge.from.cx} y1={edge.from.cy} x2={edge.to.cx} y2={edge.to.cy}
+                stroke={color}
+                strokeWidth={Math.max(0.5, edge.strength * 2.5)}
+                strokeDasharray={edge.type === 'contradiction' ? '4 3' : 'none'}
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 1 }}
+                transition={{ delay: 0.5 + i * 0.08, duration: 0.35 }}
+              />
+            )
+          })}
+
+          {/* Nodes — memory dots positioned by PCA */}
+          {nodes.map((node, i) => {
+            const kindColor = KIND_COLORS[node.kind] || 'rgba(240,235,225,0.5)'
+            const trustBrightness = 0.4 + node.trust * 0.6
+            const glowActive = node.trust >= 0.6
+            return (
+              <motion.g key={node.id || i}
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3 + i * 0.1, type: 'spring', damping: 15 }}
+              >
+                {/* Trust glow halo */}
+                {glowActive && (
+                  <motion.circle cx={node.cx} cy={node.cy} r={node.radius + 5}
+                    fill="none" stroke={kindColor} strokeWidth={1.5} opacity={0.25}
+                    initial={{ r: node.radius }}
+                    animate={{ r: node.radius + 5 }}
+                    transition={{ duration: 0.5, delay: 0.5 + i * 0.1 }}
+                  />
+                )}
+                {/* Node circle */}
+                <circle cx={node.cx} cy={node.cy} r={node.radius}
+                  fill={kindColor} opacity={trustBrightness} />
+                {/* Score connection line to center (query) */}
+                {node.score && node.score > 0.3 && (
+                  <line x1={CX} y1={CY} x2={node.cx} y2={node.cy}
+                    stroke="rgba(201,164,92,0.08)" strokeWidth={0.5}
+                    strokeDasharray="2 4" />
+                )}
+              </motion.g>
+            )
+          })}
+        </svg>
+
+        {/* Legend */}
+        <div style={{ position: 'absolute', bottom: 3, right: 6, display: 'flex', gap: 8, fontSize: 7, fontFamily: 'var(--font-mono, monospace)' }}>
+          {edges.some(e => e.type === 'similar') && (
+            <span style={{ color: 'rgba(52,211,153,0.6)' }}>— similar</span>
+          )}
+          {edges.some(e => e.type === 'contradiction') && (
+            <span style={{ color: 'rgba(212,112,88,0.6)' }}>-- contra</span>
+          )}
+          {hasPCA && <span style={{ color: 'rgba(201,164,92,0.4)' }}>◎ pca</span>}
+        </div>
+      </div>
+
+      {/* Memory labels below graph — with kind badge */}
+      <div className="ml-1 space-y-0.5">
+        {nodes.map((node, i) => {
+          const kindColor = KIND_COLORS[node.kind] || 'rgba(240,235,225,0.35)'
+          const trustColor = node.trust >= 0.7 ? '#34d399' : node.trust >= 0.4 ? '#c9a45c' : 'rgba(240,235,225,0.35)'
           return (
             <motion.div
-              key={mem.id || i}
-              initial={{ opacity: 0, x: -6 }}
+              key={node.id || i}
+              initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.2, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ delay: 0.6 + i * 0.08, duration: 0.15 }}
+              className="flex items-center gap-1.5 text-[10px]"
             >
-              <TrustBar
-                trust={displayTrust}
-                prevTrust={hasTrustShifts ? prevTrust : undefined}
-                text={mem.text}
-                reason={reason}
-                compact
-              />
+              <span style={{ width: 5, height: 5, borderRadius: '50%', background: kindColor, flexShrink: 0 }} />
+              <span className="font-mono" style={{ color: trustColor, flexShrink: 0, width: 26 }}>{node.trust.toFixed(2)}</span>
+              <span className="font-mono px-1 rounded" style={{
+                color: kindColor, background: `${kindColor}15`,
+                fontSize: 8, flexShrink: 0, lineHeight: '14px',
+              }}>
+                {KIND_LABELS[node.kind] || node.kind}
+              </span>
+              <span className="truncate" style={{ color: 'rgba(240,235,225,0.4)' }}>
+                {cleanMemoryText(node.text).slice(0, 70)}
+              </span>
             </motion.div>
           )
         })}

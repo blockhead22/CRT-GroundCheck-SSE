@@ -1840,18 +1840,43 @@ class ThreadSessionDB:
         return int(entry_id) if entry_id is not None else -1
 
     def get_reflection_journal_entries(self, thread_id: str, limit: int = 50) -> list[dict]:
-        """Fetch reflection journal entries for a thread (most recent first)."""
+        """Fetch reflection journal entries (most recent first).
+
+        If thread_id is "_all", returns entries across all threads. Otherwise
+        tries the specific thread first, falling back to all threads when the
+        specific thread has zero entries — prevents "empty journal after
+        restart" caused by new thread UUIDs having no history.
+        """
         import json
         limit = max(1, min(int(limit or 50), 200))
         conn = self._get_connection()
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT id, thread_id, created_at, entry_type, title, body, meta_json
-            FROM reflection_journal_entries
-            WHERE thread_id = ?
-            ORDER BY created_at DESC
-            LIMIT ?
-        """, (thread_id, limit))
+
+        use_global = thread_id == "_all"
+        if not use_global:
+            # Check if this thread has any entries
+            cnt = cursor.execute(
+                "SELECT COUNT(*) FROM reflection_journal_entries WHERE thread_id = ?",
+                (thread_id,),
+            ).fetchone()[0]
+            if cnt == 0:
+                use_global = True  # fallback to global
+
+        if use_global:
+            cursor.execute("""
+                SELECT id, thread_id, created_at, entry_type, title, body, meta_json
+                FROM reflection_journal_entries
+                ORDER BY created_at DESC
+                LIMIT ?
+            """, (limit,))
+        else:
+            cursor.execute("""
+                SELECT id, thread_id, created_at, entry_type, title, body, meta_json
+                FROM reflection_journal_entries
+                WHERE thread_id = ?
+                ORDER BY created_at DESC
+                LIMIT ?
+            """, (thread_id, limit))
         rows = cursor.fetchall()
         conn.close()
         out = []

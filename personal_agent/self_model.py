@@ -485,6 +485,116 @@ class SelfModel:
 
 
 # ---------------------------------------------------------------------------
+# Execution state verification — runs on startup to keep self-model current
+# ---------------------------------------------------------------------------
+
+def verify_execution_state() -> Dict[str, str]:
+    """Check current system state and return facts about what's running.
+
+    Call this on startup to ensure the self-model has accurate information
+    about enabled/disabled features, active models, and system scale.
+    Prevents stale beliefs like "agent loop is disabled" when it's actually live.
+    """
+    state: Dict[str, str] = {}
+    import os
+
+    # Agent loop / orchestrator status
+    try:
+        from routes.chat import _AGENT_LOOP_ENABLED
+        state["agent_loop"] = "enabled" if _AGENT_LOOP_ENABLED else "disabled"
+    except Exception:
+        # Check by inspecting the code directly
+        try:
+            import inspect
+            from routes import chat as _chat_mod
+            src = inspect.getsource(_chat_mod)
+            if "and False" in src and "_layer4_orchestrator" in src:
+                state["agent_loop"] = "disabled (and False gate found)"
+            else:
+                state["agent_loop"] = "enabled (no gate found)"
+        except Exception:
+            state["agent_loop"] = "unknown"
+
+    # Active models
+    state["generation_model"] = os.getenv("CRT_OLLAMA_MODEL", "unknown")
+    state["intent_model"] = os.getenv("CRT_INTENT_MODEL", "unknown")
+
+    # Memory scale
+    try:
+        import sqlite3
+        mem_db = os.getenv("CRT_SHARED_MEMORY", "personal_agent/crt_memory_shared.db")
+        if os.path.exists(mem_db):
+            conn = sqlite3.connect(mem_db)
+            cnt = conn.execute("SELECT COUNT(*) FROM memories WHERE deprecated=0").fetchone()[0]
+            conn.close()
+            state["active_memories"] = str(cnt)
+    except Exception:
+        pass
+
+    # Claude CLI availability
+    try:
+        from personal_agent.cookie_orchestrator import ClaudeCliBrain
+        brain = ClaudeCliBrain()
+        state["claude_cli"] = f"available ({brain._bin})"
+    except Exception:
+        state["claude_cli"] = "unavailable"
+
+    logger.info("[SELF_MODEL] Execution state: %s", state)
+    return state
+
+
+def write_execution_state_to_memory(state: Optional[Dict[str, str]] = None) -> None:
+    """Write verified execution state to CRT memory store.
+
+    Creates/updates a special memory with kind='ops' that contains the current
+    system state. This memory has a 7-day review_after so it auto-stales if
+    not refreshed.
+    """
+    if state is None:
+        state = verify_execution_state()
+
+    summary_parts = []
+    for k, v in state.items():
+        summary_parts.append(f"{k}: {v}")
+    text = "System execution state (auto-verified on startup): " + "; ".join(summary_parts)
+
+    sm = get_self_model()
+    mem_db = sm._find_memory_db()
+    if mem_db is None:
+        return
+
+    try:
+        import uuid, json as _json
+        conn = _get_db_connection(str(mem_db))
+
+        # Deprecate previous execution state memories
+        conn.execute(
+            """UPDATE memories SET deprecated = 1
+               WHERE kind = 'ops'
+               AND text LIKE 'System execution state%'
+               AND (deprecated IS NULL OR deprecated = 0)"""
+        )
+
+        memory_id = str(uuid.uuid4())
+        now = time.time()
+        review_after = now + 7 * 86400  # 7-day review
+        conn.execute(
+            """INSERT INTO memories
+                (memory_id, text, timestamp, confidence, trust, source,
+                 kind, thread_id, deprecated, vector_json, sse_mode,
+                 source_kind, review_after)
+            VALUES (?, ?, ?, 0.90, 0.90, 'system', 'ops', 'system', 0, ?, 'L',
+                    'system', ?)""",
+            (memory_id, text, now, _json.dumps([]), review_after),
+        )
+        conn.commit()
+        conn.close()
+        logger.info("[SELF_MODEL] Wrote execution state memory: %s", memory_id)
+    except Exception as exc:
+        logger.warning("[SELF_MODEL] Execution state write failed: %s", exc)
+
+
+# ---------------------------------------------------------------------------
 # Module-level singleton
 # ---------------------------------------------------------------------------
 
