@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, Suspense, lazy } from 'react'
+
+const BeliefMap3DView = lazy(() => import('./BeliefMap3D'))
 
 type MapPoint = {
   entry_id: number
   x: number
   y: number
+  z?: number
   is_belief: boolean
   trust_avg: number | null
   topic_id: number | null
@@ -18,6 +21,7 @@ type MapTopic = {
   label: string
   centroid_x: number
   centroid_y: number
+  centroid_z?: number
 }
 
 type MapData = {
@@ -49,6 +53,7 @@ export default function BeliefMapPage({ threadId }: { threadId?: string }) {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; point: MapPoint } | null>(null)
   const [selectedTopic, setSelectedTopic] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [view3D, setView3D] = useState(false)
 
   // Camera state
   const cameraRef = useRef({ offsetX: 0, offsetY: 0, zoom: 1 })
@@ -59,7 +64,8 @@ export default function BeliefMapPage({ threadId }: { threadId?: string }) {
   // Fetch data
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch(`/api/variance/embedding-map?thread_id=${tid}`)
+      const dims = view3D ? 3 : 2
+      const res = await fetch(`/api/variance/embedding-map?thread_id=${tid}&dimensions=${dims}`)
       const json = await res.json()
       if (json.error) setError(json.error)
       else setError(null)
@@ -67,7 +73,7 @@ export default function BeliefMapPage({ threadId }: { threadId?: string }) {
     } catch {
       setError('Failed to fetch embedding map')
     }
-  }, [tid])
+  }, [tid, view3D])
 
   useEffect(() => {
     fetchData()
@@ -335,6 +341,17 @@ export default function BeliefMapPage({ threadId }: { threadId?: string }) {
             </button>
           )}
           <button
+            onClick={() => setView3D(v => !v)}
+            className="rounded px-2 py-0.5 text-[10px] font-mono"
+            style={{
+              background: view3D ? 'rgba(212,132,92,0.2)' : 'rgba(240,235,225,0.06)',
+              color: view3D ? COLORS.belief : COLORS.textMuted,
+              border: view3D ? '1px solid rgba(212,132,92,0.3)' : '1px solid transparent',
+            }}
+          >
+            {view3D ? '◈ 3D' : '◇ 2D'}
+          </button>
+          <button
             onClick={fetchData}
             className="rounded px-2 py-0.5 text-[10px] font-mono"
             style={{ background: 'rgba(240,235,225,0.06)', color: COLORS.textMuted }}
@@ -350,8 +367,13 @@ export default function BeliefMapPage({ threadId }: { threadId?: string }) {
         </div>
       )}
 
-      {/* Canvas */}
+      {/* Canvas — 2D or 3D */}
       <div className="flex-1 min-h-0 relative">
+        {view3D && data ? (
+          <Suspense fallback={<div className="flex items-center justify-center h-full" style={{ color: COLORS.textMuted }}>Loading 3D…</div>}>
+            <BeliefMap3DView data={data as any} />
+          </Suspense>
+        ) : (
         <canvas
           ref={canvasRef}
           className="w-full h-full cursor-crosshair"
@@ -362,6 +384,7 @@ export default function BeliefMapPage({ threadId }: { threadId?: string }) {
           onClick={handleClick}
           onWheel={handleWheel}
         />
+        )}
 
         {/* Tooltip */}
         {tooltip && (

@@ -1676,6 +1676,43 @@ class Orchestrator:
                             "proposed_tool": decision.get("tool", ""),
                         }
 
+                        # ── DRIFT GOVERNANCE: sensor → steering wheel ──────────
+                        # Rule 1: Drift > severe → re-ground from memory
+                        if _live_align < 0.15:
+                            print(f"  [DRIFT_ACTION] Rule 1: alignment {_live_align:.2f} < 0.15 — forcing memory re-retrieval")
+                            try:
+                                _reground = execute_tool("memory_recall", {"query": objective[:200]}, self.memory_system)
+                                if _reground.get("content"):
+                                    last_result = (
+                                        f"[DRIFT CORRECTION] Re-grounded from memory:\n{_reground['content'][:500]}\n\n"
+                                        f"Original objective: {objective[:200]}"
+                                    )
+                                    state.thinking.append(f"[drift_reground] Forced memory re-retrieval (alignment={_live_align:.2f})")
+                            except Exception as _rg_err:
+                                print(f"  [DRIFT_ACTION] Re-ground failed: {_rg_err}")
+
+                        # Rule 2: Count sustained drift — 3+ consecutive drifts → stop
+                        _consecutive_drifts = 0
+                        for _prev_step in reversed(run_log.steps):
+                            if getattr(_prev_step, 'intent_alignment', 1.0) < 0.3:
+                                _consecutive_drifts += 1
+                            else:
+                                break
+                        if _consecutive_drifts >= 3:
+                            print(f"  [DRIFT_ACTION] Rule 2: {_consecutive_drifts} consecutive drifts — forcing respond")
+                            state.thinking.append(f"[drift_halt] Sustained drift across {_consecutive_drifts} steps — halting to avoid further divergence")
+                            yield {
+                                "type": "response",
+                                "content": (
+                                    f"I've been drifting from the original objective for {_consecutive_drifts} consecutive steps. "
+                                    f"Rather than continue diverging, I'm stopping to check: "
+                                    f"the original question was \"{objective[:150]}\". "
+                                    f"Should I restart my approach, or is the current direction useful?"
+                                ),
+                            }
+                            state.done = True
+                            break
+
             if action == "plan":
                 # First-move declaration — surface to user immediately before any tool runs.
                 # Plan does NOT consume an iteration slot — it's a declaration, not work.

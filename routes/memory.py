@@ -1372,13 +1372,14 @@ def variance_analyze(
 def variance_embedding_map(
     request: Request,
     thread_id: str = Query(default="default"),
+    dimensions: int = Query(default=2, ge=2, le=3),
 ):
-    """PCA-projected 2D coordinates for belief map visualization."""
+    """PCA-projected coordinates for belief map visualization (2D or 3D)."""
     engine = _get_engine(request, thread_id)
     try:
         from personal_agent.variance_tracker import VarianceTracker
         tracker = VarianceTracker(db_path=engine.memory.db_path)
-        return tracker.get_embedding_map()
+        return tracker.get_embedding_map(dimensions=dimensions)
     except Exception as e:
         logger.warning(f"[VARIANCE] embedding-map error: {e}")
         return {"points": [], "contradictions": [], "topics": [], "error": str(e)}

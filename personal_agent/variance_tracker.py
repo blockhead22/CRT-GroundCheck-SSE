@@ -510,9 +510,14 @@ class VarianceTracker:
             for r in rows
         ]
 
-    def get_embedding_map(self) -> Dict:
-        """Return PCA-projected 2D coordinates for all belief_speech entries."""
+    def get_embedding_map(self, dimensions: int = 2) -> Dict:
+        """Return PCA-projected coordinates for all belief_speech entries.
+
+        Args:
+            dimensions: 2 for flat map, 3 for 3D belief space (default 2).
+        """
         from sklearn.decomposition import PCA
+        dimensions = max(2, min(3, dimensions))
 
         conn = self._get_connection()
         try:
@@ -537,16 +542,20 @@ class VarianceTracker:
         entry_ids = [r[0] for r in rows]
         embeddings = np.array([np.frombuffer(r[6], dtype=np.float32) for r in rows])
 
-        # PCA to 2D
+        # PCA to N dimensions
         if len(embeddings) < 2:
-            coords = np.zeros((len(embeddings), 2))
+            coords = np.zeros((len(embeddings), dimensions))
         else:
-            pca = PCA(n_components=2)
+            n_comp = min(dimensions, len(embeddings))
+            pca = PCA(n_components=n_comp)
             coords = pca.fit_transform(embeddings)
+            # Pad if needed (fewer samples than dimensions)
+            if coords.shape[1] < dimensions:
+                coords = np.hstack([coords, np.zeros((len(coords), dimensions - coords.shape[1]))])
 
         # Normalize to [-1, 1] range for frontend
         if coords.size > 0:
-            for dim in range(2):
+            for dim in range(dimensions):
                 vmin, vmax = coords[:, dim].min(), coords[:, dim].max()
                 span = vmax - vmin
                 if span > 1e-8:
@@ -558,7 +567,7 @@ class VarianceTracker:
         # Build points
         points = []
         for i, r in enumerate(rows):
-            points.append({
+            pt = {
                 "entry_id": r[0],
                 "x": round(float(coords[i, 0]), 4),
                 "y": round(float(coords[i, 1]), 4),
@@ -569,32 +578,37 @@ class VarianceTracker:
                 "query": (r[2] or "")[:80],
                 "response_preview": (r[3] or "")[:120],
                 "timestamp": r[1],
-            })
+            }
+            if dimensions >= 3:
+                pt["z"] = round(float(coords[i, 2]), 4)
+            points.append(pt)
 
         # Project topic centroids (store raw PCA range for normalization)
         topics = []
         if topic_rows and len(embeddings) >= 2:
-            # We need raw PCA coords before normalization for centroid projection
             raw_coords = pca.transform(embeddings)
             for tr in topic_rows:
                 centroid = np.frombuffer(tr[2], dtype=np.float32).reshape(1, -1)
                 try:
-                    c2d = pca.transform(centroid)[0]
-                    # Apply same normalization as points
-                    for dim in range(2):
+                    c_proj = pca.transform(centroid)[0]
+                    for dim in range(min(dimensions, len(c_proj))):
                         vmin, vmax = raw_coords[:, dim].min(), raw_coords[:, dim].max()
                         span = vmax - vmin
                         if span > 1e-8:
-                            c2d[dim] = 2.0 * (c2d[dim] - vmin) / span - 1.0
-                    cx = round(float(c2d[0]), 4)
-                    cy = round(float(c2d[1]), 4)
+                            c_proj[dim] = 2.0 * (c_proj[dim] - vmin) / span - 1.0
+                    t_entry = {
+                        "topic_id": tr[0],
+                        "label": tr[1],
+                        "centroid_x": round(float(c_proj[0]), 4),
+                        "centroid_y": round(float(c_proj[1]), 4),
+                    }
+                    if dimensions >= 3 and len(c_proj) >= 3:
+                        t_entry["centroid_z"] = round(float(c_proj[2]), 4)
+                    topics.append(t_entry)
                 except Exception:
-                    cx, cy = 0.0, 0.0
-                topics.append({
-                    "topic_id": tr[0],
-                    "label": tr[1],
-                    "centroid_x": cx,
-                    "centroid_y": cy,
-                })
+                    topics.append({
+                        "topic_id": tr[0], "label": tr[1],
+                        "centroid_x": 0.0, "centroid_y": 0.0,
+                    })
 
         return {"points": points, "contradictions": [], "topics": topics}
