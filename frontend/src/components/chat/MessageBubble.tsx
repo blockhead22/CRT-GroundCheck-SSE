@@ -18,6 +18,85 @@ import { ContradictionDrawer } from './ContradictionDrawer'
 import { resolveContradiction } from '../../lib/api'
 
 // ─────────────────────────────────────────────────────────────
+// Mini Belief Map — persistent PCA graph in message footer
+// ─────────────────────────────────────────────────────────────
+
+const MINI_KIND_COLORS: Record<string, string> = {
+  user_fact: '#34d399', preference: '#c9a45c', identity_constant: '#818cf8',
+  narrative_note: '#f472b6', observation: 'rgba(240,235,225,0.5)',
+  ops: '#60a5fa', learned: '#fb923c', user_belief: '#a78bfa',
+}
+
+function MiniBeliefMap({ memories, edges }: {
+  memories: any[]
+  edges: Array<{ from: string; to: string; sim: number }>
+}) {
+  const W = 240, H = 120, PAD = 18
+
+  const nodes = memories.map((mem: any, i: number) => {
+    const trust = typeof mem.trust === 'number' ? mem.trust : 0.5
+    const kind = String(mem.kind || 'observation')
+    const pca_x = typeof mem.pca_x === 'number' ? mem.pca_x : 0
+    const pca_y = typeof mem.pca_y === 'number' ? mem.pca_y : 0
+    const cx = PAD + ((pca_x + 1) / 2) * (W - 2 * PAD)
+    const cy = PAD + ((pca_y + 1) / 2) * (H - 2 * PAD)
+    const id = mem.memory_id || mem.id || `m${i}`
+    return { id, trust, kind, cx, cy, radius: Math.max(4, trust * 10 + 2), text: String(mem.text || '') }
+  })
+
+  const nodeById = new Map(nodes.map(n => [n.id, n]))
+
+  // Build edge lines from backend cosine similarities
+  const graphEdges: Array<{ from: typeof nodes[0]; to: typeof nodes[0]; sim: number; isContra: boolean }> = []
+  for (const e of edges) {
+    const a = nodeById.get(e.from), b = nodeById.get(e.to)
+    if (!a || !b) continue
+    const trustDiff = Math.abs(a.trust - b.trust)
+    graphEdges.push({ from: a, to: b, sim: e.sim, isContra: e.sim > 0.6 && trustDiff > 0.3 })
+  }
+
+  return (
+    <div
+      className="mt-2 mb-1 rounded-lg overflow-hidden"
+      style={{ background: 'rgba(20,18,16,0.5)', border: '1px solid rgba(240,235,225,0.05)' }}
+    >
+      <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`}>
+        {/* Edges */}
+        {graphEdges.map((e, i) => (
+          <line key={`e${i}`}
+            x1={e.from.cx} y1={e.from.cy} x2={e.to.cx} y2={e.to.cy}
+            stroke={e.isContra ? 'rgba(212,112,88,0.4)' : `rgba(52,211,153,${0.1 + e.sim * 0.3})`}
+            strokeWidth={Math.max(0.5, e.sim * 2)}
+            strokeDasharray={e.isContra ? '3 3' : 'none'}
+          />
+        ))}
+        {/* Nodes */}
+        {nodes.map((n, i) => {
+          const color = MINI_KIND_COLORS[n.kind] || 'rgba(240,235,225,0.4)'
+          return (
+            <g key={n.id}>
+              {n.trust >= 0.6 && (
+                <circle cx={n.cx} cy={n.cy} r={n.radius + 3}
+                  fill="none" stroke={color} strokeWidth={1} opacity={0.2} />
+              )}
+              <circle cx={n.cx} cy={n.cy} r={n.radius}
+                fill={color} opacity={0.4 + n.trust * 0.5} />
+            </g>
+          )
+        })}
+      </svg>
+      {/* Legend */}
+      <div className="flex items-center gap-3 px-2 pb-1.5" style={{ fontSize: 8, fontFamily: 'var(--font-mono, monospace)', color: 'rgba(240,235,225,0.25)' }}>
+        <span>◎ belief map</span>
+        {graphEdges.some(e => !e.isContra) && <span style={{ color: 'rgba(52,211,153,0.5)' }}>— similar</span>}
+        {graphEdges.some(e => e.isContra) && <span style={{ color: 'rgba(212,112,88,0.5)' }}>-- contra</span>}
+        <span className="ml-auto">{nodes.length} memories</span>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
 // Contradiction Mini-Graph — animated node-pair resolution
 // ─────────────────────────────────────────────────────────────
 
@@ -585,6 +664,13 @@ export function MessageBubble(props: {
                     transition={{ duration: 0.2 }}
                     style={{ overflow: 'hidden' }}
                   >
+                    {/* Mini PCA graph — persistent belief map after generation */}
+                    {mems.some((m: any) => m.pca_x != null && m.pca_x !== 0) && (
+                      <MiniBeliefMap
+                        memories={mems}
+                        edges={(meta as any)?.retrieval_edges || []}
+                      />
+                    )}
                     <div className="mt-2 flex flex-col gap-1.5">
                       {mems.map((mem: any, i: number) => {
                         const trust = typeof mem.trust === 'number' ? mem.trust : 0.5

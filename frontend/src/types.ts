@@ -12,6 +12,9 @@ export type RetrievedMemory = {
   confidence?: number | null
   sse_mode?: string | null
   score?: number | null
+  kind?: string | null
+  pca_x?: number | null
+  pca_y?: number | null
 }
 
 export type PromptMemory = {
@@ -95,6 +98,7 @@ export type CtrMessageMeta = {
   unresolved_contradictions_total?: number | null
   unresolved_hard_conflicts?: number | null
   retrieved_memories?: RetrievedMemory[]
+  retrieval_edges?: Array<{ from: string; to: string; sim: number }> | null
   prompt_memories?: PromptMemory[]
   learned_suggestions?: unknown[]
   heuristic_suggestions?: unknown[]

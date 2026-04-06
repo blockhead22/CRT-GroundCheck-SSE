@@ -5728,6 +5728,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         "generation_provider": (model_route or {}).get("provider") if isinstance(model_route, dict) else None,
         "pre_gen_belief": result.get("pre_gen_belief"),
         "contradiction_entry": result.get("contradiction_entry"),
+        "retrieval_edges": result.get("retrieval_edges"),
         "generation_source": result.get("generation_source"),
         "escalation": result.get("escalation"),
         "gpt_reference_used": isinstance(result.get("gpt_reference_packet"), dict),
