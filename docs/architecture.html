@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRT Architecture — How the Whitepaper Is Actually Implemented</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #060814; color: #c0c8e0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; line-height: 1.75; overflow-x: hidden; }
+
+  /* ===== HERO ===== */
+  .hero {
+    position: relative; width: 100%; min-height: 80vh;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, #060814 0%, #0c1228 30%, #1a0e2e 60%, #0d1a3a 100%);
+    overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+    background: radial-gradient(ellipse at 30% 50%, rgba(99,102,241,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 30%, rgba(236,72,153,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(59,130,246,0.05) 0%, transparent 50%);
+    animation: drift 20s ease-in-out infinite alternate;
+  }
+  @keyframes drift { 0% { transform: translate(0,0) rotate(0deg); } 100% { transform: translate(-2%,1%) rotate(1deg); } }
+  .hero-inner {
+    position: relative; z-index: 1; text-align: center; max-width: 820px; padding: 80px 30px;
+  }
+  .hero-badge {
+    display: inline-block; font-size: 0.7em; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
+    color: #818cf8; border: 1px solid rgba(129,140,248,0.25); border-radius: 20px; padding: 6px 18px;
+    margin-bottom: 28px; background: rgba(129,140,248,0.06);
+  }
+  .hero h1 {
+    font-size: 2.8em; font-weight: 700; color: #fff; letter-spacing: -1.5px; line-height: 1.15; margin-bottom: 20px;
+  }
+  .hero h1 .grad {
+    background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .hero .sub { font-size: 1em; color: #7a82a6; margin-bottom: 36px; max-width: 640px; margin-left: auto; margin-right: auto; }
+  .hero .finding-box {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 24px 28px; text-align: left; backdrop-filter: blur(12px);
+    max-width: 700px; margin: 0 auto;
+  }
+  .hero .finding-box p { color: #a0a8c8; font-size: 0.9em; margin-bottom: 0; line-height: 1.8; }
+  .hero .finding-box strong { color: #e0e4f0; }
+  .scroll-cue {
+    position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
+    color: #3a3f5c; font-size: 0.7em; letter-spacing: 1px; animation: pulse 2.5s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 0.7; } }
+
+  /* ===== LAYOUT ===== */
+  .container { max-width: 880px; margin: 0 auto; padding: 80px 30px; }
+  section { margin-bottom: 80px; }
+  h2 { font-size: 1.8em; color: #fff; margin-bottom: 16px; letter-spacing: -0.5px; font-weight: 700; }
+  h3 { font-size: 1.1em; color: #d0d4e8; margin: 32px 0 12px 0; font-weight: 600; }
+  h4 { font-size: 0.95em; color: #b0b8d8; margin: 24px 0 10px 0; font-weight: 600; }
+  p { margin-bottom: 16px; }
+  ul, ol { margin: 0 0 20px 24px; }
+  li { margin-bottom: 8px; color: #a0a8c8; }
+  strong { color: #e0e4f0; }
+  em { color: #c0c8e0; }
+  code { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.88em; color: #818cf8; }
+  .accent-line { width: 48px; height: 3px; background: linear-gradient(90deg, #818cf8, #c084fc); border-radius: 2px; margin-bottom: 28px; }
+  .section-number { font-size: 0.68em; color: #818cf8; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; display: block; margin-bottom: 8px; }
+
+  /* ===== STAT CARDS ===== */
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 32px 0; }
+  .stat-card {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 24px 20px; text-align: center;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+  .stat-card:hover { border-color: rgba(129,140,248,0.3); transform: translateY(-2px); }
+  .stat-card .stat-value { font-size: 2.2em; font-weight: 700; color: #fff; line-height: 1; margin-bottom: 6px; }
+  .stat-card .stat-value.accent { color: #818cf8; }
+  .stat-card .stat-value.purple { color: #c084fc; }
+  .stat-card .stat-value.pink { color: #f472b6; }
+  .stat-card .stat-value.green { color: #34d399; }
+  .stat-card .stat-value.amber { color: #fbbf24; }
+  .stat-card .stat-label { font-size: 0.72em; color: #6a7096; text-transform: uppercase; letter-spacing: 1px; }
+
+  /* ===== TABLES ===== */
+  .table-wrap { overflow-x: auto; margin: 24px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+  thead th {
+    text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; font-size: 0.78em;
+    text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 2px solid rgba(255,255,255,0.06);
+  }
+  tbody td { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.03); color: #a0a8c8; }
+  tbody tr:hover td { background: rgba(129,140,248,0.03); }
+  td strong { color: #e0e4f0; }
+  td code { font-size: 0.85em; color: #818cf8; }
+
+  /* ===== QUOTE BLOCK ===== */
+  .quote-block {
+    border-left: 3px solid #818cf8; padding: 20px 24px; margin: 32px 0;
+    background: rgba(129,140,248,0.03); border-radius: 0 10px 10px 0;
+  }
+  .quote-block p { color: #b0b8d8; font-size: 1.02em; font-style: italic; margin: 0; }
+
+  /* ===== LAW CARD ===== */
+  .law-card {
+    background: linear-gradient(135deg, rgba(129,140,248,0.08), rgba(192,132,252,0.06));
+    border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 32px; margin: 40px 0;
+    text-align: center;
+  }
+  .law-card .law-number { font-size: 0.7em; color: #818cf8; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+  .law-card .law-text { font-size: 1.4em; color: #fff; font-weight: 700; letter-spacing: -0.5px; }
+  .law-card .law-sub { font-size: 0.88em; color: #7a82a6; margin-top: 12px; max-width: 620px; margin-left: auto; margin-right: auto; }
+
+  /* ===== PRINCIPLE CARDS ===== */
+  .principle-grid { display: grid; gap: 16px; margin: 24px 0; }
+  .principle-grid-2 { grid-template-columns: 1fr 1fr; }
+  .principle {
+    background: rgba(255,255,255,0.02); border-left: 3px solid rgba(255,255,255,0.08);
+    padding: 24px 28px; border-radius: 0 10px 10px 0;
+  }
+  .principle .p-num { color: #5a6080; font-size: 0.65em; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
+  .principle .p-text { color: #fff; font-size: 1.05em; margin-top: 8px; font-weight: 600; }
+  .principle .p-sub { color: #8a90b0; font-size: 0.86em; margin-top: 10px; line-height: 1.7; }
+  .principle .p-code { color: #5a6080; font-size: 0.72em; margin-top: 8px; font-family: 'Cascadia Code', monospace; }
+  .principle-contra { border-left-color: #f472b6; }
+  .principle-trust { border-left-color: #34d399; }
+  .principle-speech { border-left-color: #818cf8; }
+  .principle-belief { border-left-color: #c084fc; }
+  .principle-variance { border-left-color: #fbbf24; }
+
+  /* ===== LAYER STACK ===== */
+  .layer-stack { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 24px 0; }
+  .layer {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px; padding: 24px 20px; text-align: center;
+  }
+  .layer .layer-name { color: #e0e4f0; font-weight: 600; font-size: 1em; }
+  .layer .layer-sub { color: #5a6080; font-size: 0.68em; margin-top: 6px; text-transform: uppercase; letter-spacing: 1.5px; }
+  .layer .layer-desc { color: #8a90b0; font-size: 0.84em; margin-top: 12px; line-height: 1.65; }
+
+  /* ===== PIPELINE STACK ===== */
+  .pipeline-stack { max-width: 700px; margin: 24px auto; display: flex; flex-direction: column; gap: 0; }
+  .pipeline-layer {
+    display: flex; align-items: stretch;
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-bottom: none; transition: background 0.3s;
+  }
+  .pipeline-layer:first-child { border-radius: 10px 10px 0 0; }
+  .pipeline-layer:last-child { border-bottom: 1px solid rgba(255,255,255,0.06); border-radius: 0 0 10px 10px; }
+  .pipeline-layer:hover { background: rgba(255,255,255,0.03); }
+  .pipeline-layer-accent { width: 4px; flex-shrink: 0; }
+  .pipeline-layer-content { flex: 1; padding: 14px 20px; }
+  .pipeline-layer-name { color: #e0e4f0; font-weight: 600; font-size: 0.9em; margin-bottom: 3px; }
+  .pipeline-layer-desc { color: #7a82a6; font-size: 0.8em; line-height: 1.5; }
+  .pipeline-layer-annotation {
+    display: flex; align-items: center; padding: 0 16px;
+    font-size: 0.7em; color: #5a6080; font-style: italic; white-space: nowrap;
+    border-left: 1px solid rgba(255,255,255,0.04); min-width: 140px;
+  }
+  /* Color accents for pipeline layers */
+  .pl-indigo .pipeline-layer-accent { background: #818cf8; }
+  .pl-green .pipeline-layer-accent { background: #34d399; }
+  .pl-amber .pipeline-layer-accent { background: #fbbf24; }
+  .pl-pink .pipeline-layer-accent { background: #f472b6; }
+  .pl-purple .pipeline-layer-accent { background: #c084fc; }
+
+  /* ===== REGIME CARDS ===== */
+  .regime-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 32px 0; }
+  .regime-card {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-top: 3px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 28px 24px; text-align: center;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+  .regime-card:hover { transform: translateY(-2px); }
+  .regime-card .regime-label { font-size: 0.62em; color: #5a6080; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; font-weight: 600; }
+  .regime-card .regime-name { font-size: 1.1em; font-weight: 700; margin-bottom: 6px; color: #fff; }
+  .regime-card .regime-model { font-size: 0.72em; color: #5a6080; margin-bottom: 14px; letter-spacing: 1px; }
+  .regime-card .regime-desc { font-size: 0.84em; color: #8a90b0; line-height: 1.65; }
+  .card-local { border-top-color: #34d399; }
+  .card-local .regime-name { color: #34d399; }
+  .card-cloud { border-top-color: #818cf8; }
+  .card-cloud .regime-name { color: #818cf8; }
+  .card-deep { border-top-color: #c084fc; }
+  .card-deep .regime-name { color: #c084fc; }
+
+  /* ===== METHOD CARDS ===== */
+  .method-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 24px 0; }
+  .method-card {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 10px; padding: 20px;
+  }
+  .method-card h4 { color: #d0d4e8; font-size: 0.9em; margin-bottom: 8px; margin-top: 0; }
+  .method-card p { color: #7a82a6; font-size: 0.82em; margin: 0; line-height: 1.65; }
+
+  /* ===== NOTE / REMARK ===== */
+  .note { color: #5a6080; font-size: 0.82em; font-style: italic; }
+  .remark {
+    background: rgba(129,140,248,0.04); border: 1px solid rgba(129,140,248,0.1);
+    border-radius: 8px; padding: 14px 18px; margin: 16px 0; font-size: 0.86em;
+    color: #8a90b0;
+  }
+  .remark strong { color: #b0b8d8; }
+
+  /* ===== LINK BUTTONS ===== */
+  .link-btn {
+    display: inline-block; padding: 12px 28px;
+    border: 1px solid rgba(129,140,248,0.4); border-radius: 8px;
+    text-decoration: none; font-size: 0.82em; font-weight: 600;
+    letter-spacing: 1px; text-transform: uppercase; color: #818cf8;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  .link-btn:hover { background: rgba(129,140,248,0.08); border-color: #818cf8; }
+
+  /* ===== FOOTER ===== */
+  .footer {
+    text-align: center; padding: 48px 30px; color: #2a2f4a; font-size: 0.72em;
+    border-top: 1px solid rgba(255,255,255,0.04); margin-top: 40px;
+  }
+  .footer a { color: #5a6080; text-decoration: none; }
+  .footer a:hover { color: #818cf8; }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 700px) {
+    .hero h1 { font-size: 1.9em; }
+    .stat-row { grid-template-columns: 1fr 1fr; }
+    .method-grid { grid-template-columns: 1fr; }
+    .regime-grid { grid-template-columns: 1fr; }
+    .layer-stack { grid-template-columns: 1fr; }
+    .principle-grid-2 { grid-template-columns: 1fr; }
+    .pipeline-layer { flex-direction: column; }
+    .pipeline-layer-accent { width: 100%; height: 3px; }
+    .pipeline-layer-annotation { border-left: none; border-top: 1px solid rgba(255,255,255,0.04); padding: 10px 20px; min-width: auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== HERO ===== -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">Architecture &middot; Implementation Guide</div>
+    <h1>How <span class="grad">CRT</span> Is Actually<br>Implemented</h1>
+    <p class="sub">From whitepaper theory to running system — 6 governance layers, 10 transformations, real pipeline flow, agent dispatch, self-awareness loop, and drift governance</p>
+    <div class="finding-box">
+      <p>This document maps every theoretical concept from the <strong>CRT whitepaper</strong> to its actual implementation. Every claim is backed by a module, every principle by running code. The system processes ~22,500 responses across 3 model families with full epistemic governance.</p>
+    </div>
+  </div>
+  <div class="scroll-cue">&#9660; SCROLL</div>
+</div>
+
+<!-- ===== CONTENT ===== -->
+<div class="container">
+
+<!-- ===== KEY NUMBERS ===== -->
+<section>
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value accent">6</div>
+      <div class="stat-label">Governance Layers</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value purple">10</div>
+      <div class="stat-label">CRT Transformations</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value green">5</div>
+      <div class="stat-label">Immune Agents</div>
+    </div>
+  </div>
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value pink">18</div>
+      <div class="stat-label">MCP Tools Exposed</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value amber">7</div>
+      <div class="stat-label">Self-Model Slots</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value accent">3</div>
+      <div class="stat-label">Generation Tiers</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CORE PRINCIPLES ===== -->
+<section id="principles">
+  <div class="accent-line"></div>
+  <span class="section-number">Foundation</span>
+  <h2>Core Architectural Principles</h2>
+
+  <div class="law-card">
+    <div class="law-number">The Central Thesis</div>
+    <div class="law-text">The model is the mouth. The persistence layer is the self.</div>
+    <div class="law-sub">Models are interchangeable generation engines. Identity, memory, trust, and contradiction live in the persistence layer — governed by CRT, not by any single model.</div>
+  </div>
+
+  <div class="principle-grid principle-grid-2">
+    <div class="principle principle-trust">
+      <div class="p-num">Principle 1</div>
+      <div class="p-text">Memory First</div>
+      <div class="p-sub">Coherence over time matters more than single-query accuracy. A response grounded in trusted memory outranks a brilliant hallucination.</div>
+    </div>
+    <div class="principle principle-speech">
+      <div class="p-num">Principle 2</div>
+      <div class="p-text">Append-Only Ledger</div>
+      <div class="p-sub">Contradictions are preserved as ledger entries, never silent deletions. The system remembers that it changed its mind, and why.</div>
+    </div>
+    <div class="principle principle-belief">
+      <div class="p-num">Principle 3</div>
+      <div class="p-text">Trust &ne; Confidence</div>
+      <div class="p-sub">Trust evolves slowly through drift-aware decay. Confidence is the epistemic state at creation. A model can be confident about something the system doesn't trust.</div>
+    </div>
+    <div class="principle principle-contra">
+      <div class="p-num">Principle 4</div>
+      <div class="p-text">Auditable Gaps</div>
+      <div class="p-sub">Every time the system says something different from what it believes, the gap is logged with a reason. Deceptive alignment becomes a transparent, monitorable signal.</div>
+    </div>
+    <div class="principle principle-variance">
+      <div class="p-num">Principle 5</div>
+      <div class="p-text">Proactive Gating</div>
+      <div class="p-sub">Don't show the gun. Intent-gated tools mean the model never sees tools it shouldn't use. Reconstruction gates mean it hedges rather than hallucinating.</div>
+    </div>
+    <div class="principle principle-trust">
+      <div class="p-num">Principle 6</div>
+      <div class="p-text">Swappable Brains</div>
+      <div class="p-sub">Brain provider abstraction decouples the orchestrator from any specific LLM. Local Ollama, OpenAI, Claude, or a future model — the governance layer is the same.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== REQUEST PIPELINE ===== -->
+<section id="pipeline">
+  <div class="accent-line"></div>
+  <span class="section-number">Section 1</span>
+  <h2>The Request Pipeline</h2>
+
+  <p>Every user message flows through a governed pipeline. No step is optional. The pipeline produces not just a response, but a full epistemic audit trail.</p>
+
+  <div class="pipeline-stack">
+    <div class="pipeline-layer pl-indigo">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">1. Intent Classification</div>
+        <div class="pipeline-layer-desc">Local model classifies intent (conversational, research, code_task, correction, meta). Gates which tools are visible.</div>
+      </div>
+      <div class="pipeline-layer-annotation">tool_gate.py</div>
+    </div>
+    <div class="pipeline-layer pl-indigo">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">2. Escalation Decision</div>
+        <div class="pipeline-layer-desc">Stateful routing: local, OpenAI, or Claude. Circuit breaker state, token budget, deep reasoning patterns, conversation momentum.</div>
+      </div>
+      <div class="pipeline-layer-annotation">escalation_policy.py</div>
+    </div>
+    <div class="pipeline-layer pl-green">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">3. Memory Retrieval (CRT-RAG)</div>
+        <div class="pipeline-layer-desc">Trust-weighted retrieval. Indirect probe expansion for "mention" / "reference" queries. PCA projection computed for epistemic graph.</div>
+      </div>
+      <div class="pipeline-layer-annotation">crt_rag.py</div>
+    </div>
+    <div class="pipeline-layer pl-green">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">4. Contradiction Check</div>
+        <div class="pipeline-layer-desc">Retrieved memories checked for pairwise tension. NLI critic scores. Disposition classified: resolvable, held, evolving, contextual.</div>
+      </div>
+      <div class="pipeline-layer-annotation">crt_ledger.py</div>
+    </div>
+    <div class="pipeline-layer pl-amber">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">5. Prompt Assembly</div>
+        <div class="pipeline-layer-desc">Static epistemology prefix (cache boundary) + dynamic evidence below. Source authority adjusts confidence per assertion type. Session state injected.</div>
+      </div>
+      <div class="pipeline-layer-annotation">source_authority.py</div>
+    </div>
+    <div class="pipeline-layer pl-purple">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">6. Generation</div>
+        <div class="pipeline-layer-desc">Selected brain generates response. Reconstruction gates enforce alignment with memory intent (&theta;=0.5) and content (&theta;=0.38). Hedge on failure.</div>
+      </div>
+      <div class="pipeline-layer-annotation">cookie_orchestrator.py</div>
+    </div>
+    <div class="pipeline-layer pl-pink">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">7. Drift Governance</div>
+        <div class="pipeline-layer-desc">Live alignment monitoring. Rule 1: alignment &lt; 0.15 &rarr; force memory re-retrieval. Rule 2: 3+ consecutive drifts &lt; 0.3 &rarr; halt and ask user.</div>
+      </div>
+      <div class="pipeline-layer-annotation">governance.py</div>
+    </div>
+    <div class="pipeline-layer pl-pink">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">8. Memory Write-Back</div>
+        <div class="pipeline-layer-desc">New memories created with source tracking. Trust delta computed. Contradiction ledger updated. Session state records turn snapshot.</div>
+      </div>
+      <div class="pipeline-layer-annotation">crt_memory.py</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== GENERATION TIERS ===== -->
+<section id="tiers">
+  <div class="accent-line"></div>
+  <span class="section-number">Section 2</span>
+  <h2>Generation Tiers &amp; Escalation</h2>
+
+  <p>The escalation policy is a stateful routing system with circuit breaker patterns. Each tier has a distinct role; the system selects based on query complexity, not user preference.</p>
+
+  <div class="regime-grid">
+    <div class="regime-card card-local">
+      <div class="regime-label">Tier 1</div>
+      <div class="regime-name">Local</div>
+      <div class="regime-model">Ollama &middot; llama3.2 / gemma3</div>
+      <div class="regime-desc">Fast routing, simple queries, classification. Intent detection runs here. Fallback source — can speak but creates only low-trust memories.</div>
+    </div>
+    <div class="regime-card card-cloud">
+      <div class="regime-label">Tier 2</div>
+      <div class="regime-name">Cloud</div>
+      <div class="regime-model">OpenAI &middot; GPT-4o-mini</div>
+      <div class="regime-desc">Speed + quality balance. Token budget overflow (&gt;6000 tokens). Used when local would degrade but Claude depth isn't needed.</div>
+    </div>
+    <div class="regime-card card-deep">
+      <div class="regime-label">Tier 3</div>
+      <div class="regime-name">Deep</div>
+      <div class="regime-model">Anthropic &middot; Claude</div>
+      <div class="regime-desc">Architecture questions, probability assessment, comparative analysis, AGI topics. 14 regex patterns trigger escalation. Self-reflection routes here.</div>
+    </div>
+  </div>
+
+  <h3>Escalation Triggers</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Trigger</th><th>Condition</th><th>Target</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Token overflow</strong></td><td>&gt;6000 estimated tokens</td><td>Cloud or Deep</td></tr>
+      <tr><td><strong>Reflection blindspot</strong></td><td>Blindspot boost &gt; 0.10</td><td>Cloud or Deep</td></tr>
+      <tr><td><strong>Deep reasoning patterns</strong></td><td>14 regex patterns (architecture, probability, comparative, AGI...)</td><td>Deep</td></tr>
+      <tr><td><strong>Conversation momentum</strong></td><td>2+ of last 3 turns used cloud</td><td>Maintain cloud tier</td></tr>
+      <tr><td><strong>Circuit breaker open</strong></td><td>Consecutive failures at current tier</td><td>Fallback to next tier</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="remark">
+    <strong>Conversation momentum</strong> (Trigger #5) prevents mid-conversation degradation. If you're discussing architecture and send "what about the other approach?", the system maintains Claude depth rather than dropping to local because the follow-up is short.
+  </div>
+</section>
+
+<!-- ===== MEMORY SYSTEM ===== -->
+<section id="memory">
+  <div class="accent-line"></div>
+  <span class="section-number">Section 3</span>
+  <h2>Memory &amp; Trust</h2>
+
+  <h3>Trust-Weighted Retrieval</h3>
+  <p>CRT-RAG retrieves memories using a <strong>trust-weighted scoring function</strong>, not just cosine similarity. A highly relevant memory with low trust scores lower than a moderately relevant memory with high trust. This prevents the system from confidently citing memories it has learned to distrust.</p>
+
+  <h3>Indirect Probe Expansion</h3>
+  <p>When a query contains markers like "mention", "reference", or "dreams about", the system extracts the topic noun phrase and runs a second retrieval pass. This is how "Have I ever mentioned a Beechcraft Bonanza?" surfaces a memory about aviation dreams even though "Bonanza" never appears in the original query embedding's nearest neighbors.</p>
+
+  <h3>Trust Evolution</h3>
+  <div class="method-grid">
+    <div class="method-card">
+      <h4>Decay</h4>
+      <p>Exponential recency curve: &rho; = e<sup>-&Delta;t/&lambda;</sup>. Never below TRUST_FLOOR (0.20) or above TRUST_CEILING (0.95). 7-day grace period for new memories.</p>
+    </div>
+    <div class="method-card">
+      <h4>Reinforcement</h4>
+      <p>On reference uses, drift-aware boost: low semantic drift = large boost; high drift (tangential reference) = small boost. Prevents gaming through repeated tangential citations.</p>
+    </div>
+    <div class="method-card">
+      <h4>Source Authority</h4>
+      <p>Direct first-person assertions: 0.95 confidence. Reported speech ("Mike says..."): 0.70. Journal entries: 0.60. Meta-corrections resolve rather than create contradictions.</p>
+    </div>
+    <div class="method-card">
+      <h4>Consolidation</h4>
+      <p>Batch NLI sweep: k-nearest + similarity filtering avoids O(n&sup2;). Disposition classified (resolvable/held/evolving/contextual). Auto-resolve only on overwhelming evidence.</p>
+    </div>
+  </div>
+
+  <h3>Contradiction Lifecycle</h3>
+  <div class="pipeline-stack">
+    <div class="pipeline-layer pl-indigo">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">Detection</div>
+        <div class="pipeline-layer-desc">Pairwise NLI on retrieved memories. Cosine similarity &gt; 0.40 → candidate pair. NLI score above threshold → contradiction.</div>
+      </div>
+      <div class="pipeline-layer-annotation">crt_ledger.py</div>
+    </div>
+    <div class="pipeline-layer pl-amber">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">Classification</div>
+        <div class="pipeline-layer-desc">Five types: Refinement (more specific), Revision (explicit correction), Temporal (time progression), Conflict (mutually exclusive), Denial (gaslighting detection).</div>
+      </div>
+      <div class="pipeline-layer-annotation">disposition_classifier.py</div>
+    </div>
+    <div class="pipeline-layer pl-green">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">Disposition</div>
+        <div class="pipeline-layer-desc">Resolvable → auto-resolve on evidence. Held → preserve tension as cascade firewall. Evolving → track drift. Contextual → both valid in different contexts.</div>
+      </div>
+      <div class="pipeline-layer-annotation">memory_consolidation.py</div>
+    </div>
+    <div class="pipeline-layer pl-pink">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">Resolution</div>
+        <div class="pipeline-layer-desc">Trust-dominant dedup: auto-resolve when trust delta &ge; 0.30. Everything logged to append-only ledger. The system remembers it changed its mind.</div>
+      </div>
+      <div class="pipeline-layer-annotation">crt_ledger.py</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== BELIEF/SPEECH ===== -->
+<section id="belief-speech">
+  <div class="accent-line"></div>
+  <span class="section-number">Section 4</span>
+  <h2>Belief / Speech Separation</h2>
+
+  <div class="law-card">
+    <div class="law-number">Law 1</div>
+    <div class="law-text">Speech does not automatically become belief.</div>
+    <div class="law-sub">A model can say something without the system believing it. Generated text is speech. Memory with earned trust is belief. The gap between them is auditable.</div>
+  </div>
+
+  <div class="method-grid">
+    <div class="method-card">
+      <h4>Belnap Four-Valued Logic</h4>
+      <p><strong>TRUE</strong> — evidence supports. <strong>FALSE</strong> — evidence contradicts. <strong>BOTH</strong> — held contradiction (genuine tension). <strong>NEITHER</strong> — no evidence either way.</p>
+    </div>
+    <div class="method-card">
+      <h4>Gap Audit Log</h4>
+      <p>Every time the system says something different from what it believes, the gap is recorded with reason. If the gap widens over time, the audit trail shows it.</p>
+    </div>
+    <div class="method-card">
+      <h4>Disclosure Policy</h4>
+      <p>Held contradictions (BOTH state) need explicit policy for which side to present. Both sides and the policy choice are recorded — not hidden.</p>
+    </div>
+    <div class="method-card">
+      <h4>Safety Implication</h4>
+      <p>Deceptive alignment becomes a transparent, inspectable mechanism rather than a failure mode to prevent. The system can't hide that it knows something it isn't saying.</p>
+    </div>
+  </div>
+
+  <div class="quote-block">
+    <p>The belief/speech gap converts "deceptive alignment" from a danger to prevent into a transparent gap to monitor. The system logs every instance where it knows something it doesn't say, and why.</p>
+  </div>
+</section>
+
+<!-- ===== SELF-AWARENESS ===== -->
+<section id="self-awareness">
+  <div class="accent-line"></div>
+  <span class="section-number">Section 5</span>
+  <h2>Self-Awareness Loop</h2>
+
+  <p>The system maintains a persistent self-model across 7 slots. Each slot is stored as a CRT memory, which means it inherits trust decay and contradiction detection — the system can disagree with its own self-assessment, and that disagreement is logged.</p>
+
+  <div class="principle-grid">
+    <div class="principle principle-belief">
+      <div class="p-num">Slot 1</div>
+      <div class="p-text">Uncertainty Domains</div>
+      <div class="p-sub">Topics where the system knows it underperforms. Updated by reflection on correction patterns and retrieval failures.</div>
+    </div>
+    <div class="principle principle-contra">
+      <div class="p-num">Slot 2</div>
+      <div class="p-text">Correction Pattern</div>
+      <div class="p-sub">Observed pattern in user corrections (e.g., "tends to over-state recency"). Evidence-based self-diagnosis.</div>
+    </div>
+    <div class="principle principle-trust">
+      <div class="p-num">Slot 3</div>
+      <div class="p-text">Trust Trajectory</div>
+      <div class="p-sub">Narrative of recent trust movements across the memory system. Are beliefs stabilizing or churning?</div>
+    </div>
+    <div class="principle principle-variance">
+      <div class="p-num">Slot 4</div>
+      <div class="p-text">Known Blindspots</div>
+      <div class="p-sub">Structural weaknesses identified through reflection. "Poor temporal reasoning" or "overconfident on low-evidence topics."</div>
+    </div>
+    <div class="principle principle-trust">
+      <div class="p-num">Slot 5</div>
+      <div class="p-text">Growing Confidence</div>
+      <div class="p-sub">Areas with consistent reinforcement. The system knows where it's getting better, not just where it's failing.</div>
+    </div>
+    <div class="principle principle-speech">
+      <div class="p-num">Slot 6</div>
+      <div class="p-text">User Relationship</div>
+      <div class="p-sub">Character of interaction style. Communication preferences, correction patterns, topic interests.</div>
+    </div>
+    <div class="principle principle-belief">
+      <div class="p-num">Slot 7</div>
+      <div class="p-text">Response Style</div>
+      <div class="p-sub">Current calibration notes. "User prefers concise responses" or "more technical depth needed."</div>
+    </div>
+  </div>
+
+  <h3>Reflection Mechanism</h3>
+  <p>The heartbeat scheduler runs asynchronously at configurable intervals. It gathers recent chat context, top 5 memories, and recent corrections, then routes through <strong>ClaudeCliBrain</strong> for quality reflection (local models produce boilerplate). A <strong>change gate</strong> (60% word overlap threshold) prevents identical reflections from being written — if the reflection didn't say anything new, it's discarded silently.</p>
+
+  <h3>Execution State Verification</h3>
+  <p>On startup, <code>verify_execution_state()</code> performs runtime checks: is the agent loop importable? Is the escalation policy active? Are models reachable? Results are written as operational memories with a 7-day review window, preventing stale claims about system capabilities.</p>
+</section>
+
+<!-- ===== AGENT DISPATCH ===== -->
+<section id="dispatch">
+  <div class="accent-line"></div>
+  <span class="section-number">Section 6</span>
+  <h2>Agent Dispatch Architecture</h2>
+
+  <div class="law-card">
+    <div class="law-number">Separation of Concerns</div>
+    <div class="law-text">Aether reads. Claude Code writes.</div>
+    <div class="law-sub">Aether is the epistemic governance layer (read-only). When file modifications are needed, Aether dispatches Claude Code as an external execution agent with full metric capture.</div>
+  </div>
+
+  <div class="layer-stack">
+    <div class="layer">
+      <div class="layer-name">Aether</div>
+      <div class="layer-sub">Governance</div>
+      <div class="layer-desc">Read-only epistemic orchestrator. Memory retrieval, contradiction detection, trust evolution, drift monitoring. Never modifies files directly.</div>
+    </div>
+    <div class="layer">
+      <div class="layer-name">MCP Bridge</div>
+      <div class="layer-sub">18 Tools / 6 Tiers</div>
+      <div class="layer-desc">FastMCP server exposing Aether's full capability surface. Read, analyze, write, dispatch, ask, and admin tiers. Registered with Claude Code.</div>
+    </div>
+    <div class="layer">
+      <div class="layer-name">Claude Code</div>
+      <div class="layer-sub">Execution</div>
+      <div class="layer-desc">External write agent. Receives task + scope files. Returns full output with token metrics (input, output, cost). Aether captures everything for governance tracking.</div>
+    </div>
+  </div>
+
+  <h3>MCP Tool Tiers</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Tier</th><th>Purpose</th><th>Tools</th></tr></thead>
+    <tbody>
+      <tr><td><strong>1. Read</strong></td><td>Query belief state</td><td><code>aether_search</code>, <code>aether_profile</code>, <code>aether_contradictions</code>, <code>aether_context</code></td></tr>
+      <tr><td><strong>2. Analyze</strong></td><td>Deep inspection</td><td><code>aether_belief_history</code>, <code>aether_opinion_variance</code>, <code>aether_volatile</code>, <code>aether_self_model</code></td></tr>
+      <tr><td><strong>3. Write</strong></td><td>Modify beliefs</td><td><code>aether_remember</code>, <code>aether_correct</code>, <code>aether_resolve</code></td></tr>
+      <tr><td><strong>4. Ingest</strong></td><td>Document processing</td><td><code>aether_ingest</code></td></tr>
+      <tr><td><strong>5. Dispatch</strong></td><td>Agent execution</td><td><code>aether_dispatch</code>, <code>aether_dispatch_async</code>, <code>aether_dispatch_status</code>, <code>aether_dispatch_list</code>, <code>aether_dispatch_metrics</code></td></tr>
+      <tr><td><strong>6. Ask</strong></td><td>Full response</td><td><code>aether_ask</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Dispatch Flow</h3>
+  <p>When Aether encounters a coding task: (1) formulate task description + optional scope files, (2) call <code>dispatch_agent</code> tool in the orchestrator, (3) orchestrator spawns Claude CLI subprocess, (4) subprocess returns JSON with output + metrics, (5) Aether captures token usage (input/output), cost, model name, and success status, (6) metrics stored in memory for governance tracking. The entire flow has been validated end-to-end: Aether dispatching Claude Code to modify a file, then reading back the result to confirm the change.</p>
+</section>
+
+<!-- ===== DRIFT GOVERNANCE ===== -->
+<section id="drift">
+  <div class="accent-line"></div>
+  <span class="section-number">Section 7</span>
+  <h2>Drift Governance</h2>
+
+  <div class="quote-block">
+    <p>You built the sensor. You haven't wired it to the steering wheel yet.</p>
+  </div>
+
+  <p>Drift governance converts passive monitoring into active course correction. The system continuously measures alignment between the current generation direction and the original user objective. Two rules transform this signal into action:</p>
+
+  <div class="principle-grid">
+    <div class="principle principle-contra">
+      <div class="p-num">Rule 1 — Re-Ground</div>
+      <div class="p-text">Alignment &lt; 0.15 &rarr; Force memory re-retrieval</div>
+      <div class="p-sub">When the response drifts far from the original objective, the system forces a new memory retrieval pass using the original query. A <code>[DRIFT CORRECTION]</code> context injection re-grounds the generation. This is the "gentle nudge" — the generation continues but with fresh evidence.</div>
+      <div class="p-code">cookie_orchestrator.py &rarr; DRIFT_FLAG check after each agent step</div>
+    </div>
+    <div class="principle principle-contra">
+      <div class="p-num">Rule 2 — Halt</div>
+      <div class="p-text">3+ consecutive drifts &lt; 0.3 &rarr; Halt and ask user</div>
+      <div class="p-sub">Sustained drift below the acceptable threshold triggers an emergency stop. The system halts the agent loop and asks the user: "Should I restart or is this direction useful?" This prevents runaway divergence where the system confidently goes the wrong direction for many steps.</div>
+      <div class="p-code">cookie_orchestrator.py &rarr; consecutive drift counter in agent loop</div>
+    </div>
+  </div>
+
+  <h3>Frontend Indicators</h3>
+  <p>The pipeline collapse panel shows drift state visually: the progress bar shifts from <strong>amber to red</strong> based on drift severity. A pulsing overlay activates when drift is detected. The status text changes to "generating (drift detected)..." so the user sees the system is aware of the problem even before it acts.</p>
+</section>
+
+<!-- ===== 10 TRANSFORMATIONS ===== -->
+<section id="transformations">
+  <div class="accent-line"></div>
+  <span class="section-number">Section 8</span>
+  <h2>The 10 CRT Transformations</h2>
+
+  <p>These are the 10 concrete transformations that take CRT from theory to running system. Each maps a whitepaper concept to an implemented module with measurable behavior.</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>#</th><th>Transformation</th><th>Module</th><th>What It Does</th></tr></thead>
+    <tbody>
+      <tr><td><strong>1</strong></td><td>Belief-Aware Compaction</td><td><code>belief_compaction.py</code></td><td>Trust-tiered compression: high-trust verbatim, medium-trust summarized, low-trust dropped. Locked beliefs immutable. Active contradictions preserved as pairs.</td></tr>
+      <tr><td><strong>2</strong></td><td>Density Extraction</td><td><code>session_state.py</code></td><td>Replaces 30-min timer with density signal: (slots + contradictions + trust_shifts) / tokens &gt; 0.02 triggers extraction. Session-flagged contradictions prioritized.</td></tr>
+      <tr><td><strong>3</strong></td><td>Prompt Boundary</td><td><code>source_authority.py</code></td><td>Static epistemology prefix (cached) + dynamic evidence below. Source type adjusts confidence: direct assertion 0.95, reported speech 0.70, journal 0.60.</td></tr>
+      <tr><td><strong>4</strong></td><td>Inspectable Index</td><td><code>crt_rag.py</code></td><td>PCA 2D/3D projection of memory embeddings. Every memory gets coordinates + edges to semantic neighbors. Visible in frontend as epistemic graph.</td></tr>
+      <tr><td><strong>5</strong></td><td>Context Decay</td><td><code>trust_decay.py</code></td><td>Exponential recency: &rho; = e<sup>-&Delta;t/&lambda;</sup>. Floor 0.20, ceiling 0.95. 7-day grace period. Drift-aware reinforcement on reference.</td></tr>
+      <tr><td><strong>6</strong></td><td>Restricted Authority</td><td><code>source_authority.py</code></td><td>Fallback sources can speak but create low-trust memories. Third-party assertions get lower confidence. Meta-corrections resolve (not create) contradictions.</td></tr>
+      <tr><td><strong>7</strong></td><td>Execution Belief Verification</td><td><code>execution_beliefs.py</code></td><td>Tracks patterns from agent_runs.db. Minimum 5 runs before beliefs emerge. "I under-verify file writes (evidence=0.33, n=12)." Improving/worsening/stable.</td></tr>
+      <tr><td><strong>8</strong></td><td>Away/Resume Diff</td><td><code>session_state.py</code></td><td>After idle gap: render belief delta. Which memories shifted, which contradictions resolved, what emerged. Injected at top of context feed.</td></tr>
+      <tr><td><strong>9</strong></td><td>Memory Consolidation</td><td><code>memory_consolidation.py</code></td><td>Batch NLI sweep with k-nearest + similarity filtering. Disposition classified. Auto-resolve only on overwhelming evidence. Everything logged to ledger.</td></tr>
+      <tr><td><strong>10</strong></td><td>Intent-Gated Tools</td><td><code>tool_gate.py</code></td><td>Static intent-to-toolset map. Conversational → memory only. Research → web + files. Code → dispatch + file_read. Execution beliefs can promote/demote tools.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ===== IMMUNE AGENTS ===== -->
+<section id="immune">
+  <div class="accent-line"></div>
+  <span class="section-number">Section 9</span>
+  <h2>Immune Agents</h2>
+
+  <p>Five constitutional agents wrap pipeline boundaries. They inspect inputs and outputs, emit verdicts (SAFE, FLAG, HEDGE, ESCALATE), but <strong>never silently modify</strong> content. The governance layer acts on verdicts; the agents only observe.</p>
+
+  <div class="principle-grid">
+    <div class="principle principle-trust">
+      <div class="p-num">Agent 1</div>
+      <div class="p-text">Mirus &mdash; Input Boundary</div>
+      <div class="p-sub">Inspects incoming user messages at the pipeline entry. Flags potential injection, topic shifts, and ambiguous corrections before they reach memory.</div>
+    </div>
+    <div class="principle principle-speech">
+      <div class="p-num">Agent 2</div>
+      <div class="p-text">Holden &mdash; Reconstruction Gate</div>
+      <div class="p-sub">Guards the generation output. Enforces alignment with memory intent (&theta;=0.5) and memory content (&theta;=0.38). Hedges when evidence is insufficient rather than hallucinating.</div>
+    </div>
+    <div class="principle principle-belief">
+      <div class="p-num">Agent 3</div>
+      <div class="p-text">Sentinel &mdash; Contradiction Boundary</div>
+      <div class="p-sub">Monitors contradiction detection and resolution. Ensures auto-resolution only occurs with overwhelming evidence. Flags suspicious resolution patterns.</div>
+    </div>
+    <div class="principle principle-variance">
+      <div class="p-num">Agent 4</div>
+      <div class="p-text">Drift Monitor</div>
+      <div class="p-sub">Continuously measures alignment between generation direction and user objective. Feeds Rules 1 and 2 of drift governance.</div>
+    </div>
+    <div class="principle principle-contra">
+      <div class="p-num">Agent 5</div>
+      <div class="p-text">Trust Auditor</div>
+      <div class="p-sub">Monitors trust evolution across the memory system. Flags sudden trust shifts, unreinforced memories approaching floor, and anomalous decay patterns.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FRONTEND ===== -->
+<section id="frontend">
+  <div class="accent-line"></div>
+  <span class="section-number">Section 10</span>
+  <h2>Frontend: Making Governance Visible</h2>
+
+  <p>Every pipeline event is surfaced through Server-Sent Events (SSE) and WebSocket channels. The frontend doesn't just show responses — it shows the <em>epistemic process</em> that produced them.</p>
+
+  <div class="principle-grid principle-grid-2">
+    <div class="principle principle-speech">
+      <div class="p-num">Pipeline Collapse</div>
+      <div class="p-text">Real-Time Pipeline Panel</div>
+      <div class="p-sub">Collapsible panel showing: retrieval count, belief confidence, verification status, generation cost, latency. PCA epistemic graph with cosine edges. Drift color shift (amber → red). Mascot with context-aware animations.</div>
+    </div>
+    <div class="principle principle-trust">
+      <div class="p-num">Trust Delta Strip</div>
+      <div class="p-text">Compact Inline Trust Changes</div>
+      <div class="p-sub">Single-line display: trust ↑ favorite color +6.2% · ↑ system working +3.8%. Smart label extraction from memory text.</div>
+    </div>
+    <div class="principle principle-belief">
+      <div class="p-num">Belief Map</div>
+      <div class="p-text">2D/3D Epistemic Space</div>
+      <div class="p-sub">PCA projection of all memories. 2D canvas with pan/zoom/hover tooltips. 3D mode via vanilla Three.js with OrbitControls and auto-rotate. Topic centroids with sprite labels.</div>
+    </div>
+    <div class="principle principle-contra">
+      <div class="p-num">Contradiction Graph</div>
+      <div class="p-text">Mini SVG on Detection</div>
+      <div class="p-sub">When a contradiction is detected mid-response, an inline SVG shows winner/loser nodes, dashed red edge, trust scores, and resolution arrow.</div>
+    </div>
+  </div>
+
+  <h3>Pipeline Summary Line</h3>
+  <p>Every response footer: <code>&#9656; 5 mem &middot; &#9673; 0.73 &middot; &check; verified &middot; $0.01 &middot; 2.1s</code> — memory count, belief confidence, verification status, cost, and latency in a single scannable line.</p>
+</section>
+
+<!-- ===== CLOSING ===== -->
+<section>
+  <div class="law-card">
+    <div class="law-number">Architecture Summary</div>
+    <div class="law-text">Governance is not a wrapper. It is the architecture.</div>
+    <div class="law-sub">Every layer — routing, retrieval, generation, memory write-back — is governed. The model generates; the persistence layer remembers; the governance layer keeps both honest.</div>
+  </div>
+
+  <div style="text-align: center; margin-top: 40px;">
+    <a href="whitepaper.html" class="link-btn" style="margin-right: 12px;">CRT Whitepaper</a>
+    <a href="cascade-complexity.html" class="link-btn" style="margin-right: 12px;">Cascade Paper</a>
+    <a href="index.html" class="link-btn">All Docs</a>
+  </div>
+</section>
+
+</div>
+
+<div class="footer">
+  <p>Aeteros Research &bull; 2026 &bull; <a href="index.html">Docs Index</a> &bull; <a href="whitepaper.html">CRT Whitepaper</a> &bull; <a href="cascade-complexity.html">Cascade Complexity</a> &bull; <a href="immune-agents.html">Immune Agents</a> &bull; <a href="variance-probing.html">Variance Probing</a></p>
+</div>
+
+</body>
+</html>
