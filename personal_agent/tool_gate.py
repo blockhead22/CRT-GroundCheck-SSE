@@ -75,6 +75,7 @@ INTENT_TOOLSETS: Dict[str, Set[str]] = {
         "search_code",
         "memory_recall",
         "introspect",
+        "dispatch_agent",  # can't write directly, but can dispatch Claude Code to write
     },
     "dir_list": {
         "dir_list",
@@ -109,6 +110,7 @@ INTENT_TOOLSETS: Dict[str, Set[str]] = {
         "run_python",
         "plan_create",
         "introspect",
+        "dispatch_agent",
     },
     "file_task": {
         "memory_recall",
@@ -171,6 +173,7 @@ INTENT_TOOLSETS: Dict[str, Set[str]] = {
         "gpt_log_search",
         "gpt_log_context",
         "gpt_log_promote",
+        "dispatch_agent",
     },
 }
 
@@ -191,6 +194,7 @@ ALL_TOOLS: Set[str] = {
     "run_python", "plan_create", "memory_store",
     "image_read", "introspect",
     "gpt_log_search", "gpt_log_context", "gpt_log_promote",
+    "dispatch_agent",
 }
 
 

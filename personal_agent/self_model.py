@@ -1,3 +1,4 @@
+# Governed by Aether
 """CRT Self-Model — persistent self-awareness for Aether.
 
 The self-model gives the system a continuously evolving picture of its own
@@ -498,22 +499,27 @@ def verify_execution_state() -> Dict[str, str]:
     state: Dict[str, str] = {}
     import os
 
-    # Agent loop / orchestrator status
+    # Agent loop / orchestrator status — check runtime behavior, not source code.
+    # Previous approach used inspect.getsource() which matched "and False" in
+    # comments and strings, producing false "disabled" reports.
     try:
         from routes.chat import _AGENT_LOOP_ENABLED
         state["agent_loop"] = "enabled" if _AGENT_LOOP_ENABLED else "disabled"
-    except Exception:
-        # Check by inspecting the code directly
+    except ImportError:
+        # _AGENT_LOOP_ENABLED doesn't exist — check via escalation policy
         try:
-            import inspect
-            from routes import chat as _chat_mod
-            src = inspect.getsource(_chat_mod)
-            if "and False" in src and "_layer4_orchestrator" in src:
-                state["agent_loop"] = "disabled (and False gate found)"
-            else:
-                state["agent_loop"] = "enabled (no gate found)"
+            from personal_agent.escalation_policy import get_escalation_policy
+            policy = get_escalation_policy()
+            state["agent_loop"] = "enabled" if policy.enabled else "disabled"
         except Exception:
-            state["agent_loop"] = "unknown"
+            # Last resort: check if the orchestrator class is importable and functional
+            try:
+                from personal_agent.cookie_orchestrator import CookieOrchestrator
+                state["agent_loop"] = "enabled (orchestrator importable)"
+            except Exception:
+                state["agent_loop"] = "unknown"
+    except Exception:
+        state["agent_loop"] = "unknown"
 
     # Active models
     state["generation_model"] = os.getenv("CRT_OLLAMA_MODEL", "unknown")

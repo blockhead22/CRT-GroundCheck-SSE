@@ -31,6 +31,9 @@ logger = logging.getLogger("aether-mcp")
 BASE_URL = "http://127.0.0.1:8000"
 TIMEOUT = 30.0
 
+# In-memory registry for async dispatches (lives for the server process lifetime)
+_ACTIVE_DISPATCHES: Dict[str, Dict] = {}
+
 mcp = FastMCP(
     "aether",
     instructions=(
@@ -422,6 +425,434 @@ def aether_ask(message: str, thread_id: str = "default") -> str:
     if response_text:
         return response_text
     return _fmt(data)
+
+
+# ===========================================================================
+# Tier 5: Agent Dispatch & Metrics
+# ===========================================================================
+
+@mcp.tool()
+def aether_dispatch(
+    task: str,
+    project_path: str = ".",
+    model: str = "claude-sonnet-4-20250514",
+    max_tokens: int = 4096,
+    scope_files: str = "",
+) -> str:
+    """Dispatch a coding task to Claude Code and capture full execution metrics.
+
+    Aether acts as the epistemic orchestrator — dispatching the task with
+    project context, then capturing token usage, cost, and output for
+    governance tracking.
+
+    Args:
+        task: The coding task to dispatch (e.g. "Add dark mode toggle to settings page").
+        project_path: Path to the project root (default current directory).
+        model: Claude model to use (default claude-sonnet-4-20250514).
+        max_tokens: Max output tokens (default 4096).
+        scope_files: Comma-separated file paths to scope the task (optional).
+    """
+    import subprocess
+    import time
+    import os
+
+    # Resolve Claude CLI binary
+    try:
+        from personal_agent.cookie_orchestrator import ClaudeCliBrain
+        cli_bin = ClaudeCliBrain._resolve_bin()
+    except Exception:
+        cli_bin = "claude"
+
+    # Build the prompt with context
+    prompt_parts = [task]
+    if scope_files:
+        prompt_parts.append(f"\nScope to these files: {scope_files}")
+
+    # Fetch relevant context from Aether memory
+    try:
+        context = _get("/api/memory/search", {"q": task, "limit": 3, "thread_id": "default"})
+        if isinstance(context, list) and context:
+            context_lines = []
+            for m in context:
+                context_lines.append(f"- [{m.get('kind', '?')}] {m.get('text', '')[:100]}")
+            prompt_parts.append(f"\nRelevant context from memory:\n" + "\n".join(context_lines))
+    except Exception:
+        pass
+
+    full_prompt = "\n".join(prompt_parts)
+
+    # Dispatch via Claude CLI with JSON output for metrics
+    cmd = [
+        cli_bin,
+        "-p", full_prompt,
+        "--model", model,
+        "--output-format", "json",
+    ]
+    if project_path and project_path != ".":
+        cmd.extend(["--cwd", project_path])
+
+    t0 = time.perf_counter()
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=120,
+            cwd=project_path if project_path != "." else None,
+        )
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        if proc.returncode != 0:
+            error_text = (proc.stderr or proc.stdout or "unknown error").strip()[:500]
+            # Log failed dispatch
+            _post("/api/memory/store", {
+                "text": f"[agent_dispatch:failed] task=\"{task[:60]}\" error=\"{error_text[:100]}\"",
+                "source": "agent_dispatch",
+                "confidence": 0.3,
+                "thread_id": "default",
+            })
+            return f"Dispatch FAILED (exit {proc.returncode}):\n{error_text}"
+
+        # Parse JSON response for metrics
+        try:
+            result = json.loads(proc.stdout)
+        except json.JSONDecodeError:
+            result = {"result": proc.stdout.strip(), "usage": {}}
+
+        content = result.get("result", proc.stdout.strip())
+        session_id = result.get("session_id", "unknown")
+        usage = result.get("usage", {})
+        input_tokens = usage.get("input_tokens", 0)
+        output_tokens = usage.get("output_tokens", 0)
+        cache_read = usage.get("cache_read_tokens", 0)
+        cache_create = usage.get("cache_creation_tokens", 0)
+
+        # Estimate cost
+        cost = 0.0
+        try:
+            from personal_agent.cloud_usage_logger import _estimate_cost
+            cost = _estimate_cost(model, input_tokens, output_tokens)
+        except Exception:
+            pass
+
+        # Track metrics in CRT
+        metrics_text = (
+            f"[agent_dispatch:success] task=\"{task[:60]}\" "
+            f"model={model} tokens_in={input_tokens} tokens_out={output_tokens} "
+            f"cache_read={cache_read} cost=${cost:.4f} elapsed={elapsed_ms:.0f}ms "
+            f"session={session_id}"
+        )
+        _post("/api/memory/store", {
+            "text": metrics_text,
+            "source": "agent_dispatch",
+            "confidence": 0.9,
+            "thread_id": "default",
+        })
+
+        # Update cost accumulator
+        try:
+            from personal_agent.litellm_client import get_default_llm_client
+            get_default_llm_client()._request_cost_usd += cost
+        except Exception:
+            pass
+
+        # Build response
+        lines = [
+            f"✓ Dispatch complete ({elapsed_ms:.0f}ms)",
+            f"  model: {model}",
+            f"  tokens: {input_tokens} in / {output_tokens} out",
+            f"  cache: {cache_read} read / {cache_create} create",
+            f"  cost: ${cost:.4f}",
+            f"  session: {session_id}",
+            f"",
+            f"--- Output ---",
+            content[:3000],
+        ]
+        return "\n".join(lines)
+
+    except subprocess.TimeoutExpired:
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+        return f"Dispatch TIMEOUT after {elapsed_ms:.0f}ms"
+    except FileNotFoundError:
+        return f"Claude CLI not found at '{cli_bin}'. Install Claude Code first."
+
+
+@mcp.tool()
+def aether_dispatch_async(
+    task: str,
+    project_path: str = ".",
+    model: str = "claude-sonnet-4-20250514",
+    scope_files: str = "",
+) -> str:
+    """Dispatch a coding task to Claude Code asynchronously with an await loop.
+
+    Unlike aether_dispatch (synchronous), this:
+    1. Starts the Claude Code task in a background subprocess
+    2. Returns a dispatch_id immediately
+    3. Use aether_dispatch_status(dispatch_id) to poll for completion
+    4. When complete, metrics are captured and governance checks run
+
+    This enables Aether to dispatch multiple agents and await their results,
+    or continue other work while the agent executes.
+
+    Args:
+        task: The coding task to dispatch.
+        project_path: Path to the project root (default current directory).
+        model: Claude model to use (default claude-sonnet-4-20250514).
+        scope_files: Comma-separated file paths to scope the task (optional).
+    """
+    import subprocess
+    import time
+    import uuid
+    import threading
+
+    # Resolve Claude CLI binary
+    try:
+        from personal_agent.cookie_orchestrator import ClaudeCliBrain
+        cli_bin = ClaudeCliBrain._resolve_bin()
+    except Exception:
+        cli_bin = "claude"
+
+    # Build prompt with context
+    prompt_parts = [task]
+    if scope_files:
+        prompt_parts.append(f"\nScope to these files: {scope_files}")
+
+    # Fetch relevant context from Aether memory
+    try:
+        context = _get("/api/memory/search", {"q": task, "limit": 3, "thread_id": "default"})
+        if isinstance(context, list) and context:
+            context_lines = [f"- [{m.get('kind', '?')}] {m.get('text', '')[:100]}" for m in context]
+            prompt_parts.append(f"\nRelevant context from memory:\n" + "\n".join(context_lines))
+    except Exception:
+        pass
+
+    full_prompt = "\n".join(prompt_parts)
+    dispatch_id = str(uuid.uuid4())[:12]
+
+    # Store dispatch record
+    _ACTIVE_DISPATCHES[dispatch_id] = {
+        "task": task,
+        "model": model,
+        "status": "running",
+        "started_at": time.time(),
+        "result": None,
+        "metrics": None,
+        "error": None,
+    }
+
+    # Launch in background thread
+    def _run():
+        t0 = time.perf_counter()
+        try:
+            cmd = [
+                cli_bin, "-p", full_prompt,
+                "--model", model,
+                "--output-format", "json",
+            ]
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=300,  # 5 min for async
+                cwd=project_path if project_path != "." else None,
+            )
+            elapsed_ms = (time.perf_counter() - t0) * 1000
+
+            if proc.returncode != 0:
+                _ACTIVE_DISPATCHES[dispatch_id]["status"] = "failed"
+                _ACTIVE_DISPATCHES[dispatch_id]["error"] = (proc.stderr or proc.stdout or "")[:500]
+                _ACTIVE_DISPATCHES[dispatch_id]["metrics"] = {"elapsed_ms": elapsed_ms}
+                return
+
+            # Parse JSON output
+            try:
+                result = json.loads(proc.stdout)
+            except json.JSONDecodeError:
+                result = {"result": proc.stdout.strip(), "usage": {}}
+
+            usage = result.get("usage", {})
+            input_tokens = usage.get("input_tokens", 0)
+            output_tokens = usage.get("output_tokens", 0)
+
+            # Estimate cost
+            cost = 0.0
+            try:
+                from personal_agent.cloud_usage_logger import _estimate_cost
+                cost = _estimate_cost(model, input_tokens, output_tokens)
+            except Exception:
+                pass
+
+            _ACTIVE_DISPATCHES[dispatch_id]["status"] = "complete"
+            _ACTIVE_DISPATCHES[dispatch_id]["result"] = result.get("result", proc.stdout.strip())
+            _ACTIVE_DISPATCHES[dispatch_id]["metrics"] = {
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cache_read": usage.get("cache_read_tokens", 0),
+                "cost": cost,
+                "elapsed_ms": elapsed_ms,
+                "session_id": result.get("session_id", "unknown"),
+            }
+
+            # Store in CRT memory
+            _post("/api/memory/store", {
+                "text": (
+                    f"[agent_dispatch:success] task=\"{task[:60]}\" "
+                    f"model={model} tokens_in={input_tokens} tokens_out={output_tokens} "
+                    f"cost=${cost:.4f} elapsed={elapsed_ms:.0f}ms dispatch_id={dispatch_id}"
+                ),
+                "source": "agent_dispatch",
+                "confidence": 0.9,
+                "thread_id": "default",
+            })
+
+        except subprocess.TimeoutExpired:
+            elapsed_ms = (time.perf_counter() - t0) * 1000
+            _ACTIVE_DISPATCHES[dispatch_id]["status"] = "timeout"
+            _ACTIVE_DISPATCHES[dispatch_id]["error"] = f"Timeout after {elapsed_ms:.0f}ms"
+        except Exception as e:
+            _ACTIVE_DISPATCHES[dispatch_id]["status"] = "error"
+            _ACTIVE_DISPATCHES[dispatch_id]["error"] = str(e)
+
+    thread = threading.Thread(target=_run, daemon=True, name=f"dispatch-{dispatch_id}")
+    thread.start()
+
+    return (
+        f"✓ Dispatched async task (id: {dispatch_id})\n"
+        f"  task: {task[:80]}\n"
+        f"  model: {model}\n"
+        f"  status: running\n\n"
+        f"Poll with: aether_dispatch_status(\"{dispatch_id}\")"
+    )
+
+
+@mcp.tool()
+def aether_dispatch_status(dispatch_id: str) -> str:
+    """Check the status of an async dispatch.
+
+    Returns current status (running/complete/failed/timeout) and metrics
+    when complete. Call this to poll for results after aether_dispatch_async.
+
+    Args:
+        dispatch_id: The dispatch ID returned by aether_dispatch_async.
+    """
+    record = _ACTIVE_DISPATCHES.get(dispatch_id)
+    if not record:
+        return f"No dispatch found with id '{dispatch_id}'. Active dispatches: {list(_ACTIVE_DISPATCHES.keys())}"
+
+    import time
+    elapsed = time.time() - record["started_at"]
+    status = record["status"]
+
+    if status == "running":
+        return (
+            f"⏳ Still running ({elapsed:.0f}s elapsed)\n"
+            f"  task: {record['task'][:80]}\n"
+            f"  model: {record['model']}"
+        )
+
+    if status == "complete":
+        m = record["metrics"] or {}
+        result_preview = str(record.get("result") or "")[:2000]
+        return (
+            f"✓ Complete ({m.get('elapsed_ms', 0):.0f}ms)\n"
+            f"  tokens: {m.get('input_tokens', 0)} in / {m.get('output_tokens', 0)} out\n"
+            f"  cost: ${m.get('cost', 0):.4f}\n"
+            f"  session: {m.get('session_id', '?')}\n\n"
+            f"--- Output ---\n{result_preview}"
+        )
+
+    # failed/timeout/error
+    return (
+        f"✗ {status} ({elapsed:.0f}s)\n"
+        f"  task: {record['task'][:80]}\n"
+        f"  error: {record.get('error', 'unknown')}"
+    )
+
+
+@mcp.tool()
+def aether_dispatch_list() -> str:
+    """List all active and recent dispatches with their status.
+
+    Shows dispatch_id, task, status, and elapsed time for each.
+    """
+    if not _ACTIVE_DISPATCHES:
+        return "No dispatches. Use aether_dispatch_async to start one."
+
+    import time
+    now = time.time()
+    lines = [f"{len(_ACTIVE_DISPATCHES)} dispatch(es):\n"]
+    for did, rec in _ACTIVE_DISPATCHES.items():
+        elapsed = now - rec["started_at"]
+        status = rec["status"]
+        icon = "⏳" if status == "running" else "✓" if status == "complete" else "✗"
+        lines.append(
+            f"  {icon} {did} [{status}] {elapsed:.0f}s — {rec['task'][:60]}"
+        )
+    return "\n".join(lines)
+
+
+@mcp.tool()
+def aether_dispatch_metrics(limit: int = 10) -> str:
+    """Show recent agent dispatch metrics — tasks, tokens, costs, success rates.
+
+    Returns a summary of recent aether_dispatch calls tracked in CRT memory.
+
+    Args:
+        limit: Max dispatch records to show (default 10).
+    """
+    data = _get("/api/memory/search", {
+        "q": "agent_dispatch success OR failed",
+        "limit": limit,
+        "thread_id": "default",
+    })
+    if isinstance(data, dict) and "error" in data:
+        return _fmt(data)
+    if isinstance(data, list):
+        dispatches = [m for m in data if "[agent_dispatch:" in (m.get("text") or "")]
+        if not dispatches:
+            return "No dispatch records found. Use aether_dispatch to run a task first."
+
+        total = len(dispatches)
+        successes = sum(1 for d in dispatches if ":success]" in (d.get("text") or ""))
+        failures = total - successes
+
+        lines = [
+            f"Agent dispatch history ({total} records):",
+            f"  success: {successes}  failures: {failures}  rate: {successes/max(total,1)*100:.0f}%",
+            "",
+        ]
+        for i, d in enumerate(dispatches, 1):
+            text = d.get("text", "")
+            trust = d.get("trust", 0)
+            lines.append(f"  {i}. T:{trust:.2f} {text[:120]}")
+        return "\n".join(lines)
+    return "No dispatch data available."
+
+
+@mcp.tool()
+def aether_self_model() -> str:
+    """Get Aether's current self-awareness state — what it knows about itself.
+
+    Returns the 7 self-model slots: uncertainty domains, correction patterns,
+    trust trajectory, known blindspots, growing confidence, user relationship,
+    and response style.
+    """
+    data = _get("/api/self-model/default")
+    if isinstance(data, dict) and "error" in data:
+        return _fmt(data)
+    slots = data.get("self_model_awareness", {})
+    if not slots:
+        return "Self-model not yet populated. Run a heartbeat reflection first."
+    lines = ["Aether Self-Model:"]
+    for slot, value in slots.items():
+        if value:
+            lines.append(f"  {slot}: {value[:120]}")
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------

@@ -436,6 +436,7 @@ Available actions:
 - {"action": "respond", "message": "your final answer to the user", "reasoning": "why", "followups": ["optional list of suggested follow-up prompts if the answer is incomplete or could go deeper"], "complete": true}
 - {"action": "ask_user", "message": "your question", "reasoning": "why"}
 - {"action": "spawn_agent", "task": "focused subtask description", "context": {"key": "value"}, "estimated_depth": 3, "reasoning": "why spawn instead of doing it directly — use when a subtask is complex enough to need its own planning/tool loop"}
+- {"action": "tool_call", "tool": "dispatch_agent", "args": {"task": "coding task description", "project_path": "/path/to/project", "scope_files": "file1.py,file2.py"}, "reasoning": "why"} — Dispatch a coding task to Claude Code (external agent). Use this when you need to WRITE files but only have read-only access. Aether stays read-only and governs; Claude Code does the writing. Returns full output + token/cost metrics.
 
 Rules:
 1. ONLY output a JSON object. No other text. No explanation. No markdown.
@@ -458,6 +459,7 @@ KNOWN_ORCHESTRATOR_TOOLS: frozenset[str] = frozenset({
     "dir_list",
     "search_code",
     "memory_recall",
+    "dispatch_agent",
     "memory_store",
     "web_search",
     "shell_exec",
@@ -1249,6 +1251,80 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
                         result["status"] = "error"
                 except Exception as _glp_err:
                     result["content"] = f"GPT log promote failed: {_glp_err}"
+                    result["status"] = "error"
+
+        elif tool_name == "dispatch_agent":
+            # Dispatch a coding task to Claude Code — Aether stays read-only,
+            # Claude Code does the writing, Aether governs the result.
+            import subprocess as _da_sp
+
+            task_desc = args.get("task", "")
+            project_path = args.get("project_path", PROJECT_ROOT)
+            scope_files = args.get("scope_files", "")
+            model = args.get("model", "claude-sonnet-4-20250514")
+
+            if not task_desc:
+                result["content"] = "No task description provided for dispatch_agent."
+                result["status"] = "error"
+            else:
+                try:
+                    cli_bin = ClaudeCliBrain._resolve_bin()
+                except Exception:
+                    cli_bin = "claude"
+
+                prompt_parts = [task_desc]
+                if scope_files:
+                    prompt_parts.append(f"\nScope to these files: {scope_files}")
+
+                cmd = [cli_bin, "-p", "\n".join(prompt_parts),
+                       "--model", model, "--output-format", "json"]
+
+                try:
+                    _da_t0 = time.perf_counter()
+                    proc = _da_sp.run(
+                        cmd, capture_output=True, text=True,
+                        encoding="utf-8", errors="replace",
+                        timeout=120,
+                        cwd=project_path if project_path != PROJECT_ROOT else None,
+                    )
+                    _da_ms = (time.perf_counter() - _da_t0) * 1000
+
+                    if proc.returncode != 0:
+                        err = (proc.stderr or proc.stdout or "")[:500]
+                        result["content"] = f"[dispatch_agent] FAILED (exit {proc.returncode}): {err}"
+                        result["status"] = "error"
+                    else:
+                        try:
+                            _da_json = json.loads(proc.stdout)
+                        except json.JSONDecodeError:
+                            _da_json = {"result": proc.stdout.strip(), "usage": {}}
+
+                        _da_usage = _da_json.get("usage", {})
+                        _da_in = _da_usage.get("input_tokens", 0)
+                        _da_out = _da_usage.get("output_tokens", 0)
+                        _da_content = _da_json.get("result", proc.stdout.strip())
+
+                        # Estimate cost
+                        _da_cost = 0.0
+                        try:
+                            from personal_agent.cloud_usage_logger import _estimate_cost
+                            _da_cost = _estimate_cost(model, _da_in, _da_out)
+                        except Exception:
+                            pass
+
+                        result["content"] = (
+                            f"✓ Agent dispatch complete ({_da_ms:.0f}ms)\n"
+                            f"  tokens: {_da_in} in / {_da_out} out · cost: ${_da_cost:.4f}\n\n"
+                            f"--- Agent output ---\n{_da_content[:3000]}"
+                        )
+                        print(f"  [DISPATCH_AGENT] task=\"{task_desc[:60]}\" "
+                              f"tokens={_da_in}+{_da_out} cost=${_da_cost:.4f} elapsed={_da_ms:.0f}ms")
+
+                except _da_sp.TimeoutExpired:
+                    result["content"] = "[dispatch_agent] TIMEOUT after 120s"
+                    result["status"] = "error"
+                except FileNotFoundError:
+                    result["content"] = f"[dispatch_agent] Claude CLI not found at '{cli_bin}'"
                     result["status"] = "error"
 
         else:
