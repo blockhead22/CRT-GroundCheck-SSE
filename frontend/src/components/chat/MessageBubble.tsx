@@ -993,8 +993,8 @@ export function MessageBubble(props: {
               {typeof gatesPassed === 'boolean' && <div><span className="text-white/30">gates</span> <span className={gatesPassed ? 'text-emerald-300' : 'text-amber-300'}>{gatesPassed ? 'pass' : 'fail'}</span></div>}
               {meta.gate_reason && <div className="col-span-2"><span className="text-white/30">reason</span> <span className="text-white/50">{meta.gate_reason}</span></div>}
               {typeof meta.confidence === 'number' && <div><span className="text-white/30">conf</span> <span className="text-white/70">{(meta.confidence * 100).toFixed(0)}%</span></div>}
-              {typeof meta.intent_alignment === 'number' && <div><span className="text-white/30">intent</span> <span className="text-white/70">{meta.intent_alignment.toFixed(3)}</span></div>}
-              {typeof meta.memory_alignment === 'number' && <div><span className="text-white/30">memory</span> <span className="text-white/70">{meta.memory_alignment.toFixed(3)}</span></div>}
+              {typeof meta.intent_alignment === 'number' && <div><span className="text-white/30">intent</span> <span className="text-white/70">{meta.intent_alignment.toFixed(2)}</span></div>}
+              {typeof meta.memory_alignment === 'number' && <div><span className="text-white/30">memory</span> <span className="text-white/70">{meta.memory_alignment.toFixed(2)}</span></div>}
               {typeof meta.unresolved_contradictions_total === 'number' && <div><span className="text-white/30">open</span> <span className="text-white/70">{meta.unresolved_contradictions_total}</span></div>}
               {meta.generation_source && <div><span className="text-white/30">gen</span> <span className="text-white/70">{meta.generation_source}</span></div>}
               {meta.cloud_governance_used && <div><span className="text-white/30">governance</span> <span className="text-sky-300">cloud</span></div>}

@@ -121,6 +121,8 @@ class CRTIdleScheduler:
         self._last_enqueued_by_thread: Dict[str, float] = {}
         self._last_consolidation_ts: float = 0.0
         self._CONSOLIDATION_MIN_INTERVAL = 21600  # 6 hours between passes
+        self._last_finalized_by_thread: Dict[str, float] = {}
+        self._SESSION_FINALIZE_IDLE = 1800  # 30 min idle → finalize session
 
         init_jobs_db(self.jobs_db_path)
 
@@ -327,6 +329,72 @@ class CRTIdleScheduler:
                         _log.getLogger(__name__).info(
                             f"[IDLE] Density extraction triggered for {thread_id[:12]} "
                             f"(density={session.cumulative_density:.4f})"
+                        )
+                except Exception:
+                    pass
+        except ImportError:
+            pass
+        except Exception:
+            pass
+
+        # Session finalization: when a thread has been idle for 30+ min,
+        # run finalize_session() to create session summaries and pattern analysis.
+        # This was the missing trigger — finalize_session() was only callable via
+        # an explicit API endpoint that was never hit during normal usage.
+        try:
+            from personal_agent.episodic_memory import get_episodic_manager
+            for thread_id, mem_db, _ in _iter_thread_runtime_pairs():
+                try:
+                    last_user_ts = _last_user_activity_ts(mem_db)
+                    if last_user_ts <= 0:
+                        continue
+                    now_ts = time.time()
+                    idle_for = now_ts - float(last_user_ts)
+
+                    # Only finalize if idle for 30+ min
+                    if idle_for < self._SESSION_FINALIZE_IDLE:
+                        continue
+
+                    # Only finalize once per idle period (don't re-finalize
+                    # until the user comes back and goes idle again)
+                    last_fin = self._last_finalized_by_thread.get(thread_id, 0.0)
+                    if last_fin > last_user_ts:
+                        continue  # Already finalized after last activity
+
+                    # Load recent conversation history for summarization
+                    import sqlite3
+                    from personal_agent.runtime_paths import resolve_runtime_path
+                    _session_db = resolve_runtime_path("crt_sessions.db")
+                    if not _session_db.exists():
+                        continue
+
+                    conn = sqlite3.connect(str(_session_db))
+                    conn.row_factory = sqlite3.Row
+                    rows = conn.execute(
+                        """SELECT role, content FROM messages
+                           WHERE thread_id = ?
+                           ORDER BY created_at DESC LIMIT 20""",
+                        (thread_id,),
+                    ).fetchall()
+                    conn.close()
+
+                    if len(rows) < 3:
+                        continue  # Not enough conversation to summarize
+
+                    messages = [
+                        {"role": r["role"], "text": r["content"], "content": r["content"]}
+                        for r in reversed(rows)
+                    ]
+
+                    mgr = get_episodic_manager()
+                    summary = mgr.finalize_session(thread_id, messages)
+                    self._last_finalized_by_thread[thread_id] = now_ts
+
+                    if summary:
+                        import logging as _log
+                        _log.getLogger(__name__).info(
+                            f"[IDLE] Session finalized for {thread_id[:12]} "
+                            f"(idle={idle_for:.0f}s, messages={len(messages)})"
                         )
                 except Exception:
                     pass

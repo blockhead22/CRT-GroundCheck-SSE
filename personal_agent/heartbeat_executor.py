@@ -1433,6 +1433,32 @@ Reason carefully. If unsure, reply with action=none.
         except Exception as e:
             logger.debug(f"[HEARTBEAT] Self-model audit skipped: {e}")
 
+        # --- 8c. Verified self-audit (cross-system coherence check) ---
+        try:
+            from personal_agent.verified_self_audit import run_verified_self_audit
+            _vs_report = run_verified_self_audit(thread_id)
+            if _vs_report.anomalies:
+                _critical = sum(1 for a in _vs_report.anomalies if a.severity == "critical")
+                _warnings = sum(1 for a in _vs_report.anomalies if a.severity == "warning")
+                actions_taken.append({
+                    "action": "verified_self_audit",
+                    "detail": (
+                        f"Health={_vs_report.overall_health:.0%}, "
+                        f"checks={_vs_report.checks_passed}/{_vs_report.checks_run}, "
+                        f"anomalies={len(_vs_report.anomalies)} "
+                        f"(critical={_critical}, warn={_warnings})"
+                    ),
+                    "health": _vs_report.overall_health,
+                    "anomaly_count": len(_vs_report.anomalies),
+                })
+                logger.info(
+                    "[HEARTBEAT] Self-audit: health=%.0f%% anomalies=%d",
+                    _vs_report.overall_health * 100,
+                    len(_vs_report.anomalies),
+                )
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Verified self-audit skipped: {e}")
+
         # --- 9. Intent router self-improvement (review corrections) ---
         try:
             from personal_agent.task_agent import _get_semantic_router

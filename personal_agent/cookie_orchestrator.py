@@ -1657,8 +1657,11 @@ class Orchestrator:
 
                 if _live_align is not None and _recent_aligns:
                     _avg_recent = sum(_recent_aligns[-3:]) / len(_recent_aligns[-3:])
-                    _dropping = _live_align < _avg_recent - 0.15
-                    _low = _live_align < 0.25
+                    # Thresholds tuned for tool-mediated reasoning:
+                    # Tool steps like "search memory for X" legitimately score 0.2-0.4
+                    # against the original question. Only flag genuine drift.
+                    _dropping = _live_align < _avg_recent - 0.20
+                    _low = _live_align < 0.15
 
                     if _dropping or _low:
                         _drift_msg = (
@@ -1691,13 +1694,58 @@ class Orchestrator:
                             except Exception as _rg_err:
                                 print(f"  [DRIFT_ACTION] Re-ground failed: {_rg_err}")
 
-                        # Rule 2: Count sustained drift — 3+ consecutive drifts → stop
+                        # Rule 2 + Rule 3: Count sustained drift
                         _consecutive_drifts = 0
                         for _prev_step in reversed(run_log.steps):
                             if getattr(_prev_step, 'intent_alignment', 1.0) < 0.3:
                                 _consecutive_drifts += 1
                             else:
                                 break
+
+                        # Rule 3: 2 consecutive drifts → escalate brain to stronger model
+                        # This fires BEFORE Rule 2's halt, giving the stronger model a
+                        # chance to recover alignment. If it still drifts, Rule 2 halts.
+                        if _consecutive_drifts == 2 and not getattr(state, '_drift_escalated', False):
+                            _current_provider = getattr(self.brain, '_model', 'unknown')
+                            _escalated_to = None
+                            try:
+                                # Escalation ladder: Ollama → OpenAI → Anthropic
+                                if isinstance(self.brain, OllamaBrain):
+                                    self.brain = AnthropicBrain()
+                                    _escalated_to = "anthropic/claude-sonnet"
+                                elif isinstance(self.brain, OpenAIBrain):
+                                    self.brain = AnthropicBrain()
+                                    _escalated_to = "anthropic/claude-sonnet"
+                                # Already at top tier (Anthropic/Claude) — no further escalation
+                            except Exception as _esc_err:
+                                print(f"  [DRIFT_ACTION] Rule 3: escalation failed: {_esc_err}")
+
+                            if _escalated_to:
+                                state._drift_escalated = True
+                                print(f"  [DRIFT_ACTION] Rule 3: {_consecutive_drifts} drifts — escalating brain from {_current_provider} to {_escalated_to}")
+                                state.thinking.append(
+                                    f"[drift_escalate] Sustained drift ({_consecutive_drifts} steps) — "
+                                    f"escalating from {_current_provider} to {_escalated_to}"
+                                )
+                                yield {
+                                    "type": "drift_escalation",
+                                    "content": f"Escalating to {_escalated_to} after {_consecutive_drifts} drift steps",
+                                    "from_provider": _current_provider,
+                                    "to_provider": _escalated_to,
+                                }
+                                # Re-ground with fresh retrieval on the escalated brain
+                                try:
+                                    _reground = execute_tool("memory_recall", {"query": objective[:200]}, self.memory_system)
+                                    if _reground.get("content"):
+                                        last_result = (
+                                            f"[DRIFT ESCALATION] Switched to stronger model. Re-grounded:\n"
+                                            f"{_reground['content'][:500]}\n\n"
+                                            f"Original objective: {objective[:200]}"
+                                        )
+                                except Exception:
+                                    pass
+
+                        # Rule 2: 3+ consecutive drifts → halt and ask user
                         if _consecutive_drifts >= 3:
                             print(f"  [DRIFT_ACTION] Rule 2: {_consecutive_drifts} consecutive drifts — forcing respond")
                             state.thinking.append(f"[drift_halt] Sustained drift across {_consecutive_drifts} steps — halting to avoid further divergence")

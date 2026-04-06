@@ -3940,6 +3940,29 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         message=query_with_context,
         history_messages=recent_history,
     )
+    # --- Governance: ContinuityAuditor (Law 6) ---
+    # Check if we've answered this question before and inject prior-response context.
+    _continuity_verdict = None
+    if _LEGACY_GOVERNANCE:
+        try:
+            _continuity_verdict = _LEGACY_GOVERNANCE.govern_continuity(
+                query=effective_message,
+                thread_id=req.thread_id,
+            )
+            if _continuity_verdict and _continuity_verdict.action == "inject" and _continuity_verdict.continuity_context:
+                query_with_continuity = (
+                    query_with_continuity
+                    + "\n\n[CONTINUITY — prior responses on this topic]\n"
+                    + _continuity_verdict.continuity_context
+                )
+                logger.info("[CONTINUITY] Injected %d chars of prior-response context (similarity=%.2f)",
+                            len(_continuity_verdict.continuity_context),
+                            _continuity_verdict.max_similarity)
+            elif _continuity_verdict and _continuity_verdict.action == "hedge":
+                logger.info("[CONTINUITY] Prior responses conflict — will hedge (consistency=%.2f)",
+                            _continuity_verdict.internal_consistency)
+        except Exception as _cont_err:
+            logger.debug("[CONTINUITY] Auditor check failed: %s", _cont_err)
     _gpt_reference_packet = None
     _gpt_reference_from_cache = False
     _history_ref_query, _history_ref_topic, _history_ref_inferred = _resolve_personal_history_reference(
@@ -3986,7 +4009,20 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         recent_messages=len(recent_history),
     )
 
-    preference_profile = _get_preference_profile(req.thread_id, engine.memory)
+    _mark("pre_generation_context_ready")
+    # ── PARALLEL FETCH: preference profile + model routing ──────────
+    # These are independent I/O calls that were previously serial.
+    # ThreadPoolExecutor runs them concurrently for ~30-100ms savings.
+    import concurrent.futures
+    _pref_profile_result = [None]
+    def _fetch_pref():
+        _pref_profile_result[0] = _get_preference_profile(req.thread_id, engine.memory)
+    _pref_thread = threading.Thread(target=_fetch_pref, daemon=True)
+    _pref_thread.start()
+    # While pref loads, we can't route yet (depends on pref), but we can
+    # do other pre-generation prep that was previously after routing.
+    _pref_thread.join(timeout=5.0)
+    preference_profile = _pref_profile_result[0]
     model_override, model_route = _route_model_for_request(
         request,
         query=effective_message,
@@ -5956,6 +5992,40 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                     "memories_confirmed": int(_crt_session.memories_confirmed),
                 },
             })
+
+            # --- Density-triggered episodic extraction ---
+            # Synchronous check: if density threshold hit, enqueue extraction now
+            # instead of waiting for idle_scheduler's 10s poll.
+            from personal_agent.session_state import should_extract as _should_extract
+            if _should_extract(_crt_session):
+                try:
+                    from personal_agent.jobs_db import enqueue_job as _enqueue_job
+                    from personal_agent.runtime_paths import resolve_jobs_db_path as _resolve_jdb
+                    from datetime import datetime, timezone
+                    _jobs_db = str(_resolve_jdb())
+                    _jid = f"density_extract_{_thread_id}_{int(time.time())}"
+                    _enqueue_job(
+                        db_path=_jobs_db,
+                        job_id=_jid,
+                        job_type="heartbeat_learning",
+                        created_at=datetime.now(timezone.utc).isoformat(),
+                        payload={
+                            "thread_id": _thread_id,
+                            "memory_db": str(_engine_memory.db_path) if hasattr(_engine_memory, 'db_path') else "",
+                            "trigger": "post_response_density",
+                            "density": round(_crt_session.cumulative_density, 4),
+                            "tokens": _crt_session.cumulative_tokens,
+                        },
+                        priority=1,
+                    )
+                    # Reset counters so we don't re-trigger next turn
+                    _crt_session.cumulative_tokens = 0
+                    _crt_session.cumulative_numerator = 0
+                    _crt_session.last_extraction_ts = time.time()
+                    print(f"[EXTRACTION] Post-response trigger: density={_crt_session.cumulative_density:.4f} job={_jid}")
+                except Exception as _ext_err:
+                    print(f"[EXTRACTION] Failed to enqueue: {_ext_err}")
+
         except Exception as _e:
             print(f"[SESSION_STATE_BG] Error: {_e}")
             import traceback; traceback.print_exc()

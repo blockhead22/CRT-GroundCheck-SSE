@@ -1202,6 +1202,18 @@ def get_memory_trust_history(memory_id: str, limit: int = 40) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/self-audit")
+def get_self_audit() -> Dict[str, Any]:
+    """Run verified self-audit and return comprehensive health report."""
+    try:
+        from personal_agent.verified_self_audit import run_verified_self_audit
+        report = run_verified_self_audit()
+        return report.to_dict()
+    except Exception as e:
+        logger.warning("[COPILOT] Self-audit failed: %s", e)
+        return {"error": str(e), "overall_health": 0.0}
+
+
 @router.get("/scheduler/status")
 def get_scheduler_status() -> Dict[str, Any]:
     """Return idle scheduler status and configuration."""

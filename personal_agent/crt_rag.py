@@ -5205,6 +5205,7 @@ class CRTEnhancedRAG:
             "your creator", "your developer", "your builder",
         ))
         
+        _t_retrieve = time.perf_counter()
         try:
             retrieved = self.retrieve(
                 user_query,
@@ -5228,6 +5229,9 @@ class CRTEnhancedRAG:
                 include_system=_is_self_referential,
             )
         
+        _retrieval_latency = (time.perf_counter() - _t_retrieve) * 1000
+        print(f"[PIPELINE_TIMING] retrieval={_retrieval_latency:.1f}ms k={retrieval_k} results={len(retrieved)}")
+
         # Turn-awareness: inject retrieval metadata so the LLM can explain
         # what it did when asked about its process.
         if retrieved:
@@ -7677,8 +7681,10 @@ class CRTEnhancedRAG:
                 if slot not in facts:
                     continue
                 # Stale confirmed memories yield to fresh confirmed when competing for a slot.
+                # Trust is the PRIMARY signal for slot resolution — a memory with trust=1.0
+                # must outrank trust=0.97 regardless of timestamp. Timestamp is tiebreaker only.
                 freshness = 0 if (hasattr(mem, "is_stale") and mem.is_stale()) else 1
-                key = (freshness, _source_priority(mem), mem.timestamp, mem.trust)
+                key = (freshness, _source_priority(mem), mem.trust, mem.timestamp)
                 if best is None or (best_key is not None and key > best_key):
                     best = mem
                     best_key = key

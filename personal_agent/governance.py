@@ -56,6 +56,11 @@ from .immune_agents import (
     GapVerdict,
     Severity,
     Action as GapAction,
+    # Law 6
+    ContinuityAuditor,
+    ContinuityCheck,
+    ContinuityVerdict,
+    ContinuityAction,
 )
 from .immune_agents.speech_leak_detector import MemoryRecord
 
@@ -126,13 +131,20 @@ class GovernanceLayer:
         result = gov.govern_resolution(contradiction, ResolutionAction.RESOLVE_A)
     """
 
-    def __init__(self, embedding_fn=None):
+    def __init__(self, embedding_fn=None, db_path: Optional[str] = None):
         self.template_detector = TemplateDetector()
         self.speech_leak_detector = SpeechLeakDetector(embedding_fn=embedding_fn)
         self.gap_auditor = GapAuditor()
         self.premature_resolution_guard = PrematureResolutionGuard()
         self.memory_corruption_guard = MemoryCorruptionGuard()
         self._tension_detector = None  # lazy init
+        # Law 6: ContinuityAuditor — graceful if belief_speech table missing
+        self.continuity_auditor = None
+        try:
+            _db = db_path or "personal_agent/crt_memory_shared.db"
+            self.continuity_auditor = ContinuityAuditor(db_path=_db)
+        except Exception:
+            pass  # Table may not exist yet
 
     # -------------------------------------------------------------------
     # Response governance (user-facing output)
@@ -453,6 +465,36 @@ class GovernanceLayer:
             should_block=(tier == GovernanceTier.ESCALATE),
             audit_log=audit_log,
         )
+
+    # -------------------------------------------------------------------
+    # Continuity governance (pre-generation)
+    # -------------------------------------------------------------------
+
+    def govern_continuity(
+        self,
+        query: str,
+        thread_id: str = "default",
+        query_embedding=None,
+    ) -> Optional[ContinuityVerdict]:
+        """
+        Check for prior responses on the same topic. Returns a ContinuityVerdict
+        with action PASS/INJECT/HEDGE, or None if auditor unavailable.
+
+        If INJECT: caller should append verdict.continuity_context to the prompt.
+        If HEDGE: caller should lower belief_confidence (prior responses conflict).
+        """
+        if self.continuity_auditor is None:
+            return None
+        try:
+            check = ContinuityCheck(
+                query=query,
+                query_embedding=query_embedding,
+                thread_id=thread_id,
+            )
+            verdict = self.continuity_auditor.check(check)
+            return verdict
+        except Exception:
+            return None
 
 
     # -------------------------------------------------------------------

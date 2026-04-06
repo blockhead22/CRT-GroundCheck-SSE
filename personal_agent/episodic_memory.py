@@ -1719,6 +1719,20 @@ class EpisodicMemoryManager:
         
         # 4. Infer preferences from interaction (lightweight)
         self.preference_extractor.infer_from_interaction(query, response)
+
+        # 5. Run pattern analysis periodically (every 25 interactions)
+        # This was previously only called in finalize_session(), meaning
+        # patterns were never detected during active conversations.
+        try:
+            _log_count = self.db._get_conn().execute(
+                "SELECT COUNT(*) FROM interaction_log"
+            ).fetchone()[0]
+            if _log_count > 0 and _log_count % 25 == 0:
+                self.pattern_detector.analyze_topic_frequency(thread_id)
+                self.pattern_detector.analyze_response_preferences(thread_id)
+                logger.debug(f"[EPISODIC] Pattern analysis triggered at {_log_count} interactions")
+        except Exception as _pe:
+            logger.debug(f"[EPISODIC] Pattern analysis failed: {_pe}")
     
     def _extract_keywords_fast(self, text: str) -> List[str]:
         """Fast keyword extraction without heavy NLP."""

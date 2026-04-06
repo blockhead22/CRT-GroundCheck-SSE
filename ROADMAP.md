@@ -392,28 +392,44 @@ Last updated: April 4, 2026 (v3.7)
 - [x] llm_local mode redirected to Cookie instead of broken agent loop path
 - [x] Claude Code source analysis — 5-layer architecture mapped, 9 absorbable patterns identified, clear crt-core vs AI_round2 split documented
 
+### v3.7.1 (April 6) — Docs + Immune Wiring + Pipeline Optimization
+- [x] HTML docs suite: architecture.html, experiments.html, cascade-complexity.html (dark theme, inline charts, 6 generated figures)
+- [x] Updated docs/index.html with full navigation
+- [x] PrematureResolutionGuard wired into all 3 contradiction resolve endpoints (routes/contradictions.py)
+- [x] MemoryCorruptionGuard wired into consolidation auto-resolve (memory_consolidation.py)
+- [x] ContinuityAuditor wired into GovernanceLayer + pre-generation continuity injection (routes/chat.py)
+- [x] Session episodic extractor: post-response density trigger (synchronous, not idle-only)
+- [x] Trust outranks timestamp in slot resolution (crt_rag.py key tuple fix)
+- [x] Context feed now labels memories with trust scores + sorts by trust descending
+- [x] Cleaned 24 non-orange color memories from shared DB (yellow/magenta/blue/red deprecated)
+- [x] Immune agents: 6/6 wired (was 3/6). PrematureResolutionGuard, MemoryCorruptionGuard, ContinuityAuditor now live
+- [x] Drift Rule 3: model escalation on sustained drift (2 consecutive drifts → escalate brain Ollama→Anthropic)
+- [x] CRT Insights panel fixed: pattern analysis every 25 interactions. Backfilled 10 patterns + 5 preferences from 1000 interactions
+- [x] Pipeline optimization: vectorized similarity scoring (numpy batch matmul), timing instrumentation
+- [x] Session finalization: idle_scheduler auto-finalizes after 30min inactivity (summaries + pattern analysis)
+- [x] Frontend rebuild: PipelineCollapse timing fix (wasStreaming ref, 1.5s auto-collapse), toFixed(2) standardized, CopilotPage API dedup (initial load once, side data every 5th poll), hero graph simplified (200px visible section)
+- [x] Alignment scoring fix: intent-bridged scoring (prepends intent echo to reasoning before encoding), drift thresholds tuned (_low 0.25→0.15, _dropping delta 0.15→0.20, detect_drift threshold 0.15→0.12). Eliminates false drift on legitimate tool-mediated steps.
+- [x] Checkpoint acceptance tests: test_checkpoint_flows.py covers ask_user pause/resume, diff_write approve, Layer 2 alignment verification
+- [x] Pipeline parallelization: ThreadPoolExecutor for preference profile fetch concurrent with other pre-gen work
+- [x] Verified self-audit mode: VerifiedSelfAuditor cross-validates execution state, self-model, execution beliefs, governance agents, memory health. Detects cross-system anomalies. Wired into heartbeat Step 8c + /api/copilot/self-audit endpoint. First run: health=61.7%, 6/6 governance, 802 active memories, flagged 99% deprecation ratio.
+
 ---
 
 ## IN PROGRESS
 
-### Cookie Orchestrator Stabilization (v3.7.x)
-- [ ] Confirm routing fix end-to-end (outbox.py add-comment test)
-- [ ] Confirm diff_write checkpoint → approve → write → continue works
-- [ ] ask_user live test end-to-end
-- [ ] Layer 2 alignment check (per-run alignment score to SQLite run log)
-- [ ] Frontend rebuild (toFixed(1) trust delta, isActiveStream pipeline collapse timing)
-- [ ] 50+ orchestrator runs needed for route learning data
+### Orchestrator Live Validation (v3.7.x)
+- [x] Layer 2 alignment check — 191 runs in agent_runs.db, now with bridged scoring
+- [x] 50+ orchestrator runs — 191 runs logged (3.8x target)
+- [ ] Confirm diff_write checkpoint → approve → write → continue — fully wired, needs live walkthrough
+- [ ] ask_user live test end-to-end — fully wired, needs live walkthrough
 
-### April 4 maintenance / open-core cleanup
-- [x] `crt-core` public repo hardening pass completed
-- [x] Public README tightened: shipped scope clarified, placeholder namespaces called out honestly
-- [x] Product-specific validation claims softened to avoid leaking deployment-specific evidence/model mix
-- [x] Governance docstrings scrubbed of project-private branding and overclaimed study stats
-- [x] Added lightweight public-surface tests + GitHub Actions pytest workflow to `crt-core`
+### Productization (elevated from backlog)
+- [ ] Auto-login / default session on localhost (uid=1) — quick win, improves dev UX
+- [ ] Eval harness on live system — needed before any public claims
 
-### External Integrations (ad hoc)
-- [ ] Weather, calendar, maps, email — each is ~30 min of skill.md + credential setup
-- [ ] Discord token needed for bot activation
+### Research Papers (elevated)
+- [ ] Variance probe / robustness regime paper — Anthropic emotion vector connection gives timeliness, data+figures ready
+- [ ] Contradiction-density paper — next publishable, data exists
 
 ---
 
@@ -443,9 +459,7 @@ Patterns from Claude Code source analysis, governed by CRT:
 ## BACKLOG (do whenever, not blocking)
 
 ### Productization
-- [ ] Auto-login / default session on localhost (uid=1)
 - [ ] GroundCheck → PyPI (standalone package)
-- [ ] Eval harness on live system
 - [ ] Multi-user scaffolding (user_id scoping, separate memory spaces)
 
 ### Training & Classification
@@ -457,15 +471,18 @@ Patterns from Claude Code source analysis, governed by CRT:
 - [ ] Belief classifier on real ledger data
 - [ ] ViLT live pipeline — heartbeat triggers weight-level correction on persistent blindspots
 
-### Frontend Polish
-- [ ] Copilot page visual hierarchy + API dedup
+### Frontend
+- [x] Copilot page visual hierarchy + API dedup (shipped v3.7.1)
 - [ ] Code page (dedicated project/file interface with syntax highlighting)
 
+### External Integrations
+- [ ] Weather, calendar, maps, email — each is ~30 min of skill.md + credential setup
+- [ ] Discord token needed for bot activation
+- [ ] Outbox add-comment trigger — infra built (push/drain/WS), needs API endpoint + frontend subscription
+
 ### Research Papers
-- [ ] Cascade complexity paper (draft at papers/cascade_complexity/cascade_paper.md)
-- [ ] Contradiction-density paper
+- [x] Cascade complexity paper (HTML at docs/cascade-complexity.html, source at papers/cascade_complexity/cascade_paper.md)
 - [ ] Memory splats / belief geometry paper
-- [ ] Variance probe / robustness regime paper
 
 ### Future (v4.0+)
 - [ ] Voice input/output (Whisper + local TTS)

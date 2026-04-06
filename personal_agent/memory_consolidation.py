@@ -422,10 +422,37 @@ def run_consolidation_pass(
 
             # Act based on disposition
             if disposition == "resolvable":
-                deprecated_id = _auto_resolve_if_clear(mem_a, mem_b, memory_system)
-                if deprecated_id:
-                    result.auto_resolved += 1
-                    logger.info(f"[CONSOLIDATION] Auto-resolved: deprecated {deprecated_id}")
+                # Governance gate: PrematureResolutionGuard
+                _gov_blocked = False
+                try:
+                    from personal_agent.governance import GovernanceLayer
+                    from personal_agent.immune_agents import (
+                        Contradiction as _IC, ResolutionAction as _IRA,
+                    )
+                    _gov = GovernanceLayer()
+                    _gov_r = _gov.govern_resolution(
+                        contradiction=_IC(
+                            id=entry.ledger_id,
+                            claim_a=getattr(mem_a, "text", ""),
+                            claim_b=getattr(mem_b, "text", ""),
+                            disposition=disposition,
+                            disposition_confidence=disposition_confidence,
+                            trust_a=getattr(mem_a, "trust", 0.5),
+                            trust_b=getattr(mem_b, "trust", 0.5),
+                        ),
+                        proposed_action=_IRA.RESOLVE_A,
+                    )
+                    if _gov_r.should_block:
+                        _gov_blocked = True
+                        logger.info(f"[CONSOLIDATION] Governance blocked auto-resolve for {entry.ledger_id}")
+                except Exception as _ge:
+                    logger.debug(f"[CONSOLIDATION] Governance check failed (proceeding): {_ge}")
+
+                if not _gov_blocked:
+                    deprecated_id = _auto_resolve_if_clear(mem_a, mem_b, memory_system)
+                    if deprecated_id:
+                        result.auto_resolved += 1
+                        logger.info(f"[CONSOLIDATION] Auto-resolved: deprecated {deprecated_id}")
 
             elif disposition == "held":
                 result.held_created += 1

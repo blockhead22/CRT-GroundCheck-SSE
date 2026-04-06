@@ -138,11 +138,14 @@ def _build_fresh(thread_id: str, memory_db_path: str) -> str:
         if m.text.strip().lower() not in trusted_texts
     ]
 
-    # 4. Format
-    lines = ["", "## What I know about you:"]
+    # 4. Format — sort by trust descending so highest-trust facts come first,
+    # and include trust scores so the model knows which memories to prioritize.
+    top_memories.sort(key=lambda m: getattr(m, "trust", 0), reverse=True)
+    lines = ["", "## What I know about you (sorted by trust, highest first):"]
     for m in top_memories:
         text = m.text.strip()[:200]
-        lines.append(f"- {text}")
+        trust = getattr(m, "trust", 0)
+        lines.append(f"- [trust:{trust:.2f}] {text}")
 
     if provisional:
         lines.append("")

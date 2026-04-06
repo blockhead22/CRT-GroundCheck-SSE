@@ -2161,17 +2161,25 @@ export function CopilotPage({ threadId = 'default' }: { threadId?: string }) {
     } catch { /* ignore */ }
   }, [])
 
+  // Initial load — fetch once, not on every dependency change
+  const initialLoadRef = useRef(false)
   useEffect(() => {
+    if (initialLoadRef.current) return
+    initialLoadRef.current = true
     setLoading(true)
     fetchData()
     fetchSideData()
-  }, [fetchData, fetchSideData])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Polling — only main data, side data refreshes less frequently
+  const sideDataTickRef = useRef(0)
   useEffect(() => {
     if (live) {
       intervalRef.current = setInterval(() => {
         fetchData()
-        fetchSideData()
+        // Side data (profile + accuracy) only refreshes every 5th tick
+        sideDataTickRef.current++
+        if (sideDataTickRef.current % 5 === 0) fetchSideData()
       }, pollInterval)
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
@@ -2212,16 +2220,13 @@ export function CopilotPage({ threadId = 'default' }: { threadId?: string }) {
     <div className="relative h-full overflow-y-auto">
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
 
-      {/* Hero graph — always visible, sits behind content */}
-      <div className="sticky top-0 z-0 w-full" style={{ height: '320px', marginBottom: '-320px' }}>
+      {/* Hero graph — compact, visible at top */}
+      <div className="w-full border-b border-white/5" style={{ height: '200px' }}>
         <MemoryGraph memories={memories} hero />
-        {/* Gradient fade so content slides over cleanly */}
-        <div className="absolute inset-x-0 bottom-0 h-32 pointer-events-none"
-          style={{ background: 'linear-gradient(to bottom, transparent, #141210)' }} />
       </div>
 
-      {/* Scrollable content — slides over graph */}
-      <div className="relative z-10 mt-[280px]" style={{ background: '#141210' }}>
+      {/* Scrollable content */}
+      <div className="relative" style={{ background: '#141210' }}>
 
       {/* Header */}
       <div className="flex flex-col gap-4 border-b border-white/10 p-4 sm:p-6">

@@ -34,6 +34,20 @@ logger = logging.getLogger(__name__)
 # Constants for resolution policies
 RESOLUTION_TRUST_BOOST = 0.1  # Trust boost for chosen memory in OVERRIDE resolution
 
+# Governance layer — immune agents guard resolution endpoints
+try:
+    from personal_agent.governance import GovernanceLayer
+    from personal_agent.immune_agents import (
+        Contradiction as ImmuneContradiction,
+        Disposition as ImmuneDisposition,
+        ResolutionAction as ImmuneResolutionAction,
+    )
+    _GOVERNANCE = GovernanceLayer()
+    logger.info("[CONTRADICTIONS] GovernanceLayer loaded — PrematureResolutionGuard active")
+except Exception as _gov_err:
+    _GOVERNANCE = None
+    logger.warning(f"[CONTRADICTIONS] GovernanceLayer not available: {_gov_err}")
+
 router = APIRouter()
 
 
@@ -391,6 +405,31 @@ def contradiction_respond(
             chosen_memory_id = req.merged_memory_id
             new_status = req.new_status
 
+        # --- Governance: PrematureResolutionGuard ---
+        if _GOVERNANCE and entry:
+            try:
+                _gov_result = _GOVERNANCE.govern_resolution(
+                    contradiction=ImmuneContradiction(
+                        id=req.ledger_id,
+                        claim_a=getattr(old_mem, "text", "") or "" if old_mem else "",
+                        claim_b=getattr(new_mem, "text", "") or "" if new_mem else "",
+                        disposition=getattr(entry, "disposition", "unknown") or "unknown",
+                        trust_a=float(getattr(old_mem, "trust", 0.5) or 0.5) if old_mem else 0.5,
+                        trust_b=float(getattr(new_mem, "trust", 0.5) or 0.5) if new_mem else 0.5,
+                    ),
+                    proposed_action=ImmuneResolutionAction.RESOLVE_A,
+                )
+                if _gov_result.should_block:
+                    _reason = _gov_result.annotations[0].finding if _gov_result.annotations else "blocked"
+                    logger.warning(f"[GOVERNANCE] Respond-resolution blocked: {_reason}")
+                    return ContradictionRespondResponse(
+                        ok=False, thread_id=sanitize_thread_id(req.thread_id),
+                        ledger_id=str(req.ledger_id), recorded=recorded,
+                        resolved=False, next=None,
+                    )
+            except Exception as _ge:
+                logger.debug(f"[GOVERNANCE] Respond guard failed (proceeding): {_ge}")
+
         try:
             engine.ledger.resolve_contradiction(
                 ledger_id=req.ledger_id,
@@ -448,6 +487,36 @@ def ledger_resolve(
     req: ResolveContradictionRequest,
 ) -> Dict[str, Any]:
     engine = _get_engine(request, req.thread_id)
+
+    # --- Governance: PrematureResolutionGuard ---
+    if _GOVERNANCE:
+        try:
+            _entry = next(
+                (e for e in engine.ledger.get_all_contradictions(limit=2000)
+                 if getattr(e, "ledger_id", "") == req.ledger_id),
+                None,
+            )
+            if _entry:
+                _gov_result = _GOVERNANCE.govern_resolution(
+                    contradiction=ImmuneContradiction(
+                        id=req.ledger_id,
+                        claim_a=getattr(_entry, "old_text", "") or "",
+                        claim_b=getattr(_entry, "new_text", "") or "",
+                        disposition=getattr(_entry, "disposition", "unknown") or "unknown",
+                        trust_a=float(getattr(_entry, "old_trust", 0.5) or 0.5),
+                        trust_b=float(getattr(_entry, "new_trust", 0.5) or 0.5),
+                    ),
+                    proposed_action=ImmuneResolutionAction.RESOLVE_A,
+                )
+                if _gov_result.should_block:
+                    _reason = _gov_result.annotations[0].finding if _gov_result.annotations else "governance blocked"
+                    logger.warning(f"[GOVERNANCE] Resolution blocked for {req.ledger_id}: {_reason}")
+                    raise HTTPException(status_code=403, detail=f"Governance blocked: {_reason}")
+        except HTTPException:
+            raise
+        except Exception as _ge:
+            logger.debug(f"[GOVERNANCE] Resolution guard check failed (proceeding): {_ge}")
+
     engine.ledger.resolve_contradiction(
         ledger_id=req.ledger_id,
         method=req.method,
@@ -503,6 +572,29 @@ def resolve_contradiction_policy(
     deprecated_id = None
     active_id = None
     message = None
+
+    # --- Governance: PrematureResolutionGuard + MemoryCorruptionGuard ---
+    if _GOVERNANCE:
+        try:
+            _gov_result = _GOVERNANCE.govern_resolution(
+                contradiction=ImmuneContradiction(
+                    id=ledger_id,
+                    claim_a="",  # We don't have texts here but disposition matters
+                    claim_b="",
+                    disposition=str(contra_type or "unknown"),
+                    trust_a=0.5,
+                    trust_b=0.5,
+                ),
+                proposed_action=ImmuneResolutionAction.RESOLVE_A,
+            )
+            if _gov_result.should_block:
+                _reason = _gov_result.annotations[0].finding if _gov_result.annotations else "governance blocked"
+                logger.warning(f"[GOVERNANCE] Policy resolution blocked for {ledger_id}: {_reason}")
+                raise HTTPException(status_code=403, detail=f"Governance blocked: {_reason}")
+        except HTTPException:
+            raise
+        except Exception as _ge:
+            logger.debug(f"[GOVERNANCE] Policy resolution guard failed (proceeding): {_ge}")
 
     # Apply resolution policy
     if resolution == "OVERRIDE":

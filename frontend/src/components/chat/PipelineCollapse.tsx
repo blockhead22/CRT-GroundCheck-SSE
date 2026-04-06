@@ -101,8 +101,9 @@ export function PipelineCollapse({
   const [expanded, setExpanded] = useState(true)
   const startRef = useRef<number>(0)
   const [elapsedMs, setElapsedMs] = useState<number | null>(null)
+  const wasStreamingRef = useRef(false)
 
-  // Track latency — start clock on first step, stop when streaming ends
+  // Track latency — start clock on first step, stop on stream end transition
   const hasSteps = steps.length > 0
   useEffect(() => {
     if (streaming && hasSteps && startRef.current === 0) {
@@ -111,33 +112,30 @@ export function PipelineCollapse({
     }
   }, [streaming, hasSteps])
 
+  // Detect stream end transition (was streaming → not streaming)
+  // This avoids race conditions from multiple useEffects watching `streaming`
   useEffect(() => {
-    if (!streaming && hasSteps && startRef.current > 0) {
-      setElapsedMs(Date.now() - startRef.current)
-      startRef.current = 0
-    }
-  }, [streaming, hasSteps])
+    const wasStreaming = wasStreamingRef.current
+    wasStreamingRef.current = streaming
 
-  // Reset clock when new stream starts
-  useEffect(() => {
-    if (streaming) {
+    if (wasStreaming && !streaming && hasSteps) {
+      // Stream just ended — record latency
+      if (startRef.current > 0) {
+        setElapsedMs(Date.now() - startRef.current)
+        startRef.current = 0
+      }
+      // Auto-collapse after 1.5s (was 700ms — too fast to read summary)
+      const t = setTimeout(() => setExpanded(false), 1500)
+      return () => clearTimeout(t)
+    }
+
+    if (!wasStreaming && streaming) {
+      // Stream just started — expand and reset clock
+      setExpanded(true)
       startRef.current = 0
       setElapsedMs(null)
     }
-  }, [streaming])
-
-  // Auto-collapse 700ms after done
-  useEffect(() => {
-    if (!streaming && steps.length > 0) {
-      const t = setTimeout(() => setExpanded(false), 700)
-      return () => clearTimeout(t)
-    }
-  }, [streaming, steps.length])
-
-  // Re-expand when new stream starts
-  useEffect(() => {
-    if (streaming) setExpanded(true)
-  }, [streaming])
+  }, [streaming, hasSteps])
 
   if (steps.length === 0) return null
 

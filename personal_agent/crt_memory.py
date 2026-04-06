@@ -2067,6 +2067,7 @@ class CRTMemorySystem:
 
         # Compute scores — tier-aware: fold query to each memory's dimensionality
         t_now = time.time()
+        _retrieval_t0 = time.perf_counter()
         from personal_agent.memory_compression import (
             fold_vector, TIER_DIMS, dequantize_vector,
         )
@@ -2082,22 +2083,73 @@ class CRTMemorySystem:
             "identity_constant": 1.5,
         }
 
-        memory_dicts = []
+        # ── VECTORIZED SIMILARITY (batch numpy) ────────────────────────
+        # Separate full-vector memories (tier 2) for batch processing
+        # vs compressed memories that need per-item decompression.
+        _full_vec_mems = []
+        _full_vec_matrix = []
+        _compressed_mems = []
         for m in memories:
+            tier = getattr(m, 'compression_tier', 2)
+            if tier >= 2 and m.vector is not None and len(m.vector) > 0:
+                _full_vec_mems.append(m)
+                _full_vec_matrix.append(m.vector)
+            elif tier < 2 and m.compressed_vector is not None and len(m.compressed_vector) > 0:
+                _compressed_mems.append(m)
+            elif m.vector is not None and len(m.vector) > 0:
+                _full_vec_mems.append(m)
+                _full_vec_matrix.append(m.vector)
+
+        memory_dicts = []
+
+        # Batch cosine similarity for full-vector memories (single matrix multiply)
+        if _full_vec_mems and expanded_vectors:
+            try:
+                _mem_mat = np.array(_full_vec_matrix, dtype=np.float32)  # (N, 384)
+                _query_mat = np.array(expanded_vectors, dtype=np.float32)  # (Q, 384)
+                # Normalize rows
+                _mem_norms = np.linalg.norm(_mem_mat, axis=1, keepdims=True)
+                _mem_norms[_mem_norms == 0] = 1e-8
+                _mem_normed = _mem_mat / _mem_norms
+                _q_norms = np.linalg.norm(_query_mat, axis=1, keepdims=True)
+                _q_norms[_q_norms == 0] = 1e-8
+                _q_normed = _query_mat / _q_norms
+                # (Q, 384) @ (384, N) → (Q, N) similarity matrix
+                _sim_matrix = _q_normed @ _mem_normed.T  # shape (Q, N)
+                # Best similarity across all query vectors per memory
+                _best_sims = np.max(_sim_matrix, axis=0)  # shape (N,)
+
+                for idx, m in enumerate(_full_vec_mems):
+                    best_sim = float(_best_sims[idx])
+                    if best_sim < 0:
+                        continue
+                    age = t_now - m.timestamp
+                    recency = _temporal_recency(age / 86400.0, getattr(m, "memory_type", "observation"))
+                    belief = 0.7 * m.trust + 0.3 * m.confidence
+                    tier = getattr(m, 'compression_tier', 2)
+                    tier_weight = _TIER_WEIGHT.get(tier, 1.0)
+                    _kind = str(getattr(m, "kind", "") or "").strip().lower()
+                    kind_boost = _KIND_BOOST.get(_kind, 1.0)
+                    score = max(0.0, best_sim) * recency * belief * tier_weight * kind_boost
+                    memory_dicts.append((m, score))
+            except Exception as _batch_err:
+                logger.debug(f"[RETRIEVAL] Batch similarity failed, falling back: {_batch_err}")
+                _compressed_mems.extend(_full_vec_mems)
+                _full_vec_mems = []
+
+        # Fallback: per-item scoring for compressed memories (need decompression)
+        for m in _compressed_mems:
             tier = getattr(m, 'compression_tier', 2)
             best_sim = -1.0
             for qvec in expanded_vectors:
                 try:
                     if tier < 2 and m.compressed_vector is not None and len(m.compressed_vector) > 0:
-                        # Compressed memory — detect format and decompress
                         if isinstance(m.cogni_seed, dict) and m.cogni_seed.get("method") == "memquant":
-                            # MemQuant: decompress to full 384D, compare directly
                             effective_vector = dequantize_vector(
                                 np.array(m.compressed_vector, dtype=np.uint8),
                                 m.cogni_seed,
                             )
                         else:
-                            # Legacy fold: fold query down to match compressed dim
                             target_dim = TIER_DIMS.get(tier, 384)
                             folded_query, _ = fold_vector(qvec, target_dim)
                             effective_vector = m.compressed_vector
@@ -2110,33 +2162,30 @@ class CRTMemorySystem:
                             np.linalg.norm(qvec) * np.linalg.norm(effective_vector) + 1e-8
                         ))
                     else:
-                        # Full vector — compare directly
                         if m.vector is None or len(m.vector) == 0:
-                            continue  # skip malformed memories
+                            continue
                         sim = float(np.dot(qvec, m.vector) / (
                             np.linalg.norm(qvec) * np.linalg.norm(m.vector) + 1e-8
                         ))
                     best_sim = max(best_sim, sim)
                 except Exception:
-                    continue  # skip any vector shape mismatches
+                    continue
 
             if best_sim < 0:
-                continue  # no valid similarity computed
-
-            # CRT scoring: R = sim * recency * belief_weight * tier_weight * kind_boost
+                continue
             age = t_now - m.timestamp
-            # Phase G3: type-dependent recency via temporal governance
-            # Facts/identity decay slowly; events decay fast; preferences moderate.
             recency = _temporal_recency(age / 86400.0, getattr(m, "memory_type", "observation"))
             belief = 0.7 * m.trust + 0.3 * m.confidence
             tier_weight = _TIER_WEIGHT.get(tier, 1.0)
-            # Kind boost: user facts and preferences outrank generic observations.
-            # Without this, conversational noise ("What's on your mind?") drowns
-            # out structured facts ("Nick lives in Wisconsin") in retrieval.
             _kind = str(getattr(m, "kind", "") or "").strip().lower()
             kind_boost = _KIND_BOOST.get(_kind, 1.0)
             score = max(0.0, best_sim) * recency * belief * tier_weight * kind_boost
             memory_dicts.append((m, score))
+
+        _retrieval_ms = (time.perf_counter() - _retrieval_t0) * 1000
+        print(f"[RETRIEVAL_PERF] scoring={_retrieval_ms:.1f}ms memories={len(memories)} "
+              f"batch={len(_full_vec_mems)} compressed={len(_compressed_mems)} "
+              f"queries={len(expanded_vectors)}")
 
         # ----- Canonical collapse: score alias vectors, merge best per memory_id -----
         alias_boosted_ids: set = set()
