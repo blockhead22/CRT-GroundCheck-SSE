@@ -571,8 +571,15 @@ def get_copilot_profile() -> CopilotProfile:
     try:
         db = _DBAdapter(conn)
         alive = db.alive
+        # Only extract profile from user_fact/preference memories — not observations,
+        # model_output, or self_model entries which contain LLM-generated text that
+        # pollutes the profile with hallucinated values.
         rows = conn.execute(
-            f"SELECT text, trust FROM memories WHERE 1=1 {alive} ORDER BY trust DESC, timestamp DESC"
+            f"""SELECT text, trust FROM memories
+                WHERE 1=1 {alive}
+                AND COALESCE(kind, 'observation') IN ('user_fact', 'preference', 'identity_constant')
+                AND text NOT LIKE '%[SYSTEM NOTE%'
+                ORDER BY trust DESC, timestamp DESC"""
         ).fetchall()
         texts = [r["text"] for r in rows]
 
