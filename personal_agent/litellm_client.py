@@ -326,9 +326,9 @@ class UnifiedLLMClient:
             "timeout": _timeout,
             # Ollama defaults to 2048 context tokens which silently drops
             # conversation history. Set explicitly to use the model's full window.
-            # 4096 keeps VRAM usage manageable on M2; enough for personal assistant
-            # conversations which rarely exceed 3k tokens of history.
-            "num_ctx": 4096,
+            "num_ctx": int(os.getenv("CRT_OLLAMA_NUM_CTX", "4096")),
+            # Pin model in VRAM for KV cache reuse across requests
+            "keep_alive": "24h",
         }
 
     def _is_thinking_model(self, model: str) -> bool:
@@ -517,10 +517,11 @@ class UnifiedLLMClient:
             "model": model,
             "messages": flat_messages,
             "stream": False,
+            "keep_alive": "24h",  # Pin model in VRAM between requests for KV cache reuse
             "options": {
                 "temperature": temperature,
                 "num_predict": effective_max,
-                "num_ctx": 4096,
+                "num_ctx": int(os.getenv("CRT_OLLAMA_NUM_CTX", "4096")),
             },
         }
         if tools:
