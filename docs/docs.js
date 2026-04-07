@@ -144,14 +144,10 @@
       toggle.innerHTML = mobileMenu.classList.contains('open') ? '&#10005;' : '&#9776;';
     });
 
-    // Insert nav inside .page-layout if it exists, otherwise body
-    var pageLayout = document.querySelector('.page-layout');
-    if (pageLayout) {
-      pageLayout.insertBefore(nav, pageLayout.firstChild);
-    } else {
-      document.body.insertBefore(nav, document.body.firstChild);
-    }
-    document.body.insertBefore(mobileMenu, document.body.firstChild);
+    // Insert nav at very top of body (outside page-layout to avoid hero stacking context)
+    document.body.insertBefore(nav, document.body.firstChild);
+    // Mobile menu right after nav
+    nav.insertAdjacentElement('afterend', mobileMenu);
   }
 
   // ── Inject prev/next pager into main ──

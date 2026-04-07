@@ -738,7 +738,6 @@ td code {
 /* ===== CROSS-DOC NAV BAR ===== */
 /* ===== TOP NAV BAR ===== */
 .docnav {
-  grid-column: 1 / -1;
   position: sticky;
   top: 0;
   z-index: 9999;
