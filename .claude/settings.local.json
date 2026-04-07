@@ -39,7 +39,9 @@
       "WebFetch(domain:www.anthropic.com)",
       "WebFetch(domain:ccunpacked.dev)",
       "mcp__aether__aether_context",
-      "mcp__aether__aether_remember"
+      "mcp__aether__aether_remember",
+      "mcp__aether__aether_self_model",
+      "mcp__aether__aether_contradictions"
     ]
   }
 }
