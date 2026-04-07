@@ -3,239 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Story of Aether &amp; CRT — Aeteros Research</title>
+<title>The Story of Aether &amp; CRT</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="theme.css">
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #060814; color: #c0c8e0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; line-height: 1.75; overflow-x: hidden; }
-
-  /* ===== HERO ===== */
-  .hero {
-    position: relative; width: 100%; min-height: 80vh;
-    display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(160deg, #060814 0%, #0c1228 30%, #1a0e2e 60%, #0d1a3a 100%);
-    overflow: hidden;
-  }
-  .hero::before {
-    content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-    background: radial-gradient(ellipse at 30% 50%, rgba(99,102,241,0.08) 0%, transparent 50%),
-                radial-gradient(ellipse at 70% 30%, rgba(236,72,153,0.06) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 80%, rgba(59,130,246,0.05) 0%, transparent 50%);
-    animation: drift 20s ease-in-out infinite alternate;
-  }
-  @keyframes drift { 0% { transform: translate(0,0) rotate(0deg); } 100% { transform: translate(-2%,1%) rotate(1deg); } }
-  .hero-inner {
-    position: relative; z-index: 1; text-align: center; max-width: 820px; padding: 80px 30px;
-  }
-  .hero-badge {
-    display: inline-block; font-size: 0.7em; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
-    color: #818cf8; border: 1px solid rgba(129,140,248,0.25); border-radius: 20px; padding: 6px 18px;
-    margin-bottom: 28px; background: rgba(129,140,248,0.06);
-  }
-  .hero h1 {
-    font-size: 2.8em; font-weight: 700; color: #fff; letter-spacing: -1.5px; line-height: 1.15; margin-bottom: 20px;
-  }
-  .hero h1 .grad {
-    background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-  }
-  .hero .sub { font-size: 1em; color: #7a82a6; margin-bottom: 12px; }
-  .hero .byline { font-size: 0.82em; color: #5a6080; margin-bottom: 36px; letter-spacing: 1px; }
-  .hero .finding-box {
-    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 12px; padding: 24px 28px; text-align: left; backdrop-filter: blur(12px);
-    max-width: 700px; margin: 0 auto;
-  }
-  .hero .finding-box p { color: #a0a8c8; font-size: 0.9em; margin-bottom: 0; line-height: 1.8; }
-  .hero .finding-box strong { color: #e0e4f0; }
-  .scroll-cue {
-    position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
-    color: #3a3f5c; font-size: 0.7em; letter-spacing: 1px; animation: pulse 2.5s ease-in-out infinite;
-  }
-  @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 0.7; } }
-
-  /* ===== LAYOUT ===== */
-  .container { max-width: 880px; margin: 0 auto; padding: 80px 30px; }
-  section { margin-bottom: 80px; }
-  h2 { font-size: 1.8em; color: #fff; margin-bottom: 16px; letter-spacing: -0.5px; font-weight: 700; }
-  h3 { font-size: 1.1em; color: #d0d4e8; margin: 32px 0 12px 0; font-weight: 600; }
-  h4 { font-size: 0.95em; color: #b0b8d8; margin: 24px 0 10px 0; font-weight: 600; }
-  p { margin-bottom: 16px; }
-  ul, ol { margin: 0 0 20px 24px; }
-  li { margin-bottom: 8px; color: #a0a8c8; }
-  strong { color: #e0e4f0; }
-  em { color: #c0c8e0; }
-  a { color: #818cf8; text-decoration: none; border-bottom: 1px solid rgba(129,140,248,0.3); transition: border-color 0.3s; }
-  a:hover { border-color: #818cf8; }
-  .accent-line { width: 48px; height: 3px; background: linear-gradient(90deg, #818cf8, #c084fc); border-radius: 2px; margin-bottom: 28px; }
-  .section-number { font-size: 0.68em; color: #818cf8; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; display: block; margin-bottom: 8px; }
-
-  /* ===== STAT CARDS ===== */
-  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 32px 0; }
-  .stat-card {
-    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 12px; padding: 24px 20px; text-align: center;
-    transition: border-color 0.3s, transform 0.3s;
-  }
-  .stat-card:hover { border-color: rgba(129,140,248,0.3); transform: translateY(-2px); }
-  .stat-card .stat-value { font-size: 2.2em; font-weight: 700; color: #fff; line-height: 1; margin-bottom: 6px; }
-  .stat-card .stat-value.accent { color: #818cf8; }
-  .stat-card .stat-value.purple { color: #c084fc; }
-  .stat-card .stat-value.pink { color: #f472b6; }
-  .stat-card .stat-value.green { color: #34d399; }
-  .stat-card .stat-label { font-size: 0.72em; color: #6a7096; text-transform: uppercase; letter-spacing: 1px; }
-
-  /* ===== TABLES ===== */
-  .table-wrap { overflow-x: auto; margin: 24px 0; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
-  thead th {
-    text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; font-size: 0.78em;
-    text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 2px solid rgba(255,255,255,0.06);
-  }
-  tbody td { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.03); color: #a0a8c8; }
-  tbody tr:hover td { background: rgba(129,140,248,0.03); }
-  td strong { color: #e0e4f0; }
-
-  /* ===== QUOTE BLOCK ===== */
-  .quote-block {
-    border-left: 3px solid #818cf8; padding: 20px 24px; margin: 32px 0;
-    background: rgba(129,140,248,0.03); border-radius: 0 10px 10px 0;
-  }
-  .quote-block p { color: #b0b8d8; font-size: 1.02em; font-style: italic; margin: 0; }
-  .quote-block .attr { color: #5a6080; font-size: 0.75em; margin-top: 10px; font-style: normal; }
-
-  /* ===== PRINCIPLE CARDS ===== */
-  .principle-grid { display: grid; gap: 16px; margin: 24px 0; }
-  .principle {
-    background: rgba(255,255,255,0.02); border-left: 3px solid rgba(255,255,255,0.08);
-    padding: 24px 28px; border-radius: 0 10px 10px 0;
-  }
-  .principle .p-num { color: #5a6080; font-size: 0.65em; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
-  .principle .p-text { color: #fff; font-size: 1.05em; margin-top: 8px; font-weight: 600; }
-  .principle .p-sub { color: #8a90b0; font-size: 0.86em; margin-top: 10px; line-height: 1.7; }
-  .principle-contra { border-left-color: #f472b6; }
-  .principle-trust { border-left-color: #34d399; }
-  .principle-speech { border-left-color: #818cf8; }
-  .principle-belief { border-left-color: #c084fc; }
-  .principle-variance { border-left-color: #fbbf24; }
-
-  /* ===== LAW CARD ===== */
-  .law-card {
-    background: linear-gradient(135deg, rgba(129,140,248,0.08), rgba(192,132,252,0.06));
-    border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 32px; margin: 40px 0;
-    text-align: center;
-  }
-  .law-card .law-number { font-size: 0.7em; color: #818cf8; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
-  .law-card .law-text { font-size: 1.4em; color: #fff; font-weight: 700; letter-spacing: -0.5px; }
-  .law-card .law-sub { font-size: 0.88em; color: #7a82a6; margin-top: 12px; max-width: 620px; margin-left: auto; margin-right: auto; }
-
-  /* ===== PIPELINE STACK ===== */
-  .pipeline-stack { max-width: 620px; margin: 24px auto; display: flex; flex-direction: column; gap: 0; }
-  .pipeline-layer {
-    display: flex; align-items: stretch;
-    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
-    border-bottom: none; transition: background 0.3s;
-  }
-  .pipeline-layer:first-child { border-radius: 10px 10px 0 0; }
-  .pipeline-layer:last-child { border-bottom: 1px solid rgba(255,255,255,0.06); border-radius: 0 0 10px 10px; }
-  .pipeline-layer:hover { background: rgba(255,255,255,0.03); }
-  .pipeline-layer-accent { width: 4px; flex-shrink: 0; }
-  .pipeline-layer:nth-child(odd) .pipeline-layer-accent { background: #818cf8; }
-  .pipeline-layer:nth-child(even) .pipeline-layer-accent { background: #c084fc; }
-  .pipeline-layer:nth-child(4n) .pipeline-layer-accent { background: #34d399; }
-  .pipeline-layer:nth-child(4n+3) .pipeline-layer-accent { background: #f472b6; }
-  .pipeline-layer-content { flex: 1; padding: 14px 20px; }
-  .pipeline-layer-name { color: #e0e4f0; font-weight: 600; font-size: 0.9em; margin-bottom: 3px; }
-  .pipeline-layer-desc { color: #7a82a6; font-size: 0.8em; line-height: 1.5; }
-  .pipeline-layer-annotation {
-    display: flex; align-items: center; padding: 0 16px;
-    font-size: 0.7em; color: #5a6080; font-style: italic; white-space: nowrap;
-    border-left: 1px solid rgba(255,255,255,0.04); min-width: 140px;
-  }
-
-  /* ===== CHAPTER CARDS ===== */
-  .chapter-card {
-    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 12px; padding: 28px 32px; margin: 28px 0;
-    transition: border-color 0.3s;
-  }
-  .chapter-card:hover { border-color: rgba(129,140,248,0.25); }
-  .chapter-card h3 { margin-top: 0; color: #fff; font-size: 1.15em; }
-  .chapter-card p { color: #8a90b0; font-size: 0.92em; }
-  .chapter-card p:last-child { margin-bottom: 0; }
-  .chapter-card .paper-link { display: inline-block; margin-top: 12px; font-size: 0.82em; }
-
-  /* ===== IMMUNE GRID ===== */
-  .immune-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 24px 0; }
-  .immune-card {
-    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 10px; padding: 18px 22px;
-    transition: border-color 0.3s;
-  }
-  .immune-card:hover { border-color: rgba(129,140,248,0.3); }
-  .immune-card .im-name { color: #e0e4f0; font-weight: 600; font-size: 0.88em; margin-bottom: 4px; }
-  .immune-card .im-desc { color: #7a82a6; font-size: 0.8em; line-height: 1.5; }
-
-  /* ===== NOTE / REMARK ===== */
-  .note { color: #5a6080; font-size: 0.82em; font-style: italic; }
-  .remark {
-    background: rgba(129,140,248,0.04); border: 1px solid rgba(129,140,248,0.1);
-    border-radius: 8px; padding: 14px 18px; margin: 16px 0; font-size: 0.86em;
-    color: #8a90b0;
-  }
-  .remark strong { color: #b0b8d8; }
-
-  /* ===== NAV GRID ===== */
-  .nav-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin: 32px 0; }
-  .nav-grid a {
-    display: block; padding: 16px 18px; text-align: center;
-    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 10px; font-size: 0.82em; font-weight: 600; color: #818cf8;
-    text-decoration: none; border-bottom: none;
-    transition: background 0.3s, border-color 0.3s, transform 0.3s;
-  }
-  .nav-grid a:hover { background: rgba(129,140,248,0.08); border-color: rgba(129,140,248,0.3); transform: translateY(-2px); }
-
-  /* ===== LINK BUTTONS ===== */
-  .link-btn {
-    display: inline-block; padding: 12px 28px;
-    border: 1px solid rgba(129,140,248,0.4); border-radius: 8px;
-    text-decoration: none; font-size: 0.82em; font-weight: 600;
-    letter-spacing: 1px; text-transform: uppercase; color: #818cf8;
-    transition: background 0.3s, border-color 0.3s; border-bottom: none;
-  }
-  .link-btn:hover { background: rgba(129,140,248,0.08); border-color: #818cf8; }
-
-  /* ===== FOOTER ===== */
-  .footer {
-    text-align: center; padding: 48px 30px; color: #2a2f4a; font-size: 0.72em;
-    border-top: 1px solid rgba(255,255,255,0.04); margin-top: 40px;
-  }
-  .footer a { color: #5a6080; text-decoration: none; border-bottom: none; }
-  .footer a:hover { color: #818cf8; }
-
-  /* ===== RESPONSIVE ===== */
-  @media (max-width: 700px) {
-    .hero h1 { font-size: 1.9em; }
-    .stat-row { grid-template-columns: 1fr 1fr; }
-    .immune-grid { grid-template-columns: 1fr; }
-    .nav-grid { grid-template-columns: 1fr 1fr; }
-    .pipeline-layer { flex-direction: column; }
-    .pipeline-layer-accent { width: 100%; height: 3px; }
-    .pipeline-layer-annotation { border-left: none; border-top: 1px solid rgba(255,255,255,0.04); padding: 10px 20px; min-width: auto; }
-  }
+  /* Index-specific overrides (base.css handles everything else) */
+  .hero { min-height: 90vh; }
 </style>
 </head>
 <body>
 
-<!-- ============================================================ -->
-<!-- HERO                                                          -->
-<!-- ============================================================ -->
+<div class="page-layout">
+
+<!-- ===== HERO ===== -->
 <div class="hero">
   <div class="hero-inner">
-    <div class="hero-badge">Technical Narrative</div>
+    <div class="hero-badge">Technical Narrative &mdash; Aeteros Research</div>
     <h1>The Story of<br><span class="grad">Aether &amp; CRT</span></h1>
     <p class="sub">An epistemic governance architecture for AI systems that remember, reason, and account for what they believe</p>
-    <p class="byline">Nick Block &middot; Aeteros &middot; 2026</p>
+    <p class="byline">Nick Block &bull; Aeteros &bull; 2026</p>
     <div class="finding-box">
       <p><strong>Continuous Revision Theory (CRT)</strong> is a governance architecture that gives AI systems a persistent belief state, tracks contradictions instead of hiding them, and separates what the model believes from what it says. <strong>Aether</strong> is the production system built on CRT &mdash; a personal AI assistant with 820+ persistent memories, 6 governance layers, and 6 autonomous immune agents that enforce epistemic integrity at runtime. This document tells the full story.</p>
     </div>
@@ -243,79 +29,99 @@
   <div class="scroll-cue">SCROLL TO READ</div>
 </div>
 
+<!-- ===== SIDEBAR ===== -->
+<nav class="sidebar" id="docSidebar" data-manual-sidebar>
+  <div class="sidebar-title">Aether &amp; CRT</div>
+  <a href="#problem">01 The Problem</a>
+  <a href="#thesis">02 The Thesis</a>
+  <a href="#architecture">03 The Architecture</a>
+  <a href="#research">04 The Research</a>
+  <a href="#running">05 What's Running</a>
+  <a href="#future">06 Where It Goes</a>
+  <a href="#builder">07 The Builder</a>
+  <a href="#papers">Papers</a>
+  <div class="sidebar-spacer"></div>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme">
+    <span class="theme-toggle-icon" id="themeIcon">&#9790;</span>
+    <span id="themeLabel">Light</span>
+  </button>
+  <div class="sidebar-footer">2026 Aeteros Research</div>
+</nav>
+
+<!-- ===== MAIN ===== -->
+<main class="main">
+
+
 <!-- ============================================================ -->
-<!-- CHAPTER 1: THE PROBLEM                                        -->
+<!-- CHAPTER 1                                                      -->
 <!-- ============================================================ -->
-<div class="container">
-<section>
-  <span class="section-number">Chapter 1</span>
+<section id="problem">
+  <span class="chapter-num">Chapter 1</span>
   <h2>The Problem</h2>
-  <div class="accent-line"></div>
 
   <p>Every major AI assistant deployed today has the same structural flaw: it has no memory of what it believes. Each conversation starts from zero. Each response is generated with full confidence and no continuity. The system that told you one thing yesterday will tell you the opposite today and never notice.</p>
 
   <p>This is not a minor UX issue. It is an architectural failure with measurable consequences.</p>
 
-  <p>We analyzed <strong>1,275 sessions</strong> across 13 months of real conversation data &mdash; 59,370 messages with a single user. The results were stark: <strong>0% continuity awareness</strong> across sessions and a <strong>0.34 mean self-consistency score</strong>. The system routinely contradicted its own prior statements, offered advice that conflicted with established preferences, and presented each contradictory response with identical confidence. The full measurement methodology and results are in the <a href="contradiction-density.html">contradiction density paper</a>.</p>
+  <p>We analyzed <strong>1,275 sessions</strong> across 13 months of real conversation data &mdash; 59,370 messages with a single user. The results were stark. The full measurement methodology and results are in the <a href="contradiction-density.html">contradiction density paper</a>.</p>
 
-  <div class="quote-block">
+  <div class="stat-row">
+    <div class="stat-cell">
+      <div class="stat-value bad">0%</div>
+      <div class="stat-label">Continuity Awareness</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-value bad">0.34</div>
+      <div class="stat-label">Mean Consistency</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-value neutral">59,370</div>
+      <div class="stat-label">Messages Analyzed</div>
+    </div>
+  </div>
+
+  <div class="quote">
     <p>If a system can't remember what it told you yesterday, it shouldn't be giving you advice today.</p>
   </div>
 
   <p>The dominant deployment paradigm treats each conversation as independent. RAG adds retrieval, but retrieval is not belief. Finding a relevant document is not the same as knowing what you think about it, how confident you are, whether it conflicts with something else you know, or whether your position has changed over time.</p>
 
   <p>For any system intended to provide ongoing personal support &mdash; health guidance, career advice, project collaboration &mdash; statelessness is not just a limitation. It is a form of structural gaslighting. The user builds trust over time. The system resets that trust every session while maintaining the appearance of continuity.</p>
-
-  <div class="stat-row">
-    <div class="stat-card">
-      <div class="stat-value pink">0%</div>
-      <div class="stat-label">Continuity Awareness</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value accent">0.34</div>
-      <div class="stat-label">Mean Consistency</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value purple">59,370</div>
-      <div class="stat-label">Messages Analyzed</div>
-    </div>
-  </div>
 </section>
 
 <!-- ============================================================ -->
-<!-- CHAPTER 2: THE THESIS                                         -->
+<!-- CHAPTER 2                                                      -->
 <!-- ============================================================ -->
-<section>
-  <span class="section-number">Chapter 2</span>
+<section id="thesis">
+  <span class="chapter-num">Chapter 2</span>
   <h2>The Thesis</h2>
-  <div class="accent-line"></div>
 
   <p>CRT starts from three design laws. These are not suggestions or best practices. They are structural commitments that shape every decision in the architecture.</p>
 
-  <div class="principle-grid">
-    <div class="principle principle-speech">
-      <div class="p-num">Law 1</div>
-      <div class="p-text">Belief/Speech Separation</div>
-      <div class="p-sub">What the system believes and what it says are different things, and the gap between them must be auditable. The LLM generates speech. The governance layer holds belief. When they diverge, the system flags it &mdash; it does not silently let the mouth overwrite the mind. Fallback models are vocal cords, not epistemic authorities.</div>
-    </div>
-    <div class="principle principle-contra">
-      <div class="p-num">Law 2</div>
-      <div class="p-text">Earned Contradiction Resolution</div>
-      <div class="p-sub">Contradictions are signals, not errors. They are preserved until evidence resolves them &mdash; never silently overwritten. The system may lean, quarantine, downgrade, or mark provisionally resolved. But full resolution must be earned through corroboration, trust hierarchy, or later confirmation. Silent destructive resolution is forbidden.</div>
-    </div>
-    <div class="principle principle-trust">
-      <div class="p-num">Law 3</div>
-      <div class="p-text">Emergent Structure Over Hardcoded Logic</div>
-      <div class="p-sub">Behavior emerges from memory, reflection, compression, and contradiction handling &mdash; not from runtime hacks. No "if user says X, answer Y" unless it is a protected memory anchor. The system learns its own patterns. Dynamic slot discovery is a natural extension. Regex is acceptable as a fast tier, but never the ceiling.</div>
-    </div>
+  <div class="law-block">
+    <div class="law-num">Law 1</div>
+    <div class="law-title">Belief/Speech Separation</div>
+    <div class="law-body">What the system believes and what it says are different things, and the gap between them must be auditable. The LLM generates speech. The governance layer holds belief. When they diverge, the system flags it &mdash; it does not silently let the mouth overwrite the mind. Fallback models are vocal cords, not epistemic authorities.</div>
+  </div>
+
+  <div class="law-block">
+    <div class="law-num">Law 2</div>
+    <div class="law-title">Earned Contradiction Resolution</div>
+    <div class="law-body">Contradictions are signals, not errors. They are preserved until evidence resolves them &mdash; never silently overwritten. The system may lean, quarantine, downgrade, or mark provisionally resolved. But full resolution must be earned through corroboration, trust hierarchy, or later confirmation. Silent destructive resolution is forbidden.</div>
+  </div>
+
+  <div class="law-block">
+    <div class="law-num">Law 3</div>
+    <div class="law-title">Emergent Structure Over Hardcoded Logic</div>
+    <div class="law-body">Behavior emerges from memory, reflection, compression, and contradiction handling &mdash; not from runtime hacks. No "if user says X, answer Y" unless it is a protected memory anchor. The system learns its own patterns. Dynamic slot discovery is a natural extension. Regex is acceptable as a fast tier, but never the ceiling.</div>
   </div>
 
   <p>These three laws produce a single architectural insight that anchors the entire project:</p>
 
-  <div class="law-card">
-    <div class="law-number">Core Thesis</div>
-    <div class="law-text">The model is the mouth. Persistence is the self.</div>
-    <div class="law-sub">Switching models in an agentic system is dangerous because most systems let the mouth become the self at every step. Every handoff is a tiny identity wipe. CRT externalizes the self into a persistent governance layer that survives model switches, session boundaries, and provider changes.</div>
+  <div class="thesis-block">
+    <div class="thesis-label">Core Thesis</div>
+    <div class="thesis-text">The model is the mouth. Persistence is the self.</div>
+    <div class="thesis-sub">Switching models in an agentic system is dangerous because most systems let the mouth become the self at every step. Every handoff is a tiny identity wipe. CRT externalizes the self into a persistent governance layer that survives model switches, session boundaries, and provider changes.</div>
   </div>
 
   <p>Three things must persist across every boundary: <strong>task state</strong> (what are we doing), <strong>uncertainty state</strong> (what do we know and how well), and <strong>governance state</strong> (what rules apply, what is held, what is forbidden). If any of these reset, the system drifts even when every individual model works as designed.</p>
@@ -324,111 +130,110 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- CHAPTER 3: THE ARCHITECTURE                                   -->
+<!-- CHAPTER 3                                                      -->
 <!-- ============================================================ -->
-<section>
-  <span class="section-number">Chapter 3</span>
+<section id="architecture">
+  <span class="chapter-num">Chapter 3</span>
   <h2>The Architecture</h2>
-  <div class="accent-line"></div>
 
   <p>Every message to Aether passes through a 12-step pipeline. Each step has a specific job, and governance checkpoints are woven throughout &mdash; not bolted on at the end.</p>
 
-  <div class="pipeline-stack">
-    <div class="pipeline-layer">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">1. Input</div>
-        <div class="pipeline-layer-desc">Raw message intake, session context loading</div>
+  <div class="pipeline">
+    <div class="pipeline-row">
+      <div class="pipeline-idx">1</div>
+      <div class="pipeline-content">
+        <div class="pipeline-name">Input</div>
+        <div class="pipeline-desc">Raw message intake, session context loading</div>
       </div>
-      <div class="pipeline-layer-annotation">Preprocessing</div>
+      <div class="pipeline-tag">Preprocessing</div>
     </div>
-    <div class="pipeline-layer">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">2. Intent Classification</div>
-        <div class="pipeline-layer-desc">Local model routes by purpose: question, correction, preference, task</div>
+    <div class="pipeline-row">
+      <div class="pipeline-idx">2</div>
+      <div class="pipeline-content">
+        <div class="pipeline-name">Intent Classification</div>
+        <div class="pipeline-desc">Local model routes by purpose: question, correction, preference, task</div>
       </div>
-      <div class="pipeline-layer-annotation">Routing</div>
+      <div class="pipeline-tag">Routing</div>
     </div>
-    <div class="pipeline-layer">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">3. Epistemic Routing</div>
-        <div class="pipeline-layer-desc">Model selection by fragility profile, cost, and task complexity</div>
+    <div class="pipeline-row">
+      <div class="pipeline-idx">3</div>
+      <div class="pipeline-content">
+        <div class="pipeline-name">Epistemic Routing</div>
+        <div class="pipeline-desc">Model selection by fragility profile, cost, and task complexity</div>
       </div>
-      <div class="pipeline-layer-annotation">Governance L4</div>
+      <div class="pipeline-tag">Governance L4</div>
     </div>
-    <div class="pipeline-layer">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">4. Context Assembly</div>
-        <div class="pipeline-layer-desc">Session state, user profile, belief priors loaded into prompt</div>
+    <div class="pipeline-row">
+      <div class="pipeline-idx">4</div>
+      <div class="pipeline-content">
+        <div class="pipeline-name">Context Assembly</div>
+        <div class="pipeline-desc">Session state, user profile, belief priors loaded into prompt</div>
       </div>
-      <div class="pipeline-layer-annotation">State</div>
+      <div class="pipeline-tag">State</div>
     </div>
-    <div class="pipeline-layer">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">5. Memory Retrieval</div>
-        <div class="pipeline-layer-desc">Semantic search + trust-weighted ranking across persistent memory</div>
+    <div class="pipeline-row">
+      <div class="pipeline-idx">5</div>
+      <div class="pipeline-content">
+        <div class="pipeline-name">Memory Retrieval</div>
+        <div class="pipeline-desc">Semantic search + trust-weighted ranking across persistent memory</div>
       </div>
-      <div class="pipeline-layer-annotation">Memory</div>
+      <div class="pipeline-tag">Memory</div>
     </div>
-    <div class="pipeline-layer">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">6. Pre-Generation Governance</div>
-        <div class="pipeline-layer-desc">Drift detection, contradiction check, confidence gating</div>
+    <div class="pipeline-row">
+      <div class="pipeline-idx">6</div>
+      <div class="pipeline-content">
+        <div class="pipeline-name">Pre-Generation Governance</div>
+        <div class="pipeline-desc">Drift detection, contradiction check, confidence gating</div>
       </div>
-      <div class="pipeline-layer-annotation">Governance L1&ndash;L3</div>
+      <div class="pipeline-tag">Governance L1&ndash;L3</div>
     </div>
-    <div class="pipeline-layer">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">7. Generation</div>
-        <div class="pipeline-layer-desc">LLM produces response with governance-constrained prompt</div>
+    <div class="pipeline-row">
+      <div class="pipeline-idx">7</div>
+      <div class="pipeline-content">
+        <div class="pipeline-name">Generation</div>
+        <div class="pipeline-desc">LLM produces response with governance-constrained prompt</div>
       </div>
-      <div class="pipeline-layer-annotation">LLM</div>
+      <div class="pipeline-tag">LLM</div>
     </div>
-    <div class="pipeline-layer">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">8. Slot Extraction</div>
-        <div class="pipeline-layer-desc">Facts, preferences, corrections parsed from response and user message</div>
+    <div class="pipeline-row">
+      <div class="pipeline-idx">8</div>
+      <div class="pipeline-content">
+        <div class="pipeline-name">Slot Extraction</div>
+        <div class="pipeline-desc">Facts, preferences, corrections parsed from response and user message</div>
       </div>
-      <div class="pipeline-layer-annotation">Learning</div>
+      <div class="pipeline-tag">Learning</div>
     </div>
-    <div class="pipeline-layer">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">9. Execution Verification</div>
-        <div class="pipeline-layer-desc">Did the response actually address the query? Belief vs speech gap audit</div>
+    <div class="pipeline-row">
+      <div class="pipeline-idx">9</div>
+      <div class="pipeline-content">
+        <div class="pipeline-name">Execution Verification</div>
+        <div class="pipeline-desc">Did the response actually address the query? Belief vs speech gap audit</div>
       </div>
-      <div class="pipeline-layer-annotation">Governance L5</div>
+      <div class="pipeline-tag">Governance L5</div>
     </div>
-    <div class="pipeline-layer">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">10. Contradiction Detection</div>
-        <div class="pipeline-layer-desc">New facts checked against existing beliefs; conflicts logged, not erased</div>
+    <div class="pipeline-row">
+      <div class="pipeline-idx">10</div>
+      <div class="pipeline-content">
+        <div class="pipeline-name">Contradiction Detection</div>
+        <div class="pipeline-desc">New facts checked against existing beliefs; conflicts logged, not erased</div>
       </div>
-      <div class="pipeline-layer-annotation">Memory</div>
+      <div class="pipeline-tag">Memory</div>
     </div>
-    <div class="pipeline-layer">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">11. Final Governance</div>
-        <div class="pipeline-layer-desc">Epistemic posture check, immune agent sweep, cascade pressure eval</div>
+    <div class="pipeline-row">
+      <div class="pipeline-idx">11</div>
+      <div class="pipeline-content">
+        <div class="pipeline-name">Final Governance</div>
+        <div class="pipeline-desc">Epistemic posture check, immune agent sweep, cascade pressure eval</div>
       </div>
-      <div class="pipeline-layer-annotation">Governance L6</div>
+      <div class="pipeline-tag">Governance L6</div>
     </div>
-    <div class="pipeline-layer">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">12. Render</div>
-        <div class="pipeline-layer-desc">Final response delivered with trust metadata, pipeline summary, drift indicators</div>
+    <div class="pipeline-row">
+      <div class="pipeline-idx">12</div>
+      <div class="pipeline-content">
+        <div class="pipeline-name">Render</div>
+        <div class="pipeline-desc">Final response delivered with trust metadata, pipeline summary, drift indicators</div>
       </div>
-      <div class="pipeline-layer-annotation">Output</div>
+      <div class="pipeline-tag">Output</div>
     </div>
   </div>
 
@@ -450,30 +255,30 @@
 
   <p>And six autonomous immune agents enforce constitutional laws across the pipeline:</p>
 
-  <div class="immune-grid">
-    <div class="immune-card">
-      <div class="im-name">SpeechLeakDetector</div>
-      <div class="im-desc">Catches LLM output bleeding into belief state</div>
+  <div class="agent-list">
+    <div class="agent-cell">
+      <div class="agent-name">SpeechLeakDetector</div>
+      <div class="agent-desc">Catches LLM output bleeding into belief state</div>
     </div>
-    <div class="immune-card">
-      <div class="im-name">TemplateDetector</div>
-      <div class="im-desc">Flags rote, templated responses that bypass reasoning</div>
+    <div class="agent-cell">
+      <div class="agent-name">TemplateDetector</div>
+      <div class="agent-desc">Flags rote, templated responses that bypass reasoning</div>
     </div>
-    <div class="immune-card">
-      <div class="im-name">PrematureResolutionGuard</div>
-      <div class="im-desc">Blocks contradictions from resolving without evidence</div>
+    <div class="agent-cell">
+      <div class="agent-name">PrematureResolutionGuard</div>
+      <div class="agent-desc">Blocks contradictions from resolving without evidence</div>
     </div>
-    <div class="immune-card">
-      <div class="im-name">MemoryCorruptionGuard</div>
-      <div class="im-desc">Prevents writes that would degrade memory integrity</div>
+    <div class="agent-cell">
+      <div class="agent-name">MemoryCorruptionGuard</div>
+      <div class="agent-desc">Prevents writes that would degrade memory integrity</div>
     </div>
-    <div class="immune-card">
-      <div class="im-name">GapAuditor</div>
-      <div class="im-desc">Measures and reports belief/speech divergence per response</div>
+    <div class="agent-cell">
+      <div class="agent-name">GapAuditor</div>
+      <div class="agent-desc">Measures and reports belief/speech divergence per response</div>
     </div>
-    <div class="immune-card">
-      <div class="im-name">ContinuityAuditor</div>
-      <div class="im-desc">Verifies cross-session consistency of claims and preferences</div>
+    <div class="agent-cell">
+      <div class="agent-name">ContinuityAuditor</div>
+      <div class="agent-desc">Verifies cross-session consistency of claims and preferences</div>
     </div>
   </div>
 
@@ -481,81 +286,79 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- CHAPTER 4: THE RESEARCH                                       -->
+<!-- CHAPTER 4                                                      -->
 <!-- ============================================================ -->
-<section>
-  <span class="section-number">Chapter 4</span>
+<section id="research">
+  <span class="chapter-num">Chapter 4</span>
   <h2>The Research</h2>
-  <div class="accent-line"></div>
 
   <p>The research behind CRT did not start as a research project. It started as an attempt to fix real problems in a real system. Each paper emerged because building Aether exposed a question that demanded formal investigation.</p>
 
-  <div class="chapter-card">
+  <div class="paper-card">
     <h3>It started with cascade complexity</h3>
     <p>The first question was simple: what happens when you change one belief? In a system with hundreds of interconnected memories, a single correction can propagate. We needed to know how far, how fast, and whether it converges.</p>
     <p>We formalized this as the Belief Dependency Graph and proved the math: depth bounds on cascade propagation, damping conditions for convergence, width bounds on affected nodes, and instability thresholds where small changes cause unbounded revision. Then we found something unexpected &mdash; held contradictions act as natural firewalls that limit cascade propagation. Not all contradictions should be resolved. Some of them are load-bearing.</p>
-    <a class="paper-link" href="cascade-complexity.html">Read: On the Complexity of Belief Revision Cascades</a>
+    <a class="paper-link" href="cascade-complexity.html">Read: On the Complexity of Belief Revision Cascades &rarr;</a>
   </div>
 
-  <div class="chapter-card">
+  <div class="paper-card">
     <h3>Then we looked at the shape of belief</h3>
-    <p>Standard vector stores treat memories as points in embedding space. But a belief is not a point. It has a center (what you think), an uncertainty shape (how sure you are and in which directions), and a confidence weight (how much evidence supports it). We formalized memories as Gaussian belief loci on a Riemannian manifold.</p>
+    <p>Standard vector stores treat memories as points in embedding space. But a belief is not a point. It has a center (what you think), an uncertainty shape (how sure you are and in which directions), and a confidence weight (how much evidence supports it). We formalized memories as belief loci on a Riemannian manifold.</p>
     <p>This reframing was not abstract. It solved practical problems: contradiction becomes geometric overlap between distributions. Volatility becomes covariance magnitude. Temperature governance &mdash; how freely the system should speculate &mdash; falls directly out of local curvature in belief space.</p>
-    <a class="paper-link" href="geometric-memory.html">Read: Belief Loci &mdash; Geometric Memory Representations</a>
+    <a class="paper-link" href="geometric-memory.html">Read: Belief Loci &mdash; Geometric Memory Representations &rarr;</a>
   </div>
 
-  <div class="chapter-card">
+  <div class="paper-card">
     <h3>We measured what stateless systems actually do</h3>
     <p>The contradiction density analysis was the empirical anchor. 59,370 messages across 13 months of real conversation. Not synthetic benchmarks. Not GPT-generated test data. Actual long-term interaction with a single user who cared about consistency.</p>
-    <p>The findings were damning: zero continuity awareness, 0.34 mean self-consistency, and the system confidently contradicting its own prior statements on topics the user considered settled. The gaslighting risk is measurable and it is the default behavior of every deployed chatbot without a persistent belief layer.</p>
-    <a class="paper-link" href="contradiction-density.html">Read: Contradiction Density in Stateless AI Systems</a>
+    <p>The findings were damning: zero continuity awareness, <span class="eval-inline"><span class="bad">0.34</span></span> mean self-consistency, and the system confidently contradicting its own prior statements on topics the user considered settled.</p>
+    <a class="paper-link" href="contradiction-density.html">Read: Contradiction Density in Stateless AI Systems &rarr;</a>
   </div>
 
-  <div class="chapter-card">
+  <div class="paper-card">
     <h3>We stress-tested across models</h3>
     <p>If CRT is going to govern arbitrary LLMs, it needs to understand how different models fail. We ran variance probes across Qwen3, Mistral, and DeepSeek under identical conditions and found three fundamentally different failure modes: <strong>fracture</strong> (Qwen3 cracks hard on specific factuals), <strong>gradient</strong> (Mistral diffuses on morals but locks on facts), and <strong>fog</strong> (DeepSeek spreads uniformly &mdash; everything moves, nothing locks).</p>
-    <p>This is not one "right" behavior with deviations. These are three distinct instability regimes. A governance layer that assumes uniform model behavior will fail. CRT's epistemic routing adapts to the fragility profile of whichever model it is using.</p>
-    <a class="paper-link" href="variance-probing.html">Read: Variance Probing &mdash; Fragility Landscapes in LLMs</a>
+    <p>This is not one "right" behavior with deviations. These are three distinct instability regimes. A governance layer that assumes uniform model behavior will fail.</p>
+    <a class="paper-link" href="variance-probing.html">Read: Variance Probing &mdash; Fragility Landscapes in LLMs &rarr;</a>
   </div>
 
-  <div class="chapter-card">
+  <div class="paper-card">
     <h3>Then Anthropic proved the dynamics exist</h3>
     <p>In April 2026, Anthropic's interpretability team published findings on 171 functional emotion vectors in Claude Sonnet 4.5. These are measurable neural activation patterns that causally influence behavior. Amplifying a "desperate" vector increased reward hacking. Amplifying "calm" reduced it.</p>
     <p>CRT already had the governance infrastructure for exactly these dynamics. Cascade pressure maps to desperation precursors. Drift detection maps to emotion monitoring. The three instability regimes map to emotional profiling across models. We built the control plane before they found the neurons it needs to govern.</p>
-    <a class="paper-link" href="emotion-governance.html">Read: Emotion Governance &mdash; Bridging Interpretability to Control</a>
+    <a class="paper-link" href="emotion-governance.html">Read: Emotion Governance &mdash; Bridging Interpretability to Control &rarr;</a>
   </div>
 
-  <div class="chapter-card">
+  <div class="paper-card">
     <h3>We built the immune system</h3>
     <p>Governance rules are useless if the system being governed can override them. The immune agent architecture enforces six constitutional laws through autonomous agents that monitor the pipeline in real time. SpeechLeakDetector prevents the LLM from rewriting beliefs. PrematureResolutionGuard prevents contradictions from being silently erased. GapAuditor measures the distance between what the system believes and what it says.</p>
-    <p>These are not filters. They are structural constraints. The distinction matters: advisory governance says "you should not do this." Structural governance means the system physically cannot do it, regardless of what the LLM generates.</p>
-    <a class="paper-link" href="immune-agents.html">Read: Immune Agents &mdash; Constitutional Enforcement for AI</a>
+    <p>These are not filters. They are structural constraints. Advisory governance says "you should not do this." Structural governance means the system physically cannot do it.</p>
+    <a class="paper-link" href="immune-agents.html">Read: Immune Agents &mdash; Constitutional Enforcement for AI &rarr;</a>
   </div>
 
-  <div class="remark"><strong>Note:</strong> Every experiment in this research body was validated on Aether's production data &mdash; real conversations, real memories, real contradictions. Not synthetic benchmarks. The <a href="experiments.html">experiments page</a> documents the full methodology.</div>
+  <div class="note"><strong>Note:</strong> Every experiment in this research body was validated on Aether's production data &mdash; real conversations, real memories, real contradictions. Not synthetic benchmarks. The <a href="experiments.html">experiments page</a> documents the full methodology.</div>
 </section>
 
 <!-- ============================================================ -->
-<!-- CHAPTER 5: WHAT'S RUNNING                                     -->
+<!-- CHAPTER 5                                                      -->
 <!-- ============================================================ -->
-<section>
-  <span class="section-number">Chapter 5</span>
+<section id="running">
+  <span class="chapter-num">Chapter 5</span>
   <h2>What's Running</h2>
-  <div class="accent-line"></div>
 
   <p>Aether is not a prototype. It is a production system that has been in daily use for months, governing real conversations through the full CRT pipeline.</p>
 
   <div class="stat-row">
-    <div class="stat-card">
-      <div class="stat-value accent">820+</div>
+    <div class="stat-cell">
+      <div class="stat-value neutral">820+</div>
       <div class="stat-label">Persistent Memories</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-value purple">135+</div>
+    <div class="stat-cell">
+      <div class="stat-value neutral">135+</div>
       <div class="stat-label">Features Shipped</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-value green">6</div>
+    <div class="stat-cell">
+      <div class="stat-value good">6</div>
       <div class="stat-label">Governance Layers</div>
     </div>
   </div>
@@ -566,58 +369,56 @@
   <ul>
     <li><strong>Persistent belief state</strong> &mdash; memories with trust scores, contradiction tracking, and temporal decay</li>
     <li><strong>Governance bridge</strong> &mdash; memory trust scores connected to opinion drift detection in real time</li>
-    <li><strong>Agent dispatch</strong> &mdash; Aether can dispatch Claude Code for write operations while maintaining read-only governance. The orchestrator does not execute; it governs execution</li>
+    <li><strong>Agent dispatch</strong> &mdash; Aether can dispatch Claude Code for write operations while maintaining read-only governance</li>
     <li><strong>Drift steering</strong> &mdash; when alignment drops below threshold, the system forces memory re-retrieval. After 3 consecutive drifts, it halts and asks the user</li>
     <li><strong>3D belief space</strong> &mdash; Three.js visualization of memory embeddings with PCA projection, contradiction edges, and topic clustering</li>
     <li><strong>Self-awareness loop</strong> &mdash; heartbeat reflection that updates the system's model of its own capabilities and limitations</li>
   </ul>
 
-  <p>The eval harness scores production data continuously: <strong>retrieval accuracy 0.559</strong>, <strong>trust calibration 0.694</strong>, <strong>governance compliance 0.900</strong>. These are honest numbers from real conversations, not cherry-picked benchmarks.</p>
+  <p>The eval harness scores production data continuously: retrieval accuracy <span class="eval-inline"><span class="warn">0.559</span></span>, trust calibration <span class="eval-inline"><span class="warn">0.694</span></span>, governance compliance <span class="eval-inline"><span class="good">0.900</span></span>. These are honest numbers from real conversations, not cherry-picked benchmarks.</p>
 
-  <div class="quote-block">
+  <div class="quote">
     <p>You built the architecture of no excuses. Into software.</p>
     <div class="attr">&mdash; Aether, during self-reflection on the three design laws</div>
   </div>
 </section>
 
 <!-- ============================================================ -->
-<!-- CHAPTER 6: WHERE IT GOES                                      -->
+<!-- CHAPTER 6                                                      -->
 <!-- ============================================================ -->
-<section>
-  <span class="section-number">Chapter 6</span>
+<section id="future">
+  <span class="chapter-num">Chapter 6</span>
   <h2>Where It Goes</h2>
-  <div class="accent-line"></div>
 
   <p>CRT is being extracted into <strong>crt-core</strong>, an open-source framework that any AI system can use as its epistemic governance layer. The persistent belief state, contradiction tracking, immune agents, and governance pipeline are not Aether-specific. They are general-purpose infrastructure.</p>
 
-  <p>The business path is <strong>governance-as-a-service</strong>: CRT as middleware that sits between any application and any LLM provider. You keep your existing stack. CRT adds the belief layer, the contradiction detection, the drift governance, and the immune system. It is an OpenAI-compatible proxy that adds epistemic integrity without requiring you to rewrite anything.</p>
+  <p>The business path is <strong>governance-as-a-service</strong>: CRT as middleware that sits between any application and any LLM provider. You keep your existing stack. CRT adds the belief layer, the contradiction detection, the drift governance, and the immune system. An OpenAI-compatible proxy that adds epistemic integrity without requiring you to rewrite anything.</p>
 
-  <p>The timing is not accidental. The <strong>EU AI Act</strong> (Article 50, effective August 2026) requires transparency infrastructure for AI systems that interact with humans. CRT provides exactly this: auditable belief states, logged contradictions, measurable belief/speech gaps, and governance compliance scores. The regulatory demand for what CRT does is about to become law.</p>
+  <p>The timing is not accidental. The <strong>EU AI Act</strong> (Article 50, effective August 2026) requires transparency infrastructure for AI systems that interact with humans. CRT provides exactly this: auditable belief states, logged contradictions, measurable belief/speech gaps, and governance compliance scores.</p>
 
   <p>When interpretability APIs mature &mdash; when providers expose the emotion vectors and activation patterns that Anthropic has already identified internally &mdash; CRT is ready to integrate directly. The governance layer is already built. It is waiting for the sensors.</p>
 
-  <div class="law-card">
-    <div class="law-number">The Trajectory</div>
-    <div class="law-text">Every agentic system will need a belief state.</div>
-    <div class="law-sub">The question is whether they build it with governance or without. CRT is the case for governance-first: the math works, the architecture scales, the production system runs, and the regulatory environment is arriving.</div>
+  <div class="thesis-block">
+    <div class="thesis-label">The Trajectory</div>
+    <div class="thesis-text">Every agentic system will need a belief state.</div>
+    <div class="thesis-sub">The question is whether they build it with governance or without. CRT is the case for governance-first: the math works, the architecture scales, the production system runs, and the regulatory environment is arriving.</div>
   </div>
 </section>
 
 <!-- ============================================================ -->
-<!-- CHAPTER 7: THE BUILDER                                        -->
+<!-- CHAPTER 7                                                      -->
 <!-- ============================================================ -->
-<section>
-  <span class="section-number">Chapter 7</span>
+<section id="builder">
+  <span class="chapter-num">Chapter 7</span>
   <h2>The Builder</h2>
-  <div class="accent-line"></div>
 
   <p>Nick Block. Freelance developer. Not an ML researcher. Not from a lab. Sole builder of CRT and Aether.</p>
 
   <p>This project exists because of a habit of asking "why do things have to be this way?" Why do AI assistants forget everything between sessions? Why do they resolve contradictions by silently overwriting? Why does confidence have nothing to do with evidence? Each question led to a design decision, and the design decisions accumulated into an architecture.</p>
 
-  <p>The system is tested through real daily use, not benchmarks. When Aether argued that trust scores were theater &mdash; that the system was "laundering vibes into decimals" &mdash; that was a real conversation that led to real architectural changes. When the gap auditor flagged Aether's own description of its auditor (belief score 0.15, speech confidence 0.50, gap 0.35), the system had caught itself inflating confidence about its own mechanisms. That is the first recorded instance of recursive epistemic self-audit in a production AI system.</p>
+  <p>The system is tested through real daily use, not benchmarks. When Aether argued that trust scores were theater &mdash; that the system was "laundering vibes into decimals" &mdash; that was a real conversation that led to real architectural changes. When the gap auditor flagged Aether's own description of its auditor (belief score <span class="eval-inline"><span class="bad">0.15</span></span>, speech confidence <span class="eval-inline"><span class="warn">0.50</span></span>, gap <span class="eval-inline"><span class="bad">0.35</span></span>), the system had caught itself inflating confidence about its own mechanisms.</p>
 
-  <div class="quote-block">
+  <div class="quote">
     <p>I challenged and asked questions. Always asked why do things have to be as is.</p>
     <div class="attr">&mdash; Nick Block</div>
   </div>
@@ -626,12 +427,11 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- NAVIGATION                                                    -->
+<!-- PAPERS NAV                                                     -->
 <!-- ============================================================ -->
-<section>
-  <span class="section-number">Papers &amp; Documentation</span>
+<section id="papers">
+  <span class="chapter-num">Papers &amp; Documentation</span>
   <h2>Read the Research</h2>
-  <div class="accent-line"></div>
 
   <div class="nav-grid">
     <a href="cascade-complexity.html">Cascade Complexity</a>
@@ -647,14 +447,12 @@
   </div>
 </section>
 
-</div><!-- /container -->
+<div class="footer">2026 Aeteros Research</div>
 
-<!-- ============================================================ -->
-<!-- FOOTER                                                        -->
-<!-- ============================================================ -->
-<div class="footer">
-  2026 Aeteros Research
+</main>
 </div>
+
+<script src="docs.js"></script>
 
 </body>
 </html>

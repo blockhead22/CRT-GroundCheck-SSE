@@ -12,113 +12,26 @@ MathJax = {
 </script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #060814; color: #c0c8e0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; line-height: 1.75; overflow-x: hidden; }
-
-  /* ===== HERO ===== */
-  .hero {
-    position: relative; width: 100%; min-height: 80vh;
-    display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(160deg, #060814 0%, #0c1228 30%, #1a0e2e 60%, #0d1a3a 100%);
-    overflow: hidden;
-  }
-  .hero::before {
-    content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-    background: radial-gradient(ellipse at 30% 50%, rgba(99,102,241,0.08) 0%, transparent 50%),
-                radial-gradient(ellipse at 70% 30%, rgba(236,72,153,0.06) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 80%, rgba(59,130,246,0.05) 0%, transparent 50%);
-    animation: drift 20s ease-in-out infinite alternate;
-  }
-  @keyframes drift { 0% { transform: translate(0,0) rotate(0deg); } 100% { transform: translate(-2%,1%) rotate(1deg); } }
-  .hero-inner {
-    position: relative; z-index: 1; text-align: center; max-width: 820px; padding: 80px 30px;
-  }
-  .hero-badge {
-    display: inline-block; font-size: 0.7em; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
-    color: #818cf8; border: 1px solid rgba(129,140,248,0.25); border-radius: 20px; padding: 6px 18px;
-    margin-bottom: 28px; background: rgba(129,140,248,0.06);
-  }
-  .hero h1 {
-    font-size: 2.8em; font-weight: 700; color: #fff; letter-spacing: -1.5px; line-height: 1.15; margin-bottom: 20px;
-  }
-  .hero h1 .grad {
-    background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-  }
-  .hero .sub { font-size: 1em; color: #7a82a6; margin-bottom: 12px; }
-  .hero .byline { font-size: 0.82em; color: #5a6080; margin-bottom: 36px; letter-spacing: 1px; }
-  .hero .finding-box {
-    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 12px; padding: 24px 28px; text-align: left; backdrop-filter: blur(12px);
-    max-width: 700px; margin: 0 auto;
-  }
-  .hero .finding-box p { color: #a0a8c8; font-size: 0.9em; margin-bottom: 0; line-height: 1.8; }
-  .hero .finding-box strong { color: #e0e4f0; }
-  .scroll-cue {
-    position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
-    color: #3a3f5c; font-size: 0.7em; letter-spacing: 1px; animation: pulse 2.5s ease-in-out infinite;
-  }
-  @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 0.7; } }
-
-  /* ===== LAYOUT ===== */
-  .container { max-width: 880px; margin: 0 auto; padding: 80px 30px; }
-  section { margin-bottom: 80px; }
-  h2 { font-size: 1.8em; color: #fff; margin-bottom: 16px; letter-spacing: -0.5px; font-weight: 700; }
-  h3 { font-size: 1.1em; color: #d0d4e8; margin: 32px 0 12px 0; font-weight: 600; }
-  h4 { font-size: 0.95em; color: #b0b8d8; margin: 24px 0 10px 0; font-weight: 600; }
-  p { margin-bottom: 16px; }
-  ul, ol { margin: 0 0 20px 24px; }
-  li { margin-bottom: 8px; color: #a0a8c8; }
-  strong { color: #e0e4f0; }
-  em { color: #c0c8e0; }
-  .accent-line { width: 48px; height: 3px; background: linear-gradient(90deg, #818cf8, #c084fc); border-radius: 2px; margin-bottom: 28px; }
-  .section-number { font-size: 0.68em; color: #818cf8; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; display: block; margin-bottom: 8px; }
-
-  /* ===== STAT CARDS ===== */
-  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 32px 0; }
-  .stat-card {
-    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 12px; padding: 24px 20px; text-align: center;
-    transition: border-color 0.3s, transform 0.3s;
-  }
-  .stat-card:hover { border-color: rgba(129,140,248,0.3); transform: translateY(-2px); }
-  .stat-card .stat-value { font-size: 2.2em; font-weight: 700; color: #fff; line-height: 1; margin-bottom: 6px; }
-  .stat-card .stat-value.accent { color: #818cf8; }
-  .stat-card .stat-value.purple { color: #c084fc; }
-  .stat-card .stat-value.pink { color: #f472b6; }
-  .stat-card .stat-value.green { color: #34d399; }
-  .stat-card .stat-label { font-size: 0.72em; color: #6a7096; text-transform: uppercase; letter-spacing: 1px; }
-
-  /* ===== TABLES ===== */
-  .table-wrap { overflow-x: auto; margin: 24px 0; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
-  thead th {
-    text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; font-size: 0.78em;
-    text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 2px solid rgba(255,255,255,0.06);
-  }
-  tbody td { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.03); color: #a0a8c8; }
-  tbody tr:hover td { background: rgba(129,140,248,0.03); }
-  td strong { color: #e0e4f0; }
-  .table-caption { font-size: 0.78em; color: #5a6080; font-style: italic; margin-top: 8px; text-align: center; }
+/* ===== LAYOUT ===== */
+/* ===== STAT CARDS ===== */
+.stat-card:hover { border-color: rgba(129,140,248,0.3); transform: translateY(-2px); }
+  .stat-card
+.stat-card
+.stat-card
+.stat-card
+.stat-card
+.stat-card
+/* ===== TABLES ===== */
+  .table-wra
+tbody tr:hover td { background: rgba(129,140,248,0.03); }
+  td
+.table-caption { font-size: 0.78em; color: #5a6080; font-style: italic; margin-top: 8px; text-align: center; }
 
   /* ===== BADGES ===== */
-  .badge {
-    display: inline-block; font-size: 0.6em; padding: 3px 10px; border-radius: 10px;
-    letter-spacing: 1px; text-transform: uppercase; font-weight: 600; vertical-align: middle; margin-left: 8px;
-  }
-  .badge-proven { background: rgba(52,211,153,0.12); color: #34d399; border: 1px solid rgba(52,211,153,0.25); }
-  .badge-conjecture { background: rgba(244,114,182,0.12); color: #f472b6; border: 1px solid rgba(244,114,182,0.25); }
-  .badge-def { background: rgba(192,132,252,0.12); color: #c084fc; border: 1px solid rgba(192,132,252,0.25); }
-  .badge-prop { background: rgba(251,191,36,0.12); color: #fbbf24; border: 1px solid rgba(251,191,36,0.25); }
-  .badge-corollary { background: rgba(129,140,248,0.12); color: #818cf8; border: 1px solid rgba(129,140,248,0.25); }
-
-  /* ===== QUOTE BLOCK ===== */
-  .quote-block {
-    border-left: 3px solid #818cf8; padding: 20px 24px; margin: 32px 0;
-    background: rgba(129,140,248,0.03); border-radius: 0 10px 10px 0;
-  }
-  .quote-block p { color: #b0b8d8; font-size: 1.02em; font-style: italic; margin: 0; }
-  .quote-block .attr { color: #5a6080; font-size: 0.75em; margin-top: 10px; font-style: normal; }
+.badge-pro
+/* ===== QUOTE BLOCK ===== */
+.quote-block
+.quote-block .attr { color: #5a6080; font-size: 0.75em; margin-top: 10px; font-style: normal; }
 
   /* ===== PRINCIPLE CARDS ===== */
   .principle-grid { display: grid; gap: 16px; margin: 24px 0; }
@@ -129,8 +42,8 @@ MathJax = {
   .principle .p-num { color: #5a6080; font-size: 0.65em; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
   .principle .p-text { color: #fff; font-size: 1.05em; margin-top: 8px; font-weight: 600; }
   .principle .p-sub { color: #8a90b0; font-size: 0.86em; margin-top: 10px; line-height: 1.7; }
-  .principle-contra { border-left-color: #f472b6; }
-  .principle-trust { border-left-color: #34d399; }
+  .principle-contr
+.principle-trust { border-left-color: #34d399; }
   .principle-speech { border-left-color: #818cf8; }
   .principle-belief { border-left-color: #c084fc; }
   .principle-variance { border-left-color: #fbbf24; }
@@ -151,8 +64,8 @@ MathJax = {
     border-radius: 10px; padding: 20px 24px; margin: 16px 0; font-size: 0.88em;
   }
   .proof-block .proof-label { color: #5a6080; font-size: 0.72em; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; display: block; }
-  .proof-block p { color: #9098b8; margin-bottom: 10px; }
-  .proof-block p:last-child { margin-bottom: 0; }
+  .proof-block
+.proof-block p:last-child { margin-bottom: 0; }
 
   /* ===== IMPL BLOCK ===== */
   .impl-block {
@@ -160,19 +73,16 @@ MathJax = {
     border-radius: 0 8px 8px 0; padding: 14px 20px; margin: 16px 0; font-size: 0.84em;
   }
   .impl-block .impl-label { color: #34d399; font-size: 0.68em; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; display: block; }
-  .impl-block p { color: #8a90b0; margin: 0; line-height: 1.65; }
-  .impl-block code { color: #818cf8; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.9em; }
-
-  /* ===== CODE BLOCK ===== */
+  .impl-block
+.impl-block
+/* ===== CODE BLOCK ===== */
   pre {
     background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
     border-radius: 8px; padding: 20px; margin: 20px 0; overflow-x: auto;
     font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.82em;
     color: #9098b8; line-height: 1.6;
   }
-  code { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.88em; color: #818cf8; }
-
-  /* ===== PIPELINE STACK ===== */
+/* ===== PIPELINE STACK ===== */
   .pipeline-stack { max-width: 620px; margin: 24px auto; display: flex; flex-direction: column; gap: 0; }
   .pipeline-layer {
     display: flex; align-items: stretch;
@@ -193,8 +103,8 @@ MathJax = {
   .pipeline-layer:nth-child(8) .pipeline-layer-accent { background: #f472b6; }
   .pipeline-layer-content { flex: 1; padding: 14px 20px; }
   .pipeline-layer-name { color: #e0e4f0; font-weight: 600; font-size: 0.9em; margin-bottom: 3px; }
-  .pipeline-layer-name code { font-size: 0.85em; color: #818cf8; }
-  .pipeline-layer-desc { color: #7a82a6; font-size: 0.8em; line-height: 1.5; }
+  .pipeline-layer-name
+.pipeline-layer-desc { color: #7a82a6; font-size: 0.8em; line-height: 1.5; }
   .pipeline-layer-annotation {
     display: flex; align-items: center; padding: 0 16px;
     font-size: 0.7em; color: #5a6080; font-style: italic; white-space: nowrap;
@@ -202,42 +112,24 @@ MathJax = {
   }
 
   /* ===== NOTE ===== */
-  .note { color: #5a6080; font-size: 0.82em; font-style: italic; }
-  .remark {
+.remark {
     background: rgba(129,140,248,0.04); border: 1px solid rgba(129,140,248,0.1);
     border-radius: 8px; padding: 14px 18px; margin: 16px 0; font-size: 0.86em;
     color: #8a90b0;
   }
-  .remark strong { color: #b0b8d8; }
-
-  /* ===== LINK BUTTONS ===== */
-  .link-btn {
-    display: inline-block; padding: 12px 28px;
-    border: 1px solid rgba(129,140,248,0.4); border-radius: 8px;
-    text-decoration: none; font-size: 0.82em; font-weight: 600;
-    letter-spacing: 1px; text-transform: uppercase; color: #818cf8;
-    transition: background 0.3s, border-color 0.3s;
-  }
-  .link-btn:hover { background: rgba(129,140,248,0.08); border-color: #818cf8; }
-
-  /* ===== REFS ===== */
+  .remark
+/* ===== LINK BUTTONS ===== */
+/* ===== REFS ===== */
   .refs ol { margin-left: 20px; }
-  .refs li { color: #6a7096; font-size: 0.85em; margin-bottom: 10px; line-height: 1.6; }
-  .refs li em { color: #8a90b0; }
-
-  /* ===== FOOTER ===== */
-  .footer {
-    text-align: center; padding: 48px 30px; color: #2a2f4a; font-size: 0.72em;
-    border-top: 1px solid rgba(255,255,255,0.04); margin-top: 40px;
-  }
-  .footer a { color: #5a6080; text-decoration: none; }
-  .footer a:hover { color: #818cf8; }
-
-  /* ===== RESPONSIVE ===== */
+  .refs
+.refs li
+/* ===== FOOTER ===== */
+.footer
+.footer
+/* ===== RESPONSIVE ===== */
   @media (max-width: 700px) {
     .hero h1 { font-size: 1.9em; }
-    .stat-row { grid-template-columns: 1fr 1fr; }
-    .pipeline-layer { flex-direction: column; }
+.pipeline-layer { flex-direction: column; }
     .pipeline-layer-accent { width: 100%; height: 3px; }
     .pipeline-layer-annotation { border-left: none; border-top: 1px solid rgba(255,255,255,0.04); padding: 10px 20px; min-width: auto; }
   }
@@ -245,8 +137,11 @@ MathJax = {
   /* MathJax sizing */
   .MathJax { font-size: 1em !important; }
 </style>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="theme.css">
 </head>
 <body>
+<div class="page-layout">
 
 <!-- ===== HERO ===== -->
 <div class="hero">
@@ -261,248 +156,22 @@ MathJax = {
       </p>
     </div>
 
-    <!-- ===== EMOTIONAL ROUTING DASHBOARD ===== -->
-    <div class="hero-erouter" id="er-root" style="margin-top:36px;max-width:700px;margin-left:auto;margin-right:auto;">
-      <style>
-        .hero-erouter{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:22px 24px 18px;backdrop-filter:blur(12px);position:relative;font-family:'Segoe UI',system-ui,sans-serif}
-        .hero-erouter *{box-sizing:border-box;margin:0;padding:0}
-        .hero-erouter .er-title{font-size:.62em;color:#5a6080;text-transform:uppercase;letter-spacing:1.8px;font-weight:600;margin-bottom:14px;text-align:left}
-        .hero-erouter .er-grid{display:flex;gap:16px;align-items:stretch}
-        .hero-erouter .er-inputs{display:flex;gap:10px;flex:0 0 auto}
-        .hero-erouter .er-col{display:flex;flex-direction:column;align-items:center;width:64px}
-        .hero-erouter .er-label{font-size:.56em;color:#5a6080;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;font-weight:600}
-        .hero-erouter .er-gauge{width:28px;height:100px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:6px;position:relative;cursor:pointer;overflow:hidden}
-        .hero-erouter .er-fill{position:absolute;bottom:0;left:0;width:100%;border-radius:0 0 5px 5px;transition:height .3s,background .3s}
-        .hero-erouter .er-val{font-size:.6em;color:#7a82a6;margin-top:4px;font-variant-numeric:tabular-nums}
-        .hero-erouter .er-btn{font-size:.56em;color:#a0a8c8;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:3px 0;width:56px;cursor:pointer;text-align:center;transition:border-color .2s,color .2s;user-select:none}
-        .hero-erouter .er-btn:hover{border-color:rgba(129,140,248,.4);color:#c0c8e0}
-        .hero-erouter .er-btn.active{border-color:rgba(129,140,248,.5);color:#818cf8;background:rgba(129,140,248,.08)}
-        .hero-erouter .er-tension-row{display:flex;gap:4px;align-items:center;margin-top:4px}
-        .hero-erouter .er-tension-btn{width:20px;height:20px;border-radius:4px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#7a82a6;font-size:.7em;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
-        .hero-erouter .er-tension-btn:hover{border-color:rgba(129,140,248,.4);color:#c0c8e0}
-        .hero-erouter .er-flow{flex:0 0 60px;display:flex;align-items:center;justify-content:center;position:relative}
-        .hero-erouter .er-arrow{width:60px;height:4px;border-radius:2px;position:relative;overflow:hidden;transition:background .4s}
-        .hero-erouter .er-arrow::after{content:'';position:absolute;top:0;left:-30px;width:30px;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:er-flow 1.2s linear infinite}
-        @keyframes er-flow{0%{left:-30px}100%{left:60px}}
-        .hero-erouter .er-arrow-head{position:absolute;right:-1px;top:50%;transform:translateY(-50%);width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;transition:border-left-color .4s}
-        .hero-erouter .er-output{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:8px;text-align:left;padding-left:4px}
-        .hero-erouter .er-provider{font-size:1.6em;font-weight:700;letter-spacing:1px;transition:color .4s,text-shadow .4s;line-height:1.1}
-        .hero-erouter .er-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-        .hero-erouter .er-temp-wrap{display:flex;align-items:center;gap:6px}
-        .hero-erouter .er-temp-label{font-size:.55em;color:#5a6080;text-transform:uppercase;letter-spacing:1px}
-        .hero-erouter .er-temp-bar{width:60px;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
-        .hero-erouter .er-temp-fill{height:100%;border-radius:3px;transition:width .4s,background .4s}
-        .hero-erouter .er-mode{font-size:.58em;padding:3px 10px;border-radius:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;transition:background .3s,color .3s,border-color .3s;border:1px solid}
-        .hero-erouter .er-reason{font-size:.62em;color:#5a6080;font-style:italic;line-height:1.4;margin-top:2px;transition:color .3s}
-        .hero-erouter .er-demo-tag{position:absolute;top:8px;right:12px;font-size:.5em;color:#5a6080;text-transform:uppercase;letter-spacing:1.2px;transition:opacity .4s}
-      </style>
-
-      <div class="er-title">Live Routing Preview</div>
-      <span class="er-demo-tag" id="er-demo-tag">AUTO-DEMO</span>
-      <div class="er-grid">
-        <!-- INPUT GAUGES -->
-        <div class="er-inputs">
-          <!-- Mood -->
-          <div class="er-col">
-            <div class="er-label">Mood</div>
-            <div id="er-mood-btn" class="er-btn" title="Click to cycle mood">calm</div>
-            <div class="er-val" id="er-mood-val" style="margin-top:auto">&nbsp;</div>
-          </div>
-          <!-- Volatility -->
-          <div class="er-col">
-            <div class="er-label">Volat.</div>
-            <div class="er-gauge" id="er-vol-gauge">
-              <div class="er-fill" id="er-vol-fill" style="height:0%;background:#34d399"></div>
-            </div>
-            <div class="er-val" id="er-vol-val">0.0</div>
-          </div>
-          <!-- Urgency -->
-          <div class="er-col">
-            <div class="er-label">Urgency</div>
-            <div id="er-urg-btn" class="er-btn" title="Click to cycle urgency">NONE</div>
-          </div>
-          <!-- Tension -->
-          <div class="er-col">
-            <div class="er-label">Tension</div>
-            <div class="er-val" id="er-ten-val" style="font-size:.9em;color:#c0c8e0;font-weight:600;margin-bottom:4px">0</div>
-            <div class="er-tension-row">
-              <div class="er-tension-btn" id="er-ten-minus">&minus;</div>
-              <div class="er-tension-btn" id="er-ten-plus">+</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- FLOW ARROW -->
-        <div class="er-flow">
-          <div class="er-arrow" id="er-arrow" style="background:rgba(52,211,153,.3)">
-            <div class="er-arrow-head" id="er-arrow-head" style="border-left:8px solid #34d399"></div>
-          </div>
-        </div>
-
-        <!-- OUTPUT -->
-        <div class="er-output">
-          <div class="er-provider" id="er-provider" style="color:#34d399">LOCAL</div>
-          <div class="er-meta">
-            <div class="er-temp-wrap">
-              <span class="er-temp-label">Temp</span>
-              <div class="er-temp-bar"><div class="er-temp-fill" id="er-temp-fill" style="width:50%;background:#34d399"></div></div>
-              <span class="er-val" id="er-temp-val">0.5</span>
-            </div>
-            <span class="er-mode" id="er-mode" style="color:#34d399;border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.08)">quick</span>
-          </div>
-          <div class="er-reason" id="er-reason">stable state, local model sufficient</div>
-        </div>
-      </div>
-    </div>
-    <script>
-    (function(){
-      /* --- State --- */
-      var moods=['calm','warm','curious','intense','uncertain'];
-      var urgencies=['NONE','WATCH','WARN','IMMINENT'];
-      var state={mood:'calm',volatility:0,urgency:'NONE',tension:0,held:0,intensity:0.3};
-      var demoActive=true,demoTimer=null;
-
-      /* --- DOM refs --- */
-      var $=function(id){return document.getElementById(id)};
-      var eMood=$('er-mood-btn'),eVolG=$('er-vol-gauge'),eVolF=$('er-vol-fill'),eVolV=$('er-vol-val');
-      var eUrg=$('er-urg-btn'),eTenV=$('er-ten-val'),eTenM=$('er-ten-minus'),eTenP=$('er-ten-plus');
-      var eArrow=$('er-arrow'),eArrowH=$('er-arrow-head');
-      var eProv=$('er-provider'),eTempF=$('er-temp-fill'),eTempV=$('er-temp-val');
-      var eMode=$('er-mode'),eReason=$('er-reason'),eDemo=$('er-demo-tag');
-
-      /* --- Routing (matches emotional_router.py exactly) --- */
-      function route(s){
-        // Rule 1: HIGH PRESSURE
-        if(s.urgency==='IMMINENT'||s.urgency==='CRITICAL'||s.volatility>0.7)
-          return{provider:'CLAUDE',temp:0.1,mode:'deep',reason:'high emotional pressure requires most capable model'};
-        // Rule 2: MOUNTING TENSION
-        if(s.urgency==='WARN'||s.urgency==='HIGH'||s.tension>=2)
-          return{provider:'OPENAI',temp:0.3,mode:'thinking',reason:'tension requires careful reasoning'};
-        // Rule 3: HELD CONTRADICTION
-        if(s.held>0&&s.mood==='uncertain')
-          return{provider:'LOCAL',temp:0.0,mode:'quick',reason:'held states need retrieval not escalation'};
-        // Rule 4: UNCERTAINTY / WIDENING
-        if(s.mood==='uncertain'&&s.volatility>0.4)
-          return{provider:'OPENAI',temp:0.2,mode:'thinking',reason:'growing uncertainty benefits from stronger model'};
-        // Rule 5: CURIOUS / EXPLORATORY
-        if(s.mood==='curious'&&s.intensity>0.5)
-          return{provider:'OPENAI',temp:0.6,mode:'thinking',reason:'exploratory queries benefit from broader knowledge'};
-        // Rule 6: CALM / WARM
-        if((s.mood==='calm'||s.mood==='warm')&&s.volatility<0.2)
-          return{provider:'LOCAL',temp:0.5,mode:'quick',reason:'stable state, local model sufficient'};
-        // Fallback
-        return{provider:'LOCAL',temp:0.4,mode:'quick',reason:'no emotional routing trigger matched'};
-      }
-
-      var colors={LOCAL:'#34d399',OPENAI:'#fbbf24',CLAUDE:'#D47058'};
-
-      function render(r){
-        var c=colors[r.provider]||'#34d399';
-        eProv.style.color=c;
-        eProv.style.textShadow='0 0 24px '+c+'66';
-        eProv.textContent=r.provider;
-        eTempF.style.width=Math.round(r.temp*100)+'%';
-        eTempF.style.background=c;
-        eTempV.textContent=r.temp.toFixed(1);
-        eMode.textContent=r.mode;
-        eMode.style.color=c;eMode.style.borderColor=c+'4d';eMode.style.background=c+'14';
-        eReason.textContent=r.reason;
-        eArrow.style.background=c+'4d';
-        eArrowH.style.borderLeftColor=c;
-      }
-
-      function update(){render(route(state));}
-
-      /* --- Gauge color helper --- */
-      function volColor(v){
-        if(v<0.3)return'#34d399';if(v<0.6)return'#fbbf24';return'#D47058';
-      }
-
-      function setVol(v){
-        state.volatility=Math.round(Math.max(0,Math.min(1,v))*100)/100;
-        eVolF.style.height=state.volatility*100+'%';
-        eVolF.style.background=volColor(state.volatility);
-        eVolV.textContent=state.volatility.toFixed(1);
-        update();
-      }
-
-      /* --- Controls --- */
-      function endDemo(){
-        if(!demoActive)return;demoActive=false;
-        if(demoTimer)clearTimeout(demoTimer);
-        eDemo.style.opacity='0';
-      }
-
-      eMood.addEventListener('click',function(){
-        endDemo();
-        var i=(moods.indexOf(state.mood)+1)%moods.length;
-        state.mood=moods[i];eMood.textContent=moods[i];
-        state.intensity=state.mood==='curious'?0.6:state.mood==='intense'?0.8:0.3;
-        update();
-      });
-
-      eVolG.addEventListener('click',function(e){
-        endDemo();
-        var rect=eVolG.getBoundingClientRect();
-        var pct=1-(e.clientY-rect.top)/rect.height;
-        setVol(pct);
-      });
-
-      eUrg.addEventListener('click',function(){
-        endDemo();
-        var i=(urgencies.indexOf(state.urgency)+1)%urgencies.length;
-        state.urgency=urgencies[i];eUrg.textContent=urgencies[i];
-        eUrg.classList.toggle('active',state.urgency!=='NONE');
-        update();
-      });
-
-      eTenP.addEventListener('click',function(){endDemo();state.tension=Math.min(4,state.tension+1);eTenV.textContent=state.tension;update();});
-      eTenM.addEventListener('click',function(){endDemo();state.tension=Math.max(0,state.tension-1);eTenV.textContent=state.tension;update();});
-
-      /* --- Auto-demo --- */
-      function demo(){
-        if(!demoActive)return;
-        // Step 1: calm + low vol → LOCAL
-        state={mood:'calm',volatility:0.1,urgency:'NONE',tension:0,held:0,intensity:0.3};
-        syncUI();update();
-        demoTimer=setTimeout(function(){
-          if(!demoActive)return;
-          // Step 2: intense + WARN → OPENAI
-          state={mood:'intense',volatility:0.35,urgency:'WARN',tension:1,held:0,intensity:0.8};
-          syncUI();update();
-          demoTimer=setTimeout(function(){
-            if(!demoActive)return;
-            // Step 3: uncertain + IMMINENT + high vol → CLAUDE
-            state={mood:'uncertain',volatility:0.85,urgency:'IMMINENT',tension:3,held:0,intensity:0.5};
-            syncUI();update();
-            demoTimer=setTimeout(function(){
-              demoActive=false;eDemo.style.opacity='0';
-            },2400);
-          },2200);
-        },2200);
-      }
-
-      function syncUI(){
-        eMood.textContent=state.mood;
-        eVolF.style.height=state.volatility*100+'%';
-        eVolF.style.background=volColor(state.volatility);
-        eVolV.textContent=state.volatility.toFixed(1);
-        eUrg.textContent=state.urgency;
-        eUrg.classList.toggle('active',state.urgency!=='NONE');
-        eTenV.textContent=state.tension;
-      }
-
-      /* Init */
-      update();
-      setTimeout(demo,2000);
-    })();
-    </script>
-
   </div>
   <div class="scroll-cue">SCROLL TO EXPLORE</div>
 </div>
 
-<div class="container">
+<nav class="sidebar" id="docSidebar">
+  <div class="sidebar-title">Position Paper</div>
+  <div class="sidebar-spacer"></div>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme">
+    <span class="theme-toggle-icon" id="themeIcon">&#9790;</span>
+    <span id="themeLabel">Light</span>
+  </button>
+  <div class="sidebar-footer">2026 Aeteros Research</div>
+</nav>
+
+
+<main class="main">
 
 <!-- ===== SECTION 1 ===== -->
 <section>
@@ -919,9 +588,12 @@ MathJax = {
 
 </div>
 
+</main>
 <div class="footer">
   <p>Aeteros Research &bull; 2026 &bull; <a href="index.html">Docs Index</a> &bull; <a href="cascade-complexity.html">Cascade Complexity</a> &bull; <a href="whitepaper.html">CRT Whitepaper</a> &bull; <a href="immune-agents.html">Immune Agents</a></p>
 </div>
 
+</div>
+<script src="docs.js"></script>
 </body>
 </html>

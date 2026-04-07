@@ -37,7 +37,9 @@
       "WebFetch(domain:claude.ai)",
       "WebFetch(domain:www.reddit.com)",
       "WebFetch(domain:www.anthropic.com)",
-      "WebFetch(domain:ccunpacked.dev)"
+      "WebFetch(domain:ccunpacked.dev)",
+      "mcp__aether__aether_context",
+      "mcp__aether__aether_remember"
     ]
   }
 }

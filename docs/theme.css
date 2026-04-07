@@ -1,0 +1,130 @@
+/*
+ * Aether Docs — Page-Specific Light Theme Overrides
+ * base.css handles all variable-based theming.
+ * This file only covers components that use hardcoded colors
+ * in page-specific inline styles (SVG, visualizations, etc.)
+ */
+
+/* --- SVG text in visualizations --- */
+[data-theme="light"] svg text { fill: var(--text-secondary); }
+[data-theme="light"] .bl-label { fill: var(--text-secondary); }
+[data-theme="light"] .bl-trust { fill: var(--accent-indigo); }
+[data-theme="light"] .bl-axis { stroke: var(--border-light); }
+[data-theme="light"] .bl-contra { stroke: var(--red); }
+
+/* --- Interactive controls (cascade-viz, variance-probing) --- */
+[data-theme="light"] input[type="range"] {
+  accent-color: var(--accent-indigo);
+}
+[data-theme="light"] .btn {
+  background: var(--bg-inset);
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+[data-theme="light"] .btn:hover {
+  background: rgba(91,99,212,0.08);
+  border-color: rgba(91,99,212,0.25);
+  color: var(--accent-indigo);
+}
+[data-theme="light"] .hint {
+  color: var(--text-faint);
+}
+
+/* --- Principle cards with colored borders (border colors stay as accents) --- */
+[data-theme="light"] .principle {
+  background: var(--bg-raised);
+  border-color: var(--border);
+}
+[data-theme="light"] .principle .p-text { color: var(--text); }
+[data-theme="light"] .principle .p-sub { color: var(--text-secondary); }
+[data-theme="light"] .principle .p-num { color: var(--text-faint); }
+[data-theme="light"] .principle .p-code { color: var(--text-dim); }
+
+/* --- Layer / pipeline stacks --- */
+[data-theme="light"] .layer,
+[data-theme="light"] .pipeline-layer {
+  background: var(--bg-raised);
+  border-color: var(--border);
+}
+[data-theme="light"] .layer:hover,
+[data-theme="light"] .pipeline-layer:hover {
+  background: var(--bg-inset);
+}
+[data-theme="light"] .layer .layer-name,
+[data-theme="light"] .pipeline-layer-name { color: var(--text); }
+[data-theme="light"] .layer .layer-desc,
+[data-theme="light"] .pipeline-layer-desc { color: var(--text-secondary); }
+[data-theme="light"] .layer .layer-sub,
+[data-theme="light"] .pipeline-layer-sub { color: var(--text-faint); }
+
+/* --- Immune cards --- */
+[data-theme="light"] .immune-card { background: var(--bg-raised); border-color: var(--border); }
+[data-theme="light"] .immune-card .im-name { color: var(--text); }
+[data-theme="light"] .immune-card .im-desc { color: var(--text-secondary); }
+
+/* --- Proof / implementation blocks --- */
+[data-theme="light"] .proof-block { background: var(--bg-raised); border-color: var(--border); }
+[data-theme="light"] .impl-block { background: var(--bg-raised); border-color: var(--border); }
+[data-theme="light"] .impl-block p { color: var(--text-secondary); }
+
+/* --- Regime / method cards --- */
+[data-theme="light"] .method-card,
+[data-theme="light"] .regime-card { background: var(--bg-raised); border-color: var(--border); }
+[data-theme="light"] .regime-name { color: var(--text); }
+[data-theme="light"] .regime-desc { color: var(--text-secondary); }
+[data-theme="light"] .method-card h4 { color: var(--text); }
+
+/* --- Agent cards (immune-agents.html) --- */
+[data-theme="light"] .agent-card { background: var(--bg-raised); border-color: var(--border); }
+[data-theme="light"] .agent-card .agent-title { color: var(--text); }
+[data-theme="light"] .agent-card .agent-detail { color: var(--text-secondary); }
+
+/* --- Scorecard --- */
+[data-theme="light"] .scorecard { background: var(--bg-raised); border-color: var(--border); }
+[data-theme="light"] .scorecard-header { color: var(--text); }
+
+/* --- Decision tree --- */
+[data-theme="light"] .dt-condition { color: var(--text-secondary); }
+[data-theme="light"] .dt-outcome { color: var(--text); }
+
+/* --- Phase cards --- */
+[data-theme="light"] .phase-card { background: var(--bg-raised); border-color: var(--border); }
+[data-theme="light"] .phase-title { color: var(--text); }
+
+/* --- Glossary entries --- */
+[data-theme="light"] .glossary-entry { background: var(--bg-raised); border-color: var(--border); }
+
+/* --- Status tags --- */
+[data-theme="light"] .status-confirmed { color: var(--green); }
+[data-theme="light"] .status-provisional { color: var(--amber); }
+[data-theme="light"] .status-planned { color: var(--accent-indigo); }
+[data-theme="light"] .status-killed { color: var(--red); }
+
+/* --- Regime tags --- */
+[data-theme="light"] .tag-crack { background: rgba(192,80,120,0.1); border-color: rgba(192,80,120,0.2); color: var(--accent-pink); }
+[data-theme="light"] .tag-gradient { background: rgba(91,99,212,0.1); border-color: rgba(91,99,212,0.2); color: var(--accent-indigo); }
+[data-theme="light"] .tag-fog { background: rgba(144,96,208,0.1); border-color: rgba(144,96,208,0.2); color: var(--accent-purple); }
+[data-theme="light"] .tag-damped { background: var(--bg-inset); border-color: var(--border); color: var(--text-dim); }
+
+/* --- Risk / value indicators --- */
+[data-theme="light"] .risk-high, [data-theme="light"] .val-high { color: var(--red); }
+[data-theme="light"] .risk-med, [data-theme="light"] .val-mid { color: var(--amber); }
+[data-theme="light"] .risk-low, [data-theme="light"] .val-low { color: var(--green); }
+
+/* --- Controls bar (interactive pages) --- */
+[data-theme="light"] .controls-bar { background: var(--bg-raised); border-color: var(--border); }
+[data-theme="light"] .control-group label { color: var(--text-secondary); }
+
+/* --- Remark block --- */
+[data-theme="light"] .remark { background: var(--bg-raised); border-color: var(--border); }
+
+/* --- Chart elements --- */
+[data-theme="light"] .chart-title { color: var(--text); }
+[data-theme="light"] .chart-label { color: var(--text-secondary); }
+
+/* --- Bar fills maintain accent colors but soften --- */
+[data-theme="light"] .bar-fill { opacity: 0.85; }
+
+/* --- Example cards (continuity-blind) --- */
+[data-theme="light"] .example-card { background: var(--bg-raised); border-color: var(--border); }
+[data-theme="light"] .example-header { color: var(--accent-indigo); }
