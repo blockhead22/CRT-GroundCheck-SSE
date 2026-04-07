@@ -236,6 +236,14 @@ thead th, th {
     .stacked-bar-row { grid-template-columns: 80px 1fr; }
     .triad-container svg { width: 300px; height: 270px; }
   }
+  @media (max-width: 480px) {
+    .hbar-row { grid-template-columns: 1fr; gap: 4px; }
+    .hbar-label { text-align: left; }
+    .stacked-bar-row { grid-template-columns: 1fr; gap: 4px; }
+    .stacked-bar-model { text-align: left; }
+    .config-grid { grid-template-columns: 1fr; }
+    .triad-container svg { width: 240px; height: 220px; }
+  }
 </style>
 <link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="theme.css">

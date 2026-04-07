@@ -897,4 +897,30 @@ td code {
   /* Grids that assume desktop widths */
   .method-grid, .regime-grid, .agent-list { grid-template-columns: 1fr; }
   .pipeline-row { grid-template-columns: 1fr; }
+
+  /* Force ALL tables scrollable even if not wrapped in .table-wrap */
+  table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  thead, tbody, tr { display: table; width: 100%; table-layout: auto; }
+
+  /* Kill any min-width that forces overflow */
+  * { min-width: 0 !important; }
+
+  /* Hero scaling */
+  .hero-inner { padding: 40px 16px 32px 16px; }
+  .hero h1 { font-size: 1.6em; }
+  .hero .sub { font-size: 0.85em; }
+  .hero .finding-box { padding: 14px; font-size: 0.85em; }
+  .scroll-cue { display: none; }
+
+  /* Pipeline stacks: remove max-width constraints */
+  .pipeline-stack { max-width: 100%; }
+
+  /* Chart rows and bar charts: stack */
+  .chart-row, .chart-header { display: block; }
+  .hbar-row, .stacked-bar-row { grid-template-columns: 1fr; }
+  .config-grid { grid-template-columns: 1fr 1fr; }
+
+  /* Inline code: break long lines */
+  code { word-break: break-all; }
+  pre { font-size: 0.72em; padding: 12px; }
 }

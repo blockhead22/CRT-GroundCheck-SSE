@@ -153,6 +153,14 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     .hero h1 { font-size: 1.9em; }
     .stat-row, .stat-row-3 { grid-template-columns: 1fr 1fr; }
     .method-grid, .regime-grid { grid-template-columns: 1fr; }
+    .chart-row, .chart-header { grid-template-columns: 80px 1fr 1fr 1fr; }
+    .chart-label { font-size: 0.68em; padding-right: 6px; }
+    .damping-chart { padding: 0 8px; height: 120px; }
+  }
+  @media (max-width: 480px) {
+    .chart-row, .chart-header { grid-template-columns: 1fr; gap: 2px; }
+    .chart-label { text-align: left; padding: 0; }
+    .stat-row, .stat-row-3 { grid-template-columns: 1fr; }
   }
 </style>
 <link rel="stylesheet" href="base.css">
