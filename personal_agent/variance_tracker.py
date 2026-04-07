@@ -26,7 +26,12 @@ class VarianceTracker:
 
     def __init__(self, db_path: str):
         self.db_path = db_path
+        self._governance_bridge = None
         self.ensure_tables()
+
+    def set_governance_bridge(self, bridge) -> None:
+        """Attach a GovernanceBridge for drift->trust feedback."""
+        self._governance_bridge = bridge
 
     def ensure_tables(self):
         conn = self._get_connection()
@@ -147,6 +152,23 @@ class VarianceTracker:
 
         snapshot["topics_updated"] = len(topic_metrics)
         log.info("Variance analysis complete: %d topics, avg_drift=%.4f", num_topics, snapshot["avg_drift"] or 0)
+
+        # Governance bridge: feed drift metrics back into memory trust
+        if self._governance_bridge is not None:
+            try:
+                bridge_result = self._governance_bridge.apply_drift_penalty(
+                    {"topic_metrics": topic_metrics}
+                )
+                snapshot["bridge_result"] = bridge_result
+                if bridge_result.get("memories_penalized", 0) > 0:
+                    log.info(
+                        "[GOVERNANCE_BRIDGE] %d memories penalized across %d flagged topics",
+                        bridge_result["memories_penalized"],
+                        bridge_result["topics_flagged"],
+                    )
+            except Exception as e:
+                log.warning("[GOVERNANCE_BRIDGE] Drift penalty failed: %s", e)
+
         return snapshot
 
     def recluster_topics(self) -> int:

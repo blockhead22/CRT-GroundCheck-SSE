@@ -1478,6 +1478,33 @@ def classify_intent_hybrid(
     except Exception as _pf_err:
         logger.debug("[INTENT_ROUTER] Pre-filter check failed: %s", _pf_err)
 
+    # 0b-pre. Personal-fact patterns → force full pipeline (conversational route)
+    # These MUST run before cache lookup so stale misclassifications can't replay.
+    # Personal questions need retrieval + Claude generation, not broad_recall.
+    _FULL_PIPELINE_PATTERNS = [
+        r"\bwhere\s+do\s+i\s+work\b",
+        r"\bwhat\s+is\s+my\s+name\b",
+        r"\bwhat('?s| is)\s+my\s+job\b",
+        r"\bwhat\s+do\s+i\s+do\s+for\s+(a\s+living|work)\b",
+        r"\bwhat\s+do\s+you\s+know\s+about\s+me\b",
+        r"\btell\s+me\s+about\s+myself\b",
+        r"\bwhat\s+are\s+my\s+\w+",   # preferences, interests, hobbies, etc.
+        r"\bwho\s+am\s+i\b",
+        r"\bdo\s+you\s+(know|remember)\s+(my|who\s+i)\b",
+        r"\bwhat\s+have\s+i\s+told\s+you\b",
+        r"\bwhat\s+do\s+you\s+remember\s+about\s+me\b",
+    ]
+    if any(re.search(pat, _lower) for pat in _FULL_PIPELINE_PATTERNS):
+        logger.info("[INTENT_ROUTER] Full-pipeline personal-fact pattern: '%s' → conversational", message[:60])
+        return TaskIntent(
+            route="conversational",
+            intent_type="conversational",
+            slots={"raw_message": message},
+            confidence=0.85,
+            reason="personal_fact_full_pipeline",
+            source="regex",
+        )
+
     # 0b. Route-learning cache: reuse a recent successful classification
     try:
         from personal_agent.route_learning import get_route_learning_db

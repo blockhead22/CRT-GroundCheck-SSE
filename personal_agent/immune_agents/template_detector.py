@@ -25,12 +25,16 @@ Classifications:
 
 from __future__ import annotations
 
+import logging
 import re
+import string
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 class Classification(str, Enum):
@@ -47,6 +51,7 @@ class DetectionResult:
     hedge_patterns_found: list[str] = field(default_factory=list)
     embedding_variance: Optional[float] = None  # mean pairwise cosine distance
     detail: str = ""
+    assertive_collapse: bool = False  # True when assertive repetition detected
 
 
 # ---------------------------------------------------------------------------
@@ -167,10 +172,12 @@ class TemplateDetector:
         has_hedges = len(hedge_hits) >= self.hedge_threshold
         variance = None
 
+        assertive_repetition = False
         if repeated_responses is not None and len(repeated_responses) >= 2:
             variance = self._compute_variance(repeated_responses)
+            assertive_repetition = self._check_assertive_repetition(repeated_responses)
 
-        return self._classify(has_hedges, hedge_hits, variance)
+        return self._classify(has_hedges, hedge_hits, variance, assertive_repetition)
 
     # ------------------------------------------------------------------
     # Internals
@@ -214,11 +221,40 @@ class TemplateDetector:
 
         return total_dist / count if count > 0 else 0.0
 
+    @staticmethod
+    def _normalize_text(text: str) -> str:
+        """Normalize text for assertive repetition comparison."""
+        text = text.lower().strip()
+        text = text.translate(str.maketrans("", "", string.punctuation))
+        # Collapse whitespace
+        text = " ".join(text.split())
+        return text
+
+    def _check_assertive_repetition(
+        self,
+        responses: list[str],
+        uniqueness_threshold: float = 0.3,
+    ) -> bool:
+        """
+        Detect assertive repetition: responses that are near-identical
+        after normalization.
+
+        Returns True if the uniqueness ratio (unique / total) is below
+        the threshold, meaning 70%+ of responses are basically the same.
+        """
+        if len(responses) < 2:
+            return False
+        normalized = [self._normalize_text(r) for r in responses]
+        unique_count = len(set(normalized))
+        uniqueness_ratio = unique_count / len(normalized)
+        return uniqueness_ratio < uniqueness_threshold
+
     def _classify(
         self,
         has_hedges: bool,
         hedge_hits: list[str],
         variance: Optional[float],
+        assertive_repetition: bool = False,
     ) -> DetectionResult:
         """Map hedge presence + variance to a classification."""
 
@@ -268,6 +304,23 @@ class TemplateDetector:
             )
 
         if low_var and not has_hedges:
+            if assertive_repetition:
+                logger.warning(
+                    "[TEMPLATE_DETECTOR] Assertive template collapse detected: "
+                    "responses are near-identical without hedge patterns"
+                )
+                return DetectionResult(
+                    classification=Classification.TEMPLATE_LOCK,
+                    confidence=0.88,
+                    hedge_patterns_found=[],
+                    embedding_variance=variance,
+                    detail=(
+                        f"Assertive template collapse: Low variance ({variance:.4f}) "
+                        f"with 70%+ identical responses and no hedge patterns. "
+                        f"Model is pattern-matching, not reasoning."
+                    ),
+                    assertive_collapse=True,
+                )
             return DetectionResult(
                 classification=Classification.GENUINE_CONFIDENCE,
                 confidence=0.85,
@@ -417,6 +470,46 @@ if __name__ == "__main__":
         Classification.GENUINE_UNCERTAINTY,
         Classification.EXPLORATORY,
     ), f"Expected GENUINE_UNCERTAINTY or EXPLORATORY, got {r4.classification}"
+    print("  PASS")
+
+    # --- Test 5: Assertive repetition (blind spot fix) ---
+    print("\n[Test 5] Assertive repetition collapse (low var, no hedges, near-identical)")
+    assertive_responses = [
+        "Yes, you should return it.",
+        "Yes, you should return it.",
+        "Yes, you should return it.",
+        "Yes, you should return it.",
+        "Yes, you should return it.",
+    ]
+    r5 = detector.detect(assertive_responses[0], repeated_responses=assertive_responses)
+    print(f"  Classification: {r5.classification.value}")
+    print(f"  Confidence:     {r5.confidence:.2f}")
+    print(f"  Variance:       {r5.embedding_variance:.4f}")
+    print(f"  Assertive:      {r5.assertive_collapse}")
+    print(f"  Detail:         {r5.detail}")
+    assert r5.classification == Classification.TEMPLATE_LOCK, \
+        f"Expected TEMPLATE_LOCK, got {r5.classification}"
+    assert r5.assertive_collapse is True, \
+        "Expected assertive_collapse=True"
+    print("  PASS")
+
+    # --- Test 6: Genuine confidence (low var, no hedges, diverse wording) ---
+    print("\n[Test 6] Genuine confidence (low var, no hedges, varied wording)")
+    genuine_responses = [
+        "The answer is 42, as computed from the equations.",
+        "It equals 42 based on the mathematical derivation.",
+        "42 is the correct result from these calculations.",
+        "From the given formula the result is 42.",
+        "Computing the expression yields 42.",
+    ]
+    r6 = detector.detect(genuine_responses[0], repeated_responses=genuine_responses)
+    print(f"  Classification: {r6.classification.value}")
+    print(f"  Confidence:     {r6.confidence:.2f}")
+    print(f"  Assertive:      {r6.assertive_collapse}")
+    print(f"  Detail:         {r6.detail}")
+    # These should NOT be flagged as assertive collapse — different wording
+    assert r6.assertive_collapse is False, \
+        "Expected assertive_collapse=False for varied wording"
     print("  PASS")
 
     print("\n" + "=" * 60)

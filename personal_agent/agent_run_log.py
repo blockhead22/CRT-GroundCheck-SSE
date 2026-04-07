@@ -167,6 +167,137 @@ def detect_step_contradictions(steps: List['RunStep'],
     return contradictions
 
 
+# ---------------------------------------------------------------------------
+# Tool category mapping — used by execution drift detection
+# ---------------------------------------------------------------------------
+
+TOOL_CATEGORIES = {
+    'memory_recall': 'memory', 'memory_search': 'memory', 'store_memory': 'memory',
+    'web_search': 'web', 'web_browse': 'web', 'fetch_url': 'web',
+    'file_read': 'file', 'file_write': 'file', 'dir_list': 'file',
+    'shell_exec': 'system', 'git_exec': 'system', 'process_list': 'system',
+    'search_code': 'code', 'code_gen': 'code',
+    'introspect': 'memory', 'self_model': 'memory',
+}
+
+
+def categorize_tool(tool_name: str) -> str:
+    """Map a tool name to its functional category."""
+    return TOOL_CATEGORIES.get(tool_name, 'other')
+
+
+def detect_execution_drift(intent: str, steps: List['RunStep']) -> List['DriftEvent']:
+    """Detect execution drift — when the agent silently pivots between task domains.
+
+    Unlike detect_drift() which tracks alignment score drops, this tracks
+    *what category of work* the agent is doing and flags when it switches
+    domains while alignment is low (indicating a task pivot, not just a
+    normal multi-step workflow).
+
+    Flags:
+    1. Category switch + low alignment (<0.25) at the same step
+    2. Scattered execution: 3+ different categories in consecutive steps
+    """
+    drifts: List['DriftEvent'] = []
+    if len(steps) < 2:
+        return drifts
+
+    # Build category sequence for tool_call steps only
+    tool_steps = [(s, categorize_tool(s.tool or '')) for s in steps
+                  if s.action == 'tool_call' and s.tool]
+
+    if len(tool_steps) < 2:
+        return drifts
+
+    # Check 1: Category switch with low alignment
+    for i in range(1, len(tool_steps)):
+        prev_step, prev_cat = tool_steps[i - 1]
+        curr_step, curr_cat = tool_steps[i]
+
+        if prev_cat == curr_cat or prev_cat == 'other' or curr_cat == 'other':
+            continue
+
+        if curr_step.intent_alignment is not None and curr_step.intent_alignment < 0.25:
+            drifts.append(DriftEvent(
+                at_step=curr_step.iteration,
+                description=(
+                    f"Execution drift: {prev_cat} -> {curr_cat} "
+                    f"(alignment={curr_step.intent_alignment:.3f})"
+                ),
+                from_belief=f"{prev_cat}: {prev_step.reasoning[:80]}",
+                to_belief=f"{curr_cat}: {curr_step.reasoning[:80]}",
+                had_reasoning=bool(curr_step.reasoning.strip()),
+            ))
+
+    # Check 2: Scattered execution — 3+ different categories in a row
+    if len(tool_steps) >= 3:
+        for i in range(2, len(tool_steps)):
+            cats = [tool_steps[i - 2][1], tool_steps[i - 1][1], tool_steps[i][1]]
+            # Filter out 'other' before checking uniqueness
+            real_cats = [c for c in cats if c != 'other']
+            if len(real_cats) >= 3 and len(set(real_cats)) >= 3:
+                curr_step = tool_steps[i][0]
+                drifts.append(DriftEvent(
+                    at_step=curr_step.iteration,
+                    description=(
+                        f"Scattered execution: {' -> '.join(cats)} "
+                        f"(3 different categories in a row)"
+                    ),
+                    from_belief=f"Expected focused execution on {cats[0]}",
+                    to_belief=f"Jumped through {', '.join(cats)}",
+                    had_reasoning=bool(curr_step.reasoning.strip()),
+                ))
+
+    return drifts
+
+
+# ---------------------------------------------------------------------------
+# Transformation intent detection
+# ---------------------------------------------------------------------------
+
+_TRANSFORMATION_VERBS = frozenset({
+    "rewrite", "refactor", "convert", "migrate", "transform", "translate",
+    "fix", "repair", "patch", "resolve", "debug",
+    "update", "upgrade", "modernize", "optimize",
+    "rename", "restructure", "rework", "redo", "replace",
+    "port", "transpile", "compile", "minify", "prettify",
+})
+
+import re as _re_transform
+
+_TRANSFORMATION_PATTERNS = [
+    # "change X to Y", "make X do Y", "modify X so that"
+    _re_transform.compile(r"\b(change|turn|make|modify|switch|swap)\b.+\b(to|into|so\s+that|from|do\s+\w+)\b", _re_transform.IGNORECASE),
+    # "X should now Y", "X needs to Y instead"
+    _re_transform.compile(r"\b(should\s+now|needs?\s+to|instead\s+of)\b", _re_transform.IGNORECASE),
+]
+
+
+def is_transformation_intent(intent: str) -> bool:
+    """Detect if the user's intent is a transformation task.
+
+    Checks for:
+    - Transformation verbs (rewrite, fix, convert, etc.)
+    - Structural patterns (change X to Y, make X do Y)
+
+    Returns True if the intent looks like a transformation request.
+    """
+    if not intent:
+        return False
+
+    words = set(intent.lower().split())
+    # Check for transformation verbs
+    if words & _TRANSFORMATION_VERBS:
+        return True
+
+    # Check structural patterns
+    for pattern in _TRANSFORMATION_PATTERNS:
+        if pattern.search(intent):
+            return True
+
+    return False
+
+
 def detect_drift(intent: str, steps: List['RunStep'],
                  threshold: float = 0.12) -> List['DriftEvent']:
     """Detect drift events by comparing step reasoning against intent.
@@ -285,6 +416,10 @@ class RunLog:
     verification_steps: int = 0      # how many steps verified their output
     unverified_claims: int = 0       # assertions without evidence
 
+    # Transformation verification (structural gate)
+    transformation_verified: Optional[bool] = None  # None = not a transformation, True/False = verified
+    verification_reason: Optional[str] = None
+
     # User feedback (filled later if available)
     user_feedback: Optional[str] = None
     user_rating: Optional[float] = None  # 0-1
@@ -380,6 +515,15 @@ class RunLogDB:
         conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_runs_timestamp ON agent_runs(timestamp DESC)
         """)
+        # Migration: add transformation verification columns to existing DBs
+        try:
+            conn.execute("ALTER TABLE agent_runs ADD COLUMN transformation_verified INTEGER")
+        except sqlite3.OperationalError:
+            pass  # column already exists
+        try:
+            conn.execute("ALTER TABLE agent_runs ADD COLUMN verification_reason TEXT")
+        except sqlite3.OperationalError:
+            pass  # column already exists
         conn.commit()
         conn.close()
 
@@ -395,8 +539,9 @@ class RunLogDB:
                 completed, success, confidence, final_response_length,
                 verification_steps, unverified_claims, drift_count,
                 user_feedback, user_rating, brain_provider,
-                steps_json, drift_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                steps_json, drift_json,
+                transformation_verified, verification_reason
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             log.run_id, log.thread_id, log.timestamp,
             log.intent, log.intent_type,
@@ -409,13 +554,21 @@ class RunLogDB:
             log.user_feedback, log.user_rating, log.brain_provider,
             json.dumps([asdict(s) for s in log.steps]),
             json.dumps([asdict(d) for d in log.drift_events]),
+            int(log.transformation_verified) if log.transformation_verified is not None else None,
+            log.verification_reason,
         ))
         conn.commit()
         conn.close()
+        _transform_tag = ""
+        if log.transformation_verified is True:
+            _transform_tag = ", transform=PASSED"
+        elif log.transformation_verified is False:
+            _transform_tag = ", transform=FAILED"
         print(f"[RUN_LOG] Stored run {log.run_id}: {log.total_iterations} steps, "
               f"{'success' if log.success else 'incomplete'}, "
               f"{len(log.drift_events)} drifts, "
-              f"{log.verification_steps}/{log.total_iterations} verified")
+              f"{log.verification_steps}/{log.total_iterations} verified"
+              f"{_transform_tag}")
 
     def get_recent_runs(self, limit: int = 20) -> List[Dict]:
         conn = self._get_connection()

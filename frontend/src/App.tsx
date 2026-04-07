@@ -27,6 +27,7 @@ import BeliefMapPage from './pages/BeliefMapPage'
 import { BeliefsPage } from './pages/BeliefsPage'
 import { TelemetryPage } from './pages/TelemetryPage'
 import { RunLogPage } from './pages/RunLogPage'
+import { PipelineStepperPage } from './pages/PipelineStepperPage'
 import { newId } from './lib/id'
 import { getAetherSocket } from './lib/ws'
 import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName, authGetMe, authLogout, authSyncChats, authLoadChats, getAuthToken, updateAuthProfile, type AuthUser } from './lib/api'
@@ -47,7 +48,7 @@ export default function App() {
   // URL-synced navigation
   const navigate = useNavigate()
   const location = useLocation()
-  const validNavIds: NavId[] = ['chat', 'dashboard', 'loops', 'journal', 'jobs', 'docs', 'copilot', 'live', 'telemetry', 'settings', 'v2', 'belief-map', 'beliefs']
+  const validNavIds: NavId[] = ['chat', 'dashboard', 'loops', 'journal', 'jobs', 'docs', 'copilot', 'live', 'telemetry', 'settings', 'v2', 'belief-map', 'beliefs', 'pipeline-stepper']
   const navFromUrl = (): NavId => {
     const path = location.pathname.replace(/^\//, '').split('/')[0] || 'chat'
     return validNavIds.includes(path as NavId) ? (path as NavId) : 'chat'
@@ -1916,6 +1917,8 @@ export default function App() {
                   <TelemetryPage threadId={selectedThread?.id} />
                 ) : navActive === 'agent-runs' ? (
                   <RunLogPage />
+                ) : navActive === 'pipeline-stepper' ? (
+                  <PipelineStepperPage />
                 ) : navActive === 'v2' ? (
                   <V2Page />
                 ) : navActive === 'settings' ? (

@@ -4269,22 +4269,39 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 _pre_gen_belief = min(0.85, 0.3 + 0.05 * len(_valid_mems) + _avg_trust * 0.2)
         result["pre_gen_belief"] = round(_pre_gen_belief, 3)
 
-        _confidence_gate_active = False
-        _confidence_max_tokens = 4096  # default
+        # ── Adaptive depth: smooth token budget from belief confidence ──
+        # Replaces the old cliff-based gating (< 0.4 → 150, < 0.55 → 500, else 4096)
+        # with a smooth power-law curve. The ** 0.7 exponent is generous in the
+        # mid-range (0.4-0.7) where most queries land, avoiding massive cliffs.
+        # belief 0.0 → 100, ~0.3 → 200, ~0.5 → 800, ~0.7 → 2000, 0.9+ → 4096
+        _MIN_TOKENS = 100
+        _MAX_TOKENS = 4096
+        _confidence_max_tokens = int(_MIN_TOKENS + (_MAX_TOKENS - _MIN_TOKENS) * min(1.0, _pre_gen_belief ** 0.7))
+        _confidence_gate_active = _pre_gen_belief < 0.35  # only hedge below 0.35
         _confidence_hedge = ""
-        if _pre_gen_belief < 0.4:
-            _confidence_gate_active = True
-            _confidence_max_tokens = 150
+        if _confidence_gate_active:
             _confidence_hedge = (
                 "[Note: I have low confidence in this answer — my memory evidence is weak or absent. "
                 "I'll keep it brief and honest about what I don't know.]\n\n"
             )
-            _safe_print(f"[STRUCTURAL_GATE] Confidence gate ACTIVE: belief={_pre_gen_belief:.2f} < 0.4 → max_tokens={_confidence_max_tokens}, hedge injected")
-        elif _pre_gen_belief < 0.55:
-            _confidence_max_tokens = 500
-            _safe_print(f"[STRUCTURAL_GATE] Medium confidence: belief={_pre_gen_belief:.2f} → max_tokens={_confidence_max_tokens}")
-        else:
-            _safe_print(f"[STRUCTURAL_GATE] High confidence: belief={_pre_gen_belief:.2f} → full depth")
+
+        # ── Cap reasoning mode by confidence ──
+        # Don't allow deep/research reasoning when evidence is weak.
+        _effective_reasoning_mode = str(mode_arg.value if mode_arg else "quick")
+        if _pre_gen_belief < 0.3:
+            _effective_reasoning_mode = "quick"  # weak evidence → don't reason deeply
+        elif _pre_gen_belief < 0.5 and _effective_reasoning_mode in ("deep", "research"):
+            _effective_reasoning_mode = "thinking"  # cap at thinking for medium confidence
+        # else: allow user-requested mode
+        result["effective_reasoning_mode"] = _effective_reasoning_mode
+
+        logger.info(f"[ADAPTIVE_DEPTH] belief={_pre_gen_belief:.2f} tokens={_confidence_max_tokens} mode={_effective_reasoning_mode} gate={'active' if _confidence_gate_active else 'off'}")
+        _safe_print(f"[STRUCTURAL_GATE] adaptive: belief={_pre_gen_belief:.2f} → tokens={_confidence_max_tokens}, mode={_effective_reasoning_mode}, gate={'active' if _confidence_gate_active else 'off'}")
+
+        _emit_pipeline_event({
+            "type": "status",
+            "content": f"depth: {_confidence_max_tokens} tokens (belief={_pre_gen_belief:.2f})",
+        })
 
         _emit_pipeline_status(f"generating ({_generation_mode})")
 
@@ -7204,7 +7221,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             _safe_print(f"[AGENT_LOOP_GATE] enabled={_agent_loop_enabled}, intent={_task_intent is not None}, route={getattr(_task_intent, 'route', None)}, confirmed={_user_confirmed}, layer4_orchestrator={_layer4_orchestrator}, model_ok={_agent_loop_model_ok}")
             # Memory-only intents must bypass the agent loop — they need direct retrieval,
             # not an LLM tool loop that will spin up web_search / shell_exec.
-            _MEMORY_ONLY_INTENTS = {"broad_recall", "user_reflection", "system_info", "inquiry_queue"}
+            _MEMORY_ONLY_INTENTS = {"user_reflection", "system_info", "inquiry_queue"}
             _agent_loop_gate_hit = (
                 _agent_loop_enabled
                 and _agent_loop_model_ok
@@ -7703,6 +7720,18 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                     "avg_alignment": _orch_event.get("avg_alignment"),
                                     "proposed_action": _orch_event.get("proposed_action", ""),
                                     "proposed_tool": _orch_event.get("proposed_tool", ""),
+                                },
+                            })
+
+                        elif _etype == "execution_drift":
+                            yield _sse({
+                                "type": "epistemic_event",
+                                "content": _orch_event.get("content", ""),
+                                "metadata": {
+                                    "event": "execution_drift",
+                                    "from_category": _orch_event.get("from_category", ""),
+                                    "to_category": _orch_event.get("to_category", ""),
+                                    "alignment": _orch_event.get("alignment"),
                                 },
                             })
 

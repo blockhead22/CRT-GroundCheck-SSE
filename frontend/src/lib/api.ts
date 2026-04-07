@@ -751,6 +751,7 @@ export type BeliefContradiction = {
 export type BeliefEntry = {
   memory_id: string
   text: string
+  kind: string           // "user_belief" or "user_fact"
   trust: number
   confidence: number
   authority: string
@@ -1941,6 +1942,29 @@ export async function getCloudUsage(): Promise<CloudUsage> {
   if (!res.ok) throw new Error(`Failed to load cloud usage: ${res.statusText}`)
   const data = await res.json()
   return data.usage as CloudUsage
+}
+
+// ---------------------------------------------------------------------------
+// Cloud Budget
+// ---------------------------------------------------------------------------
+
+export type CloudBudgetFeature = {
+  base_limit: number
+  effective_limit: number
+  used: number
+  status: 'ok' | 'throttled' | 'blocked'
+}
+
+export type CloudBudget = {
+  daily_cost_usd: number
+  budget_ceiling: number
+  gradient_multiplier: number
+  features: Record<string, CloudBudgetFeature>
+  error?: string
+}
+
+export async function getCloudBudget(): Promise<CloudBudget> {
+  return fetchJson<CloudBudget>('/api/cloud/budget')
 }
 
 // ---------------------------------------------------------------------------

@@ -423,6 +423,10 @@ class CascadeResult:
     depth_map: Dict[str, int]       # node_id -> depth
     width_per_level: Dict[int, int]
     blocked_by_firewall: Set[str] = field(default_factory=set)
+    # Cascade pressure — cumulative incoming impact per node (SUM, not MAX)
+    incoming_pressure: Dict[str, float] = field(default_factory=dict)
+    max_pressure: float = 0.0
+    avg_pressure: float = 0.0
 
 
 class BeliefDependencyGraph:
@@ -527,6 +531,8 @@ class BeliefDependencyGraph:
         queue = deque([(source_id, delta_0, 0)])
         total_impact = delta_0
         max_depth_reached = 0
+        # Track cumulative incoming pressure per node (SUM aggregation)
+        incoming_pressure: Dict[str, List[float]] = {}
 
         while queue:
             node, impact, depth = queue.popleft()
@@ -551,6 +557,11 @@ class BeliefDependencyGraph:
                 if succ in held_nodes:
                     blocked.add(succ)
 
+                # Track all incoming impacts for pressure (SUM)
+                if succ not in incoming_pressure:
+                    incoming_pressure[succ] = []
+                incoming_pressure[succ].append(propagated)
+
                 # MAX aggregation (Definition 3.5)
                 if succ in affected and propagated <= affected[succ]:
                     continue
@@ -570,6 +581,12 @@ class BeliefDependencyGraph:
             default=0.5
         )
 
+        # Compute pressure sums per node
+        pressure_sums = {node: sum(impacts) for node, impacts in incoming_pressure.items()}
+        pressure_values = list(pressure_sums.values())
+        max_pressure = max(pressure_values) if pressure_values else 0.0
+        avg_pressure = (sum(pressure_values) / len(pressure_values)) if pressure_values else 0.0
+
         return CascadeResult(
             source=source_id,
             affected_nodes=set(affected.keys()),
@@ -582,6 +599,9 @@ class BeliefDependencyGraph:
             depth_map=depth_map,
             width_per_level=dict(width_per_level),
             blocked_by_firewall=blocked,
+            incoming_pressure=pressure_sums,
+            max_pressure=max_pressure,
+            avg_pressure=avg_pressure,
         )
 
     # --- Reachability (Proposition 5.3) ---

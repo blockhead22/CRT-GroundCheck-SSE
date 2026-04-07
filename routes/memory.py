@@ -1360,7 +1360,10 @@ def variance_analyze(
     engine = _get_engine(request, thread_id)
     try:
         from personal_agent.variance_tracker import VarianceTracker
+        from personal_agent.governance_bridge import GovernanceBridge
         tracker = VarianceTracker(db_path=engine.memory.db_path)
+        bridge = GovernanceBridge(memory_system=engine.memory, variance_tracker=tracker)
+        tracker.set_governance_bridge(bridge)
         result = tracker.run_analysis(force=True)
         return result
     except Exception as e:
@@ -1665,14 +1668,18 @@ def list_user_beliefs(
     engine = _get_engine(request, tid)
     uid = resolve_user_id(authorization)
 
-    # Load all active user_belief memories — GLOBAL across all threads.
+    # Load all active user_belief AND user_fact memories — GLOBAL across all threads.
     # Beliefs are persistent user convictions, not thread-local context.
     # Using thread-scoped loading caused beliefs to "disappear" when a new
     # thread was created (each restart generates a new UUID thread).
+    # NOTE: The belief classifier defaults to "user_fact" for most assertions;
+    # only strong opinion markers get "user_belief". Including both kinds
+    # ensures the page actually shows data instead of being perpetually empty.
+    _BELIEF_KINDS = {"user_belief", "user_fact"}
     all_items = engine.memory._load_all_memories(user_id=uid) if uid else engine.memory._load_all_memories()
     beliefs = [
         m for m in all_items
-        if getattr(m, "kind", "") == "user_belief"
+        if getattr(m, "kind", "") in _BELIEF_KINDS
         and not getattr(m, "deprecated", False)
         and float(getattr(m, "trust", 0)) >= min_trust
     ]
@@ -1737,6 +1744,7 @@ def list_user_beliefs(
         entries.append({
             "memory_id": mid,
             "text": getattr(mem, "text", ""),
+            "kind": getattr(mem, "kind", "user_fact"),
             "trust": round(float(getattr(mem, "trust", 0)), 3),
             "confidence": round(float(getattr(mem, "confidence", 0)), 3),
             "authority": getattr(mem, "authority", "confirmed"),
@@ -1763,4 +1771,43 @@ def list_user_beliefs(
         "held_contradictions": held,
         "generated_at": _time.time(),
         "beliefs": entries,
+    }
+
+
+# ------------------------------------------------------------------
+# Cloud budget / gradient limiter endpoint
+# ------------------------------------------------------------------
+
+@router.get("/api/cloud/budget")
+def cloud_budget() -> Dict[str, Any]:
+    """Return current cloud spend, gradient multiplier, and per-feature limits."""
+    from personal_agent.cloud_features import get_cloud_feature_service
+    svc = get_cloud_feature_service()
+    if svc is None:
+        return {
+            "daily_cost_usd": 0.0,
+            "budget_ceiling": 10.0,
+            "gradient_multiplier": 1.0,
+            "features": {},
+            "error": "CloudFeatureService not initialized",
+        }
+    svc._reset_daily_if_needed()
+    gradient = svc._gradient_limit("cloud_generation")
+    features: Dict[str, Any] = {}
+    for feature in svc.daily_limits:
+        base_limit = svc.daily_limits.get(feature, 0)
+        effective = svc._effective_limit(feature)
+        used = svc._daily_counts.get(feature, 0)
+        status = "blocked" if effective == 0 else ("throttled" if used >= effective else "ok")
+        features[feature] = {
+            "base_limit": base_limit,
+            "effective_limit": effective,
+            "used": used,
+            "status": status,
+        }
+    return {
+        "daily_cost_usd": round(svc._daily_cost_usd, 4),
+        "budget_ceiling": 10.0,
+        "gradient_multiplier": round(gradient, 4),
+        "features": features,
     }

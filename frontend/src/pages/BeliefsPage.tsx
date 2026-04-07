@@ -91,6 +91,17 @@ function BeliefCard({ belief, expanded, onToggle }: {
           gap: 4,
           flexShrink: 0,
         }}>
+          {/* Kind badge */}
+          <span style={{
+            fontSize: 10,
+            fontFamily: 'var(--font-mono, monospace)',
+            color: belief.kind === 'user_belief' ? '#D4845C' : '#a89d8a',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          }}>
+            {belief.kind === 'user_belief' ? 'belief' : 'fact'}
+          </span>
+
           {/* Authority */}
           <span style={{
             fontSize: 10,
@@ -485,9 +496,9 @@ export function BeliefsPage({ threadId }: { threadId: string }) {
             color: 'var(--text-muted)',
           }}>
             <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.4 }}>&#9671;</div>
-            <div style={{ fontSize: 15, marginBottom: 8 }}>No beliefs tracked yet</div>
+            <div style={{ fontSize: 15, marginBottom: 8 }}>No beliefs or facts tracked yet</div>
             <div style={{ fontSize: 13, color: 'var(--text-faint)', maxWidth: 360, margin: '0 auto' }}>
-              Share your opinions, stances, and positions in conversation.
+              Share facts, opinions, stances, and positions in conversation.
               They'll appear here with trust scores that evolve over time.
             </div>
           </div>

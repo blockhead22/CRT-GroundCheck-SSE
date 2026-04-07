@@ -1510,7 +1510,7 @@ class Orchestrator:
         last_result = None
 
         # Initialize run log (Layer 1: observation, Layer 2: alignment scoring)
-        from personal_agent.agent_run_log import RunLog, RunStep as LogStep, DriftEvent, get_run_log_db, score_alignment, detect_drift, detect_step_contradictions
+        from personal_agent.agent_run_log import RunLog, RunStep as LogStep, DriftEvent, get_run_log_db, score_alignment, detect_drift, detect_step_contradictions, detect_execution_drift, categorize_tool
         run_log = RunLog(
             intent=objective[:500],
             thread_id="",  # filled by caller if available
@@ -1760,6 +1760,39 @@ class Orchestrator:
                             }
                             state.done = True
                             break
+
+            # Layer 2.6: Live execution drift — detect tool category pivots
+            if action == "tool_call" and len(run_log.steps) >= 1:
+                _curr_tool = decision.get("tool", "") or ""
+                _curr_cat = categorize_tool(_curr_tool)
+                # Find the most recent tool_call step
+                _prev_tool_step = None
+                for _ps in reversed(run_log.steps):
+                    if _ps.action == "tool_call" and _ps.tool:
+                        _prev_tool_step = _ps
+                        break
+                if _prev_tool_step is not None:
+                    _prev_cat = categorize_tool(_prev_tool_step.tool or "")
+                    if (_prev_cat != _curr_cat
+                            and _prev_cat != "other" and _curr_cat != "other"):
+                        # Use live alignment if available, else compute it
+                        try:
+                            _exec_align = _live_align
+                        except NameError:
+                            _exec_align = score_alignment(objective, reasoning) if reasoning else None
+                        if _exec_align is not None and _exec_align < 0.25:
+                            _exec_drift_msg = (
+                                f"Task pivot: {_prev_cat} -> {_curr_cat} "
+                                f"(align={_exec_align:.2f})"
+                            )
+                            print(f"  [EXEC_DRIFT] {_exec_drift_msg}")
+                            yield {
+                                "type": "execution_drift",
+                                "content": _exec_drift_msg,
+                                "from_category": _prev_cat,
+                                "to_category": _curr_cat,
+                                "alignment": _exec_align,
+                            }
 
             if action == "plan":
                 # First-move declaration — surface to user immediately before any tool runs.
@@ -2166,6 +2199,12 @@ class Orchestrator:
             run_log.add_drift(d)
             print(f"  [DRIFT] Step {d.at_step}: {d.description}")
 
+        # Layer 2b: Detect execution drift (tool category pivots)
+        exec_drifts = detect_execution_drift(objective, run_log.steps)
+        for d in exec_drifts:
+            run_log.add_drift(d)
+            print(f"  [EXEC_DRIFT] Step {d.at_step}: {d.description}")
+
         # Layer 3: Detect step-to-step contradictions
         contradictions = detect_step_contradictions(run_log.steps)
         for step_i, step_j, desc in contradictions:
@@ -2177,6 +2216,67 @@ class Orchestrator:
                 to_belief=f"Step {step_j} outcome",
                 had_reasoning=True,
             ))
+
+        # ── Transformation verification gate ─────────────────────────────
+        try:
+            from personal_agent.agent_run_log import is_transformation_intent
+            if is_transformation_intent(objective) and len(run_log.steps) > 0:
+                # Collect before state: first file_read/search_code result
+                _before_snippet = ""
+                for _s in run_log.steps:
+                    if _s.tool in ("file_read", "search_code") and _s.status == "ok" and _s.result_preview:
+                        _before_snippet = _s.result_preview[:600]
+                        break
+
+                # Collect after state: last file_write result or last success
+                _after_snippet = ""
+                for _s in reversed(run_log.steps):
+                    if _s.tool == "file_write" and _s.status == "ok" and _s.result_preview:
+                        _after_snippet = _s.result_preview[:600]
+                        break
+                    elif _s.status == "ok" and _s.result_preview:
+                        _after_snippet = _s.result_preview[:600]
+                        break
+
+                if _before_snippet or _after_snippet:
+                    _verify_prompt = (
+                        f"TRANSFORMATION VERIFICATION\n"
+                        f"Requested: {objective[:300]}\n"
+                        f"Before: {_before_snippet[:400]}\n"
+                        f"After: {_after_snippet[:400]}\n\n"
+                        f"Did this transformation achieve the requested goal? "
+                        f"Answer strictly YES or NO on the first line, then a brief reason (1 sentence)."
+                    )
+                    try:
+                        _verify_resp = self.brain.generate(
+                            _verify_prompt,
+                            system="You are a code verification assistant. Be strict. Answer YES only if the transformation clearly achieved its goal.",
+                            max_tokens=150,
+                            temperature=0.0,
+                        )
+                        _verify_text = (_verify_resp or "").strip()
+                        _first_line = _verify_text.split("\n")[0].strip().upper()
+                        run_log.transformation_verified = _first_line.startswith("YES")
+                        run_log.verification_reason = _verify_text[:300]
+
+                        # Mark last successful step as verified
+                        for _s in reversed(run_log.steps):
+                            if _s.status == "ok":
+                                _s.verified = True if run_log.transformation_verified else _s.verified
+                                break
+
+                        if run_log.transformation_verified:
+                            print(f"[TRANSFORM_VERIFY] PASSED: {run_log.verification_reason[:120]}")
+                            yield {"type": "status", "content": "transformation verified",
+                                   "metadata": {"verification": "passed", "reason": run_log.verification_reason}}
+                        else:
+                            print(f"[TRANSFORM_VERIFY] FAILED: {run_log.verification_reason[:120]}")
+                            yield {"type": "status", "content": f"transformation check failed: {run_log.verification_reason[:200]}",
+                                   "metadata": {"verification": "failed", "reason": run_log.verification_reason}}
+                    except Exception as _ve:
+                        print(f"[TRANSFORM_VERIFY] LLM error (non-fatal): {_ve}")
+        except Exception as _te:
+            print(f"[TRANSFORM_VERIFY] Setup error (non-fatal): {_te}")
 
         # Persist run log
         run_log.brain_ms = state.total_brain_ms

@@ -70,6 +70,20 @@ _AETHER_IDENTITY_LEAK_RE = re.compile(
 )
 
 # ========================================================================
+# Per-Channel Trust Ceilings
+# ========================================================================
+# External / untrusted channels get capped trust.  Channels not listed here
+# (including 'webchat' and None — direct user input) have NO ceiling.
+CHANNEL_TRUST_CEILINGS: Dict[str, float] = {
+    "mcp_client": 0.6,      # external MCP tools can't store above 0.6
+    "file_ingest": 0.7,     # file content starts lower — could be adversarial
+    "telegram": 0.5,        # messaging channels are less trusted
+    "discord": 0.5,
+    "ambient": 0.4,         # vision observations are low trust
+    "api": 0.7,             # direct API calls
+}
+
+# ========================================================================
 # Prompt Injection Defense
 # ========================================================================
 
@@ -500,12 +514,18 @@ class CRTMemorySystem:
         self.reconstruction_fidelity = ReconstructionFidelityEvaluator()
         self.fidelity_min_threshold = 0.60
 
+        self._governance_bridge = None
+
         # Initialize database
         self._init_db()
         try:
             self._consolidate_sync_origin_duplicates()
         except Exception as e:
             logger.debug(f"[MEMORY] Sync duplicate consolidation skipped: {e}")
+
+    def set_governance_bridge(self, bridge) -> None:
+        """Attach a GovernanceBridge for memory<->belief feedback loops."""
+        self._governance_bridge = bridge
     
     def _get_connection(self, timeout: float = 30.0) -> sqlite3.Connection:
         """
@@ -1409,19 +1429,22 @@ class CRTMemorySystem:
     # Memory Storage
     # ========================================================================
 
-    def _sanitize_transcript_pollution(self, text: str) -> Tuple[str, Optional[str]]:
+    def _sanitize_transcript_pollution(self, text: str, channel: Optional[str] = None) -> Tuple[str, Optional[str], bool]:
         """
         Remove continuity/transcript helper blocks before persistence.
 
         Returns:
-            (clean_text, reason) where reason is set if any cleanup occurred.
+            (clean_text, reason, injection_flagged) where reason is set if any
+            cleanup occurred and injection_flagged is True when prompt-injection
+            patterns were detected.
         """
         raw = str(text or "")
         cleaned = raw.strip()
         if not cleaned:
-            return "", None
+            return "", None, False
 
         reason: Optional[str] = None
+        injection_flagged = False
 
         # Remove continuity helper suffix blocks.
         cut_at: Optional[int] = None
@@ -1456,13 +1479,17 @@ class CRTMemorySystem:
 
         # Flag prompt-injection risk (don't strip — just mark for deprioritization).
         if detect_injection_risk(cleaned):
-            logger.warning("[INJECTION_DEFENSE] Injection risk flagged at storage time: %.120s", cleaned)
+            logger.warning(
+                "[INJECTION_DEFENSE] Channel=%s, flagged at storage time: %.120s",
+                channel or "unknown", cleaned,
+            )
             reason = reason or "injection_risk"
+            injection_flagged = True
 
         # Defensive: collapse excessive blank lines after trimming.
         cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
 
-        return cleaned, reason
+        return cleaned, reason, injection_flagged
     
     def store_memory(
         self,
@@ -1492,7 +1519,7 @@ class CRTMemorySystem:
         4. Store with metadata
         """
         # Write-time guard: strip continuity/transcript contamination from text.
-        text_clean, guard_reason = self._sanitize_transcript_pollution(text)
+        text_clean, guard_reason, injection_flagged = self._sanitize_transcript_pollution(text, channel=channel)
         if guard_reason:
             logger.info("[MEMORY_GUARD] %s", guard_reason)
         if not text_clean:
@@ -1500,6 +1527,16 @@ class CRTMemorySystem:
             text_clean = "[filtered-empty-memory]"
 
         text = text_clean
+
+        # ── Injection trust penalty ──────────────────────────────────────
+        # Memories flagged with prompt-injection patterns start at lower
+        # confidence so they can never dominate retrieval.
+        if injection_flagged and confidence > 0.4:
+            logger.info(
+                "[INJECTION_DEFENSE] Capping confidence from %.2f to 0.40 for injection-flagged memory",
+                confidence,
+            )
+            confidence = 0.4
 
         # Thread affinity: prefer explicit arg, then context thread_id.
         resolved_thread_id = str(thread_id or "").strip() or None
@@ -1728,6 +1765,18 @@ class CRTMemorySystem:
             trust = self.config.tau_base
 
         trust = np.clip(trust, 0.0, 1.0)
+
+        # ── Per-channel trust ceiling ────────────────────────────────────
+        # External / untrusted channels get capped trust.  Direct user
+        # channels ('webchat', None) have NO ceiling.
+        if channel and channel in CHANNEL_TRUST_CEILINGS:
+            ceiling = CHANNEL_TRUST_CEILINGS[channel]
+            if trust > ceiling:
+                logger.info(
+                    "[CHANNEL_TRUST] Capping trust from %.3f to %.3f for channel=%s",
+                    trust, ceiling, channel,
+                )
+                trust = ceiling
 
         # Phase 0.5 DNNT hook: reconstruction fidelity + anchor extraction.
         # The interface is stable so a learned Mirus/Holden module can replace it later.
@@ -3053,9 +3102,16 @@ class CRTMemorySystem:
         
         conn.commit()
         conn.close()
-        
+
         logger.info(f"[TRUST] Memory {memory_id}: {old_trust:.3f} → {actual_new_trust:.3f}")
-    
+
+        # Governance bridge: reclassify stale beliefs when trust drops low
+        if actual_new_trust < 0.3 and self._governance_bridge is not None:
+            try:
+                self._governance_bridge.reclassify_stale_beliefs(memory_id, actual_new_trust)
+            except Exception as e:
+                logger.warning(f"[GOVERNANCE_BRIDGE] Reclassification failed for {memory_id}: {e}")
+
     def _update_memory_trust(self, memory_id: str, new_trust: float):
         """
         Update trust score for a specific memory in database.
@@ -3306,6 +3362,17 @@ class CRTMemorySystem:
         response_embedding: Optional[bytes] = None,
     ) -> int:
         """Record response as belief (high trust). Returns entry_id."""
+        # Governance bridge: cross-validate against topic variance
+        if self._governance_bridge is not None:
+            try:
+                avg_trust, _warning = self._governance_bridge.validate_new_belief(
+                    query, memory_ids, avg_trust
+                )
+                if _warning:
+                    logger.info(f"[GOVERNANCE_BRIDGE] Belief trust dampened: {_warning}")
+            except Exception as e:
+                logger.warning(f"[GOVERNANCE_BRIDGE] Belief validation failed: {e}")
+
         conn = self._get_connection()
         cursor = conn.cursor()
 

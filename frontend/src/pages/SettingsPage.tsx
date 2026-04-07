@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { getProfile, updateAuthProfile, setProfileFacts, setProfileName, getCloudSettings, updateCloudSettings, getCloudUsage, getAvailableModels } from '../lib/api'
-import type { AuthUser, CloudSettings, CloudUsage, AvailableModels } from '../lib/api'
+import { getProfile, updateAuthProfile, setProfileFacts, setProfileName, getCloudSettings, updateCloudSettings, getCloudUsage, getAvailableModels, getCloudBudget } from '../lib/api'
+import type { AuthUser, CloudSettings, CloudUsage, AvailableModels, CloudBudget } from '../lib/api'
 
 type Props = {
   authUser: AuthUser | null
@@ -9,7 +9,7 @@ type Props = {
   onProfileUpdated: () => void
 }
 
-type SettingsTab = 'profile' | 'cloud' | 'desktop' | 'browser' | 'heartbeat' | 'behavior' | 'tooling' | 'facts' | 'account'
+type SettingsTab = 'profile' | 'cloud' | 'billing' | 'desktop' | 'browser' | 'heartbeat' | 'behavior' | 'tooling' | 'facts' | 'account'
 
 const ESCALATION_OPTIONS = [
   { value: 'conservative', label: 'Conservative' },
@@ -67,6 +67,12 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
   // Tooling tab state
   const [availableModels, setAvailableModels] = useState<AvailableModels | null>(null)
 
+  // Budget state
+  const [budget, setBudget] = useState<CloudBudget | null>(null)
+  const [budgetCeiling, setBudgetCeiling] = useState('10')
+  const [autoDowngrade, setAutoDowngrade] = useState(true)
+  const [budgetSaving, setBudgetSaving] = useState(false)
+
   // Load profile on mount (authUser display name synced separately to avoid re-fetching everything)
   useEffect(() => {
     setDisplayName(authUser?.display_name || '')
@@ -84,9 +90,15 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
       setCloudSettingsState(cs)
       if (cs?.preferred_nickname) setNickname(cs.preferred_nickname)
       if (cs?.agent_name) setAgentName(cs.agent_name)
+      if (cs?.cloud_auto_downgrade !== undefined) setAutoDowngrade(cs.cloud_auto_downgrade === 'true')
+      if (cs?.cloud_budget_ceiling) setBudgetCeiling(cs.cloud_budget_ceiling)
     }).catch(() => {})
     getCloudUsage().then(setCloudUsage).catch(() => {})
     getAvailableModels().then(setAvailableModels).catch(() => {})
+    getCloudBudget().then((b) => {
+      setBudget(b)
+      if (b.budget_ceiling) setBudgetCeiling(String(b.budget_ceiling))
+    }).catch(() => {})
   }, [threadId])
 
   // POLLING FIX: cloud-usage interval raised from 10s to 30s; pauses when tab is hidden
@@ -113,6 +125,31 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
       document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [])
+
+  // Auto-refresh budget every 30s when billing tab is visible
+  useEffect(() => {
+    if (tab !== 'billing') return
+    const iv = setInterval(() => {
+      getCloudBudget().then((b) => {
+        setBudget(b)
+        if (b.budget_ceiling) setBudgetCeiling(String(b.budget_ceiling))
+      }).catch(() => {})
+    }, 30000)
+    return () => clearInterval(iv)
+  }, [tab])
+
+  async function handleBudgetCeilingSave() {
+    const val = parseFloat(budgetCeiling)
+    if (isNaN(val) || val <= 0) return
+    setBudgetSaving(true)
+    try {
+      await updateCloudSettings({ cloud_budget_ceiling: String(val) })
+    } catch (e) {
+      console.error('Budget ceiling save failed:', e)
+    } finally {
+      setBudgetSaving(false)
+    }
+  }
 
   async function handleSave() {
     setSaving(true)
@@ -241,6 +278,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
   const tabs: Array<{ id: SettingsTab; label: string }> = [
     { id: 'profile', label: 'Profile' },
     { id: 'cloud', label: 'Cloud & Models' },
+    { id: 'billing', label: 'Usage & Billing' },
     { id: 'desktop', label: 'Desktop' },
     { id: 'browser', label: 'Browser' },
     { id: 'heartbeat', label: 'Heartbeat' },
@@ -279,7 +317,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-5">
-        <div className={`mx-auto space-y-6 ${tab === 'cloud' ? 'max-w-5xl' : 'max-w-2xl'}`}>
+        <div className={`mx-auto space-y-6 ${tab === 'cloud' || tab === 'billing' ? 'max-w-5xl' : 'max-w-2xl'}`}>
           {/* ═══════════════════ PROFILE TAB ═══════════════════ */}
           {tab === 'profile' && (
             <>
@@ -769,6 +807,250 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
               </SectionCard>
 
               {/* Intent Routing section removed — Layer 4 epistemic routing handles this automatically */}
+            </>
+          )}
+
+          {/* ═══════════════════ USAGE & BILLING TAB ═══════════════════ */}
+          {tab === 'billing' && (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* LEFT: Spending Overview + Feature Limits */}
+                <div className="space-y-6">
+                  {/* Spending Overview */}
+                  <SectionCard title="Spending Overview">
+                    {budget ? (
+                      <div className="space-y-4">
+                        {/* Daily spend progress */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-sm text-white/70">Daily Spend</span>
+                            <span className="font-mono text-sm text-white/90">
+                              ${budget.daily_cost_usd.toFixed(2)}
+                              <span className="text-white/40"> / ${parseFloat(budgetCeiling).toFixed(2)}</span>
+                            </span>
+                          </div>
+                          <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${Math.min(100, (budget.daily_cost_usd / parseFloat(budgetCeiling || '10')) * 100)}%`,
+                                backgroundColor:
+                                  budget.daily_cost_usd / parseFloat(budgetCeiling || '10') > 0.8
+                                    ? '#ef4444'
+                                    : budget.daily_cost_usd / parseFloat(budgetCeiling || '10') > 0.5
+                                      ? '#eab308'
+                                      : '#22c55e',
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Gradient multiplier */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-white/70">Gradient Multiplier</span>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="h-3 w-3 rounded-full"
+                              style={{
+                                backgroundColor:
+                                  budget.gradient_multiplier >= 0.8
+                                    ? '#22c55e'
+                                    : budget.gradient_multiplier >= 0.3
+                                      ? '#eab308'
+                                      : '#ef4444',
+                              }}
+                            />
+                            <span className="font-mono text-sm text-white/90">
+                              {(budget.gradient_multiplier * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Cloud access text */}
+                        <div className="rounded bg-white/5 px-3 py-2 text-xs text-white/60">
+                          Cloud access: <span className="font-mono text-white/80">{(budget.gradient_multiplier * 100).toFixed(0)}%</span> of normal capacity
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-white/40">Loading budget data...</div>
+                    )}
+                  </SectionCard>
+
+                  {/* Per-Feature Limits */}
+                  <SectionCard title="Per-Feature Limits" description="Base limits scaled by the gradient multiplier based on daily spend.">
+                    {budget && Object.keys(budget.features).length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-white/10 text-white/50">
+                              <th className="pb-2 text-left font-medium">Feature</th>
+                              <th className="pb-2 text-right font-medium">Base</th>
+                              <th className="pb-2 text-right font-medium">Effective</th>
+                              <th className="pb-2 text-right font-medium">Used</th>
+                              <th className="pb-2 text-right font-medium">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                            {Object.entries(budget.features).map(([name, f]) => (
+                              <tr key={name}>
+                                <td className="py-2 text-white/70">{name.replace(/_/g, ' ')}</td>
+                                <td className="py-2 text-right font-mono text-white/50">{f.base_limit}</td>
+                                <td className="py-2 text-right font-mono text-white/70">{f.effective_limit}</td>
+                                <td className="py-2 text-right font-mono text-white/90">{f.used}</td>
+                                <td className="py-2 text-right">
+                                  <span
+                                    className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium"
+                                    style={{
+                                      backgroundColor:
+                                        f.status === 'ok' ? 'rgba(34,197,94,0.15)' :
+                                        f.status === 'throttled' ? 'rgba(234,179,8,0.15)' :
+                                        'rgba(239,68,68,0.15)',
+                                      color:
+                                        f.status === 'ok' ? '#22c55e' :
+                                        f.status === 'throttled' ? '#eab308' :
+                                        '#ef4444',
+                                    }}
+                                  >
+                                    {f.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-white/40">No feature data available</div>
+                    )}
+                  </SectionCard>
+                </div>
+
+                {/* RIGHT: Spending Curve + Budget Controls */}
+                <div className="space-y-6">
+                  {/* Spending Curve */}
+                  <SectionCard title="Spending Curve" description="Gradient limiter: as daily spend increases, cloud access throttles down.">
+                    <div className="flex items-center justify-center py-2">
+                      <svg viewBox="0 0 200 80" width={200} height={80} className="overflow-visible">
+                        {/* Grid lines */}
+                        <line x1="0" y1="0" x2="0" y2="80" stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
+                        <line x1="0" y1="80" x2="200" y2="80" stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
+                        <line x1="0" y1="0" x2="200" y2="0" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" strokeDasharray="3 3" />
+                        <line x1="0" y1="40" x2="200" y2="40" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" strokeDasharray="3 3" />
+                        {/* Y-axis labels */}
+                        <text x="-4" y="5" fontSize="7" fill="rgba(255,255,255,0.4)" textAnchor="end">100%</text>
+                        <text x="-4" y="43" fontSize="7" fill="rgba(255,255,255,0.4)" textAnchor="end">50%</text>
+                        <text x="-4" y="83" fontSize="7" fill="rgba(255,255,255,0.4)" textAnchor="end">0%</text>
+                        {/* X-axis labels */}
+                        <text x="0" y="92" fontSize="7" fill="rgba(255,255,255,0.4)" textAnchor="middle">$0</text>
+                        <text x="100" y="92" fontSize="7" fill="rgba(255,255,255,0.4)" textAnchor="middle">${(parseFloat(budgetCeiling || '10') / 2).toFixed(0)}</text>
+                        <text x="200" y="92" fontSize="7" fill="rgba(255,255,255,0.4)" textAnchor="middle">${parseFloat(budgetCeiling || '10').toFixed(0)}</text>
+                        {/* Curve: multiplier = max(0, 1 - (cost/ceiling)^0.6) */}
+                        <path
+                          d={(() => {
+                            const ceil = parseFloat(budgetCeiling || '10')
+                            const pts: string[] = []
+                            for (let i = 0; i <= 40; i++) {
+                              const x = (i / 40) * 200
+                              const cost = (i / 40) * ceil
+                              const mult = cost <= 0 ? 1 : Math.max(0, 1 - Math.pow(cost / ceil, 0.6))
+                              const y = 80 - mult * 80
+                              pts.push(`${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`)
+                            }
+                            return pts.join(' ')
+                          })()}
+                          fill="none"
+                          stroke="rgba(139,92,246,0.7)"
+                          strokeWidth="2"
+                        />
+                        {/* Fill under curve */}
+                        <path
+                          d={(() => {
+                            const ceil = parseFloat(budgetCeiling || '10')
+                            const pts: string[] = ['M0 80']
+                            for (let i = 0; i <= 40; i++) {
+                              const x = (i / 40) * 200
+                              const cost = (i / 40) * ceil
+                              const mult = cost <= 0 ? 1 : Math.max(0, 1 - Math.pow(cost / ceil, 0.6))
+                              const y = 80 - mult * 80
+                              pts.push(`L${x.toFixed(1)} ${y.toFixed(1)}`)
+                            }
+                            pts.push('L200 80 Z')
+                            return pts.join(' ')
+                          })()}
+                          fill="rgba(139,92,246,0.08)"
+                        />
+                        {/* Current position dot */}
+                        {budget && (() => {
+                          const ceil = parseFloat(budgetCeiling || '10')
+                          const cx = Math.min(200, (budget.daily_cost_usd / ceil) * 200)
+                          const cy = 80 - budget.gradient_multiplier * 80
+                          return (
+                            <>
+                              <circle cx={cx} cy={cy} r="4" fill="rgba(139,92,246,0.9)" stroke="white" strokeWidth="1.5" />
+                              <text
+                                x={cx + 6}
+                                y={cy - 4}
+                                fontSize="7"
+                                fill="rgba(255,255,255,0.7)"
+                                fontFamily="monospace"
+                              >
+                                ${budget.daily_cost_usd.toFixed(2)}
+                              </text>
+                            </>
+                          )
+                        })()}
+                      </svg>
+                    </div>
+                  </SectionCard>
+
+                  {/* Budget Controls */}
+                  <SectionCard title="Budget Controls">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="mb-1.5 block text-sm text-white/70">Daily Budget Ceiling</label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-white/50">$</span>
+                          <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            step="1"
+                            value={budgetCeiling}
+                            onChange={(e) => setBudgetCeiling(e.target.value)}
+                            className="w-24 rounded glass-field px-3 py-2 text-sm font-mono text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+                          />
+                          <button
+                            onClick={handleBudgetCeilingSave}
+                            disabled={budgetSaving}
+                            className="rounded px-3 py-2 text-xs font-medium text-white/80 transition-colors hover:bg-white/10"
+                            style={{ backgroundColor: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.3)' }}
+                          >
+                            {budgetSaving ? 'Saving...' : 'Save'}
+                          </button>
+                        </div>
+                        <p className="mt-1 text-xs text-white/40">
+                          Maximum daily cloud spend. The gradient limiter throttles access as spend approaches this ceiling.
+                        </p>
+                      </div>
+
+                      <Toggle
+                        label="Auto-downgrade to local"
+                        description="When budget is exceeded, automatically fall back to local models instead of blocking requests"
+                        checked={autoDowngrade}
+                        onChange={async (v) => {
+                          setAutoDowngrade(v)
+                          try {
+                            await updateCloudSettings({ cloud_auto_downgrade: v ? 'true' : 'false' })
+                          } catch (e) {
+                            console.error('Auto-downgrade toggle failed:', e)
+                            setAutoDowngrade(!v)
+                          }
+                        }}
+                      />
+                    </div>
+                  </SectionCard>
+                </div>
+              </div>
             </>
           )}
 

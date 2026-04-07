@@ -254,6 +254,14 @@ class CRTEnhancedRAG:
         self.memory = CRTMemorySystem(memory_db, self.config)
         self.ledger = ContradictionLedger(ledger_db, self.config)
 
+        # Governance bridge: connects memory trust to belief/speech tracking
+        try:
+            from personal_agent.governance_bridge import GovernanceBridge
+            _bridge = GovernanceBridge(memory_system=self.memory)
+            self.memory.set_governance_bridge(_bridge)
+        except Exception as _bridge_err:
+            print(f"[GOVERNANCE_BRIDGE] Init skipped (non-fatal): {_bridge_err}")
+
         # BDG cascade propagation (lazy — builds on first contradiction)
         try:
             from personal_agent.memory_graph import get_live_bdg
@@ -2914,11 +2922,12 @@ class CRTEnhancedRAG:
     # BDG Cascade Propagation (wired into contradiction detection)
     # ------------------------------------------------------------------
 
-    def _trigger_cascade_propagation(self, entry, old_vector, new_vector):
+    def _trigger_cascade_propagation(self, entry, old_vector, new_vector, pipeline_queue=None):
         """Run cascade propagation after a contradiction is recorded.
 
         Called on a daemon thread — does NOT block the response path.
         Updates trust scores on affected downstream memories.
+        pipeline_queue: optional Queue for emitting SSE pipeline events from this thread.
         """
         try:
             from personal_agent.memory_graph import get_live_bdg, CASCADE_TRUST_FACTOR
@@ -2971,7 +2980,7 @@ class CRTEnhancedRAG:
                 except Exception as _tu_err:
                     print(f"[BDG_CASCADE_TRUST] ERROR updating {node_id}: {_tu_err}")
 
-            # Store cascade metadata on the ledger entry
+            # Store cascade metadata on the ledger entry (includes pressure)
             try:
                 self.ledger.update_contradiction_metadata(entry.ledger_id, {
                     "cascade_affected_count": result.total_nodes - 1,
@@ -2980,13 +2989,31 @@ class CRTEnhancedRAG:
                     "cascade_trust_updates": trust_updates,
                     "cascade_converged": result.converged,
                     "cascade_blocked_firewalls": len(result.blocked_by_firewall),
+                    "cascade_max_pressure": round(result.max_pressure, 4),
+                    "cascade_avg_pressure": round(result.avg_pressure, 4),
                 })
             except Exception as _meta_err:
                 print(f"[BDG_CASCADE] WARNING: failed to store cascade metadata: {_meta_err}")
 
+            # Emit SSE pipeline status event so the frontend shows cascade info
+            if pipeline_queue is not None:
+                try:
+                    from personal_agent.stream_events import normalize_stream_event
+                    pipeline_queue.put_nowait(normalize_stream_event({
+                        "type": "status",
+                        "content": (
+                            f"cascade: {result.total_nodes - 1} affected, "
+                            f"depth={result.depth}, "
+                            f"pressure={result.max_pressure:.2f}"
+                        ),
+                    }))
+                except Exception as _sse_err:
+                    print(f"[BDG_CASCADE] WARNING: failed to emit SSE event: {_sse_err}")
+
             print(f"[BDG_CASCADE_COMPLETE] {entry.ledger_id}: "
                   f"affected={result.total_nodes - 1}, depth={result.depth}, "
-                  f"impact={result.total_impact:.3f}, trust_updates={trust_updates}")
+                  f"impact={result.total_impact:.3f}, pressure={result.max_pressure:.3f}, "
+                  f"trust_updates={trust_updates}")
 
         except Exception as e:
             print(f"[BDG_CASCADE] ERROR in cascade propagation: {e}")
@@ -3006,10 +3033,21 @@ class CRTEnhancedRAG:
         entry = self.ledger.record_contradiction(**kwargs)
 
         if entry is not None:
+            # Capture the pipeline event queue from the current thread's contextvar
+            # so the cascade background thread can emit SSE events.
+            pipeline_queue = None
+            try:
+                import contextvars as _cv
+                # The queue is set by routes/chat.py on the pipeline thread
+                from routes.chat import _pipeline_event_queue
+                pipeline_queue = _pipeline_event_queue.get(None)
+            except Exception:
+                pass  # Not in a request context or import unavailable
+
             import threading as _cascade_t
             _cascade_t.Thread(
                 target=self._trigger_cascade_propagation,
-                args=(entry, old_vector, new_vector),
+                args=(entry, old_vector, new_vector, pipeline_queue),
                 daemon=True,
                 name=f"cascade_{entry.ledger_id[:20]}",
             ).start()

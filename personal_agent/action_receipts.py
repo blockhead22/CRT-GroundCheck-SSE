@@ -43,6 +43,14 @@ _MIGRATE_AGENT_COLS_SQL = [
     "ALTER TABLE action_receipts ADD COLUMN orchestration_id TEXT DEFAULT NULL",
 ]
 
+_MIGRATE_VERIFICATION_COLS_SQL = [
+    "ALTER TABLE action_receipts ADD COLUMN verification_passed INTEGER DEFAULT NULL",
+    "ALTER TABLE action_receipts ADD COLUMN verification_reason TEXT DEFAULT NULL",
+    "ALTER TABLE action_receipts ADD COLUMN expectation_keywords TEXT DEFAULT NULL",
+    "ALTER TABLE action_receipts ADD COLUMN run_step_id TEXT DEFAULT NULL",
+    "ALTER TABLE action_receipts ADD COLUMN model_attribution TEXT DEFAULT NULL",
+]
+
 
 @dataclass
 class ActionReceipt:
@@ -56,6 +64,12 @@ class ActionReceipt:
     reverse_action: Optional[str] = None  # how to undo
     details: Dict[str, Any] = field(default_factory=dict)
     checkpoint_approved: bool = True
+    # --- Verification fields (Sprint 15) ---
+    verification_passed: Optional[bool] = None
+    verification_reason: Optional[str] = None
+    expectation_keywords: Optional[List[str]] = None
+    run_step_id: Optional[str] = None        # links to RunStep iteration
+    model_attribution: Optional[str] = None  # which LLM model planned this action
 
 
 def _get_db() -> sqlite3.Connection:
@@ -64,6 +78,12 @@ def _get_db() -> sqlite3.Connection:
     conn.execute(_CREATE_TABLE_SQL)
     # Migrate: add Sprint 8 columns if missing
     for sql in _MIGRATE_AGENT_COLS_SQL:
+        try:
+            conn.execute(sql)
+        except sqlite3.OperationalError:
+            pass  # column already exists
+    # Migrate: add Sprint 15 verification columns if missing
+    for sql in _MIGRATE_VERIFICATION_COLS_SQL:
         try:
             conn.execute(sql)
         except sqlite3.OperationalError:
@@ -79,8 +99,10 @@ def log_receipt(receipt: ActionReceipt, thread_id: str) -> None:
         conn.execute(
             """INSERT OR REPLACE INTO action_receipts
                (id, thread_id, timestamp, tool_name, action, target, result,
-                reversible, reverse_action, details, checkpoint_approved)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                reversible, reverse_action, details, checkpoint_approved,
+                verification_passed, verification_reason, expectation_keywords,
+                run_step_id, model_attribution)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 receipt.receipt_id,
                 thread_id,
@@ -93,6 +115,11 @@ def log_receipt(receipt: ActionReceipt, thread_id: str) -> None:
                 receipt.reverse_action,
                 json.dumps(receipt.details, default=str),
                 1 if receipt.checkpoint_approved else 0,
+                (1 if receipt.verification_passed else 0) if receipt.verification_passed is not None else None,
+                receipt.verification_reason,
+                json.dumps(receipt.expectation_keywords) if receipt.expectation_keywords else None,
+                receipt.run_step_id,
+                receipt.model_attribution,
             ),
         )
         conn.commit()
@@ -108,7 +135,9 @@ def get_receipts(thread_id: str, limit: int = 20) -> List[Dict[str, Any]]:
         conn = _get_db()
         cursor = conn.execute(
             """SELECT id, thread_id, timestamp, tool_name, action, target, result,
-                      reversible, reverse_action, details, checkpoint_approved
+                      reversible, reverse_action, details, checkpoint_approved,
+                      verification_passed, verification_reason, expectation_keywords,
+                      run_step_id, model_attribution
                FROM action_receipts
                WHERE thread_id = ?
                ORDER BY timestamp DESC
@@ -130,6 +159,11 @@ def get_receipts(thread_id: str, limit: int = 20) -> List[Dict[str, Any]]:
                 "reverse_action": r[8],
                 "details": json.loads(r[9]) if r[9] else {},
                 "checkpoint_approved": bool(r[10]),
+                "verification_passed": bool(r[11]) if r[11] is not None else None,
+                "verification_reason": r[12],
+                "expectation_keywords": json.loads(r[13]) if r[13] else None,
+                "run_step_id": r[14],
+                "model_attribution": r[15],
             }
             for r in rows
         ]
@@ -161,6 +195,105 @@ def create_receipt(
         details=details or {},
         checkpoint_approved=checkpoint_approved,
     )
+
+
+def update_receipt_verification(
+    receipt_id: str,
+    verification_passed: bool,
+    verification_reason: str,
+    expectation_keywords: Optional[List[str]] = None,
+    run_step_id: Optional[str] = None,
+    model_attribution: Optional[str] = None,
+) -> None:
+    """Update an existing receipt with verification and attribution data."""
+    try:
+        conn = _get_db()
+        conn.execute(
+            """UPDATE action_receipts
+               SET verification_passed = ?,
+                   verification_reason = ?,
+                   expectation_keywords = ?,
+                   run_step_id = ?,
+                   model_attribution = ?
+               WHERE id = ?""",
+            (
+                1 if verification_passed else 0,
+                verification_reason,
+                json.dumps(expectation_keywords) if expectation_keywords else None,
+                run_step_id,
+                model_attribution,
+                receipt_id,
+            ),
+        )
+        conn.commit()
+        conn.close()
+        logger.debug("[RECEIPTS] Updated verification for %s: passed=%s", receipt_id[:8], verification_passed)
+    except Exception as e:
+        logger.warning("[RECEIPTS] Failed to update verification: %s", e)
+
+
+def get_receipt_summary(thread_id: str) -> Dict[str, Any]:
+    """Return aggregate receipt stats: total actions, pass rate, tools used."""
+    try:
+        conn = _get_db()
+        # Total count
+        total = conn.execute(
+            "SELECT COUNT(*) FROM action_receipts WHERE thread_id = ?",
+            (thread_id,),
+        ).fetchone()[0]
+
+        # Per-tool counts
+        tool_rows = conn.execute(
+            "SELECT tool_name, COUNT(*) FROM action_receipts WHERE thread_id = ? GROUP BY tool_name",
+            (thread_id,),
+        ).fetchall()
+        tools_used = {r[0]: r[1] for r in tool_rows}
+
+        # Verification stats
+        verified = conn.execute(
+            "SELECT COUNT(*) FROM action_receipts WHERE thread_id = ? AND verification_passed IS NOT NULL",
+            (thread_id,),
+        ).fetchone()[0]
+        passed = conn.execute(
+            "SELECT COUNT(*) FROM action_receipts WHERE thread_id = ? AND verification_passed = 1",
+            (thread_id,),
+        ).fetchone()[0]
+        failed = conn.execute(
+            "SELECT COUNT(*) FROM action_receipts WHERE thread_id = ? AND verification_passed = 0",
+            (thread_id,),
+        ).fetchone()[0]
+
+        # Result breakdown
+        result_rows = conn.execute(
+            "SELECT result, COUNT(*) FROM action_receipts WHERE thread_id = ? GROUP BY result",
+            (thread_id,),
+        ).fetchall()
+        results = {r[0]: r[1] for r in result_rows}
+
+        # Model attribution breakdown
+        model_rows = conn.execute(
+            "SELECT model_attribution, COUNT(*) FROM action_receipts WHERE thread_id = ? AND model_attribution IS NOT NULL GROUP BY model_attribution",
+            (thread_id,),
+        ).fetchall()
+        models_used = {r[0]: r[1] for r in model_rows}
+
+        conn.close()
+        return {
+            "thread_id": thread_id,
+            "total_actions": total,
+            "tools_used": tools_used,
+            "verification": {
+                "total_verified": verified,
+                "passed": passed,
+                "failed": failed,
+                "pass_rate": round(passed / verified, 3) if verified > 0 else None,
+            },
+            "results": results,
+            "models_used": models_used,
+        }
+    except Exception as e:
+        logger.warning("[RECEIPTS] Failed to get summary: %s", e)
+        return {"thread_id": thread_id, "total_actions": 0, "error": str(e)}
 
 
 def log_orchestration_receipt(

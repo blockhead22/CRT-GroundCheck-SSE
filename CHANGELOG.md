@@ -6,6 +6,58 @@ For the full roadmap see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## [Unreleased] — 2026-04-07
+
+### Added — Session 2026-04-07 (18 features)
+
+#### Governance & Security
+- **Governance bridge** (`personal_agent/governance_bridge.py`): Three bidirectional feedback loops connecting memory trust to belief/speech tracking. Bridge 1: topic drift penalizes supporting memories (-0.03 to -0.05 per cycle). Bridge 2: trust drops below 0.3 reclassify stale belief_speech entries to speech. Bridge 3: new beliefs in unstable topics get trust dampened 15%. Wired into variance_tracker (post-analysis), crt_memory (update_trust + record_belief), heartbeat_executor, and crt_rag engine init.
+- **Prompt injection defense** (`crt_memory.py`): `sanitize_memory_for_prompt()` strips role markers (`System:`, `[INST]`, `<|system|>`), instruction overrides ("ignore above instructions"), and behavioral hijacks ("you are now a") via regex. `detect_injection_risk()` flags at storage time. Wired into chat.py prompt building and context_feed.py. Frontend `cleanMemoryText()` also strips injection patterns from display.
+- **Cross-channel injection hardening**: Per-channel trust ceilings (`CHANNEL_TRUST_CEILINGS`): mcp_client=0.6, file_ingest=0.7, telegram/discord=0.5, ambient=0.4. Injection-flagged memories capped at confidence 0.4. File ingestion chunks scanned for injection patterns, flagged chunks downgraded to provisional authority.
+- **Execution drift detection** (`agent_run_log.py` + `cookie_orchestrator.py`): Tool category tracking (memory/web/file/system/code) across agent loop steps. Live detection: category switch + alignment < 0.25 triggers `execution_drift` SSE event. Post-run detection: `detect_execution_drift()` flags scattered execution (3+ category switches). Events emitted as `epistemic_event` type for frontend display.
+
+#### Pipeline & Governance Metrics
+- **Cascade pressure as live metric** (`memory_graph.py`): SUM aggregation of incoming cascade impacts per node (vs existing MAX for trust updates). New fields on `CascadeResult`: `incoming_pressure`, `max_pressure`, `avg_pressure`. SSE status event emitted after cascade runs. Metadata stored in ledger entries.
+- **Adaptive response depth** (`chat.py`): Replaced 3-tier cliff (150/500/4096 tokens) with smooth power-law curve: `100 + 3996 * belief^0.7`. Hedge threshold lowered to 0.35. ReasoningMode capped by confidence: <0.3 forces quick, <0.5 caps deep/research to thinking. SSE event shows depth decision. `[ADAPTIVE_DEPTH]` logging.
+- **Structural transformation gates** (`agent_tool_loop.py` + `cookie_orchestrator.py`): `is_transformation_intent()` detects rewrite/fix/convert/optimize tasks (25 verb stems + structural patterns). After agent loop, verification LLM call checks before/after state. Results stored in `agent_runs.db` (`transformation_verified`, `verification_reason`). Both AgentToolLoop and orchestrator paths covered.
+- **Cloud spending gradient limiter** (`cloud_features.py`): Smooth cost curve `1 - (daily_cost/ceiling)^0.6` reduces cloud access as spend increases ($0=100%, $3=51%, $5=34%, $10=0%). `record_cost()` accumulates daily spend. Gradient multiplier applied to all feature limits. `GET /api/cloud/budget` endpoint. `[GRADIENT_LIMITER]` logging.
+
+#### Frontend
+- **Clickable mini-graph**: SVG nodes and memory labels in PipelineCollapse now clickable, navigating to `/belief-map` page. Hover shows dashed ring + tooltip (first 40 chars of memory text). Bidirectional hover sync between graph and label list. "click -> full map" legend hint.
+- **GateFailDrawer** (`frontend/src/components/chat/GateFailDrawer.tsx`): Right-sliding drawer for gate failure details. Color-coded reason badges, intent/memory/grounding metrics vs thresholds (FAIL/PASS badges), affected memories list, slot info, conflict detail. Actions: Retry, View Contradictions, Dismiss. Wired into MessageBubble.tsx.
+- **RunLogPage** (`frontend/src/pages/RunLogPage.tsx`): Agent run analytics dashboard. Top stats: runs/success/iterations/latency/drift. Recent runs table (50 rows). Tool usage bar chart (top 10). Activation stats. Dead memories list. Auto-refresh 30s. Wired into App/Sidebar/types as `agent-runs` nav.
+- **Pipeline Stepper** (`frontend/src/components/PipelineStepper.tsx`): Standalone 12-step vertical stepper showing all CRT pipeline phases. 4 visual states (pending/active/complete/skipped). Click-to-expand details with timing. Animate replay button. PipelineStepperPage with 3 example datasets. Wired into nav as `pipeline-stepper`.
+- **Usage & Billing settings tab** (`SettingsPage.tsx`): Daily spend progress bar with gradient multiplier indicator. Per-feature limits table (base/effective/used/status). SVG spending curve visualization. Budget ceiling control + auto-downgrade toggle. 30s auto-refresh.
+- **/beliefs page fix**: Expanded filter from `user_belief` only to `user_belief + user_fact`. Added BELIEF/FACT kind badge. `kind` field added to API response and frontend types.
+
+#### Action Receipts
+- **Receipt verification fields** (`action_receipts.py`): Added `verification_passed`, `verification_reason`, `expectation_keywords`, `run_step_id`, `model_attribution` to ActionReceipt dataclass. ALTER TABLE migration for existing DBs. `update_receipt_verification()` patches receipts after tool execution. `get_receipt_summary()` for aggregate stats. `GET /api/action-receipts/summary` endpoint.
+
+#### Intent Routing
+- **Personal-fact pattern routing** (`task_agent.py`): 11 regex patterns ("where do I work", "what is my name", "who am I", etc.) route to full CRT pipeline (conversational) instead of broad_recall. Placed BEFORE route learning cache to prevent stale misclassifications from overriding. `broad_recall` removed from `_MEMORY_ONLY_INTENTS`.
+
+#### Immune Agents
+- **TemplateDetector assertive collapse fix** (`template_detector.py`): Added `_check_assertive_repetition()` — normalizes responses, checks uniqueness ratio. If < 0.3 (70%+ identical), classifies as TEMPLATE_LOCK even without hedge patterns. `assertive_collapse` field added to DetectionResult. Closes 5/6 → 6/6 governance validation.
+
+### Fixed
+- **cleanMemoryText** regex: handles truncated/unclosed `[SYSTEM NOTE` blocks by stripping everything after the marker.
+- **Route learning cache override**: Personal-fact patterns now fire before cache lookup, preventing stale broad_recall classifications from replaying.
+
+### Changed
+- **Mini-graph**: Removed broken full-map-in-pipeline background attempt (wrong data source: belief_speech vs memories). Graph is now the simple 5-node retrieval view with click-through to full map page.
+- **Auto-collapse timing**: Removed PCA-specific 4s delay, back to 1.5s universal.
+
+---
+
+### Added — Session 2026-04-05
+
+- **CogniMap compression**: 6.5x memory savings validated, lossless image beats zlib 15.6%
+- **Frontend polish**: Confidence badge, gate dots, cost display, memory cards, epistemic graph
+- **Structural governance**: Confidence-gated response depth (precursor to adaptive depth)
+- **Playdough formalism**: Connected to Riemannian manifold theory
+
+---
+
 ## [Unreleased] — 2026-04-01 (Evening session)
 
 ### Added

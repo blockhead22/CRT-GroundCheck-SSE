@@ -190,6 +190,19 @@ def run_orchestrator(
                             },
                         }
                     )
+                elif etype == "execution_drift":
+                    yield runtime.emit(
+                        {
+                            "type": "epistemic_event",
+                            "content": orch_event.get("content", ""),
+                            "metadata": {
+                                "event": "execution_drift",
+                                "from_category": orch_event.get("from_category", ""),
+                                "to_category": orch_event.get("to_category", ""),
+                                "alignment": orch_event.get("alignment"),
+                            },
+                        }
+                    )
                 elif etype == "contradiction_warning":
                     yield runtime.emit(
                         {

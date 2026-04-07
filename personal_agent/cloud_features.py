@@ -88,6 +88,10 @@ class CloudFeatureService:
         self._daily_counts_date: str = str(date.today())
         self._limit_multiplier: float = 1.0
 
+        # Gradient limiter: accumulated daily cost in USD
+        self._daily_cost_usd: float = 0.0
+        self._daily_cost_date: str = str(date.today())
+
     # ------------------------------------------------------------------
     # Daily limit helpers
     # ------------------------------------------------------------------
@@ -101,17 +105,54 @@ class CloudFeatureService:
         if today != self._daily_counts_date:
             self._daily_counts = {k: 0 for k in self._daily_counts}
             self._daily_counts_date = today
+        # Also reset daily cost accumulator at midnight
+        if today != self._daily_cost_date:
+            self._daily_cost_usd = 0.0
+            self._daily_cost_date = today
+
+    # ------------------------------------------------------------------
+    # Gradient limiter — smooth cost-based throttle
+    # ------------------------------------------------------------------
+
+    def record_cost(self, cost_usd: float) -> None:
+        """Accumulate cost for the gradient limiter. Resets at midnight."""
+        self._reset_daily_if_needed()
+        self._daily_cost_usd += cost_usd
+
+    def _gradient_limit(self, feature: str) -> float:
+        """Return a multiplier 0.0-1.0 based on daily spend.
+
+        Smooth curve: max(0, 1.0 - (daily_cost / 10.0) ** 0.6)
+        At $0 -> 1.0, $1 -> ~0.74, $3 -> ~0.50, $5 -> ~0.34, $10 -> 0.0
+        """
+        self._reset_daily_if_needed()
+        if self._daily_cost_usd <= 0:
+            return 1.0
+        multiplier = max(0.0, 1.0 - (self._daily_cost_usd / 10.0) ** 0.6)
+        if multiplier < 1.0:
+            logger.info(
+                "[GRADIENT_LIMITER] Daily cost $%.2f -> limit multiplier %.2f",
+                self._daily_cost_usd, multiplier,
+            )
+        return multiplier
+
+    def _effective_limit(self, feature: str) -> int:
+        """Compute the effective daily limit for a feature after all multipliers."""
+        base_limit = self.daily_limits.get(feature, 0)
+        gradient = self._gradient_limit(feature)
+        return int(base_limit * self._limit_multiplier * gradient)
+
+    # ------------------------------------------------------------------
 
     def _check_daily_limit(self, feature: str) -> bool:
         """Return True if the feature is within its daily limit."""
         self._reset_daily_if_needed()
-        base_limit = self.daily_limits.get(feature, 0)
-        effective_limit = int(base_limit * self._limit_multiplier)
+        effective_limit = self._effective_limit(feature)
         current = self._daily_counts.get(feature, 0)
         if current >= effective_limit:
             logger.warning(
-                "[CLOUD] Daily limit reached for %s: %d/%d",
-                feature, current, effective_limit,
+                "[CLOUD] Daily limit reached for %s: %d/%d (gradient: %.2f)",
+                feature, current, effective_limit, self._gradient_limit(feature),
             )
             return False
         return True
@@ -122,14 +163,18 @@ class CloudFeatureService:
 
     def get_daily_counts(self) -> Dict[str, Any]:
         self._reset_daily_if_needed()
+        gradient = self._gradient_limit("cloud_generation")
         result = {}
         for feature in self.daily_limits:
-            base_limit = self.daily_limits[feature]
-            effective_limit = int(base_limit * self._limit_multiplier)
+            effective_limit = self._effective_limit(feature)
             result[feature] = {
                 "used": self._daily_counts.get(feature, 0),
                 "limit": effective_limit,
             }
+        result["_gradient"] = {
+            "daily_cost_usd": round(self._daily_cost_usd, 4),
+            "multiplier": round(gradient, 4),
+        }
         return result
 
     # ------------------------------------------------------------------

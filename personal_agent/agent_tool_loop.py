@@ -932,6 +932,7 @@ class AgentToolLoop:
                 elapsed_ms = (time.time() - t0) * 1000
 
                 # Verify result against expectation
+                _atl_result = None
                 if _atl_expectation:
                     try:
                         _atl_result = _atl_verify(
@@ -942,6 +943,34 @@ class AgentToolLoop:
                         _atl_stats().record(_atl_result)
                         if _atl_result.surprise != "none":
                             print(f"  [VERIFY] {_atl_result.surprise}: {tool_name}")
+                    except Exception:
+                        pass
+
+                # Persist verification + model attribution to the receipt
+                _receipt_id = (result.get("metadata") or {}).get("receipt_id")
+                if _receipt_id:
+                    try:
+                        from personal_agent.action_receipts import update_receipt_verification
+                        _model_attr = getattr(self.llm_client, "model", None) or "unknown"
+                        _step_id = f"step_{iteration}_{tool_name}"
+                        if _atl_result:
+                            update_receipt_verification(
+                                receipt_id=_receipt_id,
+                                verification_passed=_atl_result.status_match and _atl_result.surprise == "none",
+                                verification_reason=_atl_result.details,
+                                expectation_keywords=_atl_expectation.expected_content if _atl_expectation else None,
+                                run_step_id=_step_id,
+                                model_attribution=_model_attr,
+                            )
+                        else:
+                            # No verification available, still record model attribution
+                            update_receipt_verification(
+                                receipt_id=_receipt_id,
+                                verification_passed=True,  # no verification = assumed pass
+                                verification_reason="no expectation extracted",
+                                run_step_id=_step_id,
+                                model_attribution=_model_attr,
+                            )
                     except Exception:
                         pass
 
@@ -989,6 +1018,82 @@ class AgentToolLoop:
                 "content": f"I've completed {self.max_iterations} steps. Here's what I've done so far based on the results above.",
             }
 
+        # ── Transformation verification gate ─────────────────────────────
+        _transformation_verified = None
+        _verification_reason = None
+        try:
+            from personal_agent.agent_run_log import is_transformation_intent
+            if is_transformation_intent(message) and len(steps) > 0:
+                # Collect before state: first file_read or search_code result
+                _before_snippet = ""
+                for _s in steps:
+                    if _s.tool_name in ("file_read", "search_code") and _s.status == "ok" and _s.result_content:
+                        _before_snippet = _s.result_content[:600]
+                        break
+
+                # Collect after state: last file_write result, or last successful result
+                _after_snippet = ""
+                for _s in reversed(steps):
+                    if _s.tool_name == "file_write" and _s.status == "ok" and _s.result_content:
+                        _after_snippet = _s.result_content[:600]
+                        break
+                    elif _s.status == "ok" and _s.result_content:
+                        _after_snippet = _s.result_content[:600]
+                        break
+
+                # Only verify if we have at least some state to check
+                if _before_snippet or _after_snippet:
+                    _verify_prompt = (
+                        f"TRANSFORMATION VERIFICATION\n"
+                        f"Requested: {message[:300]}\n"
+                        f"Before: {_before_snippet[:400]}\n"
+                        f"After: {_after_snippet[:400]}\n\n"
+                        f"Did this transformation achieve the requested goal? "
+                        f"Answer strictly YES or NO on the first line, then a brief reason (1 sentence)."
+                    )
+                    _verify_messages = [
+                        {"role": "system", "content": "You are a code verification assistant. Be strict. Answer YES only if the transformation clearly achieved its goal."},
+                        {"role": "user", "content": _verify_prompt},
+                    ]
+                    try:
+                        _verify_resp = self.llm_client.chat_with_tools(
+                            _verify_messages, tools=[], max_tokens=150, temperature=0.0,
+                        )
+                        _verify_text = (_verify_resp.get("content") or "").strip()
+                        # Strip thinking tags if present
+                        from personal_agent.text_utils import strip_thinking_tags
+                        _verify_text = strip_thinking_tags(_verify_text).strip()
+
+                        _first_line = _verify_text.split("\n")[0].strip().upper()
+                        _transformation_verified = _first_line.startswith("YES")
+                        _verification_reason = _verify_text[:300]
+
+                        # Mark the last tool step as verified
+                        for _s in reversed(steps):
+                            if _s.status == "ok":
+                                _s.status = "verified" if _transformation_verified else _s.status
+                                break
+
+                        if _transformation_verified:
+                            print(f"[TRANSFORM_VERIFY] PASSED: {_verification_reason[:120]}")
+                            yield {
+                                "type": "status",
+                                "content": "transformation verified",
+                                "metadata": {"verification": "passed", "reason": _verification_reason},
+                            }
+                        else:
+                            print(f"[TRANSFORM_VERIFY] FAILED: {_verification_reason[:120]}")
+                            yield {
+                                "type": "status",
+                                "content": f"transformation check failed: {_verification_reason[:200]}",
+                                "metadata": {"verification": "failed", "reason": _verification_reason},
+                            }
+                    except Exception as _ve:
+                        print(f"[TRANSFORM_VERIFY] Error during verification: {_ve}")
+                        # Non-fatal — don't block the loop completion
+        except Exception as _te:
+            print(f"[TRANSFORM_VERIFY] Setup error: {_te}")
+
         # ── Emit completion event ──────────────────────────────────────────
         total_ms = (time.time() - start_time) * 1000
         _final_gen_source = _loop_generation_source or ("local" if len(steps) > 0 else "unknown")
@@ -1001,6 +1106,8 @@ class AgentToolLoop:
                 "tools_used": tools_used,
                 "total_duration_ms": round(total_ms),
                 "generation_source": _final_gen_source,
+                "transformation_verified": _transformation_verified,
+                "verification_reason": _verification_reason,
                 "steps": [
                     {
                         "tool_name": s.tool_name,

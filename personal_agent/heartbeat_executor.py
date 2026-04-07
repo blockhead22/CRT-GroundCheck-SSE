@@ -1563,14 +1563,26 @@ Reason carefully. If unsure, reply with action=none.
             _mem_db_path_var = self._resolve_memory_db_path(thread_id)
             if _mem_db_path_var and Path(_mem_db_path_var).exists():
                 from personal_agent.variance_tracker import VarianceTracker
+                from personal_agent.governance_bridge import GovernanceBridge
+                from personal_agent.crt_memory import CRTMemorySystem
+
                 _vtracker = VarianceTracker(db_path=str(_mem_db_path_var))
+                _mem_sys = CRTMemorySystem(db_path=str(_mem_db_path_var))
+
+                # Wire governance bridge for drift<->trust feedback
+                _bridge = GovernanceBridge(memory_system=_mem_sys, variance_tracker=_vtracker)
+                _vtracker.set_governance_bridge(_bridge)
+                _mem_sys.set_governance_bridge(_bridge)
+
                 _vresult = _vtracker.run_analysis(force=False)
                 if _vresult.get("topics_updated", 0) > 0:
                     actions_taken.append({
                         "action": "variance_analysis",
                         "detail": f"Analyzed {_vresult['topics_updated']} topics, {_vresult.get('num_topics', 0)} total",
                     })
-                    logger.info(f"[HEARTBEAT] Variance analysis: {_vresult['topics_updated']} topics updated")
+                    _bridge_info = _vresult.get("bridge_result", {})
+                    _penalized = _bridge_info.get("memories_penalized", 0)
+                    logger.info(f"[HEARTBEAT] Variance analysis: {_vresult['topics_updated']} topics updated, {_penalized} memories penalized")
         except Exception as e:
             logger.debug(f"[HEARTBEAT] Variance analysis skipped: {e}")
 

@@ -242,6 +242,15 @@ class UnifiedLLMClient:
         except Exception:
             pass
 
+        # Feed cost into the gradient limiter
+        try:
+            from personal_agent.cloud_features import get_cloud_feature_service
+            svc = get_cloud_feature_service()
+            if svc:
+                svc.record_cost(cost)
+        except Exception:
+            pass
+
         print(f"[CLOUD_COST] {provider}/{model}: {input_t} in + {output_t} out = ${cost:.6f} (session: ${self._request_cost_usd:.4f})")
 
     def reset_request_cost(self):

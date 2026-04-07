@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Header, Request
 from pydantic import BaseModel, Field
 
 from routes.deps import sanitize_thread_id, resolve_user_id
+from personal_agent.crt_memory import detect_injection_risk
 
 logger = logging.getLogger(__name__)
 
@@ -185,17 +186,28 @@ def ingest_file(req: FileIngestRequest, request: Request, authorization: Optiona
     from personal_agent.crt_rag import MemorySource
 
     stored_count = 0
+    injection_count = 0
     for chunk in chunks:
+        # Scan chunk for prompt-injection patterns before storage.
+        # Flagged chunks get reduced confidence so they can't dominate retrieval.
+        chunk_confidence = 0.90
+        if detect_injection_risk(chunk):
+            chunk_confidence = 0.35  # well below normal — flagged content
+            injection_count += 1
+            logger.warning(
+                "[INGEST][INJECTION_DEFENSE] Channel=file_ingest, flagged chunk from %s: %.120s",
+                file_path.name, chunk,
+            )
         try:
             engine.ingest_memory_write(
                 text=chunk,
-                confidence=0.90,
+                confidence=chunk_confidence,
                 source=MemorySource.USER,
                 context={"thread_id": tid, "ingested_from": file_path.name},
                 user_marked_important=False,
                 contradiction_signal=0.0,
                 thread_id=tid,
-                authority="confirmed",
+                authority="provisional" if chunk_confidence < 0.90 else "confirmed",
                 channel="file_ingest",
                 origin=f"file:{file_path.name}",
                 kind="observation",
@@ -207,6 +219,12 @@ def ingest_file(req: FileIngestRequest, request: Request, authorization: Optiona
             stored_count += 1
         except Exception as e:
             logger.error(f"[INGEST] Failed to store chunk {stored_count + 1} from {file_path.name}: {e}")
+
+    if injection_count:
+        logger.warning(
+            "[INGEST] %d/%d chunks from %s flagged for injection risk",
+            injection_count, len(chunks), file_path.name,
+        )
 
     logger.info(f"[INGEST] Ingested {file_path.name}: {len(content)} chars, {stored_count}/{len(chunks)} chunks stored")
 
