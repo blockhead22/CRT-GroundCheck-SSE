@@ -888,6 +888,92 @@ Notes:</pre>
   </div>
 </section>
 
+<!-- ===== SECTION 14: WRITING GUIDE ===== -->
+<section id="writing">
+  <span class="section-number">Section 14</span>
+  <h2>How to Write a Research Paragraph</h2>
+  <div class="accent-line"></div>
+
+  <p>Every paragraph in a research paper does one job: make a claim and back it up. If a paragraph doesn't do this, it's either filler or it belongs in a different section. Here's the formula.</p>
+
+  <div class="area-grid">
+    <div class="area-card">
+      <div class="card-kicker">The Structure</div>
+      <div class="card-title">Claim &rarr; Evidence &rarr; Interpretation &rarr; Connection</div>
+      <ol>
+        <li><strong>Claim (1 sentence):</strong> State what you're asserting. Be specific. No hedging yet.</li>
+        <li><strong>Evidence (1&ndash;3 sentences):</strong> The data, the measurement, the artifact. Numbers, methods, sources. This is where your credibility lives.</li>
+        <li><strong>Interpretation (1&ndash;2 sentences):</strong> What does the evidence mean? This is where you explain <em>why</em> the reader should care. Hedging goes here if needed.</li>
+        <li><strong>Connection (1 sentence):</strong> Link to the next point, the broader thesis, or the implication. Gives the reader a reason to keep reading.</li>
+      </ol>
+    </div>
+
+    <div class="area-card">
+      <div class="card-kicker">Common Mistakes</div>
+      <div class="card-title">What Kills Credibility</div>
+      <ul>
+        <li><strong>Claim with no evidence:</strong> "This is a significant finding." &mdash; Says who? Show the number.</li>
+        <li><strong>Evidence with no interpretation:</strong> "The value was 0.34." &mdash; So what? What does that mean for the reader?</li>
+        <li><strong>Hedging the claim instead of the interpretation:</strong> "It might possibly be the case that..." &mdash; State the claim cleanly, then hedge the interpretation.</li>
+        <li><strong>Stacking adjectives instead of evidence:</strong> "The groundbreaking, novel, unprecedented approach..." &mdash; If it's novel, the evidence will show that. You don't need to announce it.</li>
+        <li><strong>Citing yourself as proof:</strong> Saying the same thing in three docs doesn't make it more true. One source, one number, one artifact.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Side-by-Side: Weak vs Strong</h3>
+
+  <div class="area-grid">
+    <div class="area-card" style="border-left: 3px solid #f87171;">
+      <div class="card-kicker" style="color: #f87171;">Weak</div>
+      <div class="card-title">Vague, No Evidence, Overclaims</div>
+      <p>Stateless AI systems have a significant problem with contradictions. Our research shows that this is a major issue that affects many users. The system frequently gives different advice across sessions, which can be very harmful. This demonstrates the clear need for a governance architecture like CRT.</p>
+      <p style="margin-top: 12px; font-size: 0.82em; color: var(--text-faint);"><strong>What's wrong:</strong> No numbers. "Significant," "major," "frequently," "very" are unsupported adjectives. "Our research shows" without citing what it showed. "Clear need" is the writer's opinion presented as conclusion. The reader has no reason to believe any of this.</p>
+    </div>
+
+    <div class="area-card" style="border-left: 3px solid #34d399;">
+      <div class="card-kicker" style="color: #34d399;">Strong</div>
+      <div class="card-title">Specific, Grounded, Measured</div>
+      <p><strong>[Claim]</strong> Cross-session contradiction rates in stateless AI systems increase with usage duration. <strong>[Evidence]</strong> Analysis of 8,544 response pairs across 1,275 sessions found a hard contradiction rate of 7% for pairs within one month, rising to 12.4% for pairs separated by three or more months (Table 5, v1 corpus). A stricter v2 reanalysis with query-intent filtering confirmed 47 genuine contradictions among 453 surviving pairs (10.4%), concentrated in decision-heavy domains. <strong>[Interpretation]</strong> This temporal amplification suggests the failure is not random but structural: the longer a user relies on the system, the more likely they are to receive contradictory guidance on the same topic. <strong>[Connection]</strong> The time-dependent nature of this failure motivates the continuity auditing component of the CRT architecture (Section 6).</p>
+      <p style="margin-top: 12px; font-size: 0.82em; color: var(--text-faint);"><strong>What's right:</strong> Specific claim (contradiction rates increase with time). Exact numbers with sources (8,544 pairs, 7% vs 12.4%, Table 5). Interpretation hedged appropriately ("suggests"). Connection to the next section. The reader can verify every number.</p>
+    </div>
+  </div>
+
+  <h3>Templates You Can Use</h3>
+
+  <div class="guide-grid">
+    <div class="guide-card">
+      <div class="card-kicker">Empirical Finding</div>
+      <div class="card-title">When You Have Numbers</div>
+      <pre>[Topic] exhibits [specific pattern]. In our analysis of [N items] across [scope], [metric] was [value] (Table/Figure X). This [exceeds/falls below] [baseline or expectation] by [amount], indicating [interpretation]. [Connection to thesis or next finding].</pre>
+    </div>
+
+    <div class="guide-card">
+      <div class="card-kicker">Methodology</div>
+      <div class="card-title">When Explaining How</div>
+      <pre>To measure [what], we [method]. [N items] were [processed/filtered/compared] using [tool/technique], producing [output type]. [Key parameter] was set to [value] because [reason]. This approach [advantage], though [limitation/caveat].</pre>
+    </div>
+
+    <div class="guide-card">
+      <div class="card-kicker">Comparison</div>
+      <div class="card-title">When Contrasting Two Things</div>
+      <pre>[System A] achieves [metric A], while [System B] achieves [metric B] under [same conditions]. The [difference/gap] of [amount] is [significant because / explained by / limited by] [reason]. This comparison [supports/complicates/extends] the claim that [thesis connection].</pre>
+    </div>
+
+    <div class="guide-card">
+      <div class="card-kicker">Limitation</div>
+      <div class="card-title">When Being Honest About Gaps</div>
+      <pre>This finding is subject to [limitation]. [Specific constraint: sample size, single user, keyword detection, etc.]. As a result, [metric] should be interpreted as [upper bound / directional / preliminary] rather than [conclusive / generalizable]. [What would strengthen it: larger corpus, NLI validation, independent dataset, etc.].</pre>
+    </div>
+  </div>
+
+  <div class="area-card">
+    <div class="card-kicker">The One Rule</div>
+    <div class="card-title">Every Sentence Earns Its Place</div>
+    <p>Read each sentence and ask: <strong>"If I deleted this, would the paragraph lose information?"</strong> If the answer is no, delete it. Research writing is not about sounding smart. It's about being clear, being specific, and letting the evidence do the work. If the data is strong, you don't need adjectives. If the data is weak, adjectives won't save it.</p>
+  </div>
+</section>
+
 </main>
 </div>
 <script src="docs.js"></script>
