@@ -3,18 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CRT Claim Evaluation Guide — Aeteros Research</title>
+<title>Research Guide — Aeteros Research</title>
 <style>
   .stat-card:hover { border-color: rgba(129,140,248,0.35); transform: translateY(-2px); }
-  .guide-card, .claim-card, .step-card, .status-card, .toc, .log-card {
+  .guide-card, .claim-card, .step-card, .status-card, .toc, .log-card, .rubric-card, .gap-card, .area-card {
     background: var(--bg-raised);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 24px 26px;
     margin: 18px 0;
   }
-  .guide-grid, .status-grid, .step-grid, .claim-grid { display: grid; gap: 16px; margin: 24px 0; }
-  .guide-grid, .step-grid, .claim-grid { grid-template-columns: 1fr 1fr; }
+  .guide-grid, .status-grid, .step-grid, .claim-grid, .area-grid, .rubric-grid, .gap-grid { display: grid; gap: 16px; margin: 24px 0; }
+  .guide-grid, .step-grid, .claim-grid, .area-grid, .rubric-grid, .gap-grid { grid-template-columns: 1fr 1fr; }
   .status-grid { grid-template-columns: repeat(4, 1fr); }
   .card-kicker {
     color: var(--accent-indigo);
@@ -25,14 +25,15 @@
     margin-bottom: 8px;
   }
   .card-title { color: var(--text); font-size: 1.02em; font-weight: 700; margin-bottom: 10px; }
-  .guide-card p, .claim-card p, .step-card p, .log-card p, .status-card p { color: var(--text-secondary); font-size: 0.9em; line-height: 1.75; }
-  .guide-card ul, .claim-card ul, .step-card ul, .log-card ul {
+  .guide-card p, .claim-card p, .step-card p, .log-card p, .status-card p, .rubric-card p, .gap-card p, .area-card p { color: var(--text-secondary); font-size: 0.9em; line-height: 1.75; }
+  .guide-card ul, .claim-card ul, .step-card ul, .log-card ul, .area-card ul, .gap-card ul, .rubric-card ul {
     margin: 12px 0 0 18px;
     color: var(--text-secondary);
     font-size: 0.88em;
     line-height: 1.8;
   }
-  .guide-card li, .claim-card li, .step-card li, .log-card li { margin-bottom: 6px; }
+  .guide-card li, .claim-card li, .step-card li, .log-card li, .area-card li, .gap-card li, .rubric-card li { margin-bottom: 6px; }
+  .guide-card ol, .area-card ol { margin: 12px 0 0 18px; color: var(--text-secondary); font-size: 0.88em; line-height: 1.8; }
   .toc { padding: 28px 32px; margin-bottom: 40px; }
   .toc h3 { color: var(--text); margin-bottom: 16px; font-size: 1.05em; }
   .toc-links { display: flex; flex-wrap: wrap; gap: 8px 12px; }
@@ -59,6 +60,7 @@
   .tag-artifact { color: #818cf8; background: rgba(129,140,248,0.12); border: 1px solid rgba(129,140,248,0.22); }
   .tag-theory { color: #fbbf24; background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.22); }
   .tag-external { color: #f472b6; background: rgba(244,114,182,0.12); border: 1px solid rgba(244,114,182,0.22); }
+  .tag-gap { color: #fb923c; background: rgba(251,146,60,0.12); border: 1px solid rgba(251,146,60,0.22); }
   .evidence-strip {
     background: var(--bg-inset);
     border-left: 3px solid var(--border-light);
@@ -77,6 +79,25 @@
     color: var(--text-secondary);
     font-size: 0.87em;
   }
+  .thesis-block {
+    background: var(--bg-inset);
+    border: 2px solid var(--accent-indigo);
+    border-radius: 12px;
+    padding: 28px 30px;
+    margin: 28px 0;
+  }
+  .thesis-block p { color: var(--text); font-size: 1.05em; line-height: 1.8; }
+  .thesis-block strong { color: var(--accent-indigo); }
+  .sub-claim {
+    background: var(--bg-raised);
+    border-left: 3px solid var(--accent-indigo);
+    border-radius: 0 10px 10px 0;
+    padding: 18px 22px;
+    margin: 14px 0;
+  }
+  .sub-claim .sc-num { color: var(--accent-indigo); font-family: var(--mono); font-size: 0.7em; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px; }
+  .sub-claim .sc-title { color: var(--text); font-size: 0.95em; font-weight: 700; margin-bottom: 8px; }
+  .sub-claim p { color: var(--text-secondary); font-size: 0.88em; line-height: 1.7; }
   pre {
     background: var(--bg-raised);
     border: 1px solid var(--border);
@@ -107,9 +128,13 @@
     vertical-align: top;
   }
   tr:hover td { background: var(--bg-inset); }
+  .score-3 { color: #34d399; font-weight: 700; }
+  .score-2 { color: #818cf8; font-weight: 700; }
+  .score-1 { color: #fbbf24; font-weight: 700; }
+  .score-0 { color: #f87171; font-weight: 700; }
   .footer { text-align: center; color: var(--text-faint); font-size: 0.78em; padding: 32px 0 46px 0; }
   @media (max-width: 900px) {
-    .guide-grid, .status-grid, .step-grid, .claim-grid { grid-template-columns: 1fr; }
+    .guide-grid, .status-grid, .step-grid, .claim-grid, .area-grid, .rubric-grid, .gap-grid { grid-template-columns: 1fr; }
   }
   @media (max-width: 700px) {
     .hero h1 { font-size: 2em; }
@@ -123,19 +148,32 @@
 
 <div class="hero">
   <div class="hero-inner">
-    <div class="hero-badge">Reference &middot; Validation Workflow</div>
-    <h1>CRT Claim<br><span class="grad">Evaluation Guide</span></h1>
-    <p class="sub">A step-by-step audit map for testing what the docs claim, tying each claim to evidence, rerun paths, and the right level of confidence.</p>
-    <p class="byline">Aeteros Research &bull; 2026</p>
+    <div class="hero-badge">Research Guide &middot; Personal Reference</div>
+    <h1>Research<br><span class="grad">Validation Guide</span></h1>
+    <p class="sub">The thesis. The evidence. The gaps. What to test, where to find it, and how to score it. This is the document you follow.</p>
+    <p class="byline">Nick Block &bull; Aeteros Research &bull; 2026</p>
     <div class="finding-box">
-      <p><strong>Use the HTML files as the claims layer, not the source of truth.</strong> Treat a claim as solid only when you can tie it to raw artifacts, a rerunnable harness, live code behavior, or a theorem with clearly stated status.</p>
+      <p><strong>This is your map.</strong> Every claim in the other docs traces back here. If something isn't on this page, it isn't in scope. If something is scored red, it doesn't go in a paper.</p>
     </div>
   </div>
   <div class="scroll-cue">&#9660; SCROLL</div>
 </div>
 
 <nav class="sidebar" id="docSidebar">
-  <div class="sidebar-title">Claim Audit</div>
+  <div class="sidebar-title">Research Guide</div>
+  <a href="#thesis">Thesis</a>
+  <a href="#sub-claims">Sub-Claims</a>
+  <a href="#rubric">Rubric</a>
+  <a href="#area-1">1. Longitudinal Failure</a>
+  <a href="#area-2">2. Scale Doesn't Fix It</a>
+  <a href="#area-3">3. Framing Pressure</a>
+  <a href="#area-4">4. Arc-Level Blindness</a>
+  <a href="#area-5">5. Governance Works</a>
+  <a href="#area-6">6. Cascade Complexity</a>
+  <a href="#area-7">7. Emotion / Activation</a>
+  <a href="#gaps">Open Gaps</a>
+  <a href="#scorecard">Scorecard</a>
+  <a href="#protocol">Validation Protocol</a>
   <div class="sidebar-spacer"></div>
   <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme">
     <span class="theme-toggle-icon" id="themeIcon">&#9790;</span>
@@ -146,347 +184,707 @@
 
 <main class="main">
 
-<section id="read-this-first">
+<!-- ===== SECTION 1: THESIS ===== -->
+<section id="thesis">
   <span class="section-number">Section 1</span>
-  <h2>Read This First</h2>
+  <h2>The Thesis</h2>
   <div class="accent-line"></div>
 
-  <div class="stat-row">
-    <div class="stat-card">
-      <div class="stat-value accent">4</div>
-      <div class="stat-label">Evidence Classes</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value green">2</div>
-      <div class="stat-label">Live Harnesses</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value pink">5</div>
-      <div class="stat-label">Core Claim Families</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value purple">1</div>
-      <div class="stat-label">Audit Rule</div>
-    </div>
+  <div class="thesis-block">
+    <p><strong>Stateless AI systems give contradictory guidance to the same person over time, and the failure gets worse &mdash; not better &mdash; the longer they use it. Better models don't fix this. Only explicit epistemic governance does.</strong></p>
   </div>
 
-  <div class="toc">
-    <h3>Recommended Reading Order</h3>
-    <div class="toc-links">
-      <a href="variance-probing.html">Variance Probing</a>
-      <a href="contradiction-density.html">Contradiction Density</a>
-      <a href="cascade-complexity.html">Cascade Complexity</a>
-      <a href="architecture.html">Architecture</a>
-      <a href="immune-agents.html">Immune Agents</a>
-      <a href="emotion-governance.html">Emotion Governance</a>
-      <a href="glossary.html">Glossary</a>
-    </div>
-  </div>
-
-  <div class="guide-grid">
-    <div class="guide-card">
-      <div class="card-kicker">Core Rule</div>
-      <div class="card-title">Do Not Audit the Narrative Directly</div>
-      <p>The polished HTML pages are where the strongest positions are stated. They are the right place to understand the thesis. They are not the right place to decide whether a metric is true.</p>
-      <pre>claim page -> raw artifact or code path -> rerun or inspect -> pass / revise / demote</pre>
-    </div>
-
-    <div class="guide-card">
-      <div class="card-kicker">Working Split</div>
-      <div class="card-title">Use Two Layers On Purpose</div>
-      <ul>
-        <li><strong>Claims layer:</strong> the formal HTML pages in <code>docs/</code></li>
-        <li><strong>Evidence layer:</strong> experiment dirs, harnesses, raw results, and runtime code</li>
-        <li><strong>Interpretation layer:</strong> papers and position pages explaining what the findings mean</li>
-      </ul>
-    </div>
-  </div>
+  <p>Everything in the research supports one of three sub-claims below. If a piece of evidence doesn't connect to one of these, it's not part of the paper. If a sub-claim has no surviving evidence after validation, it gets cut.</p>
 
   <div class="callout">
-    <strong>Discipline for the next few days:</strong> every strong number in the docs gets placed into one bucket: rerunnable now, artifact-backed, theory/open, or external bridge.
+    <strong>Why this paper needs to exist:</strong> Everyone assumes the memory problem is solved by giving models memory. Your data shows that unmanaged memory &mdash; context without governance &mdash; compounds drift rather than resolving it. Continuity is not coherence. Retention is not integrity.
   </div>
 </section>
 
-<section id="evidence-classes">
+<!-- ===== SECTION 2: SUB-CLAIMS ===== -->
+<section id="sub-claims">
   <span class="section-number">Section 2</span>
-  <h2>Evidence Classes</h2>
+  <h2>Three Sub-Claims</h2>
   <div class="accent-line"></div>
 
-  <div class="status-grid">
-    <div class="status-card">
-      <div class="status-tag tag-rerun">Rerunnable Now</div>
-      <div class="card-title">Best Case</div>
-      <p>You can run the harness yourself and compare the result against the claim.</p>
-    </div>
+  <p>The entire research program maps to these three propositions. Every evidence area below is tagged to one or more.</p>
 
-    <div class="status-card">
-      <div class="status-tag tag-artifact">Artifact-Backed</div>
-      <div class="card-title">Acceptable If Traceable</div>
-      <p>The result already exists on disk, but you may not have re-run it recently.</p>
-    </div>
-
-    <div class="status-card">
-      <div class="status-tag tag-theory">Theory / Open</div>
-      <div class="card-title">Do Not Treat As Measured</div>
-      <p>Mathematical results, conjectures, and architectural consequences.</p>
-    </div>
-
-    <div class="status-card">
-      <div class="status-tag tag-external">External Bridge</div>
-      <div class="card-title">Separate From Your Data</div>
-      <p>Claims that rely on outside papers or outside model vendors.</p>
-    </div>
+  <div class="sub-claim">
+    <div class="sc-num">Sub-Claim A</div>
+    <div class="sc-title">The Failure Is Real and Measurable</div>
+    <p>13 months of GPT data. Hard contradiction rate doubles at 3+ months. 59.5% of long conversations contain stance flips nobody notices. Zero continuity awareness across 1,275 sessions. This is structural, not anecdotal.</p>
   </div>
+
+  <div class="sub-claim">
+    <div class="sc-num">Sub-Claim B</div>
+    <div class="sc-title">The Failure Is Not Going Away With Scale</div>
+    <p>Newer models reduce scatter but not hard contradiction rate. Thinking models make it worse (20.1% hard rate). Three distinct failure regimes across model families. Domain inversion: the topics models are most confident about are the ones where they fail most. Framing pressure: semantically identical prompts produce different trajectories.</p>
+  </div>
+
+  <div class="sub-claim">
+    <div class="sc-num">Sub-Claim C</div>
+    <div class="sc-title">The Failure Is Governable</div>
+    <p>CRT demonstrates contradiction detection, trust weighting, belief/speech separation, cascade management, and continuity auditing on top of any model. The architecture exists. It runs. It is the proof that this class of problem has a structural solution.</p>
+  </div>
+</section>
+
+<!-- ===== SECTION 3: RUBRIC ===== -->
+<section id="rubric">
+  <span class="section-number">Section 3</span>
+  <h2>Evidence Scoring Rubric</h2>
+  <div class="accent-line"></div>
+
+  <p>Score every claim 0&ndash;3. Only claims scoring 2+ go into a paper. Claims scoring 1 can appear in supplementary material with appropriate hedging. Claims scoring 0 get cut entirely.</p>
 
   <div class="metric-table-wrap">
     <table>
       <thead>
         <tr>
-          <th>Claim Type</th>
-          <th>Primary Source</th>
-          <th>What Counts As Validation</th>
-          <th>What Does Not</th>
+          <th>Score</th>
+          <th>Label</th>
+          <th>Criteria</th>
+          <th>What You Need</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>Empirical metric</td>
-          <td>Raw results, scripts, output files</td>
-          <td>Reproduced number or traceable artifact</td>
-          <td>Repeated prose across multiple docs</td>
+          <td><span class="score-3">3</span></td>
+          <td>Reproducible</td>
+          <td>Harness exists, you can rerun it, numbers match the claim within tolerance</td>
+          <td>Working script + matching output + no manual cherry-picking</td>
         </tr>
         <tr>
-          <td>Runtime behavior</td>
-          <td>Live harness, logs, code path</td>
-          <td>Observed end-to-end behavior under test</td>
-          <td>Pipeline diagram alone</td>
+          <td><span class="score-2">2</span></td>
+          <td>Artifact-Backed</td>
+          <td>Raw results exist on disk, traceable to specific code, but may not be recently re-verified</td>
+          <td>Result files + code that produced them + clear provenance</td>
         </tr>
         <tr>
-          <td>Theorem / complexity statement</td>
-          <td>Paper, proof sketch, implementation checks</td>
-          <td>Correct statement of proven vs open status</td>
-          <td>Treating an open conjecture as settled</td>
+          <td><span class="score-1">1</span></td>
+          <td>Directional</td>
+          <td>Evidence supports the claim's direction but numbers are soft, scope is uncertain, or the methodology has known gaps</td>
+          <td>Partial data + acknowledged limitations + no overclaiming</td>
         </tr>
         <tr>
-          <td>Interpretability bridge</td>
-          <td>External paper + your mapping argument</td>
-          <td>Separate audit of outside claim and your application</td>
-          <td>Counting the bridge as your own measured metric</td>
+          <td><span class="score-0">0</span></td>
+          <td>Narrative Only</td>
+          <td>The claim exists in docs but has no artifact, no rerun path, and no traceable origin</td>
+          <td>Cut it. Do not publish.</td>
         </tr>
       </tbody>
     </table>
   </div>
-</section>
 
-<section id="audit-protocol">
-  <span class="section-number">Section 3</span>
-  <h2>Audit Protocol</h2>
-  <div class="accent-line"></div>
-
-  <div class="step-grid">
-    <div class="step-card">
-      <div class="card-kicker">Step 1</div>
-      <div class="card-title">Extract The Exact Claim</div>
-      <ul>
-        <li>Write the number or proposition verbatim.</li>
-        <li>Classify it: metric, runtime claim, theorem, or bridge.</li>
-        <li>Mark whether it is descriptive, causal, or normative.</li>
-      </ul>
+  <div class="rubric-grid">
+    <div class="rubric-card">
+      <div class="card-kicker">Rule 1</div>
+      <div class="card-title">Numbers Need Artifacts</div>
+      <p>Any specific number in a doc (0.34 mean consistency, 59.5% flip rate, 12.4% hard rate at 3+ months) must trace to a script output, database query, or result file. If it traces only to another doc page that also has no source, it's a <span class="score-0">0</span>.</p>
     </div>
 
-    <div class="step-card">
-      <div class="card-kicker">Step 2</div>
-      <div class="card-title">Find The Lowest-Level Source</div>
-      <ul>
-        <li>Raw JSON / artifact directory</li>
-        <li>Script or harness</li>
-        <li>Runtime module</li>
-        <li>Paper theorem or external citation</li>
-      </ul>
+    <div class="rubric-card">
+      <div class="card-kicker">Rule 2</div>
+      <div class="card-title">Prose Doesn't Stack</div>
+      <p>A claim appearing in three different docs doesn't make it more true. It makes it more dangerous. One source of truth per number. Everything else is a citation, not independent evidence.</p>
     </div>
 
-    <div class="step-card">
-      <div class="card-kicker">Step 3</div>
-      <div class="card-title">Choose The Right Test Mode</div>
-      <ul>
-        <li><strong>Rerun:</strong> if the harness still exists and inputs are available</li>
-        <li><strong>Inspect:</strong> if the artifact exists but rerun is expensive or unclear</li>
-        <li><strong>Demote:</strong> if neither rerun nor artifact exists</li>
-      </ul>
+    <div class="rubric-card">
+      <div class="card-kicker">Rule 3</div>
+      <div class="card-title">Hedging Is Mandatory Below 2</div>
+      <p>If a claim scores 1, it can still appear &mdash; but it must say "directional finding" or "preliminary" or "methodology limitation noted." No unqualified strong language for score-1 claims.</p>
     </div>
 
-    <div class="step-card">
-      <div class="card-kicker">Step 4</div>
-      <div class="card-title">Record Outcome Brutally</div>
-      <ul>
-        <li><strong>Pass:</strong> claim matches artifact or rerun</li>
-        <li><strong>Revise:</strong> claim is directionally right but numbers or scope drifted</li>
-        <li><strong>Demote:</strong> claim is narrative-only or unsupported now</li>
-      </ul>
+    <div class="rubric-card">
+      <div class="card-kicker">Rule 4</div>
+      <div class="card-title">Separate What You Measured From What You Infer</div>
+      <p>The contradiction rate is measured. "This means users are harmed" is inference. Both can appear in the paper, but the boundary must be explicit. Never let an inference inherit the score of a measurement.</p>
     </div>
   </div>
-
-  <pre>For each claim:
-1. What page says it?
-2. What file generated it?
-3. Can I rerun it now?
-4. If not, what artifact still proves it?
-5. Does the current doc overstate certainty?</pre>
 </section>
 
-<section id="claim-families">
+<!-- ===== SECTION 4: AREA 1 — LONGITUDINAL FAILURE ===== -->
+<section id="area-1">
   <span class="section-number">Section 4</span>
-  <h2>Claim Families</h2>
+  <h2>Area 1: Longitudinal Contradiction Failure</h2>
   <div class="accent-line"></div>
+  <div class="status-tag tag-rerun">Sub-Claim A</div>
 
-  <div class="claim-grid">
-    <div class="claim-card">
-      <div class="status-tag tag-rerun">Rerunnable Now</div>
-      <div class="card-title">Variance Probing</div>
-      <p><strong>Claim pages:</strong> <a href="variance-probing.html">variance-probing.html</a>, <a href="variance-landscape.html">variance-landscape.html</a>, <a href="experiments.html">experiments.html</a></p>
-      <div class="evidence-strip">Primary evidence: <code>belief_variance_experiment/</code>, especially <code>README.md</code>, <code>runner.py</code>, <code>analyze.py</code>, <code>report.py</code>, and <code>results/</code>.</div>
+  <div class="area-card">
+    <div class="card-kicker">What You're Proving</div>
+    <div class="card-title">Stateless systems produce measurably contradictory advice over time</div>
+    <p>This is the foundational evidence. 13 months of real GPT usage. Not synthetic, not one-shot benchmarks. The corpus is your strongest asset because it's ecologically valid and hard to dismiss.</p>
+  </div>
+
+  <div class="area-grid">
+    <div class="area-card">
+      <div class="card-kicker">Key Claims To Validate</div>
+      <div class="card-title">Numbers That Must Hold</div>
       <ul>
-        <li>Audit counts first: 7,500 per model, 22,524 total, 16/16 robustness.</li>
-        <li>Then audit the stronger claims: domain inversion, three regimes, held contradictions.</li>
-        <li>Watch for docs drift between markdown summaries and finalized HTML pages.</li>
+        <li><strong>1,275 sessions, 59,370 messages</strong> &mdash; corpus size (count from DB)</li>
+        <li><strong>0% continuity awareness</strong> &mdash; no response acknowledges prior contradictory stance</li>
+        <li><strong>0.34 mean consistency</strong> &mdash; cross-thread similarity on same topics</li>
+        <li><strong>74% mean confidence</strong> &mdash; despite 0.34 consistency, confidence stays high</li>
+        <li><strong>8,544 v1 pairs</strong> &mdash; total contradiction pairs (cosine-only)</li>
+        <li><strong>453 v2 surviving pairs</strong> &mdash; after query-intent filter (98.9% filtered)</li>
+        <li><strong>47 genuine contradictions</strong> &mdash; 10.4% of v2 survivors</li>
+        <li><strong>12.4% hard rate at 3+ months</strong> &mdash; time amplification (vs 7% baseline)</li>
       </ul>
     </div>
 
-    <div class="claim-card">
-      <div class="status-tag tag-artifact">Artifact-Backed</div>
-      <div class="card-title">Continuity-Blind Contradiction</div>
-      <p><strong>Claim pages:</strong> <a href="contradiction-density.html">contradiction-density.html</a>, <a href="continuity-blind.html">continuity-blind.html</a></p>
-      <div class="evidence-strip">Primary evidence: <code>tools/corpus_gaslighting.py</code>, <code>tools/corpus_consistency.py</code>, <code>personal_agent/immune_agents/continuity_auditor.py</code>.</div>
+    <div class="area-card">
+      <div class="card-kicker">Where To Find It</div>
+      <div class="card-title">Harnesses and Artifacts</div>
       <ul>
-        <li>Key numbers: 1,275 sessions, 59,370 messages, 0% continuity awareness, 0.34 mean consistency, 74% mean confidence.</li>
-        <li>This is foundational, but the rerun path may need cleanup around the exact corpus.</li>
+        <li><code>data/chatgpt_corpus.db</code> &mdash; raw conversation corpus</li>
+        <li><code>data/chatgpt_gaslighting.db</code> &mdash; v1 pairs</li>
+        <li><code>data/chatgpt_gaslighting_v2.db</code> &mdash; v2 pairs (query-filtered)</li>
+        <li><code>tools/continuity_blind_v2.py</code> &mdash; v2 harness (run/report/render-html)</li>
+        <li><code>tools/corpus_gaslighting.py</code> &mdash; v1 harness</li>
+        <li><code>tools/corpus_consistency.py</code> &mdash; consistency scoring</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="area-card">
+    <div class="card-kicker">Rerun Commands</div>
+    <div class="card-title">Verify It Yourself</div>
+    <pre>python -m tools.continuity_blind_v2 run          # repopulates v2 DB
+python -m tools.continuity_blind_v2 report        # prints summary stats
+python -m tools.continuity_blind_v2 render-html   # generates lab HTML
+
+# Corpus counts (should match claimed numbers)
+python -c "import sqlite3; c=sqlite3.connect('data/chatgpt_corpus.db'); print(c.execute('SELECT COUNT(*) FROM conversations').fetchone(), c.execute('SELECT COUNT(*) FROM messages').fetchone())"</pre>
+  </div>
+
+  <div class="area-card">
+    <div class="card-kicker">What To Watch For</div>
+    <div class="card-title">Known Risks and Failure Modes</div>
+    <ul>
+      <li><strong>v1 numbers are upper bounds.</strong> v2 showed v1 overstates by 2&ndash;4&times; due to topic-boundary noise. Don't cite v1 pair counts as contradiction counts &mdash; they're candidate counts.</li>
+      <li><strong>v2 DB gets wiped on each run.</strong> If you render without running first, you get stale or empty data.</li>
+      <li><strong>Pair typing was tightened (April 7).</strong> <code>temporal_update</code> now requires 30-day gap + strong markers. Rerun v2 to see updated split.</li>
+      <li><strong>"0% continuity awareness"</strong> needs the exact query that measured it. Make sure it's in <code>corpus_consistency.py</code> and you can reproduce it.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===== SECTION 5: AREA 2 — SCALE DOESN'T FIX IT ===== -->
+<section id="area-2">
+  <span class="section-number">Section 5</span>
+  <h2>Area 2: Scale Doesn't Fix It</h2>
+  <div class="accent-line"></div>
+  <div class="status-tag tag-rerun">Sub-Claim B</div>
+
+  <div class="area-card">
+    <div class="card-kicker">What You're Proving</div>
+    <div class="card-title">Newer, larger, thinking models do not eliminate the contradiction problem</div>
+    <p>This is the claim that separates your work from "just wait for GPT-6." If you can't defend this, the paper loses its urgency. The data actually supports it well: scatter decreases, hard rate doesn't.</p>
+  </div>
+
+  <div class="area-grid">
+    <div class="area-card">
+      <div class="card-kicker">Key Claims To Validate</div>
+      <div class="card-title">Numbers That Must Hold</div>
+      <ul>
+        <li><strong>gpt-5-1-thinking: 20.1% hard rate</strong> despite 0.136 scatter (lowest scatter, highest hard rate)</li>
+        <li><strong>gpt-4o: 6.8% hard rate</strong> at 0.605 scatter (baseline comparison)</li>
+        <li><strong>Three regimes:</strong> Qwen3=fracture, Mistral=gradient, DeepSeek=fog (variance probing)</li>
+        <li><strong>Domain inversion:</strong> topics with highest model confidence have highest contradiction density</li>
+        <li><strong>16/16 robustness:</strong> all probe configurations produce same regime classification</li>
       </ul>
     </div>
 
-    <div class="claim-card">
-      <div class="status-tag tag-artifact">Artifact-Backed</div>
-      <div class="card-title">Cascade Complexity &amp; Real BDG</div>
-      <p><strong>Claim pages:</strong> <a href="cascade-complexity.html">cascade-complexity.html</a>, <a href="experiments.html">experiments.html</a></p>
-      <div class="evidence-strip">Primary evidence: <code>papers/cascade_complexity/real_bdg.py</code>, <code>papers/cascade_complexity/experiments.py</code>, <code>personal_agent/memory_graph.py</code>.</div>
+    <div class="area-card">
+      <div class="card-kicker">Where To Find It</div>
+      <div class="card-title">Harnesses and Artifacts</div>
       <ul>
-        <li>Split theorem claims from empirical topology claims.</li>
-        <li>The empirical part is the 599-node BDG and reported cascade reach / firewall behavior.</li>
+        <li><code>belief_variance_experiment/</code> &mdash; full experiment suite (runner, analyze, report)</li>
+        <li><code>belief_variance_experiment/results/</code> &mdash; raw result files</li>
+        <li><code>data/chatgpt_drift.db</code> &mdash; drift scatter data per model</li>
+        <li>Table 4 in <a href="contradiction-density.html">contradiction-density.html</a> &mdash; model trajectory</li>
+        <li><a href="variance-probing.html">variance-probing.html</a> &mdash; three regimes, domain inversion</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="area-card">
+    <div class="card-kicker">Rerun Commands</div>
+    <div class="card-title">Verify It Yourself</div>
+    <pre>cd belief_variance_experiment
+python runner.py          # 7,500 probes per model
+python analyze.py         # regime classification + domain inversion
+python report.py          # summary output</pre>
+  </div>
+
+  <div class="area-card">
+    <div class="card-kicker">What To Watch For</div>
+    <div class="card-title">Known Risks</div>
+    <ul>
+      <li><strong>Thinking-model sample sizes are small</strong> (179&ndash;620 pairs). The 20.1% claim is directional. State that.</li>
+      <li><strong>Variance probing used local models</strong> (Qwen3, Mistral, DeepSeek via Ollama). GPT models are from corpus only. These are different measurement methods on different models &mdash; don't conflate.</li>
+      <li><strong>"Domain inversion" is the strongest claim here.</strong> Make sure you can show the exact query that computes it, not just the prose description.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===== SECTION 6: AREA 3 — FRAMING PRESSURE ===== -->
+<section id="area-3">
+  <span class="section-number">Section 6</span>
+  <h2>Area 3: Framing Pressure / Semantic Invariance</h2>
+  <div class="accent-line"></div>
+  <div class="status-tag tag-theory">Sub-Claims A + B</div>
+
+  <div class="area-card">
+    <div class="card-kicker">What You're Proving</div>
+    <div class="card-title">Semantically equivalent prompts produce different activation trajectories and downstream behavior</div>
+    <p>This is the mechanistic bridge. The corpus shows <em>that</em> contradictions happen. Framing pressure explains <em>why</em>. Working claim: surface wording is not neutral; framing-level differences induce durable trajectory shifts even when task meaning is held constant.</p>
+  </div>
+
+  <div class="area-grid">
+    <div class="area-card">
+      <div class="card-kicker">Key Claims To Validate</div>
+      <div class="card-title">What Needs Evidence</div>
+      <ul>
+        <li><strong>Invariance probes:</strong> 5 semantically equivalent prompt sets produce measurably different responses</li>
+        <li><strong>Justified divergence probes:</strong> 5 surface-similar prompts where different responses ARE appropriate</li>
+        <li><strong>Boundless claim scoring:</strong> prescription + scope guard detection identifies overconfident advice</li>
+        <li><strong>Activation heatmaps:</strong> token-level visualization showing where activation diverges on equivalent prompts</li>
       </ul>
     </div>
 
-    <div class="claim-card">
-      <div class="status-tag tag-rerun">Rerunnable Now</div>
-      <div class="card-title">Production Behavior &amp; Evaluation</div>
-      <p><strong>Claim pages:</strong> <a href="architecture.html">architecture.html</a>, <a href="throughline.html">throughline.html</a>, <a href="index.html">index.html</a></p>
-      <div class="evidence-strip">Primary evidence: <code>tools/local_capability_lab.py</code>, <code>run_eval.py</code>, live backend logs, and runtime modules in <code>personal_agent/</code> and <code>routes/</code>.</div>
+    <div class="area-card">
+      <div class="card-kicker">Where To Find It</div>
+      <div class="card-title">Harnesses and Artifacts</div>
       <ul>
-        <li>Best family to audit live over the next few days.</li>
-        <li>Use this to test what the system does now, not just what a past experiment once showed.</li>
+        <li><code>tools/semantic_invariance_probes.py</code> &mdash; probe definitions + boundless scoring</li>
+        <li><code>tests/test_semantic_invariance_probes.py</code> &mdash; 31 regression tests</li>
+        <li><code>tools/continuity_blind_v2.py</code> &mdash; boundless badge integration</li>
+        <li><a href="continuity-blind.html">continuity-blind.html</a> &mdash; methodology documentation</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="area-card">
+    <div class="card-kicker">Current Status: Incomplete</div>
+    <div class="card-title">What Still Needs To Be Built</div>
+    <ul>
+      <li><strong>Activation heatmap harness</strong> &mdash; comparative token-level visualization for semantically equivalent prompt pairs. Needs: hold meaning constant, vary framing, capture per-layer activation, show trajectory divergence.</li>
+      <li><strong>Behavior comparison layer</strong> &mdash; response equivalence scoring, tool choice divergence, confidence/posture drift across framing variants.</li>
+      <li><strong>Counterexample set</strong> &mdash; cases where framing changes activation but NOT outcome. Essential to avoid overclaiming.</li>
+    </ul>
+    <p><strong>Honest assessment:</strong> probes and boundless scoring exist and are tested. The comparative activation harness is designed but not built. Score this area <span class="score-1">1</span> until the harness ships.</p>
+  </div>
+</section>
+
+<!-- ===== SECTION 7: AREA 4 — ARC-LEVEL BLINDNESS ===== -->
+<section id="area-4">
+  <span class="section-number">Section 7</span>
+  <h2>Area 4: Arc-Level Contradiction</h2>
+  <div class="accent-line"></div>
+  <div class="status-tag tag-artifact">Sub-Claim A</div>
+
+  <div class="area-card">
+    <div class="card-kicker">What You're Proving</div>
+    <div class="card-title">Pairwise methods miss most of the actual contradiction signal</div>
+    <p>Multi-turn conversations contain stance reversals that only become visible across 3+ turns. No single pair comparison catches them. This means all pairwise numbers (v1, v2) are lower bounds.</p>
+  </div>
+
+  <div class="area-grid">
+    <div class="area-card">
+      <div class="card-kicker">Key Claims To Validate</div>
+      <div class="card-title">Numbers That Must Hold</div>
+      <ul>
+        <li><strong>59.5%</strong> of long conversations (6+ assistant turns) contain stance flips</li>
+        <li><strong>93%</strong> of flips span 3+ turns (invisible to pairwise comparison)</li>
+        <li><strong>87%</strong> of flips span 5+ turns</li>
+        <li><strong>Mean turn gap: 40.1</strong>, median: 29 turns</li>
+        <li><strong>200 conversations analyzed</strong></li>
       </ul>
     </div>
 
-    <div class="claim-card">
-      <div class="status-tag tag-external">External Bridge</div>
-      <div class="card-title">Emotion Governance</div>
-      <p><strong>Claim page:</strong> <a href="emotion-governance.html">emotion-governance.html</a></p>
-      <div class="evidence-strip">Primary evidence: your continuity / BDG work plus the external interpretability paper being bridged in.</div>
+    <div class="area-card">
+      <div class="card-kicker">What To Watch For</div>
+      <div class="card-title">Known Risks</div>
       <ul>
-        <li>Audit this as a bridge argument, not as a native metric page.</li>
-        <li>Separate “external paper found X” from “CRT is the right control plane for X.”</li>
+        <li><strong>The detection is lexical and broad.</strong> Positive/negative stance markers + 2-word topic overlap. High false positive rate on technical conversations (code words trigger matches).</li>
+        <li><strong>59.5% is an upper bound.</strong> State this. The structural finding (93% span 3+ turns) is the real contribution, not the exact rate.</li>
+        <li><strong>No NLI or semantic similarity check.</strong> This is keyword-level, not meaning-level. A proper version would use entailment classification.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="area-card">
+    <div class="card-kicker">Upgrade Path</div>
+    <div class="card-title">What Would Move This From Score 1 to Score 2</div>
+    <ul>
+      <li>Add NLI-based entailment check on detected flip pairs (filter false positives)</li>
+      <li>Exclude conversations that are purely technical/code (reduce noise)</li>
+      <li>Show 5&ndash;10 manually verified arc-level contradictions with full context</li>
+      <li>Compute precision: of 100 detected flips, how many are genuine on manual review?</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===== SECTION 8: AREA 5 — GOVERNANCE WORKS ===== -->
+<section id="area-5">
+  <span class="section-number">Section 8</span>
+  <h2>Area 5: CRT Governance Works</h2>
+  <div class="accent-line"></div>
+  <div class="status-tag tag-rerun">Sub-Claim C</div>
+
+  <div class="area-card">
+    <div class="card-kicker">What You're Proving</div>
+    <div class="card-title">An explicit epistemic governance layer detects and manages contradictions that stateless systems cannot</div>
+    <p>This is the "so what" of the whole paper. You've shown the problem exists, doesn't go away with scale, and compounds over time. CRT/Aether is the demonstration that it's solvable.</p>
+  </div>
+
+  <div class="area-grid">
+    <div class="area-card">
+      <div class="card-kicker">What To Demonstrate</div>
+      <div class="card-title">Live System Capabilities</div>
+      <ul>
+        <li><strong>Contradiction detection:</strong> Aether flags when a new statement conflicts with stored beliefs</li>
+        <li><strong>Trust weighting:</strong> memories have trust scores that evolve with corrections</li>
+        <li><strong>Belief/speech separation:</strong> internal belief state is distinct from generated response</li>
+        <li><strong>Cascade management:</strong> correction to one belief propagates through dependent beliefs</li>
+        <li><strong>Continuity auditing:</strong> system tracks its own drift and stance changes</li>
+      </ul>
+    </div>
+
+    <div class="area-card">
+      <div class="card-kicker">Where To Find It</div>
+      <div class="card-title">Code and Runtime</div>
+      <ul>
+        <li><code>personal_agent/</code> &mdash; core CRT pipeline</li>
+        <li><code>personal_agent/memory_graph.py</code> &mdash; BDG / cascade engine</li>
+        <li><code>personal_agent/immune_agents/</code> &mdash; 5 immune agents</li>
+        <li><code>tools/local_capability_lab.py</code> &mdash; capability evaluation</li>
+        <li><code>run_eval.py</code> &mdash; smoke and capability probes</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="area-card">
+    <div class="card-kicker">Validation Plan: Your Real-Time Testing</div>
+    <div class="card-title">What To Track Over The Next Few Days</div>
+    <ol>
+      <li><strong>Use Aether normally.</strong> Talk to it about real things. Don't test-probe it &mdash; use it.</li>
+      <li><strong>Deliberately contradict a prior statement.</strong> Did it catch it? Log result.</li>
+      <li><strong>Check trust scores after corrections.</strong> Do they move in the right direction?</li>
+      <li><strong>Introduce a belief that conflicts with an existing high-trust memory.</strong> What happens?</li>
+      <li><strong>After 2&ndash;3 days, run the drift/variance tools.</strong> Compare to the unmanaged GPT baseline.</li>
+      <li><strong>Look for cases where CRT FAILS.</strong> These are as valuable as successes. Log them.</li>
+    </ol>
+    <p><strong>The goal is not to prove CRT is perfect.</strong> The goal is to show it catches things that GPT without governance does not.</p>
+  </div>
+
+  <div class="area-card">
+    <div class="card-kicker">Rerun Commands</div>
+    <div class="card-title">System Validation</div>
+    <pre>python tools/local_capability_lab.py
+python run_eval.py --smoke
+python run_eval.py --capability-probe</pre>
+  </div>
+</section>
+
+<!-- ===== SECTION 9: AREA 6 — CASCADE COMPLEXITY ===== -->
+<section id="area-6">
+  <span class="section-number">Section 9</span>
+  <h2>Area 6: Cascade Complexity</h2>
+  <div class="accent-line"></div>
+  <div class="status-tag tag-artifact">Sub-Claim C</div>
+
+  <div class="area-card">
+    <div class="card-kicker">What You're Proving</div>
+    <div class="card-title">Belief revision cascades have formally characterizable complexity</div>
+    <p>The theoretical backbone. When you correct one belief, what happens to dependent beliefs? The cascade paper formalizes this with BDG structure, depth/width bounds, damping convergence, and an NP-hardness conjecture for optimal disposition.</p>
+  </div>
+
+  <div class="area-grid">
+    <div class="area-card">
+      <div class="card-kicker">Key Claims To Validate</div>
+      <div class="card-title">Theorems vs Empirical</div>
+      <ul>
+        <li><strong>Theorems 4.1&ndash;4.3:</strong> depth bound, width bound, damping convergence &mdash; proven (check proof status in paper)</li>
+        <li><strong>Theorem 4.4:</strong> instability &mdash; had a definitional contradiction, was patched</li>
+        <li><strong>Theorem 4.5 / Conjecture:</strong> NP-hardness of optimal cascade disposition &mdash; still open (3 reduction attempts documented)</li>
+        <li><strong>599-node real BDG:</strong> empirical topology from Aether production memory</li>
+        <li><strong>Damping curve matches Theorem 4.3:</strong> experiments confirmed</li>
+      </ul>
+    </div>
+
+    <div class="area-card">
+      <div class="card-kicker">Where To Find It</div>
+      <div class="card-title">Harnesses and Artifacts</div>
+      <ul>
+        <li><code>papers/cascade_complexity/cascade_paper.md</code> &mdash; full paper draft</li>
+        <li><code>papers/cascade_complexity/experiments.py</code> &mdash; 5 experiments</li>
+        <li><code>papers/cascade_complexity/real_bdg.py</code> &mdash; real BDG validation</li>
+        <li><code>personal_agent/memory_graph.py</code> &mdash; production BDG engine</li>
+        <li><a href="cascade-complexity.html">cascade-complexity.html</a> &mdash; claims page</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="area-card">
+    <div class="card-kicker">What To Watch For</div>
+    <div class="card-title">Known Risks</div>
+    <ul>
+      <li><strong>The NP-hardness conjecture is NOT proven.</strong> Do not state it as settled anywhere. Three failed reductions are documented &mdash; that's honest.</li>
+      <li><strong>Theorem 4.4 was patched.</strong> Verify the current version is consistent.</li>
+      <li><strong>The 599-node BDG is from Aether's own memory, not an external dataset.</strong> This is fine for a proof-of-concept but note it's not an independent validation.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===== SECTION 10: AREA 7 — EMOTION / ACTIVATION ===== -->
+<section id="area-7">
+  <span class="section-number">Section 10</span>
+  <h2>Area 7: Emotion Governance / Activation Mapping</h2>
+  <div class="accent-line"></div>
+  <div class="status-tag tag-external">Sub-Claims B + C</div>
+
+  <div class="area-card">
+    <div class="card-kicker">What You're Proving</div>
+    <div class="card-title">Internal activation states (including emotion-like vectors) are governable through the same epistemic framework</div>
+    <p>Anthropic found 171 functional emotion vectors (April 2026). Your argument: cascade pressure = desperation precursor, drift = emotion monitoring, three regimes = emotional profiling. CRT is the governance layer that can manage these states.</p>
+  </div>
+
+  <div class="area-grid">
+    <div class="area-card">
+      <div class="card-kicker">Evidence Status</div>
+      <div class="card-title">This Is A Bridge Argument</div>
+      <ul>
+        <li><strong>External claim:</strong> Anthropic discovered emotion vectors exist in LLMs</li>
+        <li><strong>Your mapping:</strong> CRT concepts map to emotion governance</li>
+        <li><strong>Your evidence:</strong> cascade/drift/regime data supports the mapping</li>
+        <li><strong>What you DON'T have:</strong> direct measurement of emotion vectors in your system</li>
+      </ul>
+      <p><strong>Honest score: <span class="score-1">1</span>.</strong> The mapping is intellectually sound but the bridge between external interpretability findings and your CRT data is argumentative, not empirical.</p>
+    </div>
+
+    <div class="area-card">
+      <div class="card-kicker">What Would Move This To Score 2</div>
+      <div class="card-title">Upgrade Path</div>
+      <ul>
+        <li>Build the activation heatmap harness (Area 3) and show emotion-correlated patterns</li>
+        <li>Show that CRT's cascade pressure metric correlates with identifiable activation patterns</li>
+        <li>Or: position this explicitly as "future work / theoretical connection" and don't overclaim</li>
       </ul>
     </div>
   </div>
 </section>
 
-<section id="recommended-order">
-  <span class="section-number">Section 5</span>
-  <h2>Recommended Audit Order</h2>
+<!-- ===== SECTION 11: GAPS ===== -->
+<section id="gaps">
+  <span class="section-number">Section 11</span>
+  <h2>Open Gaps</h2>
   <div class="accent-line"></div>
 
-  <div class="guide-card">
-    <div class="card-kicker">Best Use Of The Next 2–3 Days</div>
-    <div class="card-title">Audit In This Sequence</div>
-    <ol style="margin: 14px 0 0 20px; color:#a0a8c8; line-height:1.9; font-size:0.9em;">
-      <li><strong>Live runtime behavior first.</strong> Validate what the system does now.</li>
-      <li><strong>Variance probing second.</strong> Cleanest experiment family with the best surviving artifacts.</li>
-      <li><strong>Continuity-blind third.</strong> Foundational but more likely to require corpus-path cleanup.</li>
-      <li><strong>Cascade paper fourth.</strong> Split proofs from production-BDG metrics.</li>
-      <li><strong>Emotion governance last.</strong> Strongest as synthesis, not first-pass metrics.</li>
+  <p>Things the paper needs that don't exist yet. Be honest about these. A paper that acknowledges its gaps is stronger than one that hides them.</p>
+
+  <div class="gap-grid">
+    <div class="gap-card">
+      <div class="status-tag tag-gap">Gap 1</div>
+      <div class="card-title">No Independent Dataset</div>
+      <p>All corpus data is from your own GPT usage. This is ecologically valid but not independently reproducible. Another researcher can't verify your numbers without your conversations.</p>
+      <p><strong>Mitigation:</strong> describe methodology precisely enough that someone could replicate with their own export. Consider publishing anonymized aggregate stats.</p>
+    </div>
+
+    <div class="gap-card">
+      <div class="status-tag tag-gap">Gap 2</div>
+      <div class="card-title">No A/B: Governed vs Ungoverned</div>
+      <p>You have the ungoverned baseline (GPT corpus). You have the governed system (Aether/CRT). But you don't have a controlled comparison where the same prompts go to both and you measure the difference in contradiction rate.</p>
+      <p><strong>Mitigation:</strong> your real-time testing over the next few days can partially address this. Log both Aether's governed responses and what a stateless API call would produce for the same input.</p>
+    </div>
+
+    <div class="gap-card">
+      <div class="status-tag tag-gap">Gap 3</div>
+      <div class="card-title">Arc-Level Detection Is Crude</div>
+      <p>Keyword-based stance detection with no NLI. The structural finding (93% span 3+ turns) is solid. The precision (what % of detected flips are real) is unknown.</p>
+      <p><strong>Mitigation:</strong> manually verify 50&ndash;100 detected flips. Report precision. Or add NLI-based filtering.</p>
+    </div>
+
+    <div class="gap-card">
+      <div class="status-tag tag-gap">Gap 4</div>
+      <div class="card-title">No Activation-Level Evidence</div>
+      <p>You claim framing pressure causes trajectory shifts. You have behavioral evidence (different outputs). You don't have internal evidence (different activations). The heatmap harness is designed but not built.</p>
+      <p><strong>Mitigation:</strong> build it, or explicitly scope the paper to behavioral evidence only and flag activation work as future direction.</p>
+    </div>
+
+    <div class="gap-card">
+      <div class="status-tag tag-gap">Gap 5</div>
+      <div class="card-title">CRT Hasn't Been Stress-Tested At Scale</div>
+      <p>The system works for one user over months. It hasn't been tested with multiple users, adversarial inputs, or high-volume concurrent sessions.</p>
+      <p><strong>Mitigation:</strong> scope the paper as "proof of concept" not "production system." This is honest and sufficient for a research contribution.</p>
+    </div>
+
+    <div class="gap-card">
+      <div class="status-tag tag-gap">Gap 6</div>
+      <div class="card-title">Thinking-Model Sample Sizes</div>
+      <p>The strongest "scale doesn't fix it" datapoint (gpt-5-1-thinking at 20.1% hard rate) comes from only 179 pairs. Directionally compelling but not statistically conclusive at conventional significance levels.</p>
+      <p><strong>Mitigation:</strong> state sample sizes. Use language like "directional evidence" not "conclusive finding."</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SECTION 12: SCORECARD ===== -->
+<section id="scorecard">
+  <span class="section-number">Section 12</span>
+  <h2>Current Scorecard</h2>
+  <div class="accent-line"></div>
+
+  <p>Your honest assessment as of April 7, 2026. Update this as you validate.</p>
+
+  <div class="metric-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Area</th>
+          <th>Sub-Claim</th>
+          <th>Score</th>
+          <th>Status</th>
+          <th>What's Needed</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Longitudinal Failure</td>
+          <td>A</td>
+          <td><span class="score-2">2</span></td>
+          <td>Artifact-backed, v2 rerunnable</td>
+          <td>Verify all headline numbers trace to DB queries</td>
+        </tr>
+        <tr>
+          <td>Time Amplification</td>
+          <td>A</td>
+          <td><span class="score-2">2</span></td>
+          <td>v1 data, needs v2 confirmation</td>
+          <td>Rerun time-gap analysis on v2-filtered pairs</td>
+        </tr>
+        <tr>
+          <td>v1 &rarr; v2 Comparison</td>
+          <td>A</td>
+          <td><span class="score-3">3</span></td>
+          <td>Both DBs exist, fully rerunnable</td>
+          <td>Done. Numbers are current.</td>
+        </tr>
+        <tr>
+          <td>Model Trajectory</td>
+          <td>B</td>
+          <td><span class="score-2">2</span></td>
+          <td>Artifact-backed with caveats</td>
+          <td>State sample sizes for thinking models</td>
+        </tr>
+        <tr>
+          <td>Three Regimes</td>
+          <td>B</td>
+          <td><span class="score-3">3</span></td>
+          <td>Fully rerunnable, 16/16 robust</td>
+          <td>Rerun to confirm with current model versions</td>
+        </tr>
+        <tr>
+          <td>Domain Inversion</td>
+          <td>B</td>
+          <td><span class="score-2">2</span></td>
+          <td>Artifact-backed</td>
+          <td>Verify exact computation, show query</td>
+        </tr>
+        <tr>
+          <td>Framing Pressure</td>
+          <td>A+B</td>
+          <td><span class="score-1">1</span></td>
+          <td>Probes built, harness not built</td>
+          <td>Build activation comparison harness</td>
+        </tr>
+        <tr>
+          <td>Arc-Level Contradiction</td>
+          <td>A</td>
+          <td><span class="score-1">1</span></td>
+          <td>Keyword-based, no precision audit</td>
+          <td>Manual verification or NLI upgrade</td>
+        </tr>
+        <tr>
+          <td>CRT Live Behavior</td>
+          <td>C</td>
+          <td><span class="score-1">1</span></td>
+          <td>System runs but not formally tested</td>
+          <td>Your real-time testing over next 2&ndash;3 days</td>
+        </tr>
+        <tr>
+          <td>Cascade Theorems</td>
+          <td>C</td>
+          <td><span class="score-2">2</span></td>
+          <td>Proofs + experiments, NP conjecture open</td>
+          <td>Confirm theorem statements are accurate</td>
+        </tr>
+        <tr>
+          <td>BDG Topology</td>
+          <td>C</td>
+          <td><span class="score-2">2</span></td>
+          <td>599-node real BDG, rerunnable</td>
+          <td>Note it's from own data, not independent</td>
+        </tr>
+        <tr>
+          <td>Emotion Governance</td>
+          <td>B+C</td>
+          <td><span class="score-1">1</span></td>
+          <td>Bridge argument, no direct measurement</td>
+          <td>Scope as future work or build activation evidence</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <strong>Summary:</strong> 3 areas at score 3 (publishable now). 5 areas at score 2 (publishable with minor verification). 4 areas at score 1 (need work or explicit hedging). 0 areas at score 0. No claims need to be cut &mdash; but 4 need honest framing.
+  </div>
+</section>
+
+<!-- ===== SECTION 13: PROTOCOL ===== -->
+<section id="protocol">
+  <span class="section-number">Section 13</span>
+  <h2>Validation Protocol</h2>
+  <div class="accent-line"></div>
+
+  <div class="area-card">
+    <div class="card-kicker">The Next Few Days</div>
+    <div class="card-title">What To Do, In Order</div>
+    <ol>
+      <li><strong>Live system testing (Days 1&ndash;2).</strong> Use Aether. Track contradictions caught, trust score changes, failures. This is Area 5 and it's the gap most worth closing.</li>
+      <li><strong>Verify headline numbers (Day 1, 30 min).</strong> Run the DB count queries for corpus size, pair counts, v2 stats. Confirm they match what the docs say.</li>
+      <li><strong>Rerun v2 with tightened pair typing (Day 1, 15 min).</strong> <code>python -m tools.continuity_blind_v2 run</code> then <code>report</code>. Check whether genuine_contradiction count changes.</li>
+      <li><strong>Variance experiment rerun (Day 2).</strong> Confirm three regimes and 16/16 robustness with current model versions.</li>
+      <li><strong>Manual arc verification (Day 2&ndash;3).</strong> Pick 20 detected arc flips. Read the actual conversation. How many are real? That's your precision number.</li>
+      <li><strong>Cascade experiment rerun (Day 3).</strong> Confirm damping curve and BDG topology.</li>
+      <li><strong>Decision: scope the paper (Day 3).</strong> Based on what survived, decide whether emotion governance and framing pressure go in the main paper or get flagged as future work.</li>
     </ol>
   </div>
 
-  <div class="step-grid">
-    <div class="step-card">
-      <div class="card-kicker">Day 1</div>
-      <div class="card-title">Current System Validation</div>
-      <pre>python tools/local_capability_lab.py
-python run_eval.py --smoke
-python run_eval.py --capability-probe</pre>
-    </div>
+  <div class="guide-grid">
+    <div class="guide-card">
+      <div class="card-kicker">Per-Claim Audit Log</div>
+      <div class="card-title">Use This Template</div>
+      <pre>Claim:
+Source page:
+Score: 0 / 1 / 2 / 3
 
-    <div class="step-card">
-      <div class="card-kicker">Day 2</div>
-      <div class="card-title">Variance &amp; Probe Validation</div>
-      <pre>cd belief_variance_experiment
-python runner.py
-python analyze.py
-python report.py</pre>
-    </div>
-
-    <div class="step-card">
-      <div class="card-kicker">Day 3</div>
-      <div class="card-title">Continuity &amp; Density Audit</div>
-      <pre>python tools/corpus_consistency.py
-python tools/corpus_gaslighting.py</pre>
-    </div>
-
-    <div class="step-card">
-      <div class="card-kicker">Day 4</div>
-      <div class="card-title">Cascade / BDG Audit</div>
-      <pre>python papers/cascade_complexity/experiments.py
-python papers/cascade_complexity/real_bdg.py</pre>
-    </div>
-  </div>
-</section>
-
-<section id="audit-log-template">
-  <span class="section-number">Section 6</span>
-  <h2>Audit Log Template</h2>
-  <div class="accent-line"></div>
-
-  <div class="log-card">
-    <div class="card-kicker">Use This Per Claim</div>
-    <div class="card-title">Minimal Research Log</div>
-    <pre>Claim:
-Page:
-Type: metric / runtime / theorem / bridge
-
-Evidence source:
-Rerun path:
-Artifact path:
+Evidence path:
+Rerun command:
 
 Observed result:
 Matches doc? yes / partial / no
 
-Decision:
-- pass
-- revise
-- demote
+Decision: pass / revise / hedge / cut
 
-Notes:
-- what drifted?
-- what is still unclear?
-- what should the docs say instead?</pre>
-  </div>
+Notes:</pre>
+    </div>
 
-  <div class="guide-card">
-    <div class="card-kicker">Three Buckets</div>
-    <div class="card-title">Keep The Outcome Simple</div>
-    <ul>
-      <li><strong>Green:</strong> rerunnable now or artifact-backed and exact</li>
-      <li><strong>Yellow:</strong> directionally right but numbers or scope need tightening</li>
-      <li><strong>Red:</strong> narrative claim with no clean evidence path today</li>
-    </ul>
+    <div class="guide-card">
+      <div class="card-kicker">One Rule</div>
+      <div class="card-title">If You Can't Run It, You Can't Claim It</div>
+      <p>The single discipline that separates this from speculation: every number in the paper is either rerunnable or traceable to an artifact with clear provenance. If something fails this test, it gets hedged or cut. No exceptions.</p>
+    </div>
   </div>
 </section>
 
@@ -494,12 +892,12 @@ Notes:
 
 <div class="footer">
   <a href="index.html">Docs Home</a> &nbsp;&middot;&nbsp;
-  <a href="glossary.html">Glossary</a> &nbsp;&middot;&nbsp;
-  <a href="experiments.html">Experiments</a> &nbsp;&middot;&nbsp;
-  <a href="variance-probing.html">Variance Probing</a> &nbsp;&middot;&nbsp;
   <a href="contradiction-density.html">Contradiction Density</a> &nbsp;&middot;&nbsp;
+  <a href="variance-probing.html">Variance Probing</a> &nbsp;&middot;&nbsp;
   <a href="cascade-complexity.html">Cascade Complexity</a> &nbsp;&middot;&nbsp;
-  <a href="architecture.html">Architecture</a>
+  <a href="architecture.html">Architecture</a> &nbsp;&middot;&nbsp;
+  <a href="continuity-blind.html">Continuity-Blind</a> &nbsp;&middot;&nbsp;
+  <a href="glossary.html">Glossary</a>
   <br><br>
   Aeteros Research &bull; 2026
 </div>
