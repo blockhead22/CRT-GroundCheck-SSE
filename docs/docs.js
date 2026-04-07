@@ -36,7 +36,7 @@
   var prefix = inSubdir ? '../' : '';
   var currentFile = window.location.pathname.replace(/\\/g, '/').split('/').pop() || 'index.html';
 
-  // ── Inject cross-doc nav bar ──
+  // ── Inject cross-doc nav bar with dropdown groups ──
   function injectDocNav() {
     var nav = document.createElement('nav');
     nav.className = 'docnav';
@@ -47,27 +47,85 @@
     home.textContent = 'Aeteros';
     nav.appendChild(home);
 
-    var links = document.createElement('div');
-    links.className = 'docnav-links';
-
-    var lastGroup = null;
+    // Build groups from manifest
+    var groups = {};
+    var groupOrder = [];
     DOCS.forEach(function(doc) {
-      if (doc.href === 'index.html') return; // home already shown
-      if (doc.group !== lastGroup && lastGroup !== null) {
-        var sep = document.createElement('div');
-        sep.className = 'docnav-sep';
-        links.appendChild(sep);
+      if (!doc.group) return;
+      if (!groups[doc.group]) {
+        groups[doc.group] = [];
+        groupOrder.push(doc.group);
       }
-      lastGroup = doc.group;
-      var a = document.createElement('a');
-      a.href = prefix + doc.href;
-      a.textContent = doc.label;
-      if (doc.href === currentFile) a.classList.add('docnav-active');
-      links.appendChild(a);
+      groups[doc.group].push(doc);
     });
 
-    nav.appendChild(links);
+    // Desktop: dropdown groups
+    var groupsEl = document.createElement('div');
+    groupsEl.className = 'docnav-groups';
+
+    groupOrder.forEach(function(groupName) {
+      var groupDiv = document.createElement('div');
+      groupDiv.className = 'docnav-group';
+
+      var label = document.createElement('div');
+      label.className = 'docnav-group-label';
+      label.innerHTML = groupName + ' <span class="docnav-group-arrow">&#9662;</span>';
+
+      // Check if current page is in this group
+      var hasActive = groups[groupName].some(function(d) { return d.href === currentFile; });
+      if (hasActive) label.classList.add('has-active');
+
+      groupDiv.appendChild(label);
+
+      var dropdown = document.createElement('div');
+      dropdown.className = 'docnav-dropdown';
+      groups[groupName].forEach(function(doc) {
+        var a = document.createElement('a');
+        a.href = prefix + doc.href;
+        a.textContent = doc.label;
+        if (doc.href === currentFile) a.classList.add('docnav-active');
+        dropdown.appendChild(a);
+      });
+      groupDiv.appendChild(dropdown);
+      groupsEl.appendChild(groupDiv);
+    });
+
+    nav.appendChild(groupsEl);
+
+    // Mobile: hamburger button
+    var toggle = document.createElement('button');
+    toggle.className = 'docnav-toggle';
+    toggle.innerHTML = '&#9776;';
+    toggle.setAttribute('aria-label', 'Toggle navigation');
+    nav.appendChild(toggle);
+
+    // Mobile: full-screen menu
+    var mobileMenu = document.createElement('div');
+    mobileMenu.className = 'docnav-mobile-menu';
+
+    groupOrder.forEach(function(groupName) {
+      var groupLabel = document.createElement('div');
+      groupLabel.className = 'docnav-mobile-group-label';
+      groupLabel.textContent = groupName;
+      mobileMenu.appendChild(groupLabel);
+
+      groups[groupName].forEach(function(doc) {
+        var a = document.createElement('a');
+        a.href = prefix + doc.href;
+        a.textContent = doc.label;
+        if (doc.href === currentFile) a.classList.add('docnav-active');
+        mobileMenu.appendChild(a);
+      });
+    });
+
+    // Toggle handler
+    toggle.addEventListener('click', function() {
+      mobileMenu.classList.toggle('open');
+      toggle.innerHTML = mobileMenu.classList.contains('open') ? '&#10005;' : '&#9776;';
+    });
+
     document.body.insertBefore(nav, document.body.firstChild);
+    document.body.insertBefore(mobileMenu, nav.nextSibling);
   }
 
   // ── Inject prev/next pager into main ──
