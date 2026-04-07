@@ -8,9 +8,10 @@
 /** Strip [SYSTEM NOTE — self-correction...] blocks and internal prefixes from memory text */
 export function cleanMemoryText(raw: string): string {
   return raw
-    .replace(/\[SYSTEM NOTE[^\]]*\][^]*/i, '')      // strip [SYSTEM NOTE ...] and everything after
+    .replace(/,?\s*\[SYSTEM NOTE[\s\S]*/i, '')       // strip ", [SYSTEM NOTE" and everything after (handles truncated/unclosed brackets)
+    .replace(/\[SYSTEM NOTE[^\]]*\]/gi, '')           // strip complete [SYSTEM NOTE ...] blocks
     .replace(/^\s*FACT:\s*/i, '')                     // strip leading "FACT: "
-    .replace(/\[self_model:\w+\]\s*/i, '')            // strip [self_model:slot]
+    .replace(/\[self_model:\w+\]\s*/gi, '')           // strip [self_model:slot]
     .replace(/\n+/g, ' ')                             // collapse newlines
     .trim()
 }
