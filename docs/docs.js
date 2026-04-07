@@ -10,6 +10,7 @@
     { href: 'index.html',                label: 'Home',                 group: null },
     { href: 'contradiction-density.html',label: 'Contradiction Density',group: 'Research' },
     { href: 'continuity-blind.html',     label: 'Continuity Blind',     group: 'Research' },
+    { href: 'sensitive-domains.html',    label: 'Sensitive Domains',    group: 'Research' },
     { href: 'whitepaper.html',           label: 'Whitepaper',           group: 'Research' },
     { href: 'immune-agents.html',        label: 'Immune Agents',        group: 'Research' },
     { href: 'experiments.html',          label: 'Experiments',          group: 'Research' },
