@@ -80,6 +80,19 @@
   --accent-pink: #c0487a;
 }
 
+/* ===== BOOTSTRAP OVERRIDES (loaded before base.css via docs.js) ===== */
+/* Prevent Bootstrap from overriding our dark theme */
+body, .table, .table > :not(caption) > * > *, th, td {
+  color: inherit;
+  background-color: inherit;
+  border-color: var(--border);
+}
+.table { --bs-table-bg: transparent; --bs-table-color: inherit; --bs-table-border-color: var(--border); }
+.table-sm > :not(caption) > * > * { padding: 0; } /* let our own padding win */
+a { color: var(--accent-indigo); }
+a:hover { color: var(--text); }
+hr { border-color: var(--border); opacity: 1; }
+
 /* ===== BODY ===== */
 html {
   overflow-x: hidden;
@@ -898,12 +911,7 @@ td code {
   .method-grid, .regime-grid, .agent-list { grid-template-columns: 1fr; }
   .pipeline-row { grid-template-columns: 1fr; }
 
-  /* Force ALL tables scrollable even if not wrapped in .table-wrap */
-  table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  thead, tbody, tr { display: table; width: 100%; table-layout: auto; }
-
-  /* Kill any min-width that forces overflow */
-  * { min-width: 0 !important; }
+  /* Bootstrap handles table-responsive wrapping via docs.js bootstrapify() */
 
   /* Hero scaling */
   .hero-inner { padding: 40px 16px 32px 16px; }

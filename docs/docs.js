@@ -101,8 +101,62 @@
     main.appendChild(pager);
   }
 
+  // ── Inject Bootstrap 5 CSS (before first paint where possible) ──
+  function injectBootstrap() {
+    var bs = document.createElement('link');
+    bs.rel = 'stylesheet';
+    bs.href = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css';
+    bs.crossOrigin = 'anonymous';
+    // Insert BEFORE base.css so our styles override Bootstrap
+    var firstCSS = document.querySelector('link[rel="stylesheet"]');
+    if (firstCSS) {
+      firstCSS.parentNode.insertBefore(bs, firstCSS);
+    } else {
+      document.head.appendChild(bs);
+    }
+  }
+
+  // ── Apply Bootstrap utility classes to existing elements ──
+  function bootstrapify() {
+    // Make all tables responsive
+    var tables = document.querySelectorAll('table');
+    tables.forEach(function(t) {
+      // Skip if already wrapped in a responsive container
+      if (t.parentNode.classList.contains('table-responsive') || t.parentNode.classList.contains('table-wrap') || t.parentNode.classList.contains('metric-table-wrap')) return;
+      var wrap = document.createElement('div');
+      wrap.className = 'table-responsive';
+      t.parentNode.insertBefore(wrap, t);
+      wrap.appendChild(t);
+    });
+
+    // Add Bootstrap table class
+    tables.forEach(function(t) {
+      t.classList.add('table', 'table-sm');
+    });
+
+    // Make images responsive
+    var imgs = document.querySelectorAll('img');
+    imgs.forEach(function(img) {
+      img.classList.add('img-fluid');
+    });
+
+    // Add container-fluid to main if not present
+    var main = document.querySelector('main.main');
+    if (main && !main.classList.contains('container-fluid')) {
+      main.style.maxWidth = '100%';
+      main.style.overflowX = 'hidden';
+    }
+  }
+
+  injectBootstrap();
   injectDocNav();
   injectPager();
+  // Run bootstrapify after DOM is settled
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrapify);
+  } else {
+    bootstrapify();
+  }
   var html = document.documentElement;
 
   // ── Auto-sidebar: generate links from <section> > h2 ──
