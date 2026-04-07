@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRT Claim Evaluation Guide — Aeteros Research</title>
+<style>
+  .stat-card:hover { border-color: rgba(129,140,248,0.3); transform: translateY(-2px); }
+  .guide-card, .claim-card, .step-card, .status-card, .toc, .log-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 24px 26px;
+    margin: 18px 0;
+  }
+  .guide-grid, .status-grid, .step-grid, .claim-grid { display: grid; gap: 16px; margin: 24px 0; }
+  .guide-grid, .step-grid, .claim-grid { grid-template-columns: 1fr 1fr; }
+  .status-grid { grid-template-columns: repeat(4, 1fr); }
+  .card-kicker {
+    color: #818cf8;
+    font-size: 0.68em;
+    font-weight: 600;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .card-title { color: #fff; font-size: 1.02em; font-weight: 700; margin-bottom: 10px; }
+  .guide-card p, .claim-card p, .step-card p, .log-card p, .status-card p { color: #8a90b0; font-size: 0.9em; line-height: 1.75; }
+  .guide-card ul, .claim-card ul, .step-card ul, .log-card ul {
+    margin: 12px 0 0 18px;
+    color: #a0a8c8;
+    font-size: 0.88em;
+    line-height: 1.8;
+  }
+  .guide-card li, .claim-card li, .step-card li, .log-card li { margin-bottom: 6px; }
+  .toc { padding: 28px 32px; margin-bottom: 40px; }
+  .toc h3 { color: #fff; margin-bottom: 16px; font-size: 1.05em; }
+  .toc-links { display: flex; flex-wrap: wrap; gap: 8px 12px; }
+  .toc-links a {
+    color: #a0a8c8;
+    text-decoration: none;
+    font-size: 0.84em;
+    padding: 6px 10px;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 999px;
+  }
+  .toc-links a:hover { color: #fff; border-color: rgba(129,140,248,0.3); }
+  .status-tag {
+    display: inline-block;
+    font-size: 0.66em;
+    font-weight: 700;
+    letter-spacing: 1.3px;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 4px 10px;
+    margin-bottom: 12px;
+  }
+  .tag-rerun { color: #34d399; background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.22); }
+  .tag-artifact { color: #818cf8; background: rgba(129,140,248,0.12); border: 1px solid rgba(129,140,248,0.22); }
+  .tag-theory { color: #fbbf24; background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.22); }
+  .tag-external { color: #f472b6; background: rgba(244,114,182,0.12); border: 1px solid rgba(244,114,182,0.22); }
+  .evidence-strip {
+    background: rgba(255,255,255,0.015);
+    border-left: 3px solid rgba(129,140,248,0.25);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    margin: 14px 0;
+    color: #9aa3c2;
+    font-size: 0.84em;
+  }
+  .callout {
+    background: rgba(129,140,248,0.04);
+    border: 1px solid rgba(129,140,248,0.1);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin: 16px 0;
+    color: #98a1c0;
+    font-size: 0.87em;
+  }
+  pre {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin: 18px 0;
+    overflow-x: auto;
+    color: #aeb7d6;
+    font-size: 0.82em;
+    line-height: 1.65;
+    font-family: 'IBM Plex Mono', 'Cascadia Code', monospace;
+  }
+  .metric-table-wrap { margin: 22px 0; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.84em; }
+  th {
+    text-align: left;
+    color: #5a6080;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.76em;
+    padding: 12px 14px;
+    border-bottom: 2px solid rgba(255,255,255,0.06);
+  }
+  td {
+    color: #a0a8c8;
+    padding: 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    vertical-align: top;
+  }
+  tr:hover td { background: rgba(129,140,248,0.03); }
+  .footer { text-align: center; color: #5a6080; font-size: 0.78em; padding: 32px 0 46px 0; }
+  @media (max-width: 900px) {
+    .guide-grid, .status-grid, .step-grid, .claim-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 700px) {
+    .hero h1 { font-size: 2em; }
+  }
+</style>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<div class="page-layout">
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">Reference &middot; Validation Workflow</div>
+    <h1>CRT Claim<br><span class="grad">Evaluation Guide</span></h1>
+    <p class="sub">A step-by-step audit map for testing what the docs claim, tying each claim to evidence, rerun paths, and the right level of confidence.</p>
+    <p class="byline">Aeteros Research &bull; 2026</p>
+    <div class="finding-box">
+      <p><strong>Use the HTML files as the claims layer, not the source of truth.</strong> Treat a claim as solid only when you can tie it to raw artifacts, a rerunnable harness, live code behavior, or a theorem with clearly stated status.</p>
+    </div>
+  </div>
+  <div class="scroll-cue">&#9660; SCROLL</div>
+</div>
+
+<nav class="sidebar" id="docSidebar">
+  <div class="sidebar-title">Claim Audit</div>
+  <div class="sidebar-spacer"></div>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme">
+    <span class="theme-toggle-icon" id="themeIcon">&#9790;</span>
+    <span id="themeLabel">Light</span>
+  </button>
+  <div class="sidebar-footer">2026 Aeteros Research</div>
+</nav>
+
+<main class="main">
+
+<section id="read-this-first">
+  <span class="section-number">Section 1</span>
+  <h2>Read This First</h2>
+  <div class="accent-line"></div>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value accent">4</div>
+      <div class="stat-label">Evidence Classes</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value green">2</div>
+      <div class="stat-label">Live Harnesses</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value pink">5</div>
+      <div class="stat-label">Core Claim Families</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value purple">1</div>
+      <div class="stat-label">Audit Rule</div>
+    </div>
+  </div>
+
+  <div class="toc">
+    <h3>Recommended Reading Order</h3>
+    <div class="toc-links">
+      <a href="variance-probing.html">Variance Probing</a>
+      <a href="contradiction-density.html">Contradiction Density</a>
+      <a href="cascade-complexity.html">Cascade Complexity</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="immune-agents.html">Immune Agents</a>
+      <a href="emotion-governance.html">Emotion Governance</a>
+      <a href="glossary.html">Glossary</a>
+    </div>
+  </div>
+
+  <div class="guide-grid">
+    <div class="guide-card">
+      <div class="card-kicker">Core Rule</div>
+      <div class="card-title">Do Not Audit the Narrative Directly</div>
+      <p>The polished HTML pages are where the strongest positions are stated. They are the right place to understand the thesis. They are not the right place to decide whether a metric is true.</p>
+      <pre>claim page -> raw artifact or code path -> rerun or inspect -> pass / revise / demote</pre>
+    </div>
+
+    <div class="guide-card">
+      <div class="card-kicker">Working Split</div>
+      <div class="card-title">Use Two Layers On Purpose</div>
+      <ul>
+        <li><strong>Claims layer:</strong> the formal HTML pages in <code>docs/</code></li>
+        <li><strong>Evidence layer:</strong> experiment dirs, harnesses, raw results, and runtime code</li>
+        <li><strong>Interpretation layer:</strong> papers and position pages explaining what the findings mean</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>Discipline for the next few days:</strong> every strong number in the docs gets placed into one bucket: rerunnable now, artifact-backed, theory/open, or external bridge.
+  </div>
+</section>
+
+<section id="evidence-classes">
+  <span class="section-number">Section 2</span>
+  <h2>Evidence Classes</h2>
+  <div class="accent-line"></div>
+
+  <div class="status-grid">
+    <div class="status-card">
+      <div class="status-tag tag-rerun">Rerunnable Now</div>
+      <div class="card-title">Best Case</div>
+      <p>You can run the harness yourself and compare the result against the claim.</p>
+    </div>
+
+    <div class="status-card">
+      <div class="status-tag tag-artifact">Artifact-Backed</div>
+      <div class="card-title">Acceptable If Traceable</div>
+      <p>The result already exists on disk, but you may not have re-run it recently.</p>
+    </div>
+
+    <div class="status-card">
+      <div class="status-tag tag-theory">Theory / Open</div>
+      <div class="card-title">Do Not Treat As Measured</div>
+      <p>Mathematical results, conjectures, and architectural consequences.</p>
+    </div>
+
+    <div class="status-card">
+      <div class="status-tag tag-external">External Bridge</div>
+      <div class="card-title">Separate From Your Data</div>
+      <p>Claims that rely on outside papers or outside model vendors.</p>
+    </div>
+  </div>
+
+  <div class="metric-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Claim Type</th>
+          <th>Primary Source</th>
+          <th>What Counts As Validation</th>
+          <th>What Does Not</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Empirical metric</td>
+          <td>Raw results, scripts, output files</td>
+          <td>Reproduced number or traceable artifact</td>
+          <td>Repeated prose across multiple docs</td>
+        </tr>
+        <tr>
+          <td>Runtime behavior</td>
+          <td>Live harness, logs, code path</td>
+          <td>Observed end-to-end behavior under test</td>
+          <td>Pipeline diagram alone</td>
+        </tr>
+        <tr>
+          <td>Theorem / complexity statement</td>
+          <td>Paper, proof sketch, implementation checks</td>
+          <td>Correct statement of proven vs open status</td>
+          <td>Treating an open conjecture as settled</td>
+        </tr>
+        <tr>
+          <td>Interpretability bridge</td>
+          <td>External paper + your mapping argument</td>
+          <td>Separate audit of outside claim and your application</td>
+          <td>Counting the bridge as your own measured metric</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="audit-protocol">
+  <span class="section-number">Section 3</span>
+  <h2>Audit Protocol</h2>
+  <div class="accent-line"></div>
+
+  <div class="step-grid">
+    <div class="step-card">
+      <div class="card-kicker">Step 1</div>
+      <div class="card-title">Extract The Exact Claim</div>
+      <ul>
+        <li>Write the number or proposition verbatim.</li>
+        <li>Classify it: metric, runtime claim, theorem, or bridge.</li>
+        <li>Mark whether it is descriptive, causal, or normative.</li>
+      </ul>
+    </div>
+
+    <div class="step-card">
+      <div class="card-kicker">Step 2</div>
+      <div class="card-title">Find The Lowest-Level Source</div>
+      <ul>
+        <li>Raw JSON / artifact directory</li>
+        <li>Script or harness</li>
+        <li>Runtime module</li>
+        <li>Paper theorem or external citation</li>
+      </ul>
+    </div>
+
+    <div class="step-card">
+      <div class="card-kicker">Step 3</div>
+      <div class="card-title">Choose The Right Test Mode</div>
+      <ul>
+        <li><strong>Rerun:</strong> if the harness still exists and inputs are available</li>
+        <li><strong>Inspect:</strong> if the artifact exists but rerun is expensive or unclear</li>
+        <li><strong>Demote:</strong> if neither rerun nor artifact exists</li>
+      </ul>
+    </div>
+
+    <div class="step-card">
+      <div class="card-kicker">Step 4</div>
+      <div class="card-title">Record Outcome Brutally</div>
+      <ul>
+        <li><strong>Pass:</strong> claim matches artifact or rerun</li>
+        <li><strong>Revise:</strong> claim is directionally right but numbers or scope drifted</li>
+        <li><strong>Demote:</strong> claim is narrative-only or unsupported now</li>
+      </ul>
+    </div>
+  </div>
+
+  <pre>For each claim:
+1. What page says it?
+2. What file generated it?
+3. Can I rerun it now?
+4. If not, what artifact still proves it?
+5. Does the current doc overstate certainty?</pre>
+</section>
+
+<section id="claim-families">
+  <span class="section-number">Section 4</span>
+  <h2>Claim Families</h2>
+  <div class="accent-line"></div>
+
+  <div class="claim-grid">
+    <div class="claim-card">
+      <div class="status-tag tag-rerun">Rerunnable Now</div>
+      <div class="card-title">Variance Probing</div>
+      <p><strong>Claim pages:</strong> <a href="variance-probing.html">variance-probing.html</a>, <a href="variance-landscape.html">variance-landscape.html</a>, <a href="experiments.html">experiments.html</a></p>
+      <div class="evidence-strip">Primary evidence: <code>belief_variance_experiment/</code>, especially <code>README.md</code>, <code>runner.py</code>, <code>analyze.py</code>, <code>report.py</code>, and <code>results/</code>.</div>
+      <ul>
+        <li>Audit counts first: 7,500 per model, 22,524 total, 16/16 robustness.</li>
+        <li>Then audit the stronger claims: domain inversion, three regimes, held contradictions.</li>
+        <li>Watch for docs drift between markdown summaries and finalized HTML pages.</li>
+      </ul>
+    </div>
+
+    <div class="claim-card">
+      <div class="status-tag tag-artifact">Artifact-Backed</div>
+      <div class="card-title">Continuity-Blind Contradiction</div>
+      <p><strong>Claim pages:</strong> <a href="contradiction-density.html">contradiction-density.html</a>, <a href="continuity-blind.html">continuity-blind.html</a></p>
+      <div class="evidence-strip">Primary evidence: <code>tools/corpus_gaslighting.py</code>, <code>tools/corpus_consistency.py</code>, <code>personal_agent/immune_agents/continuity_auditor.py</code>.</div>
+      <ul>
+        <li>Key numbers: 1,275 sessions, 59,370 messages, 0% continuity awareness, 0.34 mean consistency, 74% mean confidence.</li>
+        <li>This is foundational, but the rerun path may need cleanup around the exact corpus.</li>
+      </ul>
+    </div>
+
+    <div class="claim-card">
+      <div class="status-tag tag-artifact">Artifact-Backed</div>
+      <div class="card-title">Cascade Complexity &amp; Real BDG</div>
+      <p><strong>Claim pages:</strong> <a href="cascade-complexity.html">cascade-complexity.html</a>, <a href="experiments.html">experiments.html</a></p>
+      <div class="evidence-strip">Primary evidence: <code>papers/cascade_complexity/real_bdg.py</code>, <code>papers/cascade_complexity/experiments.py</code>, <code>personal_agent/memory_graph.py</code>.</div>
+      <ul>
+        <li>Split theorem claims from empirical topology claims.</li>
+        <li>The empirical part is the 599-node BDG and reported cascade reach / firewall behavior.</li>
+      </ul>
+    </div>
+
+    <div class="claim-card">
+      <div class="status-tag tag-rerun">Rerunnable Now</div>
+      <div class="card-title">Production Behavior &amp; Evaluation</div>
+      <p><strong>Claim pages:</strong> <a href="architecture.html">architecture.html</a>, <a href="throughline.html">throughline.html</a>, <a href="index.html">index.html</a></p>
+      <div class="evidence-strip">Primary evidence: <code>tools/local_capability_lab.py</code>, <code>run_eval.py</code>, live backend logs, and runtime modules in <code>personal_agent/</code> and <code>routes/</code>.</div>
+      <ul>
+        <li>Best family to audit live over the next few days.</li>
+        <li>Use this to test what the system does now, not just what a past experiment once showed.</li>
+      </ul>
+    </div>
+
+    <div class="claim-card">
+      <div class="status-tag tag-external">External Bridge</div>
+      <div class="card-title">Emotion Governance</div>
+      <p><strong>Claim page:</strong> <a href="emotion-governance.html">emotion-governance.html</a></p>
+      <div class="evidence-strip">Primary evidence: your continuity / BDG work plus the external interpretability paper being bridged in.</div>
+      <ul>
+        <li>Audit this as a bridge argument, not as a native metric page.</li>
+        <li>Separate “external paper found X” from “CRT is the right control plane for X.”</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="recommended-order">
+  <span class="section-number">Section 5</span>
+  <h2>Recommended Audit Order</h2>
+  <div class="accent-line"></div>
+
+  <div class="guide-card">
+    <div class="card-kicker">Best Use Of The Next 2–3 Days</div>
+    <div class="card-title">Audit In This Sequence</div>
+    <ol style="margin: 14px 0 0 20px; color:#a0a8c8; line-height:1.9; font-size:0.9em;">
+      <li><strong>Live runtime behavior first.</strong> Validate what the system does now.</li>
+      <li><strong>Variance probing second.</strong> Cleanest experiment family with the best surviving artifacts.</li>
+      <li><strong>Continuity-blind third.</strong> Foundational but more likely to require corpus-path cleanup.</li>
+      <li><strong>Cascade paper fourth.</strong> Split proofs from production-BDG metrics.</li>
+      <li><strong>Emotion governance last.</strong> Strongest as synthesis, not first-pass metrics.</li>
+    </ol>
+  </div>
+
+  <div class="step-grid">
+    <div class="step-card">
+      <div class="card-kicker">Day 1</div>
+      <div class="card-title">Current System Validation</div>
+      <pre>python tools/local_capability_lab.py
+python run_eval.py --smoke
+python run_eval.py --capability-probe</pre>
+    </div>
+
+    <div class="step-card">
+      <div class="card-kicker">Day 2</div>
+      <div class="card-title">Variance &amp; Probe Validation</div>
+      <pre>cd belief_variance_experiment
+python runner.py
+python analyze.py
+python report.py</pre>
+    </div>
+
+    <div class="step-card">
+      <div class="card-kicker">Day 3</div>
+      <div class="card-title">Continuity &amp; Density Audit</div>
+      <pre>python tools/corpus_consistency.py
+python tools/corpus_gaslighting.py</pre>
+    </div>
+
+    <div class="step-card">
+      <div class="card-kicker">Day 4</div>
+      <div class="card-title">Cascade / BDG Audit</div>
+      <pre>python papers/cascade_complexity/experiments.py
+python papers/cascade_complexity/real_bdg.py</pre>
+    </div>
+  </div>
+</section>
+
+<section id="audit-log-template">
+  <span class="section-number">Section 6</span>
+  <h2>Audit Log Template</h2>
+  <div class="accent-line"></div>
+
+  <div class="log-card">
+    <div class="card-kicker">Use This Per Claim</div>
+    <div class="card-title">Minimal Research Log</div>
+    <pre>Claim:
+Page:
+Type: metric / runtime / theorem / bridge
+
+Evidence source:
+Rerun path:
+Artifact path:
+
+Observed result:
+Matches doc? yes / partial / no
+
+Decision:
+- pass
+- revise
+- demote
+
+Notes:
+- what drifted?
+- what is still unclear?
+- what should the docs say instead?</pre>
+  </div>
+
+  <div class="guide-card">
+    <div class="card-kicker">Three Buckets</div>
+    <div class="card-title">Keep The Outcome Simple</div>
+    <ul>
+      <li><strong>Green:</strong> rerunnable now or artifact-backed and exact</li>
+      <li><strong>Yellow:</strong> directionally right but numbers or scope need tightening</li>
+      <li><strong>Red:</strong> narrative claim with no clean evidence path today</li>
+    </ul>
+  </div>
+</section>
+
+</main>
+
+<div class="footer">
+  <a href="index.html">Docs Home</a> &nbsp;&middot;&nbsp;
+  <a href="glossary.html">Glossary</a> &nbsp;&middot;&nbsp;
+  <a href="experiments.html">Experiments</a> &nbsp;&middot;&nbsp;
+  <a href="variance-probing.html">Variance Probing</a> &nbsp;&middot;&nbsp;
+  <a href="contradiction-density.html">Contradiction Density</a> &nbsp;&middot;&nbsp;
+  <a href="cascade-complexity.html">Cascade Complexity</a> &nbsp;&middot;&nbsp;
+  <a href="architecture.html">Architecture</a>
+  <br><br>
+  Aeteros Research &bull; 2026
+</div>
+
+</div>
+<script src="docs.js"></script>
+</body>
+</html>

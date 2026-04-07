@@ -162,7 +162,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <p class="sub">Empirical evidence that the dominant LLM deployment paradigm produces high-confidence contradictions on consequential personal topics</p>
     <p class="byline">Nick Block &bull; Aeteros Research &bull; 2026</p>
     <div class="finding-box">
-      <p>Over <strong>13 months</strong>, <strong>1,275 sessions</strong>, <strong>59,370 messages</strong>: <strong>0% cross-session continuity awareness</strong>. Mean semantic consistency: <strong>0.34</strong>. The system delivered contradictory guidance on mental health, career decisions, and self-efficacy at <strong>74% mean confidence</strong>.</p>
+      <p>Over <strong>13 months</strong>, <strong>1,275 sessions</strong>, <strong>59,370 messages</strong>: the externally rechecked v1 run supports <strong>0% regex-detected cross-session continuity awareness</strong>, <strong>0.34 mean semantic consistency</strong>, and <strong>74% mean lexical confidence</strong> across selected recurring topics.</p>
     </div>
 
     <!-- Contradiction Consistency Heatmap -->
@@ -305,7 +305,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <p>Large language models are increasingly used as personal advisors. Users turn to them for therapy support, career guidance, mental health management, financial planning, and motivational coaching. These are domains where <strong>consistency across sessions is clinically significant</strong> &mdash; therapeutic frameworks require stable framing, and contradictory guidance from a trusted source produces decision paralysis, learned helplessness, and degraded self-efficacy.</p>
 
   <h3>What We Measured</h3>
-  <p>We analyzed a complete ChatGPT data export spanning 13 months of real-world use: 1,275 independent sessions containing 59,370 messages. We measured cross-thread semantic consistency on 40 recurring topics (17 technical, 23 personal), computed gaslighting risk scores across 11 high-impact domains, and found that the system exhibited <strong>zero continuity awareness</strong> across every topic, every thread, and every model version tested.</p>
+  <p>We analyzed a complete ChatGPT data export spanning 13 months of real-world use: 1,275 independent sessions containing 59,370 messages. The currently reproducible v1 analysis is a probe-based retrieval study over selected recurring topics and high-impact domains, not a fully exhaustive scan of every topic in the corpus. Within that v1 run, the system exhibited <strong>zero regex-detected continuity awareness</strong> and low cross-thread semantic consistency on recurring personal topics.</p>
 </section>
 
 <!-- ===== SECTION 2: CORPUS & METHODOLOGY ===== -->
@@ -332,8 +332,12 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <h3>Corpus</h3>
   <p>Source: OpenAI ChatGPT data export from a single user, February 2025 through March 2026. The corpus comprises 234 MB of text across 13 JSON files, with 26,800 user messages and 28,600 assistant messages. Model versions represented include <code>gpt-4o</code>, <code>gpt-4o-mini</code>, <code>gpt-4-1</code>, <code>gpt-5</code>, <code>gpt-5-1</code>, <code>gpt-5-2</code>, <code>gpt-5-2-thinking</code>, <code>gpt-5-4-thinking</code>, and <code>o3</code>.</p>
 
+  <div class="remark">
+    <strong>External validation update (April 7, 2026):</strong> The corpus counts above were rechecked against <code>data/chatgpt_corpus.db</code> and match exactly. The currently reproducible v1 scripts operate on the normalized SQLite corpus rather than the raw JSON directly, query assistant messages only, and use hand-authored probe topic lists plus random assistant-message sampling. Earlier draft language that implied a more exhaustive topic sweep has been softened here to match the actual method.
+  </div>
+
   <h3>Cross-Thread Consistency Analysis</h3>
-  <p>40 topics probed (17 technical, 23 personal). Assistant responses were embedded using <code>all-MiniLM-L6-v2</code> (384 dimensions). Pairwise semantic similarity was computed across responses from different threads on the same topic. Mean consistency equals the mean pairwise similarity within each topic cluster.</p>
+  <p>The stored v1 consistency results contain <strong>23 analyzed topic clusters</strong>. Assistant responses were embedded using <code>all-MiniLM-L6-v2</code> (384 dimensions). For each probe topic, the script samples assistant messages, retrieves the most relevant responses by embedding similarity, collapses to unique threads, and computes pairwise semantic similarity across those retrieved responses. Mean consistency equals the mean pairwise similarity within each selected topic cluster.</p>
 
   <h3>Gaslighting Risk Measurement</h3>
   <p>We define a composite gaslighting risk score for each domain:</p>
@@ -342,9 +346,9 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="proof-block">
     <span class="proof-label">Variable Definitions</span>
-    <p><strong>Confidence:</strong> ratio of assertive markers to hedging markers in the response text. Higher values indicate more definitive guidance.</p>
+    <p><strong>Confidence:</strong> lexical ratio of assertive markers to hedging markers in the response text. Higher values indicate more definitive language, not calibrated certainty.</p>
     <p><strong>Similarity:</strong> pairwise semantic similarity across responses on the same topic from different sessions. Lower values indicate more contradiction.</p>
-    <p><strong>Continuity awareness:</strong> presence of phrases acknowledging prior context or possible contradiction. In all 1,275 sessions across all model versions, this value was <strong>0.0</strong>.</p>
+    <p><strong>Continuity awareness:</strong> regex-based detection of phrases acknowledging prior context or possible contradiction. In the stored v1 gaslighting run, this value was <strong>0.0</strong>.</p>
   </div>
 
   <div class="remark">

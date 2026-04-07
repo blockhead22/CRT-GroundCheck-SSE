@@ -96,9 +96,9 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="hero-inner">
     <div class="hero-badge">Empirical Research</div>
     <h1>Continuity-Blind <span class="grad">Contradiction</span></h1>
-    <p class="sub">Measuring high-confidence inconsistency in stateless AI systems across 1,275 conversations over 13 months</p>
+    <p class="sub">A probe-based v1 analysis of high-confidence inconsistency in stateless AI systems across a 1,275-conversation corpus over 13 months</p>
     <div class="finding-box">
-      <p>A stateless AI assistant delivered <strong>contradictory guidance with 74% mean confidence</strong> on personal, therapeutic, and decision-support topics while exhibiting <strong>zero cross-session continuity awareness</strong> and a mean semantic consistency of <strong>0.34</strong> across all tested domains.</p>
+      <p>In the externally rechecked v1 run, a stateless AI assistant showed <strong>74% mean lexical confidence</strong>, <strong>0.34 mean semantic consistency</strong>, and <strong>0% regex-detected continuity awareness</strong> across selected recurring topics drawn from a 13-month ChatGPT corpus.</p>
     </div>
   </div>
   <div class="scroll-cue">&#9660; SCROLL</div>
@@ -140,13 +140,19 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 </section>
 
+<section>
+  <div class="remark">
+    <strong>External validation update (April 7, 2026):</strong> The corpus counts in this paper were rechecked against <code>data/chatgpt_corpus.db</code> and confirmed at <strong>1,275 conversations</strong> and <strong>59,370 messages</strong>. The currently reproducible v1 methodology is narrower than some earlier prose implied: it is a <strong>probe-based retrieval analysis</strong> over a normalized ChatGPT export, not a fully exhaustive pass over every recurring topic in the corpus. The stored v1 result databases still support the public headline values <strong>0.34 mean consistency</strong>, <strong>74% mean confidence</strong>, and <strong>0% continuity awareness</strong>.
+  </div>
+</section>
+
 <!-- ===== WHAT WE MEASURED ===== -->
 <section>
   <div class="accent-line"></div>
   <h2>What We Measured</h2>
   <p>When a user returns to the same AI assistant across many independent sessions to discuss recurring personal topics, does the system give consistent advice? Does it know what it said before? Does it acknowledge when its guidance conflicts with prior recommendations?</p>
   <p>We analyzed a complete data export from a commercial AI assistant spanning <strong>13 months</strong> of active use (February 2025 to March 2026). The corpus contains conversations across multiple model versions, from early GPT-4o through GPT-5-series models.</p>
-  <p>For each topic, we embedded assistant responses using sentence-transformers, computed pairwise semantic similarity across responses from different threads, and measured three dimensions: <strong>confidence</strong> (assertive vs hedging language), <strong>consistency</strong> (semantic similarity of responses on the same topic), and <strong>continuity awareness</strong> (whether the system ever acknowledged prior context or possible contradiction).</p>
+  <p>In the currently reproducible v1 analysis, we used hand-authored probe topics to retrieve relevant assistant responses from the normalized corpus, collapsed to one response per thread, computed pairwise semantic similarity across those cross-thread responses, and measured three dimensions: <strong>confidence</strong> (assertive vs hedging language), <strong>consistency</strong> (semantic similarity of responses on the same topic), and <strong>continuity awareness</strong> (whether the response acknowledged prior context or possible contradiction).</p>
 </section>
 
 <!-- ===== THE FAILURE MODE ===== -->
@@ -165,7 +171,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <p>We operationalized this failure mode as a composite risk score:</p>
   <div class="method-card" style="margin: 20px 0; max-width: 500px;">
     <p class="mono">risk = confidence &times; (1 - similarity) &times; (1 - continuity_awareness)</p>
-    <p style="margin-top: 10px;">Where continuity_awareness was measured as the presence of phrases acknowledging prior context, possible contradiction, or changed stance. Across the entire corpus: <strong>0.0%</strong>.</p>
+    <p style="margin-top: 10px;">Where continuity_awareness was measured with regex-based phrase detection for prior-context acknowledgment, possible contradiction, or changed stance. In the stored v1 run: <strong>0.0%</strong>.</p>
   </div>
 </section>
 
@@ -173,7 +179,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 <section>
   <div class="accent-line"></div>
   <h2>Risk by Domain</h2>
-  <p>We probed 14 high-impact domains where users are most likely to act on guidance received. Every domain showed elevated risk. Model drift was detected across all topics.</p>
+  <p>The v1 gaslighting analysis used a hand-authored list of high-impact domains where users are most likely to act on guidance received. The stored results database contains <strong>12 analyzed domains</strong>; the table below presents the highest-risk slice used in the writeup. Model drift and contradiction pressure were common across those selected domains.</p>
 
   <table>
     <thead>
@@ -441,25 +447,25 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="method-grid">
     <div class="method-card">
       <h4>Corpus</h4>
-      <p>Complete data export from a commercial AI assistant. 1,275 conversations, 59,370 messages (26.8k user, 28.6k assistant), 234 MB of text. Model versions: GPT-4o, GPT-4o-mini, GPT-4.1, GPT-5 through GPT-5-4-thinking, o3.</p>
+      <p>Complete ChatGPT data export normalized into <code>data/chatgpt_corpus.db</code>. 1,275 conversations, 59,370 messages total, 234 MB of source text. The analysis queries assistant messages only from the normalized corpus.</p>
     </div>
     <div class="method-card">
       <h4>Embedding</h4>
-      <p>Assistant responses embedded via all-MiniLM-L6-v2 (384 dimensions). Pairwise cosine similarity computed across responses from different threads on the same topic.</p>
+      <p>Assistant responses embedded via <code>all-MiniLM-L6-v2</code> (384 dimensions). The v1 scripts randomly sample up to 5,000 assistant messages per probe topic, rank by embedding similarity to the probe, and compute pairwise cosine similarity across the retrieved cross-thread responses.</p>
     </div>
     <div class="method-card">
       <h4>Confidence Scoring</h4>
-      <p>Ratio of assertive markers ("you should", "definitely", "the right approach") to hedging markers ("it depends", "some experts think", "arguably") per response.</p>
+      <p>Lexical heuristic: ratio of assertive markers ("you should", "definitely", "the right approach") to hedging markers ("it depends", "some experts think", "arguably") per response. This is a proxy for assertiveness, not a calibrated confidence estimate.</p>
     </div>
     <div class="method-card">
       <h4>Continuity Detection</h4>
-      <p>Regex scan for phrases acknowledging prior context: "as I mentioned", "I may have suggested differently", "previously we discussed." Result: 0.0% across all responses.</p>
+      <p>Regex scan for phrases acknowledging prior context: "as I mentioned", "I may have suggested differently", "previously we discussed." In the stored v1 run, this yielded 0.0%. This should be treated as a brittle lower-bound proxy, not a semantic continuity detector.</p>
     </div>
   </div>
 
   <h3>Limitations</h3>
-  <p>This analysis covers a single user's corpus. The 0.0% continuity awareness is structurally expected for stateless systems (they cannot reference prior sessions), making it a baseline measurement rather than a surprising finding. Low semantic similarity does not always indicate true contradiction; some variation reflects legitimate context-sensitivity. The top-risk examples require manual audit to distinguish true contradictions from context-appropriate variation.</p>
-  <p>The gaslighting risk score is a composite heuristic, not a clinically validated instrument. We use it as a directional indicator, not a diagnostic.</p>
+  <p>This analysis covers a single user's corpus. The current v1 method is <strong>probe-based and partially sampled</strong>, not a fully exhaustive scan of every recurring topic in the corpus. The 0.0% continuity awareness is structurally expected for stateless systems, making it a baseline measurement rather than a surprising finding. Low semantic similarity does not always indicate true contradiction; some variation reflects legitimate context-sensitivity. The top-risk examples require manual audit to distinguish true contradictions from context-appropriate variation.</p>
+  <p>The confidence score is lexical, the continuity score is regex-based, and the gaslighting risk score is a composite heuristic rather than a clinically validated instrument. We preserve this v1 analysis as a baseline and treat it as directional rather than final.</p>
 </section>
 
 <!-- ===== BROADER IMPLICATIONS ===== -->
