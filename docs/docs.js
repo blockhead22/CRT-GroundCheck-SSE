@@ -22,7 +22,8 @@
     { href: 'emotion-governance.html',   label: 'Emotion Governance',   group: 'Theory' },
     { href: 'throughline.html',          label: 'Throughline',          group: 'Reference' },
     { href: 'glossary.html',             label: 'Glossary',             group: 'Reference' },
-    { href: 'claim-evaluation-guide.html',label: 'Claim Eval Guide',   group: 'Reference' },
+    { href: 'claim-evaluation-guide.html',label: 'Research Guide',      group: 'Reference' },
+    { href: 'why-this-matters.html',     label: 'Why This Matters',    group: 'Reference' },
   ];
 
   // Detect subdirectory (labs/) and adjust prefix
