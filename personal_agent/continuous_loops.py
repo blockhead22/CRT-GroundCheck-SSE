@@ -1671,17 +1671,17 @@ class ContradictionScanLoop:
         """Run one scan cycle across all memories. Returns alerts."""
         alerts: List[Dict[str, Any]] = []
         try:
-            from .memory_splats import MemorySplat, cosine_similarity
+            from .memory_splats import BeliefLocus, cosine_similarity
             from .predictive_contradiction import scan_for_convergence, Urgency
             import numpy as np
 
-            # Build splats from DB — use the default memory DB
-            splats = self._build_splats_from_db()
-            if len(splats) < 2:
+            # Build belief loci from DB — use the default memory DB
+            belief_loci = self._build_belief_loci_from_db()
+            if len(belief_loci) < 2:
                 return alerts
 
             convergence_alerts = scan_for_convergence(
-                splats, min_cosine=0.2, min_urgency=Urgency.WATCH,
+                belief_loci, min_cosine=0.2, min_urgency=Urgency.WATCH,
             )
 
             for alert in convergence_alerts[:10]:  # cap at 10
@@ -1713,9 +1713,9 @@ class ContradictionScanLoop:
     def latest_alerts(self) -> List[Dict[str, Any]]:
         return self._latest_alerts
 
-    def _build_splats_from_db(self) -> list:
-        """Build MemorySplat objects from memories that have sigma."""
-        from .memory_splats import MemorySplat
+    def _build_belief_loci_from_db(self) -> list:
+        """Build BeliefLocus objects from memories that have sigma."""
+        from .memory_splats import BeliefLocus
         import numpy as np
         import json
         import sqlite3
@@ -1735,12 +1735,12 @@ class ContradictionScanLoop:
         ).fetchall()
         conn.close()
 
-        splats = []
+        belief_loci = []
         for mid, vec_json, sigma_blob, trust, text, mtype, ts, stable, contra, access in rows:
             try:
                 mu = np.array(json.loads(vec_json), dtype=np.float32)
                 sigma = np.frombuffer(sigma_blob, dtype=np.float32)
-                splat = MemorySplat(
+                belief_locus = BeliefLocus(
                     memory_id=mid,
                     mu=mu,
                     sigma=sigma,
@@ -1751,11 +1751,11 @@ class ContradictionScanLoop:
                     last_updated=ts or 0.0,
                     update_count=int(access or 0) + int(contra or 0),
                 )
-                splats.append(splat)
+                belief_loci.append(belief_locus)
             except Exception:
                 continue
 
-        return splats
+        return belief_loci
 
 
 class NarrativeSynthesisLoop:

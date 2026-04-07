@@ -565,7 +565,7 @@ class HeartbeatScheduler:
         import json
         import sqlite3
 
-        from .memory_splats import MemorySplat
+        from .memory_splats import BeliefLocus
         from .active_inference import run_active_inference_cycle, InquiryGenerator
 
         if self.__class__._inquiry_generator is None:
@@ -573,7 +573,7 @@ class HeartbeatScheduler:
 
         generator = self.__class__._inquiry_generator
 
-        # Build splats from memory DB
+        # Build belief loci from memory DB
         db_path = getattr(self, "_memory_db_path", None)
         if db_path is None:
             import os
@@ -592,27 +592,27 @@ class HeartbeatScheduler:
         ).fetchall()
         conn.close()
 
-        splats = []
+        belief_loci = []
         for mid, vec_json, sigma_blob, trust, text, mtype, ts, acc, contra in rows:
             try:
                 mu = np.array(json.loads(vec_json), dtype=np.float32)
                 sigma = np.frombuffer(sigma_blob, dtype=np.float32)
-                splat = MemorySplat(
+                belief_locus = BeliefLocus(
                     memory_id=mid, mu=mu, sigma=sigma,
                     alpha=trust if trust is not None else 0.5,
                     text=text or "", memory_type=mtype or "observation",
                     created_at=ts or 0.0, last_updated=ts or 0.0,
                     update_count=int(acc or 0) + int(contra or 0),
                 )
-                splats.append(splat)
+                belief_loci.append(belief_locus)
             except Exception:
                 continue
 
-        if len(splats) < 2:
+        if len(belief_loci) < 2:
             return
 
         generator = run_active_inference_cycle(
-            splats=splats,
+            splats=belief_loci,
             generator=generator,
         )
         self.__class__._inquiry_generator = generator

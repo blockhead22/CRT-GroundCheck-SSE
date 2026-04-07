@@ -233,9 +233,9 @@ The research modules built in `D:\AI_round2\personal_agent\` formalize what was 
 ### Mirus -> Research Module Mappings
 
 **Mirus -> `memory_splats.py`**
-Mirus stores memories as vectors with scalar confidence. Memory splats generalize this to Gaussian splats: center (mu) + covariance (Sigma) + confidence (alpha). What Mirus does with a flat trust score and a vector, memory splats do with full geometric uncertainty representation. The `parse_meaning` resonance calculation is the precursor to the Bhattacharyya overlap integral.
+Mirus stores memories as vectors with scalar confidence. Belief loci generalize this to belief loci: center (mu) + covariance (Sigma) + confidence (alpha). What Mirus does with a flat trust score and a vector, belief loci do with full geometric uncertainty representation. The `parse_meaning` resonance calculation is the precursor to the Bhattacharyya overlap integral.
 
-| Mirus concept | Memory splats formalization |
+| Mirus concept | Belief loci formalization |
 |---|---|
 | `vector` (embedding) | `mu` (center of Gaussian) |
 | `confidence` (scalar) | `alpha` (contribution weight) |
@@ -303,7 +303,7 @@ Nick built Mirus and Holden by intuition roughly a year before the research form
 
 - **The system should monitor itself.** `MasterMirusHolden` tracks variance between subsystems and intervenes when drift exceeds thresholds. The research formalizes this as belief topology monitoring and predictive contradiction detection.
 
-The research did not invent new architecture. It gave mathematical language to architecture that already existed. Memory splats formalize what Mirus vectors with trust scores were approximating. The disposition classifier formalizes what Mirus quarantine was crudely implementing. The Fisher metric explains why Holden's cosine-based reconstruction fidelity sometimes misses real problems. Active inference explains why the reflection queue and IRC repair loop work.
+The research did not invent new architecture. It gave mathematical language to architecture that already existed. Belief loci formalize what Mirus vectors with trust scores were approximating. The disposition classifier formalizes what Mirus quarantine was crudely implementing. The Fisher metric explains why Holden's cosine-based reconstruction fidelity sometimes misses real problems. Active inference explains why the reflection queue and IRC repair loop work.
 
 The pipeline in `config.py` tells the story in one line:
 > `Mirus -> Memory -> Holden -> Blockhead -> Mistral`
@@ -325,8 +325,8 @@ That is: encode belief, store it, decode it to speech, and if speech fails, fall
 | `D:\CRT\core\cogni.py` | CogniMap event logging -- drift events, collapse trails |
 | `D:\CRT\core\gfn.py` | GNN routing nodes including HoldenNode |
 | `D:\CRT\config.py` | Module toggle configuration with commentary on Mirus/Holden dependencies |
-| `D:\CRT\THEORY.md` | Unified theory document -- memory splats, contradiction as meaning, belief/speech separation, temporal governance, predictive detection, topology |
-| `D:\AI_round2\personal_agent\memory_splats.py` | Research: Gaussian splat formalization of Mirus vectors |
+| `D:\CRT\THEORY.md` | Unified theory document -- belief loci, contradiction as meaning, belief/speech separation, temporal governance, predictive detection, topology |
+| `D:\AI_round2\personal_agent\memory_splats.py` | Research: Belief locus formalization of Mirus vectors |
 | `D:\AI_round2\personal_agent\disposition_classifier.py` | Research: Four-way contradiction classification replacing binary quarantine |
 | `D:\AI_round2\personal_agent\temporal_governance.py` | Research: Type-dependent decay formalizing anchor truth protection |
 | `D:\AI_round2\personal_agent\predictive_contradiction.py` | Research: Trajectory-based collision prediction |

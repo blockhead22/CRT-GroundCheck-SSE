@@ -68,8 +68,8 @@ Not all contradictions should be resolved. Four states:
 
 **Next step:** Build Phase 1 rule-based classifier (NLI + subjectivity detection + temporal gap analysis).
 
-### Memory Splats
-Represent memories as Gaussian splats (center + uncertainty + confidence) instead of points. Contradiction = geometric overlap. Volatility = covariance. Enables predictive contradiction detection and context-dependent belief modeling.
+### Belief Loci
+Represent memories as belief loci (center + uncertainty + confidence) instead of points. Contradiction = geometric overlap. Volatility = covariance. Enables predictive contradiction detection and context-dependent belief modeling.
 
 **Status:** Pure theory. Saved for future exploration.
 
@@ -169,7 +169,7 @@ The RVQ + volatility governance system needs its own name too — that's the nov
 
 ## Theory Files (memory/)
 - `theory_held_contradiction.md` — four contradiction states
-- `theory_memory_splats.md` — Gaussian splat memory representation
+- `theory_memory_splats.md` — Belief locus memory representation
 - `project_compression_lab.md` — full results summary
 
 ## Whitepaper

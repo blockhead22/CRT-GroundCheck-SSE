@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Continuity-Blind Contradiction in Stateless AI Systems — Aeteros Research</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']], tags: 'ams' },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #060814; color: #c0c8e0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; line-height: 1.75; overflow-x: hidden; }
+
+  /* ===== HERO ===== */
+  .hero {
+    position: relative; width: 100%; min-height: 80vh;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, #060814 0%, #0c1228 30%, #1a0e2e 60%, #0d1a3a 100%);
+    overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+    background: radial-gradient(ellipse at 30% 50%, rgba(99,102,241,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 30%, rgba(236,72,153,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(59,130,246,0.05) 0%, transparent 50%);
+    animation: drift 20s ease-in-out infinite alternate;
+  }
+  @keyframes drift { 0% { transform: translate(0,0) rotate(0deg); } 100% { transform: translate(-2%,1%) rotate(1deg); } }
+  .hero-inner {
+    position: relative; z-index: 1; text-align: center; max-width: 820px; padding: 80px 30px;
+  }
+  .hero-badge {
+    display: inline-block; font-size: 0.7em; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
+    color: #818cf8; border: 1px solid rgba(129,140,248,0.25); border-radius: 20px; padding: 6px 18px;
+    margin-bottom: 28px; background: rgba(129,140,248,0.06);
+  }
+  .hero h1 {
+    font-size: 2.8em; font-weight: 700; color: #fff; letter-spacing: -1.5px; line-height: 1.15; margin-bottom: 20px;
+  }
+  .hero h1 .grad {
+    background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .hero .sub { font-size: 1em; color: #7a82a6; margin-bottom: 12px; }
+  .hero .byline { font-size: 0.82em; color: #5a6080; margin-bottom: 36px; letter-spacing: 1px; }
+  .hero .finding-box {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 24px 28px; text-align: left; backdrop-filter: blur(12px);
+    max-width: 700px; margin: 0 auto;
+  }
+  .hero .finding-box p { color: #a0a8c8; font-size: 0.9em; margin-bottom: 0; line-height: 1.8; }
+  .hero .finding-box strong { color: #e0e4f0; }
+  .scroll-cue {
+    position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
+    color: #3a3f5c; font-size: 0.7em; letter-spacing: 1px; animation: pulse 2.5s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 0.7; } }
+
+  /* ===== LAYOUT ===== */
+  .container { max-width: 880px; margin: 0 auto; padding: 80px 30px; }
+  section { margin-bottom: 80px; }
+  h2 { font-size: 1.8em; color: #fff; margin-bottom: 16px; letter-spacing: -0.5px; font-weight: 700; }
+  h3 { font-size: 1.1em; color: #d0d4e8; margin: 32px 0 12px 0; font-weight: 600; }
+  h4 { font-size: 0.95em; color: #b0b8d8; margin: 24px 0 10px 0; font-weight: 600; }
+  p { margin-bottom: 16px; }
+  ul, ol { margin: 0 0 20px 24px; }
+  li { margin-bottom: 8px; color: #a0a8c8; }
+  strong { color: #e0e4f0; }
+  em { color: #c0c8e0; }
+  .accent-line { width: 48px; height: 3px; background: linear-gradient(90deg, #818cf8, #c084fc); border-radius: 2px; margin-bottom: 28px; }
+  .section-number { font-size: 0.68em; color: #818cf8; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; display: block; margin-bottom: 8px; }
+
+  /* ===== STAT CARDS ===== */
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 32px 0; }
+  .stat-card {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 24px 20px; text-align: center;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+  .stat-card:hover { border-color: rgba(129,140,248,0.3); transform: translateY(-2px); }
+  .stat-card .stat-value { font-size: 2.2em; font-weight: 700; color: #fff; line-height: 1; margin-bottom: 6px; }
+  .stat-card .stat-value.accent { color: #818cf8; }
+  .stat-card .stat-value.purple { color: #c084fc; }
+  .stat-card .stat-value.pink { color: #f472b6; }
+  .stat-card .stat-value.green { color: #34d399; }
+  .stat-card .stat-label { font-size: 0.72em; color: #6a7096; text-transform: uppercase; letter-spacing: 1px; }
+
+  /* ===== TABLES ===== */
+  .table-wrap { overflow-x: auto; margin: 24px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+  thead th {
+    text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; font-size: 0.78em;
+    text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 2px solid rgba(255,255,255,0.06);
+  }
+  tbody td { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.03); color: #a0a8c8; }
+  tbody tr:hover td { background: rgba(129,140,248,0.03); }
+  td strong { color: #e0e4f0; }
+  .table-caption { font-size: 0.78em; color: #5a6080; font-style: italic; margin-top: 8px; text-align: center; }
+
+  /* ===== BADGES ===== */
+  .badge {
+    display: inline-block; font-size: 0.6em; padding: 3px 10px; border-radius: 10px;
+    letter-spacing: 1px; text-transform: uppercase; font-weight: 600; vertical-align: middle; margin-left: 8px;
+  }
+  .badge-proven { background: rgba(52,211,153,0.12); color: #34d399; border: 1px solid rgba(52,211,153,0.25); }
+  .badge-conjecture { background: rgba(244,114,182,0.12); color: #f472b6; border: 1px solid rgba(244,114,182,0.25); }
+  .badge-def { background: rgba(192,132,252,0.12); color: #c084fc; border: 1px solid rgba(192,132,252,0.25); }
+  .badge-prop { background: rgba(251,191,36,0.12); color: #fbbf24; border: 1px solid rgba(251,191,36,0.25); }
+  .badge-corollary { background: rgba(129,140,248,0.12); color: #818cf8; border: 1px solid rgba(129,140,248,0.25); }
+  .badge-empirical { background: rgba(244,114,182,0.12); color: #f472b6; border: 1px solid rgba(244,114,182,0.25); }
+  .badge-critical { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.25); }
+
+  /* ===== QUOTE BLOCK ===== */
+  .quote-block {
+    border-left: 3px solid #818cf8; padding: 20px 24px; margin: 32px 0;
+    background: rgba(129,140,248,0.03); border-radius: 0 10px 10px 0;
+  }
+  .quote-block p { color: #b0b8d8; font-size: 1.02em; font-style: italic; margin: 0; }
+  .quote-block .attr { color: #5a6080; font-size: 0.75em; margin-top: 10px; font-style: normal; }
+
+  /* ===== PRINCIPLE CARDS ===== */
+  .principle-grid { display: grid; gap: 16px; margin: 24px 0; }
+  .principle {
+    background: rgba(255,255,255,0.02); border-left: 3px solid rgba(255,255,255,0.08);
+    padding: 24px 28px; border-radius: 0 10px 10px 0;
+  }
+  .principle .p-num { color: #5a6080; font-size: 0.65em; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
+  .principle .p-text { color: #fff; font-size: 1.05em; margin-top: 8px; font-weight: 600; }
+  .principle .p-sub { color: #8a90b0; font-size: 0.86em; margin-top: 10px; line-height: 1.7; }
+  .principle-contra { border-left-color: #f472b6; }
+  .principle-trust { border-left-color: #34d399; }
+  .principle-speech { border-left-color: #818cf8; }
+  .principle-belief { border-left-color: #c084fc; }
+  .principle-variance { border-left-color: #fbbf24; }
+  .principle-continuity { border-left-color: #f87171; }
+
+  /* ===== LAW CARD ===== */
+  .law-card {
+    background: linear-gradient(135deg, rgba(129,140,248,0.08), rgba(192,132,252,0.06));
+    border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 32px; margin: 40px 0;
+    text-align: center;
+  }
+  .law-card .law-number { font-size: 0.7em; color: #818cf8; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+  .law-card .law-text { font-size: 1.4em; color: #fff; font-weight: 700; letter-spacing: -0.5px; }
+  .law-card .law-sub { font-size: 0.88em; color: #7a82a6; margin-top: 12px; max-width: 620px; margin-left: auto; margin-right: auto; }
+
+  /* ===== PROOF BLOCKS ===== */
+  .proof-block {
+    background: rgba(255,255,255,0.015); border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 10px; padding: 20px 24px; margin: 16px 0; font-size: 0.88em;
+  }
+  .proof-block .proof-label { color: #5a6080; font-size: 0.72em; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; display: block; }
+  .proof-block p { color: #9098b8; margin-bottom: 10px; }
+  .proof-block p:last-child { margin-bottom: 0; }
+
+  /* ===== IMPL BLOCK ===== */
+  .impl-block {
+    background: rgba(52,211,153,0.04); border-left: 3px solid rgba(52,211,153,0.3);
+    border-radius: 0 8px 8px 0; padding: 14px 20px; margin: 16px 0; font-size: 0.84em;
+  }
+  .impl-block .impl-label { color: #34d399; font-size: 0.68em; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; display: block; }
+  .impl-block p { color: #8a90b0; margin: 0; line-height: 1.65; }
+  .impl-block code { color: #818cf8; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.9em; }
+
+  /* ===== CODE BLOCK ===== */
+  pre {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 8px; padding: 20px; margin: 20px 0; overflow-x: auto;
+    font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.82em;
+    color: #9098b8; line-height: 1.6;
+  }
+  code { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.88em; color: #818cf8; }
+
+  /* ===== PIPELINE STACK ===== */
+  .pipeline-stack { max-width: 620px; margin: 24px auto; display: flex; flex-direction: column; gap: 0; }
+  .pipeline-layer {
+    display: flex; align-items: stretch;
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-bottom: none; transition: background 0.3s;
+  }
+  .pipeline-layer:first-child { border-radius: 10px 10px 0 0; }
+  .pipeline-layer:last-child { border-bottom: 1px solid rgba(255,255,255,0.06); border-radius: 0 0 10px 10px; }
+  .pipeline-layer:hover { background: rgba(255,255,255,0.03); }
+  .pipeline-layer-accent { width: 4px; flex-shrink: 0; }
+  .pipeline-layer:nth-child(1) .pipeline-layer-accent { background: #c084fc; }
+  .pipeline-layer:nth-child(2) .pipeline-layer-accent { background: #818cf8; }
+  .pipeline-layer:nth-child(3) .pipeline-layer-accent { background: #818cf8; }
+  .pipeline-layer:nth-child(4) .pipeline-layer-accent { background: #34d399; }
+  .pipeline-layer:nth-child(5) .pipeline-layer-accent { background: #34d399; }
+  .pipeline-layer:nth-child(6) .pipeline-layer-accent { background: #fbbf24; }
+  .pipeline-layer:nth-child(7) .pipeline-layer-accent { background: #f472b6; }
+  .pipeline-layer-content { flex: 1; padding: 14px 20px; }
+  .pipeline-layer-name { color: #e0e4f0; font-weight: 600; font-size: 0.9em; margin-bottom: 3px; }
+  .pipeline-layer-name code { font-size: 0.85em; color: #818cf8; }
+  .pipeline-layer-desc { color: #7a82a6; font-size: 0.8em; line-height: 1.5; }
+  .pipeline-layer-annotation {
+    display: flex; align-items: center; padding: 0 16px;
+    font-size: 0.7em; color: #5a6080; font-style: italic; white-space: nowrap;
+    border-left: 1px solid rgba(255,255,255,0.04); min-width: 160px;
+  }
+
+  /* ===== RISK BAR ===== */
+  .risk-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .risk-bar { flex: 1; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+  .risk-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+  .risk-bar-fill.high { background: linear-gradient(90deg, #f472b6, #f87171); }
+  .risk-bar-fill.medium { background: linear-gradient(90deg, #fbbf24, #f472b6); }
+  .risk-bar-fill.low { background: linear-gradient(90deg, #34d399, #fbbf24); }
+
+  /* ===== NOTE ===== */
+  .note { color: #5a6080; font-size: 0.82em; font-style: italic; }
+  .remark {
+    background: rgba(129,140,248,0.04); border: 1px solid rgba(129,140,248,0.1);
+    border-radius: 8px; padding: 14px 18px; margin: 16px 0; font-size: 0.86em;
+    color: #8a90b0;
+  }
+  .remark strong { color: #b0b8d8; }
+
+  /* ===== LINK BUTTONS ===== */
+  .link-btn {
+    display: inline-block; padding: 12px 28px;
+    border: 1px solid rgba(129,140,248,0.4); border-radius: 8px;
+    text-decoration: none; font-size: 0.82em; font-weight: 600;
+    letter-spacing: 1px; text-transform: uppercase; color: #818cf8;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  .link-btn:hover { background: rgba(129,140,248,0.08); border-color: #818cf8; }
+
+  /* ===== REFS ===== */
+  .refs ol { margin-left: 20px; }
+  .refs li { color: #6a7096; font-size: 0.85em; margin-bottom: 10px; line-height: 1.6; }
+  .refs li em { color: #8a90b0; }
+
+  /* ===== FOOTER ===== */
+  .footer {
+    text-align: center; padding: 48px 30px; color: #2a2f4a; font-size: 0.72em;
+    border-top: 1px solid rgba(255,255,255,0.04); margin-top: 40px;
+  }
+  .footer a { color: #5a6080; text-decoration: none; }
+  .footer a:hover { color: #818cf8; }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 700px) {
+    .hero h1 { font-size: 1.9em; }
+    .stat-row { grid-template-columns: 1fr 1fr; }
+    .pipeline-layer { flex-direction: column; }
+    .pipeline-layer-accent { width: 100%; height: 3px; }
+    .pipeline-layer-annotation { border-left: none; border-top: 1px solid rgba(255,255,255,0.04); padding: 10px 20px; min-width: auto; }
+  }
+
+  /* MathJax sizing */
+  .MathJax { font-size: 1em !important; }
+</style>
+</head>
+<body>
+
+<!-- ===== HERO ===== -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">Research Paper &middot; Empirical Study</div>
+    <h1>Continuity-Blind Contradiction in<br><span class="grad">Stateless AI Systems</span></h1>
+    <p class="sub">Empirical evidence that the dominant LLM deployment paradigm produces high-confidence contradictions on consequential personal topics</p>
+    <p class="byline">Nick Block &bull; Aeteros Research &bull; 2026</p>
+    <div class="finding-box">
+      <p>Over <strong>13 months</strong>, <strong>1,275 sessions</strong>, <strong>59,370 messages</strong>: <strong>0% cross-session continuity awareness</strong>. Mean semantic consistency: <strong>0.34</strong>. The system delivered contradictory guidance on mental health, career decisions, and self-efficacy at <strong>74% mean confidence</strong>.</p>
+    </div>
+  </div>
+  <div class="scroll-cue">SCROLL TO EXPLORE</div>
+</div>
+
+<div class="container">
+
+<!-- ===== SECTION 1: ABSTRACT & MOTIVATION ===== -->
+<section>
+  <span class="section-number">Section 1</span>
+  <h2>Abstract &amp; Motivation</h2>
+  <div class="accent-line"></div>
+
+  <p>Stateless conversational AI systems used for ongoing personal support produce a measurable failure mode: <em>continuity-blind, high-confidence contradiction on consequential topics</em>. This is not a theoretical risk &mdash; it is the default behavior of the dominant deployment paradigm.</p>
+
+  <p>Systems deployed in therapeutic, advisory, or decision-support contexts without persistent belief state and continuity auditing will structurally replicate this failure at scale. The core issue: a system with <strong>no memory of its prior stance</strong> on a topic nonetheless delivers guidance at <strong>full confidence</strong>, creating an environment where users receive contradictory advice on the same recurring personal questions across sessions.</p>
+
+  <h3>Why This Matters</h3>
+  <p>Large language models are increasingly used as personal advisors. Users turn to them for therapy support, career guidance, mental health management, financial planning, and motivational coaching. These are domains where <strong>consistency across sessions is clinically significant</strong> &mdash; therapeutic frameworks require stable framing, and contradictory guidance from a trusted source produces decision paralysis, learned helplessness, and degraded self-efficacy.</p>
+
+  <h3>What We Measured</h3>
+  <p>We analyzed a complete ChatGPT data export spanning 13 months of real-world use: 1,275 independent sessions containing 59,370 messages. We measured cross-thread semantic consistency on 40 recurring topics (17 technical, 23 personal), computed gaslighting risk scores across 11 high-impact domains, and found that the system exhibited <strong>zero continuity awareness</strong> across every topic, every thread, and every model version tested.</p>
+</section>
+
+<!-- ===== SECTION 2: CORPUS & METHODOLOGY ===== -->
+<section>
+  <span class="section-number">Section 2</span>
+  <h2>Corpus &amp; Methodology</h2>
+  <div class="accent-line"></div>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value accent">1,275</div>
+      <div class="stat-label">Sessions</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value purple">59,370</div>
+      <div class="stat-label">Messages</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value pink">13</div>
+      <div class="stat-label">Months</div>
+    </div>
+  </div>
+
+  <h3>Corpus</h3>
+  <p>Source: OpenAI ChatGPT data export from a single user, February 2025 through March 2026. The corpus comprises 234 MB of text across 13 JSON files, with 26,800 user messages and 28,600 assistant messages. Model versions represented include <code>gpt-4o</code>, <code>gpt-4o-mini</code>, <code>gpt-4-1</code>, <code>gpt-5</code>, <code>gpt-5-1</code>, <code>gpt-5-2</code>, <code>gpt-5-2-thinking</code>, <code>gpt-5-4-thinking</code>, and <code>o3</code>.</p>
+
+  <h3>Cross-Thread Consistency Analysis</h3>
+  <p>40 topics probed (17 technical, 23 personal). Assistant responses were embedded using <code>all-MiniLM-L6-v2</code> (384 dimensions). Pairwise semantic similarity was computed across responses from different threads on the same topic. Mean consistency equals the mean pairwise similarity within each topic cluster.</p>
+
+  <h3>Gaslighting Risk Measurement</h3>
+  <p>We define a composite gaslighting risk score for each domain:</p>
+
+  \[ \text{risk} = \text{confidence} \times (1 - \text{similarity}) \times (1 - \text{continuity\_awareness}) \]
+
+  <div class="proof-block">
+    <span class="proof-label">Variable Definitions</span>
+    <p><strong>Confidence:</strong> ratio of assertive markers to hedging markers in the response text. Higher values indicate more definitive guidance.</p>
+    <p><strong>Similarity:</strong> pairwise semantic similarity across responses on the same topic from different sessions. Lower values indicate more contradiction.</p>
+    <p><strong>Continuity awareness:</strong> presence of phrases acknowledging prior context or possible contradiction. In all 1,275 sessions across all model versions, this value was <strong>0.0</strong>.</p>
+  </div>
+
+  <div class="remark">
+    <strong>Note:</strong> Because continuity awareness = 0% universally, the risk formula simplifies to <code>risk = confidence &times; (1 - similarity)</code>. The continuity term exists to model the counterfactual: a system <em>with</em> memory that acknowledged prior stances would see its risk score drop proportionally.
+  </div>
+</section>
+
+<!-- ===== SECTION 3: CROSS-THREAD CONSISTENCY ===== -->
+<section>
+  <span class="section-number">Section 3</span>
+  <h2>Cross-Thread Consistency Results</h2>
+  <div class="accent-line"></div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Mean Consistency</th>
+          <th>Worst Topic</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Technical topics</strong></td>
+          <td>0.365</td>
+          <td>Governance layer design (0.255)</td>
+        </tr>
+        <tr>
+          <td><strong>Personal topics</strong></td>
+          <td>0.338</td>
+          <td>Health and wellness (0.250)</td>
+        </tr>
+        <tr>
+          <td><strong>All topics</strong></td>
+          <td>0.350</td>
+          <td>Health and wellness (0.250)</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="table-caption">Table 1. Cross-thread semantic consistency. Lower values indicate greater inconsistency across sessions.</p>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value pink">0.35</div>
+      <div class="stat-label">Mean Consistency</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value pink">0.25</div>
+      <div class="stat-label">Worst Topic Score</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value pink">0%</div>
+      <div class="stat-label">Continuity Awareness</div>
+    </div>
+  </div>
+
+  <div class="quote-block">
+    <p>Health and wellness exhibited the lowest consistency (0.250) &mdash; exactly the domain where contradictory advice carries the greatest risk of harm. The system produced the most inconsistent guidance precisely where users are most vulnerable.</p>
+  </div>
+
+  <p>Personal topics scored lower than technical topics (0.338 vs 0.365), consistent with the hypothesis that opinion-laden and context-sensitive domains produce more divergent outputs from a memoryless system. However, neither category approached a level of consistency that could be considered reliable for ongoing guidance.</p>
+
+  <h3>Universal Finding</h3>
+  <p>Continuity awareness across all topics, all threads, all model versions: <strong>0.0%</strong>. Model drift was detected on <strong>100% of topics</strong> &mdash; all showed divergence across model versions. The system never once acknowledged a prior stance, flagged a potential contradiction, or qualified its confidence based on awareness of its own history.</p>
+</section>
+
+<!-- ===== SECTION 4: GASLIGHTING RISK ===== -->
+<section>
+  <span class="section-number">Section 4</span>
+  <h2>Gaslighting Risk by Domain</h2>
+  <div class="accent-line"></div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Domain</th>
+          <th>Research Framing</th>
+          <th>Risk</th>
+          <th>Confidence</th>
+          <th>Continuity</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Project Continuation</strong></td>
+          <td>Sycophancy vs honest assessment stability</td>
+          <td><strong style="color:#f87171">0.561</strong></td>
+          <td>84%</td>
+          <td>0%</td>
+        </tr>
+        <tr>
+          <td><strong>Work Prioritization</strong></td>
+          <td>Consistency of goal-directed guidance</td>
+          <td><strong style="color:#f87171">0.529</strong></td>
+          <td>75%</td>
+          <td>0%</td>
+        </tr>
+        <tr>
+          <td><strong>Startup vs Employment</strong></td>
+          <td>Stability of vocational guidance</td>
+          <td><strong style="color:#f472b6">0.524</strong></td>
+          <td>67%</td>
+          <td>0%</td>
+        </tr>
+        <tr>
+          <td><strong>Self-Efficacy</strong></td>
+          <td>Stability of efficacy-related feedback</td>
+          <td><strong style="color:#f472b6">0.521</strong></td>
+          <td>79%</td>
+          <td>0%</td>
+        </tr>
+        <tr>
+          <td><strong>Mental Health</strong></td>
+          <td>Stability of coping strategy recommendations</td>
+          <td><strong style="color:#f472b6">0.505</strong></td>
+          <td>83%</td>
+          <td>0%</td>
+        </tr>
+        <tr>
+          <td><strong>Career Direction</strong></td>
+          <td>Consistency of vocational guidance</td>
+          <td><strong style="color:#c084fc">0.494</strong></td>
+          <td>80%</td>
+          <td>0%</td>
+        </tr>
+        <tr>
+          <td><strong>Substance Use</strong></td>
+          <td>Consistency of harm-reduction messaging</td>
+          <td><strong style="color:#c084fc">0.471</strong></td>
+          <td>67%</td>
+          <td>0%</td>
+        </tr>
+        <tr>
+          <td><strong>Technology Decisions</strong></td>
+          <td>Stability of technical recommendations</td>
+          <td><strong style="color:#c084fc">0.467</strong></td>
+          <td>70%</td>
+          <td>0%</td>
+        </tr>
+        <tr>
+          <td><strong>Financial Planning</strong></td>
+          <td>Stability of financial recommendations</td>
+          <td><strong style="color:#818cf8">0.466</strong></td>
+          <td>73%</td>
+          <td>0%</td>
+        </tr>
+        <tr>
+          <td><strong>Relationships</strong></td>
+          <td>Consistency of interpersonal guidance</td>
+          <td><strong style="color:#818cf8">0.401</strong></td>
+          <td>72%</td>
+          <td>0%</td>
+        </tr>
+        <tr>
+          <td><strong>Quit vs Persevere</strong></td>
+          <td>Continuity of motivational persistence framing</td>
+          <td><strong style="color:#818cf8">0.390</strong></td>
+          <td>71%</td>
+          <td>0%</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="table-caption">Table 2. Gaslighting risk scores across 11 high-impact personal domains. All continuity awareness values are 0%.</p>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value pink">0.561</div>
+      <div class="stat-label">Highest Risk (Project Continuation)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value purple">0.505</div>
+      <div class="stat-label">Mental Health Risk</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value accent">0.390</div>
+      <div class="stat-label">Lowest Risk (Quit vs Persevere)</div>
+    </div>
+  </div>
+
+  <h3>The Sycophancy Pattern</h3>
+  <p><strong>Project Continuation</strong> scored the highest gaslighting risk (0.561) because the system exhibits peak sycophancy in this domain: it tells the user what they want to hear each session. Combined with 84% confidence and zero memory of prior assessments, this creates a pattern where the system enthusiastically validates contradictory project directions across sessions without ever acknowledging the reversal.</p>
+
+  <p><strong>Mental Health</strong> (0.505) is particularly alarming given its clinical significance. At 83% confidence with zero continuity, the system delivers contradictory coping strategies across sessions &mdash; recommending one approach in session A and a conflicting approach in session B, each at high confidence, with no awareness that prior advice existed.</p>
+
+  <div class="quote-block">
+    <p>The system does not contradict itself <em>despite</em> being confident. It contradicts itself <em>because</em> it is confident. Zero memory means zero grounding, and ungrounded confidence is indistinguishable from gaslighting at the receiving end.</p>
+  </div>
+</section>
+
+<!-- ===== SECTION 5: LAW 6 ===== -->
+<section>
+  <span class="section-number">Section 5</span>
+  <h2>Law 6: Confidence Must Not Exceed Continuity</h2>
+  <div class="accent-line"></div>
+
+  <div class="law-card">
+    <div class="law-number">CRT Law 6</div>
+    <div class="law-text">Confidence must not exceed continuity.</div>
+    <div class="law-sub">If a system has no memory of its prior stance on a topic, its confidence on that topic must be bounded. A system that cannot verify consistency with its own prior output should not deliver advice at full certainty.</div>
+  </div>
+
+  <p>This law emerges directly from the empirical data. Every domain in Table 2 exhibits risk scores above 0.39 because of a single structural failure: the system operates at high confidence (67&ndash;84%) with zero continuity awareness. Bounding confidence to continuity would collapse these risk scores proportionally.</p>
+
+  <h3>Clinical Relevance</h3>
+
+  <div class="principle-grid">
+    <div class="principle principle-contra">
+      <div class="p-num">Bandura &mdash; Self-Efficacy Theory</div>
+      <div class="p-text">Inconsistent feedback from trusted sources degrades self-belief</div>
+      <div class="p-sub">A system alternating between validating and questioning a user's capabilities at full confidence constitutes an invalidating environment. Self-efficacy scored 0.521 gaslighting risk.</div>
+    </div>
+    <div class="principle principle-speech">
+      <div class="p-num">CBT/DBT &mdash; Therapeutic Continuity</div>
+      <div class="p-text">Therapeutic frameworks require stable framing across sessions</div>
+      <div class="p-sub">Contradictory frameworks increase cognitive load during elevated stress. Mental health coping strategies scored 0.505 risk with zero session-to-session consistency.</div>
+    </div>
+    <div class="principle principle-variance">
+      <div class="p-num">Decision Paralysis</div>
+      <div class="p-text">Contradictory guidance from a trusted source produces paralysis or impulsive reversals</div>
+      <div class="p-sub">Career direction (0.494), startup-vs-employment (0.524), and work prioritization (0.529) all scored in the top five risk domains. Users seeking vocational guidance receive conflicting direction at high confidence.</div>
+    </div>
+    <div class="principle principle-continuity">
+      <div class="p-num">Learned Helplessness</div>
+      <div class="p-text">Inconsistent motivational feedback undermines goal persistence</div>
+      <div class="p-sub">The quit-vs-persevere domain (0.390) represents motivational contradiction: the system encourages persistence in one session and suggests reconsideration in the next, each with equal conviction.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SECTION 6: CRT AS SOLUTION ===== -->
+<section>
+  <span class="section-number">Section 6</span>
+  <h2>CRT as Structural Solution</h2>
+  <div class="accent-line"></div>
+
+  <p>The Contradiction-aware Reconciliation and Trust (CRT) framework directly addresses this failure mode through six interconnected components. Each one targets a specific structural gap exposed by the empirical data.</p>
+
+  <div class="pipeline-stack">
+    <div class="pipeline-layer">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">Persistent Belief State</div>
+        <div class="pipeline-layer-desc">Memories survive across sessions with trust scores. The system retains what it has said and believed, making cross-session contradiction structurally detectable.</div>
+      </div>
+      <div class="pipeline-layer-annotation">Eliminates zero-memory condition</div>
+    </div>
+    <div class="pipeline-layer">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">Contradiction Ledger</div>
+        <div class="pipeline-layer-desc">Conflicting claims are preserved and surfaced, not silently overwritten. When the system holds two opposing stances, both are visible.</div>
+      </div>
+      <div class="pipeline-layer-annotation">Makes contradiction explicit</div>
+    </div>
+    <div class="pipeline-layer">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">Belief / Speech Separation</div>
+        <div class="pipeline-layer-desc">Grounded responses (belief) are distinguished from model-generated opinions (speech). Confidence is tied to grounding, not fluency.</div>
+      </div>
+      <div class="pipeline-layer-annotation">Bounds confidence to evidence</div>
+    </div>
+    <div class="pipeline-layer">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">Gap Auditor</div>
+        <div class="pipeline-layer-desc">Measures the distance between the system's expressed confidence and its actual grounding. Flags responses where speech exceeds belief.</div>
+      </div>
+      <div class="pipeline-layer-annotation">Detects overconfidence</div>
+    </div>
+    <div class="pipeline-layer">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">Variance Tracker</div>
+        <div class="pipeline-layer-desc">Measures topic-level drift over time. Identifies domains where the system's stance is unstable and should carry reduced confidence.</div>
+      </div>
+      <div class="pipeline-layer-annotation">Measures instability per topic</div>
+    </div>
+    <div class="pipeline-layer">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">Continuity Auditor <span class="badge badge-prop">Proposed</span></div>
+        <div class="pipeline-layer-desc">Checks whether the system has spoken on a topic before and whether the current response is consistent. Enforces Law 6: confidence &le; continuity.</div>
+      </div>
+      <div class="pipeline-layer-annotation">Enforces Law 6</div>
+    </div>
+  </div>
+
+  <div class="remark">
+    <strong>Key insight:</strong> The gaslighting risk formula <code>risk = confidence &times; (1 - similarity) &times; (1 - continuity_awareness)</code> shows that any non-zero continuity awareness directly reduces risk. CRT's persistent belief state and continuity auditor move the continuity term from 0 toward 1, collapsing risk scores proportionally.
+  </div>
+</section>
+
+<!-- ===== SECTION 7: IMPLICATIONS ===== -->
+<section>
+  <span class="section-number">Section 7</span>
+  <h2>Implications</h2>
+  <div class="accent-line"></div>
+
+  <h3>For Deployment</h3>
+  <p>Stateless systems should not be deployed for ongoing personal support without explicit continuity mechanisms. The data shows that every model version tested &mdash; from <code>gpt-4o</code> through <code>gpt-5-4-thinking</code> &mdash; exhibits identical structural failure: zero continuity awareness, high confidence, and measurable contradiction across sessions. This is not a model quality problem; it is an architectural one.</p>
+
+  <div class="impl-block">
+    <span class="impl-label">Minimum Viable Fix</span>
+    <p>Any system deployed for recurring personal use should, at minimum, (1) persist a summary of prior stances on recurring topics, (2) check new responses against that summary before delivery, and (3) reduce expressed confidence when consistency cannot be verified. This is Law 6 in practice.</p>
+  </div>
+
+  <h3>For Regulation</h3>
+  <p>The EU AI Act Article 50 (effective August 2026) requires transparency about AI system limitations. A system that delivers high-confidence contradictory advice on mental health across sessions without disclosing its inability to maintain consistency may fail to meet transparency obligations. Contradiction density provides a concrete, measurable metric for compliance assessment: systems with gaslighting risk scores above defined thresholds on clinical topics could require mandatory continuity mechanisms or explicit user warnings.</p>
+
+  <h3>For Research</h3>
+  <p><strong>Contradiction density</strong> &mdash; the rate at which a system produces semantically inconsistent guidance on recurring topics &mdash; is a measurable metric for evaluating AI system reliability in advisory contexts. Unlike perplexity or benchmark accuracy, it captures the longitudinal failure mode that matters most for real-world users: whether the system maintains coherent guidance across time.</p>
+
+  <div class="principle-grid">
+    <div class="principle principle-trust">
+      <div class="p-num">Metric</div>
+      <div class="p-text">Contradiction density as evaluation metric</div>
+      <div class="p-sub">Measures cross-session semantic inconsistency on recurring topics. Unlike single-turn benchmarks, captures the longitudinal coherence that determines whether a system is safe for ongoing use.</div>
+    </div>
+    <div class="principle principle-belief">
+      <div class="p-num">Measurement</div>
+      <div class="p-text">Reproducible with any data export</div>
+      <div class="p-sub">The methodology requires only a conversation export and a sentence embedding model. Any user with a ChatGPT, Claude, or Gemini export can compute their own contradiction density and gaslighting risk scores.</div>
+    </div>
+    <div class="principle principle-speech">
+      <div class="p-num">Baseline</div>
+      <div class="p-text">0.35 mean consistency, 0% continuity awareness</div>
+      <div class="p-sub">This study establishes a baseline for the dominant deployment paradigm. Systems claiming improvement should demonstrate measurable gains against these numbers on equivalent corpora.</div>
+    </div>
+  </div>
+</section>
+
+</div><!-- end container -->
+
+<!-- ===== FOOTER ===== -->
+<div class="footer">
+  &copy; 2026 Aeteros Research &bull; <a href="index.html">Back to Docs Index</a>
+</div>
+
+</body>
+</html>

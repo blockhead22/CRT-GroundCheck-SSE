@@ -27,9 +27,9 @@ def _get_engine(request: Request, thread_id: str):
     return request.app.state.get_engine(thread_id)
 
 
-def _build_splats_from_engine(engine, limit: int = 200) -> list:
-    """Build MemorySplat objects from the memory system."""
-    from personal_agent.memory_splats import MemorySplat
+def _build_belief_loci_from_engine(engine, limit: int = 200) -> list:
+    """Build BeliefLocus objects from the memory system."""
+    from personal_agent.memory_splats import BeliefLocus
 
     db_path = getattr(engine.memory, "db_path", None)
     if not db_path or not os.path.exists(db_path):
@@ -46,22 +46,22 @@ def _build_splats_from_engine(engine, limit: int = 200) -> list:
     ).fetchall()
     conn.close()
 
-    splats = []
+    belief_loci = []
     for mid, vec_json, sigma_blob, trust, text, mtype, ts, acc, contra in rows:
         try:
             mu = np.array(json.loads(vec_json), dtype=np.float32)
             sigma = np.frombuffer(sigma_blob, dtype=np.float32)
-            splat = MemorySplat(
+            belief_locus = BeliefLocus(
                 memory_id=mid, mu=mu, sigma=sigma,
                 alpha=trust if trust is not None else 0.5,
                 text=text or "", memory_type=mtype or "observation",
                 created_at=ts or 0.0, last_updated=ts or 0.0,
                 update_count=int(acc or 0) + int(contra or 0),
             )
-            splats.append(splat)
+            belief_loci.append(belief_locus)
         except Exception:
             continue
-    return splats
+    return belief_loci
 
 
 # ---------------------------------------------------------------------------
@@ -85,13 +85,13 @@ def belief_topology(
         raise HTTPException(status_code=501, detail=f"ripser not available: {e}")
 
     engine = _get_engine(request, thread_id)
-    splats = _build_splats_from_engine(engine, limit=limit)
+    belief_loci = _build_belief_loci_from_engine(engine, limit=limit)
 
-    if len(splats) < 3:
+    if len(belief_loci) < 3:
         return {"error": "Need at least 3 memories with sigma for topology analysis",
-                "n_memories": len(splats)}
+                "n_memories": len(belief_loci)}
 
-    topo = compute_topology(splats, distance_fn=distance, max_dim=1)
+    topo = compute_topology(belief_loci, distance_fn=distance, max_dim=1)
 
     features = []
     for f in topo.features:
@@ -240,7 +240,7 @@ def fisher_decomposition(
     Returns per-dimension contributions showing which embedding dimensions
     drive the disagreement and whether it's center distance or uncertainty mismatch.
     """
-    from personal_agent.memory_splats import MemorySplat
+    from personal_agent.memory_splats import BeliefLocus
     from personal_agent.info_geometry import (
         fisher_rao_distance,
         fisher_mean_component,
@@ -255,7 +255,7 @@ def fisher_decomposition(
 
     conn = sqlite3.connect(db_path, timeout=5)
 
-    def _load_splat(mid: str) -> Optional[MemorySplat]:
+    def _load_belief_locus(mid: str) -> Optional[BeliefLocus]:
         row = conn.execute(
             """SELECT memory_id, vector_json, sigma, trust, text, memory_type, timestamp
                FROM memories WHERE memory_id = ?""",
@@ -263,7 +263,7 @@ def fisher_decomposition(
         ).fetchone()
         if not row or not row[2]:
             return None
-        return MemorySplat(
+        return BeliefLocus(
             memory_id=row[0],
             mu=np.array(json.loads(row[1]), dtype=np.float32),
             sigma=np.frombuffer(row[2], dtype=np.float32),
@@ -273,8 +273,8 @@ def fisher_decomposition(
             created_at=row[6] or 0.0,
         )
 
-    splat_a = _load_splat(memory_a)
-    splat_b = _load_splat(memory_b)
+    splat_a = _load_belief_locus(memory_a)
+    splat_b = _load_belief_locus(memory_b)
     conn.close()
 
     if not splat_a:

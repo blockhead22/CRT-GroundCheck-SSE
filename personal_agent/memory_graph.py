@@ -110,7 +110,7 @@ class ContradictionEdge:
     """Metadata for a CONTRADICTS edge."""
     disposition: str          # resolvable|held|evolving|contextual
     nli_score: float = 0.0   # NLI contradiction confidence
-    overlap_integral: float = 0.0  # geometric overlap (future: splat)
+    overlap_integral: float = 0.0  # geometric overlap (future: belief locus)
     detected_at: float = 0.0
     classification_confidence: float = 0.0
     rule_trace: List[str] = field(default_factory=list)
@@ -435,29 +435,32 @@ class BeliefDependencyGraph:
     Wraps a NetworkX digraph with typed edges (SUPPORTS, CONTRADICTS, SUPERSEDES)
     and cascade propagation with geometric damping (Theorem 4.3).
 
-    Nodes are MemorySplat instances (Definition 3.1).
+    Nodes are BeliefLocus instances (Definition 3.1).
     """
 
     def __init__(self, cascade_threshold: float = 0.01):
         if not HAS_NETWORKX:
             raise ImportError("networkx required: pip install networkx")
         self.graph = nx.DiGraph()
-        self._splats: Dict[str, object] = {}
+        self._belief_loci: Dict[str, object] = {}
         self.cascade_threshold = cascade_threshold
 
     # --- Node operations ---
 
-    def add_belief(self, splat) -> str:
-        """Add a belief state (MemorySplat) to the graph."""
-        self.graph.add_node(splat.memory_id,
-                            text=splat.text,
-                            memory_type=splat.memory_type,
-                            alpha=splat.alpha)
-        self._splats[splat.memory_id] = splat
-        return splat.memory_id
+    def add_belief(self, belief_locus) -> str:
+        """Add a belief state (BeliefLocus) to the graph."""
+        self.graph.add_node(belief_locus.memory_id,
+                            text=belief_locus.text,
+                            memory_type=belief_locus.memory_type,
+                            alpha=belief_locus.alpha)
+        self._belief_loci[belief_locus.memory_id] = belief_locus
+        return belief_locus.memory_id
 
-    def get_splat(self, memory_id: str):
-        return self._splats.get(memory_id)
+    def get_belief_locus(self, memory_id: str):
+        return self._belief_loci.get(memory_id)
+
+    # Backwards compatibility alias
+    get_splat = get_belief_locus
 
     # --- Edge operations ---
 
@@ -728,7 +731,7 @@ class LiveBDG:
 
                 mtype_clean = mtype if mtype in ("fact", "preference", "event", "belief", "identity") else "belief"
 
-                # Add node to BDG graph directly (lightweight, no MemorySplat needed for edges)
+                # Add node to BDG graph directly (lightweight, no BeliefLocus needed for edges)
                 self.bdg.graph.add_node(mid,
                     text=(text or "")[:200],
                     memory_type=mtype_clean,

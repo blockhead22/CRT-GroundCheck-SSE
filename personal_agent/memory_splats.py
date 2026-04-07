@@ -1,6 +1,6 @@
-"""Memory Splats — Phase 1 (Diagonal Covariance)
+"""Belief Loci — Phase 1 (Diagonal Covariance)
 
-Represents memories as Gaussian splats: center + covariance + confidence.
+Represents memories as belief loci: center + covariance + confidence.
 Enables geometric contradiction detection via overlap integrals.
 
 Phase 1: Diagonal covariance (384 extra floats per memory).
@@ -8,7 +8,7 @@ Phase 2: Low-rank covariance (Sigma = D + UU^T, k=8-16).
 Phase 3: Context-dependent covariance warping.
 
 Key operations:
-  - Bhattacharyya distance between splats
+  - Bhattacharyya distance between loci
   - Overlap integral (continuous contradiction measure)
   - KL divergence (asymmetric similarity)
   - Covariance update from new evidence
@@ -24,14 +24,14 @@ import numpy as np
 
 
 # ---------------------------------------------------------------------------
-# Memory Splat
+# Belief Locus
 # ---------------------------------------------------------------------------
 
 @dataclass
-class MemorySplat:
+class BeliefLocus:
     """A memory represented as a Gaussian region in semantic space.
 
-    Instead of a point (just mu), a splat has:
+    Instead of a point (just mu), a belief locus has:
       - mu: center (where the belief lives)
       - sigma: diagonal covariance (shape of uncertainty)
       - alpha: confidence/opacity (how much it contributes to world model)
@@ -86,18 +86,18 @@ class MemorySplat:
 
 
 # ---------------------------------------------------------------------------
-# Splat creation
+# Locus creation
 # ---------------------------------------------------------------------------
 
-def create_splat(
+def create_locus(
     memory_id: str,
     embedding: np.ndarray,
     text: str = "",
     memory_type: str = "belief",
     initial_uncertainty: Optional[float] = None,
     confidence: float = 0.8,
-) -> MemorySplat:
-    """Create a new memory splat from an embedding.
+) -> BeliefLocus:
+    """Create a new belief locus from an embedding.
 
     Initial uncertainty is uniform across all dimensions.
     As evidence accumulates, some dimensions tighten, others widen.
@@ -108,7 +108,7 @@ def create_splat(
         initial_uncertainty = 2.0 / d  # calibrated default for unit vectors
     sigma = np.full(d, initial_uncertainty, dtype=np.float32)
 
-    splat = MemorySplat(
+    belief_locus = BeliefLocus(
         memory_id=memory_id,
         mu=mu,
         sigma=sigma,
@@ -118,18 +118,18 @@ def create_splat(
         created_at=time.time(),
         last_updated=time.time(),
     )
-    splat.snapshot()  # initial state
-    return splat
+    belief_locus.snapshot()  # initial state
+    return belief_locus
 
 
-def create_splat_from_type(
+def create_locus_from_type(
     memory_id: str,
     embedding: np.ndarray,
     text: str = "",
     memory_type: str = "belief",
     confidence: float = 0.8,
-) -> MemorySplat:
-    """Create a splat with type-dependent initial uncertainty.
+) -> BeliefLocus:
+    """Create a locus with type-dependent initial uncertainty.
 
     Facts start tight. Beliefs start wider. Identity starts medium.
     """
@@ -152,16 +152,16 @@ def create_splat_from_type(
         "identity": 1.2 * scale,    # identity is moderately certain
     }
     uncertainty = type_uncertainty.get(memory_type, 0.015)
-    return create_splat(memory_id, embedding, text, memory_type,
+    return create_locus(memory_id, embedding, text, memory_type,
                         uncertainty, confidence)
 
 
 # ---------------------------------------------------------------------------
-# Distance metrics between splats (all closed-form for diagonal Gaussians)
+# Distance metrics between loci (all closed-form for diagonal Gaussians)
 # ---------------------------------------------------------------------------
 
-def bhattacharyya_distance(a: MemorySplat, b: MemorySplat) -> float:
-    """Bhattacharyya distance between two diagonal Gaussian splats.
+def bhattacharyya_distance(a: BeliefLocus, b: BeliefLocus) -> float:
+    """Bhattacharyya distance between two diagonal Gaussian belief loci.
 
     DB = 1/8 * (mu1-mu2)^T * Sigma_avg^{-1} * (mu1-mu2)
          + 1/2 * ln(det(Sigma_avg) / sqrt(det(Sigma1) * det(Sigma2)))
@@ -185,7 +185,7 @@ def bhattacharyya_distance(a: MemorySplat, b: MemorySplat) -> float:
     return float(term1 + term2)
 
 
-def bhattacharyya_coefficient(a: MemorySplat, b: MemorySplat) -> float:
+def bhattacharyya_coefficient(a: BeliefLocus, b: BeliefLocus) -> float:
     """Bhattacharyya coefficient: exp(-DB). Range [0, 1].
 
     BC = 1: identical distributions
@@ -196,7 +196,7 @@ def bhattacharyya_coefficient(a: MemorySplat, b: MemorySplat) -> float:
     return float(np.exp(-db))
 
 
-def overlap_integral(a: MemorySplat, b: MemorySplat) -> float:
+def overlap_integral(a: BeliefLocus, b: BeliefLocus) -> float:
     """Overlap integral: integral of sqrt(p(x) * q(x)) dx.
 
     For diagonal Gaussians, this equals the Bhattacharyya coefficient.
@@ -207,7 +207,7 @@ def overlap_integral(a: MemorySplat, b: MemorySplat) -> float:
     return bhattacharyya_coefficient(a, b)
 
 
-def kl_divergence(a: MemorySplat, b: MemorySplat) -> float:
+def kl_divergence(a: BeliefLocus, b: BeliefLocus) -> float:
     """KL(a || b) for diagonal Gaussians. Asymmetric.
 
     KL = 1/2 * [tr(Sigma_b^{-1} Sigma_a) + (mu_b-mu_a)^T Sigma_b^{-1} (mu_b-mu_a)
@@ -225,9 +225,9 @@ def kl_divergence(a: MemorySplat, b: MemorySplat) -> float:
     return float(0.5 * (trace_term + quad_term - d + log_det_term))
 
 
-def cosine_similarity(a: MemorySplat, b: MemorySplat) -> float:
+def cosine_similarity(a: BeliefLocus, b: BeliefLocus) -> float:
     """Standard cosine similarity between centers (ignoring covariance).
-    For comparison with splat-aware metrics."""
+    For comparison with locus-aware metrics."""
     dot = np.dot(a.mu, b.mu)
     na = np.linalg.norm(a.mu)
     nb = np.linalg.norm(b.mu)
@@ -242,7 +242,7 @@ def cosine_similarity(a: MemorySplat, b: MemorySplat) -> float:
 
 @dataclass
 class GeometricContradictionResult:
-    """Result of geometric contradiction check between two splats."""
+    """Result of geometric contradiction check between two belief loci."""
     overlap: float              # Bhattacharyya coefficient [0,1]
     center_distance: float      # Euclidean distance between centers
     cosine_sim: float           # Cosine similarity between centers
@@ -255,8 +255,8 @@ class GeometricContradictionResult:
 
 
 def detect_geometric_contradiction(
-    a: MemorySplat,
-    b: MemorySplat,
+    a: BeliefLocus,
+    b: BeliefLocus,
     overlap_threshold: float = 0.3,
     center_divergence_threshold: float = 0.5,
 ) -> GeometricContradictionResult:
@@ -327,32 +327,32 @@ def detect_geometric_contradiction(
 # Covariance updates from evidence
 # ---------------------------------------------------------------------------
 
-def update_splat_confirming(splat: MemorySplat, learning_rate: float = 0.1):
-    """Confirming evidence: tighten the splat (reduce covariance).
+def update_locus_confirming(belief_locus: BeliefLocus, learning_rate: float = 0.1):
+    """Confirming evidence: tighten the locus (reduce covariance).
 
-    The splat gets more certain. Covariance shrinks.
+    The locus gets more certain. Covariance shrinks.
     """
-    splat.sigma *= (1.0 - learning_rate)
-    splat.sigma = np.maximum(splat.sigma, 1e-8)
-    splat.alpha = min(1.0, splat.alpha + 0.05)
-    splat.update_count += 1
-    splat.last_updated = time.time()
+    belief_locus.sigma *= (1.0 - learning_rate)
+    belief_locus.sigma = np.maximum(belief_locus.sigma, 1e-8)
+    belief_locus.alpha = min(1.0, belief_locus.alpha + 0.05)
+    belief_locus.update_count += 1
+    belief_locus.last_updated = time.time()
 
 
-def update_splat_contradicting(splat: MemorySplat, learning_rate: float = 0.15):
-    """Contradicting evidence: widen the splat (increase covariance).
+def update_locus_contradicting(belief_locus: BeliefLocus, learning_rate: float = 0.15):
+    """Contradicting evidence: widen the locus (increase covariance).
 
-    The splat gets less certain. Covariance grows.
+    The locus gets less certain. Covariance grows.
     The thing the system was sure about is now questioned.
     """
-    splat.sigma *= (1.0 + learning_rate)
-    splat.alpha = max(0.1, splat.alpha - 0.1)
-    splat.update_count += 1
-    splat.last_updated = time.time()
+    belief_locus.sigma *= (1.0 + learning_rate)
+    belief_locus.alpha = max(0.1, belief_locus.alpha - 0.1)
+    belief_locus.update_count += 1
+    belief_locus.last_updated = time.time()
 
 
-def update_splat_with_evidence(
-    splat: MemorySplat,
+def update_locus_with_evidence(
+    belief_locus: BeliefLocus,
     new_embedding: np.ndarray,
     weight: float = 0.2,
 ):
@@ -362,52 +362,52 @@ def update_splat_with_evidence(
     If new evidence is far from center → widen + shift.
     """
     new_emb = np.asarray(new_embedding, dtype=np.float32)
-    diff = new_emb - splat.mu
+    diff = new_emb - belief_locus.mu
     dist_sq = np.sum(diff ** 2)
 
     # Shift center toward evidence
-    splat.mu = splat.mu + weight * diff
+    belief_locus.mu = belief_locus.mu + weight * diff
 
     # Adjust covariance based on surprise
     # Low surprise (close) → tighten
     # High surprise (far) → widen
-    expected_dist = np.sum(splat.sigma)  # expected squared distance under the distribution
+    expected_dist = np.sum(belief_locus.sigma)  # expected squared distance under the distribution
     surprise_ratio = dist_sq / max(expected_dist, 1e-8)
 
     if surprise_ratio < 1.0:
         # Evidence is within expected range -- tighten
-        splat.sigma *= (1.0 - 0.05 * weight)
+        belief_locus.sigma *= (1.0 - 0.05 * weight)
     else:
         # Evidence is surprising -- widen proportionally
         # Use log scale so extreme surprises (reversal) hit hard
         # surprise_ratio=2 -> widen 10%, =10 -> widen 23%, =100 -> widen 46%
         widen_factor = min(0.5, 0.1 * math.log(surprise_ratio + 1))
-        splat.sigma *= (1.0 + widen_factor)
+        belief_locus.sigma *= (1.0 + widen_factor)
         # Also reduce confidence proportional to surprise
         confidence_hit = min(0.3, 0.05 * math.log(surprise_ratio + 1))
-        splat.alpha = max(0.1, splat.alpha - confidence_hit)
+        belief_locus.alpha = max(0.1, belief_locus.alpha - confidence_hit)
 
-    splat.sigma = np.maximum(splat.sigma, 1e-8)
-    splat.update_count += 1
-    splat.last_updated = time.time()
+    belief_locus.sigma = np.maximum(belief_locus.sigma, 1e-8)
+    belief_locus.update_count += 1
+    belief_locus.last_updated = time.time()
 
 
 # ---------------------------------------------------------------------------
 # Trajectory analysis (predictive contradiction detection)
 # ---------------------------------------------------------------------------
 
-def predict_trajectory(splat: MemorySplat, steps_ahead: int = 5) -> Optional[np.ndarray]:
+def predict_trajectory(belief_locus: BeliefLocus, steps_ahead: int = 5) -> Optional[np.ndarray]:
     """Linear extrapolation of center trajectory.
 
     Returns predicted center position steps_ahead into the future.
     Needs at least 2 snapshots.
     """
-    if len(splat.trajectory) < 2:
+    if len(belief_locus.trajectory) < 2:
         return None
 
     # Use last two snapshots for linear extrapolation
-    t1 = splat.trajectory[-2]
-    t2 = splat.trajectory[-1]
+    t1 = belief_locus.trajectory[-2]
+    t2 = belief_locus.trajectory[-1]
 
     dt = t2['timestamp'] - t1['timestamp']
     if dt < 1e-6:
@@ -420,11 +420,11 @@ def predict_trajectory(splat: MemorySplat, steps_ahead: int = 5) -> Optional[np.
 
 
 def predict_overlap_trend(
-    a: MemorySplat,
-    b: MemorySplat,
+    a: BeliefLocus,
+    b: BeliefLocus,
     steps: int = 5,
 ) -> Optional[List[float]]:
-    """Predict how overlap between two splats will evolve.
+    """Predict how overlap between two loci will evolve.
 
     If overlap is increasing over time → converging → potential future conflict.
     """
@@ -435,9 +435,9 @@ def predict_overlap_trend(
     overlaps = []
     n = min(len(a.trajectory), len(b.trajectory))
     for i in range(n):
-        snap_a = MemorySplat("tmp_a", a.trajectory[i]['mu'], a.trajectory[i]['sigma'],
+        snap_a = BeliefLocus("tmp_a", a.trajectory[i]['mu'], a.trajectory[i]['sigma'],
                              a.trajectory[i]['alpha'])
-        snap_b = MemorySplat("tmp_b", b.trajectory[i]['mu'], b.trajectory[i]['sigma'],
+        snap_b = BeliefLocus("tmp_b", b.trajectory[i]['mu'], b.trajectory[i]['sigma'],
                              b.trajectory[i]['alpha'])
         overlaps.append(overlap_integral(snap_a, snap_b))
 
@@ -451,20 +451,20 @@ def predict_overlap_trend(
     return overlaps
 
 
-def covariance_velocity(splat: MemorySplat) -> Optional[float]:
+def covariance_velocity(belief_locus: BeliefLocus) -> Optional[float]:
     """Rate of change of total uncertainty.
 
-    Positive = uncertainty growing (splat widening)
-    Negative = uncertainty shrinking (splat tightening)
+    Positive = uncertainty growing (locus widening)
+    Negative = uncertainty shrinking (locus tightening)
     Zero = stable
 
     This is the urgency signal from THEORY.md Section 6.
     """
-    if len(splat.trajectory) < 2:
+    if len(belief_locus.trajectory) < 2:
         return None
 
-    t1 = splat.trajectory[-2]
-    t2 = splat.trajectory[-1]
+    t1 = belief_locus.trajectory[-2]
+    t2 = belief_locus.trajectory[-1]
     dt = t2['timestamp'] - t1['timestamp']
     if dt < 1e-6:
         return None
@@ -476,12 +476,24 @@ def covariance_velocity(splat: MemorySplat) -> Optional[float]:
 
 
 # ---------------------------------------------------------------------------
+# Backwards compatibility aliases
+# ---------------------------------------------------------------------------
+
+MemorySplat = BeliefLocus
+create_splat = create_locus
+create_splat_from_type = create_locus_from_type
+update_splat_confirming = update_locus_confirming
+update_splat_contradicting = update_locus_contradicting
+update_splat_with_evidence = update_locus_with_evidence
+
+
+# ---------------------------------------------------------------------------
 # Test
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     print("=" * 70)
-    print("MEMORY SPLATS — Phase 1 Test")
+    print("BELIEF LOCI — Phase 1 Test")
     print("=" * 70)
 
     np.random.seed(42)
@@ -499,19 +511,19 @@ if __name__ == "__main__":
     base_food = np.random.randn(d).astype(np.float32)
     base_food /= np.linalg.norm(base_food)
 
-    # --- Create splats ---
-    love_job = create_splat_from_type("love_job", make_similar(base_job, 0.05),
+    # --- Create belief loci ---
+    love_job = create_locus_from_type("love_job", make_similar(base_job, 0.05),
                                       "I love my job", "belief", 0.8)
-    hate_job = create_splat_from_type("hate_job", make_similar(base_job, 0.05),
+    hate_job = create_locus_from_type("hate_job", make_similar(base_job, 0.05),
                                       "My job is killing me", "belief", 0.7)
-    like_sushi = create_splat_from_type("like_sushi", make_similar(base_food, 0.1),
+    like_sushi = create_locus_from_type("like_sushi", make_similar(base_food, 0.1),
                                         "I like sushi", "preference", 0.9)
-    unrelated = create_splat_from_type("weather", np.random.randn(d).astype(np.float32),
+    unrelated = create_locus_from_type("weather", np.random.randn(d).astype(np.float32),
                                        "It's sunny today", "event", 0.6)
     # Normalize
     unrelated.mu /= np.linalg.norm(unrelated.mu)
 
-    print(f"\n  --- SPLAT PROPERTIES ---")
+    print(f"\n  --- LOCUS PROPERTIES ---")
     for s in [love_job, hate_job, like_sushi, unrelated]:
         print(f"  {s.memory_id:<12} | dim={s.dim} | alpha={s.alpha:.2f} "
               f"| avg_sigma={s.avg_uncertainty:.4f} | total_sigma={s.total_uncertainty:.2f} "
@@ -545,75 +557,75 @@ if __name__ == "__main__":
 
     # --- Evidence updates ---
     print(f"\n  --- EVIDENCE UPDATE TEST ---")
-    test_splat = create_splat("test", base_job.copy(), "test belief", "belief", None, 0.7)
-    print(f"  Initial: avg_sigma={test_splat.avg_uncertainty:.5f} alpha={test_splat.alpha:.2f}")
+    test_locus = create_locus("test", base_job.copy(), "test belief", "belief", None, 0.7)
+    print(f"  Initial: avg_sigma={test_locus.avg_uncertainty:.5f} alpha={test_locus.alpha:.2f}")
 
     # 3 confirming pieces of evidence
     for i in range(3):
-        update_splat_confirming(test_splat)
-        test_splat.snapshot()
-    print(f"  After 3 confirmations: avg_sigma={test_splat.avg_uncertainty:.5f} "
-          f"alpha={test_splat.alpha:.2f}")
+        update_locus_confirming(test_locus)
+        test_locus.snapshot()
+    print(f"  After 3 confirmations: avg_sigma={test_locus.avg_uncertainty:.5f} "
+          f"alpha={test_locus.alpha:.2f}")
 
     # 1 contradicting piece
-    update_splat_contradicting(test_splat)
-    test_splat.snapshot()
-    print(f"  After 1 contradiction: avg_sigma={test_splat.avg_uncertainty:.5f} "
-          f"alpha={test_splat.alpha:.2f}")
+    update_locus_contradicting(test_locus)
+    test_locus.snapshot()
+    print(f"  After 1 contradiction: avg_sigma={test_locus.avg_uncertainty:.5f} "
+          f"alpha={test_locus.alpha:.2f}")
 
     # Evidence from a nearby embedding
     nearby = make_similar(base_job, 0.05)
-    update_splat_with_evidence(test_splat, nearby, weight=0.2)
-    test_splat.snapshot()
-    print(f"  After nearby evidence: avg_sigma={test_splat.avg_uncertainty:.5f} "
-          f"alpha={test_splat.alpha:.2f}")
+    update_locus_with_evidence(test_locus, nearby, weight=0.2)
+    test_locus.snapshot()
+    print(f"  After nearby evidence: avg_sigma={test_locus.avg_uncertainty:.5f} "
+          f"alpha={test_locus.alpha:.2f}")
 
     # Evidence from a far embedding
     far = np.random.randn(d).astype(np.float32)
     far /= np.linalg.norm(far)
-    update_splat_with_evidence(test_splat, far, weight=0.2)
-    test_splat.snapshot()
-    print(f"  After far evidence:    avg_sigma={test_splat.avg_uncertainty:.5f} "
-          f"alpha={test_splat.alpha:.2f}")
+    update_locus_with_evidence(test_locus, far, weight=0.2)
+    test_locus.snapshot()
+    print(f"  After far evidence:    avg_sigma={test_locus.avg_uncertainty:.5f} "
+          f"alpha={test_locus.alpha:.2f}")
 
     # --- Covariance velocity ---
     print(f"\n  --- COVARIANCE VELOCITY (urgency signal) ---")
-    vel = covariance_velocity(test_splat)
+    vel = covariance_velocity(test_locus)
     if vel is not None:
-        print(f"  Test splat velocity: {vel:.6f} per second")
+        print(f"  Test locus velocity: {vel:.6f} per second")
     else:
-        print(f"  Test splat velocity: None (need 2+ snapshots)")
+        print(f"  Test locus velocity: None (need 2+ snapshots)")
     if vel and vel > 0:
-        print(f"  >> Uncertainty GROWING (splat widening) — belief under pressure")
+        print(f"  >> Uncertainty GROWING (locus widening) — belief under pressure")
     elif vel and vel < 0:
-        print(f"  >> Uncertainty SHRINKING (splat tightening) — belief settling")
+        print(f"  >> Uncertainty SHRINKING (locus tightening) — belief settling")
 
     # --- Trajectory prediction ---
     print(f"\n  --- TRAJECTORY PREDICTION ---")
-    predicted = predict_trajectory(test_splat, steps_ahead=3)
+    predicted = predict_trajectory(test_locus, steps_ahead=3)
     if predicted is not None:
-        current_cos = float(np.dot(test_splat.mu, predicted) /
-                           (np.linalg.norm(test_splat.mu) * np.linalg.norm(predicted)))
+        current_cos = float(np.dot(test_locus.mu, predicted) /
+                           (np.linalg.norm(test_locus.mu) * np.linalg.norm(predicted)))
         print(f"  Current center -> Predicted (3 steps): cosine={current_cos:.4f}")
-        print(f"  Trajectory points: {len(test_splat.trajectory)}")
+        print(f"  Trajectory points: {len(test_locus.trajectory)}")
 
     # --- Overlap trend prediction ---
-    print(f"\n  --- OVERLAP TREND (converging splats = future conflict) ---")
-    # Simulate two splats drifting toward each other
-    splat_a = create_splat("drift_a", base_job.copy(), "Belief A", "belief", 0.02, 0.7)
+    print(f"\n  --- OVERLAP TREND (converging loci = future conflict) ---")
+    # Simulate two loci drifting toward each other
+    locus_a = create_locus("drift_a", base_job.copy(), "Belief A", "belief", 0.02, 0.7)
     drift_target = make_similar(base_job, 0.3)  # somewhat different
-    splat_b = create_splat("drift_b", drift_target, "Belief B", "belief", 0.02, 0.7)
+    locus_b = create_locus("drift_b", drift_target, "Belief B", "belief", 0.02, 0.7)
 
-    print(f"  Initial overlap: {overlap_integral(splat_a, splat_b):.4f}")
+    print(f"  Initial overlap: {overlap_integral(locus_a, locus_b):.4f}")
 
-    # Drift splat_a toward splat_b over several steps
+    # Drift locus_a toward locus_b over several steps
     for step in range(5):
-        direction = splat_b.mu - splat_a.mu
-        splat_a.mu += 0.1 * direction  # drift toward B
-        splat_a.snapshot()
-        splat_b.snapshot()
+        direction = locus_b.mu - locus_a.mu
+        locus_a.mu += 0.1 * direction  # drift toward B
+        locus_a.snapshot()
+        locus_b.snapshot()
 
-    trend = predict_overlap_trend(splat_a, splat_b, steps=3)
+    trend = predict_overlap_trend(locus_a, locus_b, steps=3)
     if trend:
         print(f"  Overlap history: {[f'{o:.4f}' for o in trend[:5]]}")
         print(f"  Predicted trend: {[f'{o:.4f}' for o in trend[5:]]}")
@@ -623,10 +635,10 @@ if __name__ == "__main__":
     # --- Storage comparison ---
     print(f"\n  --- STORAGE COMPARISON ---")
     print(f"  Point embedding (384D float32):  {384 * 4} bytes")
-    print(f"  Splat (mu + sigma + alpha):      {love_job.storage_bytes()} bytes")
+    print(f"  Locus (mu + sigma + alpha):      {love_job.storage_bytes()} bytes")
     print(f"  Overhead: {love_job.storage_bytes() - 384*4} bytes ({love_job.storage_bytes() / (384*4):.1f}x)")
     print(f"  (Worth it? The extra {384*4} bytes encode the SHAPE of uncertainty)")
 
     print(f"\n{'='*70}")
-    print("MEMORY SPLATS TEST COMPLETE")
+    print("BELIEF LOCI TEST COMPLETE")
     print(f"{'='*70}")

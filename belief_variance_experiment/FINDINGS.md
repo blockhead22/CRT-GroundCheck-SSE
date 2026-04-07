@@ -408,15 +408,15 @@ Quantify domain separation in the original embedding space, not just in UMAP pro
 
 ## 8. Connection to CRT/Aether Architecture
 
-### 7.1 Variance-to-Splat Pipeline
+### 7.1 Variance-to-Locus Pipeline
 
-The response distributions observed in this experiment map directly to the Gaussian splat representation developed in the memory_splats module:
+The response distributions observed in this experiment map directly to the belief locus representation developed in the memory_splats module:
 
 - **Center (mu):** Mean embedding of responses at a given temperature.
 - **Covariance (sigma):** Covariance matrix of the response embedding distribution.
 - **Confidence (alpha):** Inverse of semantic entropy --- high entropy means low confidence.
 
-Each prompt at each temperature defines a splat. The temperature sweep traces a path through splat space. Susceptibility is the rate at which the splat expands (or its confidence decreases) along this path.
+Each prompt at each temperature defines a locus. The temperature sweep traces a path through locus space. Susceptibility is the rate at which the locus expands (or its confidence decreases) along this path.
 
 This mapping is consistent with the observed data: single-cluster prompts produce unimodal response clouds and held-contradiction prompts produce multi-modal clouds. However, no formal goodness-of-fit test has been performed. The Gaussian approximation is a working hypothesis, not a validated result (see Claim 5).
 
@@ -424,7 +424,7 @@ This mapping is consistent with the observed data: single-cluster prompts produc
 
 The susceptibility metric could be computed at encoding time by the Mirus encoder. When a new belief enters the system, a quick temperature sweep (e.g., 5 temperatures, 5 reps each = 25 calls) would produce a susceptibility score. This score would tag the belief with its epistemic fragility profile before it enters the belief graph.
 
-High-susceptibility beliefs would be stored with wider splats (more uncertainty). Zero-susceptibility beliefs would be stored as tight points. Held contradictions would be stored as multi-modal splats (mixture of Gaussians) or flagged as Belnap BOTH states.
+High-susceptibility beliefs would be stored with wider loci (more uncertainty). Zero-susceptibility beliefs would be stored as tight points. Held contradictions would be stored as multi-modal loci (mixture of Gaussians) or flagged as Belnap BOTH states.
 
 ### 7.3 Domain Classification
 
@@ -448,8 +448,8 @@ The following claims are supported by the data. Each is tagged with its evidence
 ### Claim 4: Susceptibility discriminates genuine certainty from artificial certainty.
 **Evidence: Moderate.** Within the factual_settled domain, we observe both zero-susceptibility prompts (H2O, Mercury) and high-susceptibility prompts (speed of light, number of continents). The zero-susceptibility factual prompts represent genuine model certainty. The zero-susceptibility moral prompts represent trained uniformity. The metric successfully separates these two cases. However, this claim requires a clearer operational definition of "genuine" vs. "artificial" certainty, and the distinction is currently based on domain knowledge about the prompts rather than a model-internal criterion.
 
-### Claim 5: Response distributions from repeated sampling are directly representable as belief splats.
-**Evidence: Preliminary.** The DBSCAN clustering results are consistent with Gaussian or mixture-of-Gaussian structure in embedding space. The mapping to splat parameters (center, covariance, confidence) is straightforward. But no formal goodness-of-fit test has been performed to verify that the distributions are actually Gaussian rather than some other shape. This claim is a design hypothesis supported by qualitative consistency with the data.
+### Claim 5: Response distributions from repeated sampling are directly representable as belief loci.
+**Evidence: Preliminary.** The DBSCAN clustering results are consistent with Gaussian or mixture-of-Gaussian structure in embedding space. The mapping to locus parameters (center, covariance, confidence) is straightforward. But no formal goodness-of-fit test has been performed to verify that the distributions are actually Gaussian rather than some other shape. This claim is a design hypothesis supported by qualitative consistency with the data.
 
 ---
 

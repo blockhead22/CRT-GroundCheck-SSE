@@ -1,6 +1,6 @@
 """Belief Topology -- Step 6
 
-Persistent homology on collections of memory splats.
+Persistent homology on collections of belief loci.
 
 The premise: the topology of your belief space tells you things
 that individual memories and pairwise comparisons cannot.
@@ -34,8 +34,9 @@ from ripser import ripser
 from persim import plot_diagrams
 
 from .memory_splats import (
-    MemorySplat, create_splat, create_splat_from_type,
+    BeliefLocus, create_locus, create_locus_from_type,
     cosine_similarity, bhattacharyya_coefficient,
+    MemorySplat, create_splat, create_splat_from_type,  # backwards compat aliases
 )
 
 
@@ -43,8 +44,8 @@ from .memory_splats import (
 # Distance matrices for TDA
 # ---------------------------------------------------------------------------
 
-def cosine_distance_matrix(splats: List[MemorySplat]) -> np.ndarray:
-    """Pairwise cosine distance between splat centers.
+def cosine_distance_matrix(splats: List[BeliefLocus]) -> np.ndarray:
+    """Pairwise cosine distance between locus centers.
 
     distance = 1 - cosine_similarity. Range [0, 2].
     This is the right metric for 384D -- covariance is too sparse
@@ -61,7 +62,7 @@ def cosine_distance_matrix(splats: List[MemorySplat]) -> np.ndarray:
     return D
 
 
-def confidence_weighted_distance(splats: List[MemorySplat]) -> np.ndarray:
+def confidence_weighted_distance(splats: List[BeliefLocus]) -> np.ndarray:
     """Cosine distance weighted by inverse confidence.
 
     Low-confidence memories are "further away" -- they contribute
@@ -86,7 +87,7 @@ def confidence_weighted_distance(splats: List[MemorySplat]) -> np.ndarray:
     return D
 
 
-def uncertainty_augmented_distance(splats: List[MemorySplat]) -> np.ndarray:
+def uncertainty_augmented_distance(splats: List[BeliefLocus]) -> np.ndarray:
     """Distance that incorporates both center distance and uncertainty overlap.
 
     d(a, b) = cosine_dist(a, b) * (1 + uncertainty_mismatch(a, b))
@@ -123,7 +124,7 @@ class TopologicalFeature:
     birth: float        # filtration value where feature appears
     death: float        # filtration value where feature dies (inf = never)
     persistence: float  # death - birth (longer = more significant)
-    generators: Optional[List[int]] = None  # indices of splats involved
+    generators: Optional[List[int]] = None  # indices of loci involved
 
 
 @dataclass
@@ -153,7 +154,7 @@ class BeliefTopology:
 
 
 def compute_topology(
-    splats: List[MemorySplat],
+    splats: List[BeliefLocus],
     distance_fn: str = "cosine",
     max_dim: int = 1,
     significance_threshold: float = 0.05,
@@ -162,7 +163,7 @@ def compute_topology(
     """Compute persistent homology of a collection of memory splats.
 
     Args:
-        splats: the memories to analyze
+        splats: the belief loci to analyze
         distance_fn: "cosine", "confidence_weighted", or "uncertainty_augmented"
         max_dim: max homology dimension (1 = components + loops)
         significance_threshold: persistence below this is noise
@@ -314,7 +315,7 @@ class TopologySnapshot:
 
 
 def track_topology_evolution(
-    splat_timeline: List[Tuple[float, List[MemorySplat]]],
+    splat_timeline: List[Tuple[float, List[BeliefLocus]]],
     **kwargs,
 ) -> List[TopologySnapshot]:
     """Compute topology at each point in a timeline.
@@ -396,7 +397,7 @@ def simulate_belief_topology():
     - Eventually clusters merge as person integrates their experience
     """
     print("=" * 70)
-    print("BELIEF TOPOLOGY -- Persistent Homology on Memory Splats")
+    print("BELIEF TOPOLOGY -- Persistent Homology on Belief Loci")
     print("=" * 70)
 
     np.random.seed(42)
@@ -423,7 +424,7 @@ def simulate_belief_topology():
             noise = np.random.randn(d).astype(np.float32) * spread
             vec = center + noise
             vec /= np.linalg.norm(vec)
-            splats.append(create_splat_from_type(
+            splats.append(create_locus_from_type(
                 f"mem_{len(splats)}_{i}", vec,
                 f"memory in cluster", "belief", 0.7 + np.random.random() * 0.3
             ))

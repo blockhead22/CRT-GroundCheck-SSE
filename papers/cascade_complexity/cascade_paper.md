@@ -85,9 +85,9 @@ A **belief state** is a tuple $b = (\mu, \Sigma, \alpha, t)$ where:
 
 In practice, $\Sigma$ is restricted to diagonal covariance $\Sigma = \mathrm{diag}(\sigma_1, \ldots, \sigma_d)$, reducing storage from $O(d^2)$ to $O(d)$ while preserving per-dimension uncertainty.
 
-**Interpretation.** A belief state is a Gaussian splat in semantic space — a soft probabilistic region rather than a hard point. A tight splat ($\sigma_i$ small) represents a settled belief; a wide splat represents an uncertain or contested belief. The covariance encodes *where* the uncertainty lives, not just *how much* there is.
+**Interpretation.** A belief state is a belief locus in semantic space — a soft probabilistic region rather than a hard point. A tight locus ($\sigma_i$ small) represents a settled belief; a wide locus represents an uncertain or contested belief. The covariance encodes *where* the uncertainty lives, not just *how much* there is.
 
-> **Implementation.** Class `MemorySplat` in `memory_splats.py`: fields `mu` ($\mu$), `sigma` ($\Sigma_{\mathrm{diag}}$), `alpha` ($\alpha$), `last_updated` ($t$). Phase 1 uses diagonal covariance; Phase 2 extends to low-rank $\Sigma = D + UU^T$.
+> **Implementation.** Class `BeliefLocus` in `memory_splats.py`: fields `mu` ($\mu$), `sigma` ($\Sigma_{\mathrm{diag}}$), `alpha` ($\alpha$), `last_updated` ($t$). Phase 1 uses diagonal covariance; Phase 2 extends to low-rank $\Sigma = D + UU^T$.
 
 ### Definition 3.2 (Belief Dependency Graph)
 
@@ -103,7 +103,7 @@ Edges are *typed*. We distinguish:
 - **SUPERSEDES**: $b_j$ is a temporal update of $b_i$ (same topic, later timestamp)
 - **SUPPORTS**: $b_j$ is evidentially grounded in $b_i$ (revision of $b_i$ undermines the basis for $b_j$)
 
-> **Implementation.** NetworkX digraph with typed edges, weighted by dependency strength. Edge types mirror `ContradictionType` in `crt_ledger.py` (REFINEMENT, REVISION, TEMPORAL, CONFLICT). Node attributes are `MemorySplat` instances.
+> **Implementation.** NetworkX digraph with typed edges, weighted by dependency strength. Edge types mirror `ContradictionType` in `crt_ledger.py` (REFINEMENT, REVISION, TEMPORAL, CONFLICT). Node attributes are `BeliefLocus` instances.
 
 ### Definition 3.3 (Revision Event)
 
@@ -113,7 +113,7 @@ The **revision impact** of $r$ is:
 
 $$\delta(r) = d_F(b, b')$$
 
-where $d_F$ is the Fisher-Rao distance on the space of belief states. For diagonal Gaussian splats:
+where $d_F$ is the Fisher-Rao distance on the space of belief states. For diagonal belief loci:
 
 $$d_F(b, b')^2 = \sum_{i=1}^{d} \frac{(\mu_i - \mu'_i)^2}{\bar{\sigma}_i} + \frac{1}{2}\sum_{i=1}^{d} \left(\log \frac{\sigma_i}{\sigma'_i}\right)^2$$
 
@@ -362,7 +362,7 @@ We demonstrate cascade mechanics on small BDGs (10-20 nodes) using the running i
 
 ### 7.1 Setup
 
-Belief states are `MemorySplat` instances with $d = 384$ (matching standard sentence embedding dimensionality). Dependencies are constructed by hand for interpretability. Revision impact is Fisher-Rao distance (`info_geometry.py`). Dispositions are classified by the Phase 1 rule-based classifier (`disposition_classifier.py`).
+Belief states are `BeliefLocus` instances with $d = 384$ (matching standard sentence embedding dimensionality). Dependencies are constructed by hand for interpretability. Revision impact is Fisher-Rao distance (`info_geometry.py`). Dispositions are classified by the Phase 1 rule-based classifier (`disposition_classifier.py`).
 
 ### 7.2 Example: Location Change Cascade
 
@@ -551,7 +551,7 @@ Proposition 5.3 connects epistemic pluralism to system stability: an agent that 
 
 | Definition | Code Module | Key Function/Class |
 |-----------|------------|-------------------|
-| 3.1 Belief State | `memory_splats.py` | `MemorySplat(mu, sigma, alpha, ...)` |
+| 3.1 Belief State | `memory_splats.py` | `BeliefLocus(mu, sigma, alpha, ...)` |
 | 3.2 Belief Dependency Graph | `memory_graph.py` | `BeliefDependencyGraph` (NetworkX digraph) |
 | 3.3 Revision Event / Impact | `info_geometry.py` | `fisher_rao_distance(a, b)` |
 | 3.4 Cascade Trigger | `memory_graph.py` | `should_cascade(node, impact, threshold)` |

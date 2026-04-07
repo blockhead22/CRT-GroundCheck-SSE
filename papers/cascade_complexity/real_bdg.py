@@ -19,8 +19,9 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from personal_agent.memory_splats import (
-    MemorySplat, create_splat, create_splat_from_type,
+    BeliefLocus, create_locus, create_locus_from_type,
     cosine_similarity, overlap_integral, detect_geometric_contradiction,
+    MemorySplat, create_splat, create_splat_from_type,  # backwards compat aliases
 )
 from personal_agent.info_geometry import fisher_rao_distance
 
@@ -40,8 +41,8 @@ except ImportError:
 # Step 1: Load memories from production DB
 # ===================================================================
 
-def load_memories(db_path: str) -> dict[str, MemorySplat]:
-    """Load all active memories as MemorySplats."""
+def load_memories(db_path: str) -> dict[str, BeliefLocus]:
+    """Load all active memories as BeliefLocus instances."""
     db = sqlite3.connect(db_path)
     cur = db.cursor()
     cur.execute("""
@@ -51,7 +52,7 @@ def load_memories(db_path: str) -> dict[str, MemorySplat]:
         WHERE deprecated = 0 AND vector_json IS NOT NULL
     """)
 
-    splats = {}
+    belief_loci = {}
     meta = {}  # memory_id -> {trust, domain_tags, kind, timestamp, belnap}
 
     for row in cur.fetchall():
@@ -68,11 +69,11 @@ def load_memories(db_path: str) -> dict[str, MemorySplat]:
         else:
             sigma = None  # will use default
 
-        # Map memory_type to splat types
+        # Map memory_type to locus types
         mtype_clean = mtype if mtype in ("fact", "preference", "event", "belief", "identity") else "belief"
 
         if sigma is not None:
-            splat = MemorySplat(
+            belief_locus = BeliefLocus(
                 memory_id=mid,
                 mu=embedding,
                 sigma=sigma,
@@ -83,7 +84,7 @@ def load_memories(db_path: str) -> dict[str, MemorySplat]:
                 last_updated=ts or 0.0,
             )
         else:
-            splat = create_splat_from_type(
+            belief_locus = create_locus_from_type(
                 memory_id=mid,
                 embedding=embedding,
                 text=text[:200] if text else "",
@@ -91,7 +92,7 @@ def load_memories(db_path: str) -> dict[str, MemorySplat]:
                 confidence=conf,
             )
 
-        splats[mid] = splat
+        belief_loci[mid] = belief_locus
         meta[mid] = {
             "trust": trust,
             "domain_tags": json.loads(dtags) if dtags else [],
@@ -102,7 +103,7 @@ def load_memories(db_path: str) -> dict[str, MemorySplat]:
         }
 
     db.close()
-    return splats, meta
+    return belief_loci, meta
 
 
 def load_ledger_contradictions(db_path: str) -> list[tuple]:
@@ -123,7 +124,7 @@ def load_ledger_contradictions(db_path: str) -> list[tuple]:
 # Step 2: Compute edges
 # ===================================================================
 
-def compute_similarity_matrix(splats: dict[str, MemorySplat]) -> tuple:
+def compute_similarity_matrix(splats: dict[str, BeliefLocus]) -> tuple:
     """Vectorized pairwise cosine similarity."""
     ids = list(splats.keys())
     n = len(ids)
@@ -481,7 +482,7 @@ def main():
     # Load memories
     print("\n[1/5] Loading memories...")
     splats, meta = load_memories(mem_db)
-    print(f"  Loaded {len(splats)} active memories as MemorySplats")
+    print(f"  Loaded {len(splats)} active memories as BeliefLocus instances")
 
     sigma_count = sum(1 for s in splats.values() if not np.allclose(s.sigma, s.sigma[0]))
     print(f"  With real sigma (non-uniform): {sigma_count}")

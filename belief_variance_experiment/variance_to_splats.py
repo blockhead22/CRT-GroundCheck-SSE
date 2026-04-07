@@ -1,23 +1,23 @@
-"""Variance-to-Splats Pipeline
+"""Variance-to-Loci Pipeline
 ================================
-Converts LLM belief variance experiment output into MemorySplats.
+Converts LLM belief variance experiment output into BeliefLocus instances.
 
 The key insight: each prompt's response distribution across 100 samples
 IS a Gaussian (or mixture of Gaussians) in embedding space. The mean
-of the response embeddings = the splat center (mu). The per-dimension
-variance of the response embeddings = the splat covariance (sigma).
+of the response embeddings = the locus center (mu). The per-dimension
+variance of the response embeddings = the locus covariance (sigma).
 The inverse of the entropy = confidence (alpha).
 
 This means LLM response distributions under temperature variation
-are LITERALLY belief splats already. No conversion needed — just
+are LITERALLY belief loci already. No conversion needed — just
 extraction.
 
-For each prompt at each temperature, we get one splat.
+For each prompt at each temperature, we get one locus.
 For each prompt ACROSS temperatures, we get a trajectory.
 That trajectory is the input to predictive contradiction detection.
 
 The multi-modal prompts (where DBSCAN finds 2+ clusters) become
-MULTIPLE splats per prompt — representing held contradictions in
+MULTIPLE loci per prompt — representing held contradictions in
 the model's belief space.
 """
 
@@ -37,7 +37,7 @@ _root = str(Path(__file__).parent.parent)
 if _root not in sys.path:
     sys.path.insert(0, _root)
 
-from personal_agent.memory_splats import MemorySplat, create_splat
+from personal_agent.memory_splats import BeliefLocus, create_locus, MemorySplat, create_splat
 from personal_agent.info_geometry import fisher_rao_distance
 from personal_agent.predictive_contradiction import (
     extract_trajectory, analyze_convergence, Urgency,
@@ -119,9 +119,9 @@ def load_raw_metadata() -> dict[str, dict]:
 class BeliefSplat:
     """A belief extracted from LLM response distribution.
 
-    This wraps MemorySplat with experiment-specific metadata.
+    This wraps BeliefLocus with experiment-specific metadata.
     """
-    splat: MemorySplat
+    splat: BeliefLocus
     prompt_id: str
     domain: str
     temperature: float
@@ -138,7 +138,7 @@ def distribution_to_splat(
     domain: str = "unknown",
     confidence_from_entropy: bool = True,
 ) -> BeliefSplat:
-    """Convert a response distribution into a single MemorySplat.
+    """Convert a response distribution into a single BeliefLocus.
 
     mu = mean of embeddings (the model's "average belief")
     sigma = per-dimension variance (the model's uncertainty shape)
@@ -177,7 +177,7 @@ def distribution_to_splat(
     else:
         alpha = 0.8  # default
 
-    splat = MemorySplat(
+    belief_locus = BeliefLocus(
         memory_id=f"llm_{prompt_id}_T{temperature}",
         mu=mu,
         sigma=sigma,
@@ -189,7 +189,7 @@ def distribution_to_splat(
     )
 
     return BeliefSplat(
-        splat=splat,
+        splat=belief_locus,
         prompt_id=prompt_id,
         domain=domain,
         temperature=temperature,
@@ -208,13 +208,13 @@ def distribution_to_multi_splats(
     eps: float = 0.3,
     min_samples: int = 5,
 ) -> list[BeliefSplat]:
-    """Convert a multi-modal response distribution into MULTIPLE splats.
+    """Convert a multi-modal response distribution into MULTIPLE loci.
 
-    If DBSCAN finds 2+ clusters, each cluster becomes its own splat.
+    If DBSCAN finds 2+ clusters, each cluster becomes its own locus.
     This represents held contradictions: the model has 2+ stable
     positions on the same question.
 
-    If unimodal, returns a single splat (same as distribution_to_splat).
+    If unimodal, returns a single locus (same as distribution_to_splat).
     """
     distances = cosine_distances(embeddings)
     # Use adaptive eps if default is too tight
@@ -247,7 +247,7 @@ def distribution_to_multi_splats(
         cluster_fraction = len(cluster_embeddings) / len(embeddings)
         alpha = float(cluster_fraction)
 
-        splat = MemorySplat(
+        belief_locus = BeliefLocus(
             memory_id=f"llm_{prompt_id}_T{temperature}_c{cluster_id}",
             mu=mu,
             sigma=sigma,
@@ -259,7 +259,7 @@ def distribution_to_multi_splats(
         )
 
         splats.append(BeliefSplat(
-            splat=splat,
+            splat=belief_locus,
             prompt_id=prompt_id,
             domain=domain,
             temperature=temperature,
@@ -279,8 +279,8 @@ def distribution_to_multi_splats(
 class BeliefTrajectory:
     """A prompt's belief evolution across temperatures.
 
-    Temperature acts as a "perturbation intensity" — analogous to
-    time in the standard splat trajectory. As temperature rises,
+    Temperature acts as a "perturbation intensity" -- analogous to
+    time in the standard locus trajectory. As temperature rises,
     the model's belief may:
       - Stay stable (factual_settled)
       - Widen smoothly (growing uncertainty)
@@ -290,7 +290,7 @@ class BeliefTrajectory:
     prompt_id: str
     domain: str
     splats_by_temp: dict[float, list[BeliefSplat]]
-    primary_splats: list[MemorySplat]  # one per temp, for trajectory analysis
+    primary_splats: list[BeliefLocus]  # one per temp, for trajectory analysis
 
     # Computed metrics
     susceptibility: float = 0.0  # dH/dT
