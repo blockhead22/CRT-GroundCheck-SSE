@@ -807,19 +807,18 @@ td code {
   transition: transform 0.2s;
 }
 
-/* Dropdown panel */
+/* Dropdown panel — fixed positioning to escape all stacking contexts */
 .docnav-dropdown {
   display: none;
-  position: absolute;
-  top: 100%;
-  left: 0;
+  position: fixed;
+  top: 42px;
   min-width: 200px;
   background: var(--bg-raised);
   border: 1px solid var(--border);
   border-radius: 0 0 8px 8px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.3);
   padding: 6px 0;
-  z-index: 300;
+  z-index: 99999;
 }
 .docnav-group.open .docnav-dropdown { display: block; }
 .docnav-group.open .docnav-group-arrow { transform: rotate(180deg); }

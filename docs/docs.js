@@ -122,13 +122,18 @@
     var allGroups = groupsEl.querySelectorAll('.docnav-group');
     allGroups.forEach(function(grp) {
       var lbl = grp.querySelector('.docnav-group-label');
+      var dd = grp.querySelector('.docnav-dropdown');
       lbl.addEventListener('click', function(e) {
         e.stopPropagation();
         var wasOpen = grp.classList.contains('open');
         // Close all
         allGroups.forEach(function(g) { g.classList.remove('open'); });
-        // Toggle clicked
-        if (!wasOpen) grp.classList.add('open');
+        // Toggle clicked and position dropdown
+        if (!wasOpen) {
+          grp.classList.add('open');
+          var rect = lbl.getBoundingClientRect();
+          dd.style.left = rect.left + 'px';
+        }
       });
     });
 
