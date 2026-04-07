@@ -335,6 +335,9 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="remark">
     <strong>External validation update (April 7, 2026):</strong> The corpus counts above were rechecked against <code>data/chatgpt_corpus.db</code> and match exactly. The currently reproducible v1 scripts operate on the normalized SQLite corpus rather than the raw JSON directly, query assistant messages only, and use hand-authored probe topic lists plus random assistant-message sampling. Earlier draft language that implied a more exhaustive topic sweep has been softened here to match the actual method.
   </div>
+  <div class="remark">
+    <strong>Next-step note:</strong> The proposed methodology upgrade is documented in <a href="plans/continuity-blind-v2-plan.md">continuity-blind-v2-plan.md</a>. That document defines how `v2` should improve determinism, continuity detection, contradiction typing, and manual audit without collapsing the validated `v1` baseline.
+  </div>
 
   <h3>Cross-Thread Consistency Analysis</h3>
   <p>The stored v1 consistency results contain <strong>23 analyzed topic clusters</strong>. Assistant responses were embedded using <code>all-MiniLM-L6-v2</code> (384 dimensions). For each probe topic, the script samples assistant messages, retrieves the most relevant responses by embedding similarity, collapses to unique threads, and computes pairwise semantic similarity across those retrieved responses. Mean consistency equals the mean pairwise similarity within each selected topic cluster.</p>

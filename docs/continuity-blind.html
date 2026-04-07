@@ -144,6 +144,9 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="remark">
     <strong>External validation update (April 7, 2026):</strong> The corpus counts in this paper were rechecked against <code>data/chatgpt_corpus.db</code> and confirmed at <strong>1,275 conversations</strong> and <strong>59,370 messages</strong>. The currently reproducible v1 methodology is narrower than some earlier prose implied: it is a <strong>probe-based retrieval analysis</strong> over a normalized ChatGPT export, not a fully exhaustive pass over every recurring topic in the corpus. The stored v1 result databases still support the public headline values <strong>0.34 mean consistency</strong>, <strong>74% mean confidence</strong>, and <strong>0% continuity awareness</strong>.
   </div>
+  <div class="remark">
+    <strong>Next-step note:</strong> The proposed methodology upgrade is documented in <a href="plans/continuity-blind-v2-plan.md">continuity-blind-v2-plan.md</a>. That plan preserves this externally rechecked `v1` as the baseline and scopes a stricter `v2` instead of quietly rewriting the original study.
+  </div>
 </section>
 
 <!-- ===== WHAT WE MEASURED ===== -->
