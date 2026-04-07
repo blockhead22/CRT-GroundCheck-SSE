@@ -257,10 +257,12 @@
 
     footer.innerHTML = links + '<br><br>&copy; 2026 Aeteros Research';
 
-    // Insert after </main> closing, inside .page-layout
+    // Insert after .page-layout (not inside it — avoids grid issues)
     var pageLayout = document.querySelector('.page-layout');
-    if (pageLayout) {
-      pageLayout.appendChild(footer);
+    if (pageLayout && pageLayout.nextSibling) {
+      pageLayout.parentNode.insertBefore(footer, pageLayout.nextSibling);
+    } else if (pageLayout) {
+      pageLayout.parentNode.appendChild(footer);
     } else {
       document.body.appendChild(footer);
     }
