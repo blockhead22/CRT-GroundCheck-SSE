@@ -176,7 +176,42 @@
     }
   }
 
+  // ── Inject GSAP + ScrollTrigger ──
+  function injectGSAP() {
+    var scripts = [
+      'https://cdn.jsdelivr.net/npm/gsap@3.12/dist/gsap.min.js',
+      'https://cdn.jsdelivr.net/npm/gsap@3.12/dist/ScrollTrigger.min.js'
+    ];
+    var loaded = 0;
+    window.__gsapCallbacks = window.__gsapCallbacks || [];
+
+    function onLoad() {
+      loaded++;
+      if (loaded === scripts.length && window.gsap && window.ScrollTrigger) {
+        gsap.registerPlugin(ScrollTrigger);
+        document.body.classList.add('gsap-ready');
+        // Fire any page-specific callbacks
+        window.__gsapCallbacks.forEach(function(cb) { cb(); });
+        window.__gsapCallbacks = [];
+        // Load shared scroll animations
+        var sa = document.createElement('script');
+        sa.src = prefix + 'scroll-animations.js';
+        document.body.appendChild(sa);
+      }
+    }
+
+    scripts.forEach(function(src) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.crossOrigin = 'anonymous';
+      s.onload = onLoad;
+      s.onerror = function() { loaded++; }; // graceful degradation
+      document.head.appendChild(s);
+    });
+  }
+
   injectBootstrap();
+  injectGSAP();
   injectDocNav();
   injectPager();
   injectFooter();

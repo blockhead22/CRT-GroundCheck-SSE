@@ -25,9 +25,116 @@
     <div class="finding-box">
       <p><strong>Continuous Revision Theory (CRT)</strong> is a governance architecture that gives AI systems a persistent belief state, tracks contradictions instead of hiding them, and separates what the model believes from what it says. <strong>Aether</strong> is the production system built on CRT &mdash; a personal AI assistant with 820+ persistent memories, 6 governance layers, and 6 autonomous immune agents that enforce epistemic integrity at runtime. This document tells the full story.</p>
     </div>
+    <!-- Hero viz: memory network awakening -->
+    <div id="hero-network" style="margin-top:28px;max-width:640px;margin-left:auto;margin-right:auto;">
+      <svg id="hn-svg" viewBox="0 0 640 200" style="width:100%;height:auto;display:block;"></svg>
+    </div>
   </div>
   <div class="scroll-cue">SCROLL TO READ</div>
 </div>
+
+<script>
+(function() {
+  function buildHeroNetwork() {
+    if (!window.gsap) return;
+    var svg = document.getElementById('hn-svg');
+    if (!svg) return;
+    var ns = 'http://www.w3.org/2000/svg';
+
+    // 12 memory nodes with scattered -> organized positions
+    var nodes = [
+      { sx: 50, sy: 160, ex: 80, ey: 60 },
+      { sx: 590, sy: 30, ex: 180, ey: 40 },
+      { sx: 120, sy: 10, ex: 280, ey: 70 },
+      { sx: 500, sy: 180, ex: 380, ey: 50 },
+      { sx: 30, sy: 90, ex: 480, ey: 60 },
+      { sx: 610, sy: 140, ex: 560, ey: 45 },
+      { sx: 300, sy: 190, ex: 130, ey: 140 },
+      { sx: 400, sy: 5, ex: 230, ey: 150 },
+      { sx: 200, sy: 180, ex: 330, ey: 135 },
+      { sx: 560, sy: 80, ex: 430, ey: 145 },
+      { sx: 100, sy: 50, ex: 530, ey: 140 },
+      { sx: 450, sy: 120, ex: 320, ey: 30 }
+    ];
+
+    // Edges (after organized positions)
+    var edges = [[0,1],[1,2],[2,3],[3,4],[4,5],[6,7],[7,8],[8,9],[9,10],[0,6],[2,8],[3,11],[11,1],[5,10]];
+
+    // Draw edges first (behind nodes)
+    var edgeEls = [];
+    edges.forEach(function(e) {
+      var line = document.createElementNS(ns, 'line');
+      line.setAttribute('x1', nodes[e[0]].ex);
+      line.setAttribute('y1', nodes[e[0]].ey);
+      line.setAttribute('x2', nodes[e[1]].ex);
+      line.setAttribute('y2', nodes[e[1]].ey);
+      line.setAttribute('stroke', 'rgba(129,140,248,0.25)');
+      line.setAttribute('stroke-width', '1');
+      svg.appendChild(line);
+      edgeEls.push(line);
+    });
+
+    // Governance grid (faint)
+    for (var gx = 80; gx <= 560; gx += 120) {
+      var gl = document.createElementNS(ns, 'line');
+      gl.setAttribute('x1', gx); gl.setAttribute('y1', 20);
+      gl.setAttribute('x2', gx); gl.setAttribute('y2', 170);
+      gl.setAttribute('stroke', 'rgba(99,102,241,0.06)');
+      gl.setAttribute('stroke-width', '1');
+      gl.setAttribute('stroke-dasharray', '4,6');
+      svg.appendChild(gl);
+      gsap.set(gl, { opacity: 0 });
+      gsap.to(gl, { opacity: 1, duration: 1, delay: 3.5 });
+    }
+    for (var gy = 40; gy <= 160; gy += 50) {
+      var gh = document.createElementNS(ns, 'line');
+      gh.setAttribute('x1', 60); gh.setAttribute('y1', gy);
+      gh.setAttribute('x2', 580); gh.setAttribute('y2', gy);
+      gh.setAttribute('stroke', 'rgba(99,102,241,0.06)');
+      gh.setAttribute('stroke-width', '1');
+      gh.setAttribute('stroke-dasharray', '4,6');
+      svg.appendChild(gh);
+      gsap.set(gh, { opacity: 0 });
+      gsap.to(gh, { opacity: 1, duration: 1, delay: 3.5 });
+    }
+
+    // Draw nodes
+    var colors = ['#818cf8','#34d399','#f472b6','#fbbf24','#c084fc','#60a5fa','#818cf8','#34d399','#f472b6','#fbbf24','#c084fc','#60a5fa'];
+    var circEls = [];
+    nodes.forEach(function(n, i) {
+      var c = document.createElementNS(ns, 'circle');
+      c.setAttribute('cx', n.sx);
+      c.setAttribute('cy', n.sy);
+      c.setAttribute('r', 5);
+      c.setAttribute('fill', colors[i]);
+      c.setAttribute('opacity', '0.7');
+      svg.appendChild(c);
+      circEls.push(c);
+    });
+
+    // Animate: scattered -> organized
+    var tl = gsap.timeline({ delay: 0.8 });
+
+    // Phase 1: nodes appear (already visible, just pulse)
+    tl.to(circEls, { attr: { r: 7 }, opacity: 1, duration: 0.4, stagger: 0.05, ease: 'back.out(2)' });
+
+    // Phase 2: nodes move to organized positions
+    nodes.forEach(function(n, i) {
+      tl.to(circEls[i], { attr: { cx: n.ex, cy: n.ey }, duration: 1.2, ease: 'power3.inOut' }, 1.2);
+    });
+
+    // Phase 3: edges fade in
+    gsap.set(edgeEls, { opacity: 0 });
+    tl.to(edgeEls, { opacity: 1, duration: 0.8, stagger: 0.05 }, 2.2);
+
+    // Phase 4: nodes settle to final size
+    tl.to(circEls, { attr: { r: 5 }, duration: 0.5, ease: 'power2.inOut' }, 3.0);
+  }
+
+  if (window.gsap) { buildHeroNetwork(); }
+  else { (window.__gsapCallbacks = window.__gsapCallbacks || []).push(buildHeroNetwork); }
+})();
+</script>
 
 <!-- ===== SIDEBAR ===== -->
 <nav class="sidebar" id="docSidebar" data-manual-sidebar>

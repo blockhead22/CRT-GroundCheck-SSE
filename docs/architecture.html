@@ -149,9 +149,116 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="finding-box">
       <p>This document maps every theoretical concept from the <strong>CRT whitepaper</strong> to its actual implementation. Every claim is backed by a module, every principle by running code. The system processes ~22,500 responses across 3 model families with full epistemic governance.</p>
     </div>
+    <!-- Hero viz: pipeline flow -->
+    <div id="hero-pipeline" style="margin-top:28px;max-width:600px;margin-left:auto;margin-right:auto;">
+      <svg id="hp-svg" viewBox="0 0 600 180" style="width:100%;height:auto;display:block;"></svg>
+    </div>
   </div>
   <div class="scroll-cue">&#9660; SCROLL</div>
 </div>
+
+<script>
+(function() {
+  function buildHeroPipeline() {
+    if (!window.gsap) return;
+    var svg = document.getElementById('hp-svg');
+    if (!svg) return;
+    var ns = 'http://www.w3.org/2000/svg';
+
+    var layers = [
+      { label: 'Input', color: '#60a5fa' },
+      { label: 'Route', color: '#818cf8' },
+      { label: 'Memory', color: '#34d399' },
+      { label: 'Govern', color: '#c084fc' },
+      { label: 'Generate', color: '#fbbf24' },
+      { label: 'Verify', color: '#f472b6' }
+    ];
+
+    var barW = 75, barH = 22, gap = 12, startX = 32;
+    var totalW = layers.length * (barW + gap) - gap;
+    startX = (600 - totalW) / 2;
+
+    var bars = [], labels = [], packet;
+
+    layers.forEach(function(l, i) {
+      var x = startX + i * (barW + gap);
+      var y = 80;
+
+      // Bar
+      var rect = document.createElementNS(ns, 'rect');
+      rect.setAttribute('x', x); rect.setAttribute('y', y);
+      rect.setAttribute('width', barW); rect.setAttribute('height', barH);
+      rect.setAttribute('rx', 4);
+      rect.setAttribute('fill', l.color);
+      rect.setAttribute('opacity', '0.15');
+      svg.appendChild(rect);
+      bars.push(rect);
+
+      // Label
+      var txt = document.createElementNS(ns, 'text');
+      txt.setAttribute('x', x + barW/2); txt.setAttribute('y', y + barH/2 + 4);
+      txt.setAttribute('text-anchor', 'middle');
+      txt.setAttribute('font-family', "'IBM Plex Mono', monospace");
+      txt.setAttribute('font-size', '10');
+      txt.setAttribute('fill', l.color);
+      txt.setAttribute('opacity', '0');
+      txt.textContent = l.label;
+      svg.appendChild(txt);
+      labels.push(txt);
+    });
+
+    // Data packet (glowing dot)
+    packet = document.createElementNS(ns, 'circle');
+    packet.setAttribute('cx', startX - 20);
+    packet.setAttribute('cy', 91);
+    packet.setAttribute('r', 6);
+    packet.setAttribute('fill', '#fff');
+    packet.setAttribute('opacity', '0');
+    // Glow filter
+    var defs = document.createElementNS(ns, 'defs');
+    var filter = document.createElementNS(ns, 'filter');
+    filter.setAttribute('id', 'glow');
+    var blur = document.createElementNS(ns, 'feGaussianBlur');
+    blur.setAttribute('stdDeviation', '3');
+    blur.setAttribute('result', 'blur');
+    var merge = document.createElementNS(ns, 'feMerge');
+    var mn1 = document.createElementNS(ns, 'feMergeNode'); mn1.setAttribute('in', 'blur');
+    var mn2 = document.createElementNS(ns, 'feMergeNode'); mn2.setAttribute('in', 'SourceGraphic');
+    merge.appendChild(mn1); merge.appendChild(mn2);
+    filter.appendChild(blur); filter.appendChild(merge);
+    defs.appendChild(filter);
+    svg.appendChild(defs);
+    packet.setAttribute('filter', 'url(#glow)');
+    svg.appendChild(packet);
+
+    // Animation
+    var tl = gsap.timeline({ delay: 1 });
+
+    // Bars appear
+    tl.to(bars, { attr: { opacity: 0.25 }, duration: 0.3, stagger: 0.08 }, 0);
+    tl.to(labels, { attr: { opacity: 0.8 }, duration: 0.3, stagger: 0.08 }, 0.2);
+
+    // Packet appears and flows through
+    tl.to(packet, { attr: { opacity: 1 }, duration: 0.2 }, 0.8);
+    layers.forEach(function(l, i) {
+      var x = startX + i * (barW + gap) + barW/2;
+      tl.to(packet, { attr: { cx: x }, duration: 0.35, ease: 'power2.inOut' }, 1.0 + i * 0.4);
+      // Light up the bar as packet passes
+      tl.to(bars[i], { attr: { opacity: 0.7 }, duration: 0.15 }, 1.0 + i * 0.4);
+      tl.to(bars[i], { attr: { opacity: 0.25 }, duration: 0.4 }, 1.2 + i * 0.4);
+    });
+
+    // Packet exits
+    tl.to(packet, { attr: { cx: startX + totalW + 30, opacity: 0 }, duration: 0.5, ease: 'power2.in' }, 1.0 + layers.length * 0.4);
+
+    // Final state: all bars settle at medium opacity
+    tl.to(bars, { attr: { opacity: 0.4 }, duration: 0.5 }, 3.8);
+  }
+
+  if (window.gsap) { buildHeroPipeline(); }
+  else { (window.__gsapCallbacks = window.__gsapCallbacks || []).push(buildHeroPipeline); }
+})();
+</script>
 
 <nav class="sidebar" id="docSidebar">
   <div class="sidebar-title">Architecture &middot; Implemen</div>

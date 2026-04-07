@@ -327,9 +327,129 @@ th {
     <div class="finding-box">
       <p>Five laws. Five specialized agents. Each watches for a specific failure pattern in the belief-speech pipeline. <strong>None are tied to a pipeline stage.</strong> They all watch the same stream.</p>
     </div>
+    <!-- Hero viz: shield formation -->
+    <div id="hero-shield" style="margin-top:24px;max-width:400px;margin-left:auto;margin-right:auto;">
+      <svg id="hs-svg" viewBox="0 0 400 200" style="width:100%;height:auto;display:block;"></svg>
+    </div>
   </div>
   <div class="scroll-cue">&#9660; SCROLL</div>
 </div>
+
+<script>
+(function() {
+  function buildHeroShield() {
+    if (!window.gsap) return;
+    var svg = document.getElementById('hs-svg');
+    if (!svg) return;
+    var ns = 'http://www.w3.org/2000/svg';
+
+    var cx = 200, cy = 100;
+    var agents = [
+      { label: 'SLD', color: '#f472b6', angle: 0 },
+      { label: 'TD', color: '#34d399', angle: 72 },
+      { label: 'PRG', color: '#fbbf24', angle: 144 },
+      { label: 'MCG', color: '#c084fc', angle: 216 },
+      { label: 'GA', color: '#818cf8', angle: 288 }
+    ];
+
+    // Central belief state circle
+    var center = document.createElementNS(ns, 'circle');
+    center.setAttribute('cx', cx); center.setAttribute('cy', cy);
+    center.setAttribute('r', 20);
+    center.setAttribute('fill', 'rgba(255,255,255,0.04)');
+    center.setAttribute('stroke', 'rgba(255,255,255,0.15)');
+    center.setAttribute('stroke-width', '1.5');
+    svg.appendChild(center);
+
+    var centerLabel = document.createElementNS(ns, 'text');
+    centerLabel.setAttribute('x', cx); centerLabel.setAttribute('y', cy + 4);
+    centerLabel.setAttribute('text-anchor', 'middle');
+    centerLabel.setAttribute('font-family', "'IBM Plex Mono', monospace");
+    centerLabel.setAttribute('font-size', '8'); centerLabel.setAttribute('fill', '#5a6080');
+    centerLabel.textContent = 'belief';
+    svg.appendChild(centerLabel);
+
+    // Agent nodes: start orbiting, end at guard positions
+    var orbitR = 80, guardR = 55;
+    var agentEls = [];
+
+    agents.forEach(function(a, i) {
+      var startAngle = (a.angle + 90) * Math.PI / 180; // offset start
+      var sx = cx + orbitR * Math.cos(startAngle);
+      var sy = cy + orbitR * Math.sin(startAngle);
+      var endAngle = a.angle * Math.PI / 180;
+      var ex = cx + guardR * Math.cos(endAngle);
+      var ey = cy + guardR * Math.sin(endAngle);
+
+      var g = document.createElementNS(ns, 'g');
+
+      var c = document.createElementNS(ns, 'circle');
+      c.setAttribute('cx', 0); c.setAttribute('cy', 0);
+      c.setAttribute('r', 12);
+      c.setAttribute('fill', a.color);
+      c.setAttribute('opacity', '0.2');
+      g.appendChild(c);
+
+      var t = document.createElementNS(ns, 'text');
+      t.setAttribute('x', 0); t.setAttribute('y', 3.5);
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('font-family', "'IBM Plex Mono', monospace");
+      t.setAttribute('font-size', '7'); t.setAttribute('fill', '#fff');
+      t.setAttribute('font-weight', '600');
+      t.textContent = a.label;
+      g.appendChild(t);
+
+      g.setAttribute('transform', 'translate(' + sx + ',' + sy + ')');
+      svg.appendChild(g);
+      agentEls.push({ g: g, c: c, sx: sx, sy: sy, ex: ex, ey: ey, color: a.color });
+    });
+
+    // Animate
+    var tl = gsap.timeline({ delay: 0.8 });
+
+    // Phase 1: agents appear
+    agentEls.forEach(function(a) {
+      tl.to(a.c, { attr: { opacity: 0.6 }, duration: 0.3 }, 0);
+    });
+
+    // Phase 2: orbit (rotate around center)
+    agentEls.forEach(function(a, i) {
+      var angle1 = Math.atan2(a.sy - cy, a.sx - cx);
+      var orbitSteps = 8;
+      for (var s = 1; s <= orbitSteps; s++) {
+        var newAngle = angle1 + (s / orbitSteps) * Math.PI * 0.8;
+        var nx = cx + orbitR * Math.cos(newAngle);
+        var ny = cy + orbitR * Math.sin(newAngle);
+        tl.to(a.g, { attr: { transform: 'translate(' + nx.toFixed(1) + ',' + ny.toFixed(1) + ')' }, duration: 0.15, ease: 'none' }, 0.5 + s * 0.15);
+      }
+    });
+
+    // Phase 3: snap to guard positions
+    agentEls.forEach(function(a, i) {
+      tl.to(a.g, { attr: { transform: 'translate(' + a.ex.toFixed(1) + ',' + a.ey.toFixed(1) + ')' }, duration: 0.4, ease: 'back.out(1.5)' }, 2.2 + i * 0.1);
+      // Pulse on arrival
+      tl.to(a.c, { attr: { r: 16, opacity: 0.8 }, duration: 0.15, ease: 'power2.out' }, 2.3 + i * 0.1);
+      tl.to(a.c, { attr: { r: 12, opacity: 0.5 }, duration: 0.3, ease: 'power2.in' }, 2.5 + i * 0.1);
+    });
+
+    // Phase 4: connection lines from agents to center
+    agentEls.forEach(function(a, i) {
+      var line = document.createElementNS(ns, 'line');
+      line.setAttribute('x1', a.ex); line.setAttribute('y1', a.ey);
+      line.setAttribute('x2', cx); line.setAttribute('y2', cy);
+      line.setAttribute('stroke', a.color);
+      line.setAttribute('stroke-width', '1');
+      line.setAttribute('stroke-dasharray', '3,4');
+      line.setAttribute('opacity', '0');
+      svg.insertBefore(line, svg.firstChild.nextSibling); // behind agents
+      tl.to(line, { attr: { opacity: 0.3 }, duration: 0.4 }, 2.8 + i * 0.08);
+    });
+  }
+
+  if (window.gsap) { buildHeroShield(); }
+  else { (window.__gsapCallbacks = window.__gsapCallbacks || []).push(buildHeroShield); }
+})();
+</script>
 
 <nav class="sidebar" id="docSidebar">
   <div class="sidebar-title">Architecture</div>

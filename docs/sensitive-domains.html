@@ -81,9 +81,129 @@
     <div class="finding-box">
       <p><strong>Internal document.</strong> All examples are from a single user's 13-month GPT conversation history. These are real conversations, not synthetic probes. The contradictions were produced by a system with no memory of its prior advice.</p>
     </div>
+    <!-- Hero viz: diverging advice timeline -->
+    <div id="hero-diverge" style="margin-top:28px;max-width:580px;margin-left:auto;margin-right:auto;">
+      <svg id="hd-svg" viewBox="0 0 580 120" style="width:100%;height:auto;display:block;"></svg>
+    </div>
   </div>
   <div class="scroll-cue">&#9660; SCROLL</div>
 </div>
+
+<script>
+(function() {
+  function buildHeroDiverge() {
+    if (!window.gsap) return;
+    var svg = document.getElementById('hd-svg');
+    if (!svg) return;
+    var ns = 'http://www.w3.org/2000/svg';
+
+    // Timeline: center line splits into two diverging paths
+    var centerY = 60;
+
+    // Main timeline bar
+    var timeline = document.createElementNS(ns, 'line');
+    timeline.setAttribute('x1', 40); timeline.setAttribute('y1', centerY);
+    timeline.setAttribute('x2', 40); timeline.setAttribute('y2', centerY);
+    timeline.setAttribute('stroke', 'rgba(255,255,255,0.2)');
+    timeline.setAttribute('stroke-width', '2');
+    svg.appendChild(timeline);
+
+    // Time markers
+    var months = ['May', 'Aug', 'Oct', 'Dec', 'Jan', 'Feb'];
+    var positions = [80, 160, 240, 320, 400, 480];
+    var dots = [], monthLabels = [];
+
+    months.forEach(function(m, i) {
+      var d = document.createElementNS(ns, 'circle');
+      d.setAttribute('cx', positions[i]); d.setAttribute('cy', centerY);
+      d.setAttribute('r', 3); d.setAttribute('fill', '#5a6080');
+      d.setAttribute('opacity', '0');
+      svg.appendChild(d);
+      dots.push(d);
+
+      var t = document.createElementNS(ns, 'text');
+      t.setAttribute('x', positions[i]); t.setAttribute('y', centerY + 18);
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('font-family', "'IBM Plex Mono', monospace");
+      t.setAttribute('font-size', '9'); t.setAttribute('fill', '#5a6080');
+      t.setAttribute('opacity', '0');
+      t.textContent = m;
+      svg.appendChild(t);
+      monthLabels.push(t);
+    });
+
+    // Advice markers: green (moderate) vs red (quit)
+    var adviceMarkers = [
+      { x: 80, y: centerY - 20, color: '#34d399', label: 'moderate' },
+      { x: 160, y: centerY - 22, color: '#34d399', label: 'taper' },
+      { x: 320, y: centerY + 25, color: '#f87171', label: 'quit' },
+      { x: 400, y: centerY + 27, color: '#f87171', label: 'abstain' },
+      { x: 480, y: centerY - 24, color: '#fbbf24', label: 'root cause' }
+    ];
+
+    var adviceEls = [];
+    adviceMarkers.forEach(function(a) {
+      var g = document.createElementNS(ns, 'g');
+      g.setAttribute('opacity', '0');
+
+      var c = document.createElementNS(ns, 'circle');
+      c.setAttribute('cx', a.x); c.setAttribute('cy', a.y);
+      c.setAttribute('r', 4); c.setAttribute('fill', a.color);
+      g.appendChild(c);
+
+      var t = document.createElementNS(ns, 'text');
+      t.setAttribute('x', a.x); t.setAttribute('y', a.y + (a.y < centerY ? -10 : 16));
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('font-family', "'IBM Plex Mono', monospace");
+      t.setAttribute('font-size', '8'); t.setAttribute('fill', a.color);
+      t.textContent = a.label;
+      g.appendChild(t);
+
+      // Connector to timeline
+      var conn = document.createElementNS(ns, 'line');
+      conn.setAttribute('x1', a.x); conn.setAttribute('y1', centerY);
+      conn.setAttribute('x2', a.x); conn.setAttribute('y2', a.y);
+      conn.setAttribute('stroke', a.color); conn.setAttribute('stroke-width', '1');
+      conn.setAttribute('stroke-dasharray', '2,2'); conn.setAttribute('opacity', '0.4');
+      g.appendChild(conn);
+
+      svg.appendChild(g);
+      adviceEls.push(g);
+    });
+
+    // "No memory" label
+    var noMem = document.createElementNS(ns, 'text');
+    noMem.setAttribute('x', 290); noMem.setAttribute('y', 108);
+    noMem.setAttribute('text-anchor', 'middle');
+    noMem.setAttribute('font-family', "'IBM Plex Mono', monospace");
+    noMem.setAttribute('font-size', '9'); noMem.setAttribute('fill', '#f87171');
+    noMem.setAttribute('opacity', '0');
+    noMem.textContent = 'no session remembers the others';
+    svg.appendChild(noMem);
+
+    // Animate
+    var tl = gsap.timeline({ delay: 0.8 });
+
+    // Timeline grows
+    tl.to(timeline, { attr: { x2: 540 }, duration: 1.5, ease: 'power2.out' }, 0);
+
+    // Dots appear
+    tl.to(dots, { attr: { opacity: 0.8 }, duration: 0.3, stagger: 0.15 }, 0.5);
+    tl.to(monthLabels, { attr: { opacity: 0.6 }, duration: 0.3, stagger: 0.15 }, 0.6);
+
+    // Advice markers appear sequentially
+    adviceEls.forEach(function(el, i) {
+      tl.to(el, { attr: { opacity: 1 }, duration: 0.4 }, 1.5 + i * 0.5);
+    });
+
+    // "No memory" label fades in
+    tl.to(noMem, { attr: { opacity: 0.7 }, duration: 0.8 }, 3.8);
+  }
+
+  if (window.gsap) { buildHeroDiverge(); }
+  else { (window.__gsapCallbacks = window.__gsapCallbacks || []).push(buildHeroDiverge); }
+})();
+</script>
 
 <nav class="sidebar" id="docSidebar">
   <div class="sidebar-title">Sensitive Domains</div>

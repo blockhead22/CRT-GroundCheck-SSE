@@ -61,9 +61,103 @@
     <h1>Why This<br><span class="grad">Matters</span></h1>
     <p class="sub">A grounding document. Not a pep talk. A clear-eyed case for why this work exists, what external research validates it, and where the honest limits are.</p>
     <p class="byline">Nick Block &bull; Aeteros Research &bull; 2026</p>
+    <!-- Hero viz: converging evidence -->
+    <div id="hero-converge" style="margin-top:24px;max-width:500px;margin-left:auto;margin-right:auto;">
+      <svg id="hc-svg" viewBox="0 0 500 140" style="width:100%;height:auto;display:block;"></svg>
+    </div>
   </div>
   <div class="scroll-cue">&#9660; SCROLL</div>
 </div>
+
+<script>
+(function() {
+  function buildHeroConverge() {
+    if (!window.gsap) return;
+    var svg = document.getElementById('hc-svg');
+    if (!svg) return;
+    var ns = 'http://www.w3.org/2000/svg';
+
+    var cx = 250, cy = 70;
+    var sources = [
+      { label: 'BeliefShift', x: 30, y: 20, color: '#818cf8' },
+      { label: 'Suzgun', x: 30, y: 70, color: '#34d399' },
+      { label: 'Sharma', x: 30, y: 120, color: '#fbbf24' },
+      { label: 'Anthropic', x: 470, y: 20, color: '#f472b6' },
+      { label: 'MemOS', x: 470, y: 70, color: '#c084fc' },
+      { label: 'Farquhar', x: 470, y: 120, color: '#60a5fa' }
+    ];
+
+    // Center: CRT
+    var centerCirc = document.createElementNS(ns, 'circle');
+    centerCirc.setAttribute('cx', cx); centerCirc.setAttribute('cy', cy);
+    centerCirc.setAttribute('r', 24);
+    centerCirc.setAttribute('fill', 'rgba(129,140,248,0.1)');
+    centerCirc.setAttribute('stroke', '#818cf8');
+    centerCirc.setAttribute('stroke-width', '2');
+    centerCirc.setAttribute('opacity', '0');
+    svg.appendChild(centerCirc);
+
+    var centerTxt = document.createElementNS(ns, 'text');
+    centerTxt.setAttribute('x', cx); centerTxt.setAttribute('y', cy + 4);
+    centerTxt.setAttribute('text-anchor', 'middle');
+    centerTxt.setAttribute('font-family', "'IBM Plex Mono', monospace");
+    centerTxt.setAttribute('font-size', '11'); centerTxt.setAttribute('fill', '#818cf8');
+    centerTxt.setAttribute('font-weight', '700'); centerTxt.setAttribute('opacity', '0');
+    centerTxt.textContent = 'CRT';
+    svg.appendChild(centerTxt);
+
+    var srcEls = [];
+    sources.forEach(function(s) {
+      var g = document.createElementNS(ns, 'g');
+      g.setAttribute('opacity', '0');
+
+      // Arrow line
+      var line = document.createElementNS(ns, 'line');
+      line.setAttribute('x1', s.x + (s.x < cx ? 50 : -50));
+      line.setAttribute('y1', s.y);
+      line.setAttribute('x2', cx + (s.x < cx ? -28 : 28));
+      line.setAttribute('y2', cy);
+      line.setAttribute('stroke', s.color);
+      line.setAttribute('stroke-width', '1');
+      line.setAttribute('stroke-dasharray', '4,4');
+      line.setAttribute('opacity', '0.4');
+      g.appendChild(line);
+
+      // Label
+      var t = document.createElementNS(ns, 'text');
+      t.setAttribute('x', s.x); t.setAttribute('y', s.y + 4);
+      t.setAttribute('text-anchor', s.x < cx ? 'start' : 'end');
+      t.setAttribute('font-family', "'IBM Plex Mono', monospace");
+      t.setAttribute('font-size', '9'); t.setAttribute('fill', s.color);
+      t.setAttribute('font-weight', '500');
+      t.textContent = s.label;
+      g.appendChild(t);
+
+      svg.appendChild(g);
+      srcEls.push(g);
+    });
+
+    // Animate
+    var tl = gsap.timeline({ delay: 0.6 });
+
+    // Center appears
+    tl.to(centerCirc, { attr: { opacity: 1 }, duration: 0.5 }, 0);
+    tl.to(centerTxt, { attr: { opacity: 1 }, duration: 0.5 }, 0.2);
+
+    // Sources converge
+    srcEls.forEach(function(el, i) {
+      tl.to(el, { attr: { opacity: 1 }, duration: 0.5 }, 0.8 + i * 0.25);
+    });
+
+    // Center pulses
+    tl.to(centerCirc, { attr: { r: 28 }, duration: 0.3, ease: 'power2.out' }, 2.8);
+    tl.to(centerCirc, { attr: { r: 24 }, duration: 0.5, ease: 'elastic.out(1,0.5)' }, 3.1);
+  }
+
+  if (window.gsap) { buildHeroConverge(); }
+  else { (window.__gsapCallbacks = window.__gsapCallbacks || []).push(buildHeroConverge); }
+})();
+</script>
 
 <nav class="sidebar" id="docSidebar">
   <div class="sidebar-title">Why This Matters</div>
