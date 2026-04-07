@@ -1,9 +1,108 @@
 /*
  * Aether Docs — Shared JS
- * Auto-sidebar generation, theme toggle, scroll spy.
+ * Cross-doc nav injection, auto-sidebar, theme toggle, scroll spy, prev/next pager.
  * Include before </body> in every doc.
  */
 (function() {
+
+  // ── Doc manifest (reading order) ──
+  var DOCS = [
+    { href: 'index.html',                label: 'Home',                 group: null },
+    { href: 'contradiction-density.html',label: 'Contradiction Density',group: 'Research' },
+    { href: 'continuity-blind.html',     label: 'Continuity Blind',     group: 'Research' },
+    { href: 'whitepaper.html',           label: 'Whitepaper',           group: 'Research' },
+    { href: 'immune-agents.html',        label: 'Immune Agents',        group: 'Research' },
+    { href: 'experiments.html',          label: 'Experiments',          group: 'Research' },
+    { href: 'architecture.html',         label: 'Architecture',         group: 'Theory' },
+    { href: 'cascade-complexity.html',   label: 'Cascade Complexity',   group: 'Theory' },
+    { href: 'geometric-memory.html',     label: 'Geometric Memory',     group: 'Theory' },
+    { href: 'variance-probing.html',     label: 'Variance Probing',     group: 'Theory' },
+    { href: 'variance-landscape.html',   label: 'Variance Landscape',   group: 'Theory' },
+    { href: 'emotion-governance.html',   label: 'Emotion Governance',   group: 'Theory' },
+    { href: 'throughline.html',          label: 'Throughline',          group: 'Reference' },
+    { href: 'glossary.html',             label: 'Glossary',             group: 'Reference' },
+    { href: 'claim-evaluation-guide.html',label: 'Claim Eval Guide',   group: 'Reference' },
+  ];
+
+  // Detect subdirectory (labs/) and adjust prefix
+  var inSubdir = window.location.pathname.replace(/\\/g, '/').includes('/labs/');
+  var prefix = inSubdir ? '../' : '';
+  var currentFile = window.location.pathname.replace(/\\/g, '/').split('/').pop() || 'index.html';
+
+  // ── Inject cross-doc nav bar ──
+  function injectDocNav() {
+    var nav = document.createElement('nav');
+    nav.className = 'docnav';
+
+    var home = document.createElement('a');
+    home.className = 'docnav-home';
+    home.href = prefix + 'index.html';
+    home.textContent = 'Aeteros';
+    nav.appendChild(home);
+
+    var links = document.createElement('div');
+    links.className = 'docnav-links';
+
+    var lastGroup = null;
+    DOCS.forEach(function(doc) {
+      if (doc.href === 'index.html') return; // home already shown
+      if (doc.group !== lastGroup && lastGroup !== null) {
+        var sep = document.createElement('div');
+        sep.className = 'docnav-sep';
+        links.appendChild(sep);
+      }
+      lastGroup = doc.group;
+      var a = document.createElement('a');
+      a.href = prefix + doc.href;
+      a.textContent = doc.label;
+      if (doc.href === currentFile) a.classList.add('docnav-active');
+      links.appendChild(a);
+    });
+
+    nav.appendChild(links);
+    document.body.insertBefore(nav, document.body.firstChild);
+  }
+
+  // ── Inject prev/next pager into main ──
+  function injectPager() {
+    var main = document.querySelector('main.main');
+    if (!main) return;
+    // Only for docs in the manifest
+    var idx = DOCS.findIndex(function(d) { return d.href === currentFile; });
+    if (idx === -1) return;
+    var prev = idx > 0 ? DOCS[idx - 1] : null;
+    var next = idx < DOCS.length - 1 ? DOCS[idx + 1] : null;
+    if (!prev && !next) return;
+
+    var pager = document.createElement('div');
+    pager.className = 'doc-pager';
+
+    if (prev) {
+      var pa = document.createElement('a');
+      pa.href = prefix + prev.href;
+      pa.innerHTML =
+        '<span class="doc-pager-dir">&larr; Previous</span>' +
+        '<span class="doc-pager-title">' + prev.label + '</span>';
+      pager.appendChild(pa);
+    } else {
+      pager.appendChild(document.createElement('span')); // spacer
+    }
+
+    if (next) {
+      var na = document.createElement('a');
+      na.href = prefix + next.href;
+      na.className = 'doc-pager-next';
+      na.innerHTML =
+        '<span class="doc-pager-dir">Next &rarr;</span>' +
+        '<span class="doc-pager-title">' + next.label + '</span>';
+      pager.appendChild(na);
+    }
+
+    main.appendChild(pager);
+  }
+
+  injectDocNav();
+  injectPager();
   var html = document.documentElement;
 
   // ── Auto-sidebar: generate links from <section> > h2 ──

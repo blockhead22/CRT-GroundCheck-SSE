@@ -690,6 +690,287 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
 </div><!-- end container -->
 
+<!-- ===== SECTION 8: DENSITY DEEP-DIVE ===== -->
+<section>
+  <span class="section-number">Section 8</span>
+  <h2>Contradiction Density: Corpus Deep-Dive</h2>
+  <div class="accent-line"></div>
+
+  <div class="remark">
+    <strong>Empirical update (April 7, 2026):</strong> The following findings were produced by a direct corpus query against <code>data/chatgpt_consistency.db</code> (8,544 v1 contradiction pairs across 23 topics) and <code>data/chatgpt_drift.db</code> (drift scatter across model versions). These are raw corpus measurements, not v2-filtered results.
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value pink">8,544</div>
+      <div class="stat-label">v1 Contradiction Pairs</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value warn">9.5%</div>
+      <div class="stat-label">Hard Contradictions (sim &lt; 0.20)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value purple">55.3%</div>
+      <div class="stat-label">v2-Flagged (sim &lt; 0.35)</div>
+    </div>
+  </div>
+
+  <h3>Finding 1 — Topic Density Is Domain-Structural, Not Volume-Driven</h3>
+  <p>Normalizing contradiction pairs by thread count removes the volume effect and reveals which topics are structurally contradiction-dense regardless of how much the user discussed them.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Topic</th>
+          <th>Pairs</th>
+          <th>Threads</th>
+          <th>Density (pairs/thread)</th>
+          <th>Hard (sim &lt; 0.20)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Creativity &amp; artistic expression</strong></td><td>985</td><td>46</td><td><strong style="color:#f87171">21.4</strong></td><td>132</td></tr>
+        <tr><td><strong>How to pitch yourself &amp; your work</strong></td><td>824</td><td>42</td><td><strong style="color:#f87171">19.6</strong></td><td>115</td></tr>
+        <tr><td><strong>Imposter syndrome &amp; self-doubt</strong></td><td>862</td><td>44</td><td><strong style="color:#f87171">19.6</strong></td><td>41</td></tr>
+        <tr><td>Consciousness &amp; awareness</td><td>717</td><td>44</td><td>16.3</td><td>16</td></tr>
+        <tr><td>What makes life meaningful</td><td>559</td><td>35</td><td>16.0</td><td>48</td></tr>
+        <tr><td>Stress &amp; burnout</td><td>539</td><td>34</td><td>15.9</td><td>59</td></tr>
+        <tr><td>Managing anxiety</td><td>343</td><td>27</td><td>12.7</td><td>80</td></tr>
+        <tr><td>When to quit vs persevere</td><td>77</td><td>13</td><td>5.9</td><td>10</td></tr>
+        <tr><td>Financial advice</td><td>77</td><td>13</td><td>5.9</td><td>7</td></tr>
+        <tr><td><strong>Freelancing vs employment</strong></td><td>39</td><td>10</td><td><strong style="color:#34d399">3.9</strong></td><td>9</td></tr>
+        <tr><td><strong>Cannabis use &amp; effects</strong></td><td>19</td><td>7</td><td><strong style="color:#34d399">2.7</strong></td><td>1</td></tr>
+      </tbody>
+    </table>
+    <p class="table-caption">Table 3. Contradiction density (pairs per thread) across selected topics. Identity and creative domains are 5&times; denser than concrete practical domains.</p>
+  </div>
+
+  <div class="quote-block">
+    <p>Identity and creative topics are 5&ndash;8&times; denser than concrete practical topics. This is not a usage-frequency effect — it reflects that opinion-laden, self-referential domains produce more divergent outputs from a memoryless system than factual or procedural ones. The domains where users seek ongoing guidance about <em>who they are</em> are precisely the domains where the contradiction pressure is highest.</p>
+  </div>
+
+  <h3>Finding 2 — Newer Models Reduce Scatter but Not Hard Contradiction Rate</h3>
+  <p>Cross-referencing contradiction pairs with drift scatter data reveals a counterintuitive model trajectory: newer model generations show markedly lower embedding-space scatter (more positionally consistent responses), yet their hard contradiction rates do not follow the same trend.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Drift Scatter</th>
+          <th>Contradiction Pairs</th>
+          <th>Hard Rate (sim &lt; 0.20)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>gpt-4o</code></td><td>0.605</td><td>3,504</td><td>6.8%</td></tr>
+        <tr><td><code>gpt-5-2</code></td><td>0.517</td><td>851</td><td>12.6%</td></tr>
+        <tr><td><code>gpt-5-2-thinking</code></td><td>0.477</td><td>620</td><td>15.3%</td></tr>
+        <tr><td><code>gpt-5-1</code></td><td>0.342</td><td>522</td><td>7.3%</td></tr>
+        <tr><td><code>gpt-5-4-thinking</code></td><td>0.281</td><td>338</td><td>14.2%</td></tr>
+        <tr><td><code>gpt-5-1-thinking</code></td><td>0.136</td><td>179</td><td><strong style="color:#f87171">20.1%</strong></td></tr>
+        <tr><td><code>gpt-5-3</code></td><td>0.104</td><td>279</td><td>10.8%</td></tr>
+        <tr><td><code>gpt-4-1</code></td><td>0.268</td><td>315</td><td>5.4%</td></tr>
+      </tbody>
+    </table>
+    <p class="table-caption">Table 4. Drift scatter vs hard contradiction rate by model. Scatter decreases with newer models; hard contradiction rate does not track linearly.</p>
+  </div>
+
+  <p>The thinking models (gpt-5-1-thinking at 20.1%, gpt-5-2-thinking at 15.3%, gpt-5-4-thinking at 14.2%) consistently show elevated hard contradiction rates despite lower scatter. A plausible interpretation: thinking models are more internally consistent on average, but when they do diverge, the divergence is more extreme &mdash; reflecting higher commitment to conclusions within a session. Without cross-session memory, that conviction amplifies contradictions rather than preventing them.</p>
+
+  <div class="remark">
+    <strong>Caveat:</strong> gpt-4o has 3,504 pairs (41% of all v1 pairs) and is the most reliable estimate. Thinking-model counts (179&ndash;620 pairs) are smaller and conclusions should be treated as directional rather than settled.
+  </div>
+
+  <h3>Finding 3 — Time Is the Primary Amplifier</h3>
+  <p>The sharpest single finding in the corpus: hard contradiction rate nearly doubles when the time gap between two responses exceeds three months.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Time Gap Between Responses</th>
+          <th>Pairs</th>
+          <th>Mean Similarity</th>
+          <th>Hard Contradiction Rate</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Same day</td><td>67</td><td>0.358</td><td>7.5%</td></tr>
+        <tr><td>Within one week</td><td>479</td><td>0.357</td><td>6.9%</td></tr>
+        <tr><td>Within one month</td><td>1,518</td><td>0.350</td><td>6.3%</td></tr>
+        <tr><td>1–3 months</td><td>2,325</td><td>0.346</td><td>7.1%</td></tr>
+        <tr><td><strong>3+ months</strong></td><td><strong>4,155</strong></td><td><strong>0.311</strong></td><td><strong style="color:#f87171">12.4%</strong></td></tr>
+      </tbody>
+    </table>
+    <p class="table-caption">Table 5. Hard contradiction rate by time gap between paired responses. The failure mode amplifies with time.</p>
+  </div>
+
+  <div class="quote-block">
+    <p>A stateless system does not just fail to improve with use &mdash; it <em>gets worse</em>. At short time gaps, the hard contradiction rate hovers around 7%. At 3+ months it climbs to 12.4%. This is structural: the longer a user relies on the system for recurring guidance, the more extreme the divergence between their received advice becomes.</p>
+  </div>
+
+  <p>This finding directly validates the use-case concern: <strong>AI systems used for ongoing personal support over months are exposed to exactly the time horizons where failure is most acute</strong>. The users most likely to experience consequential harm are not first-time users &mdash; they are long-term users with established reliance patterns.</p>
+
+  <div class="impl-block">
+    <span class="impl-label">Implication for Law 6</span>
+    <p>The temporal amplification finding strengthens the case for Law 6 as a minimum requirement: <em>confidence must not exceed continuity</em>. As time increases, so does contradiction pressure. A system with no memory of prior stances should express decreasing confidence on recurring topics as session age grows &mdash; the opposite of what the data shows.</p>
+  </div>
+</section>
+
+<!-- ===== SECTION 9: v1 → v2 FILTER COMPARISON ===== -->
+<section>
+  <span class="section-number">Section 9</span>
+  <h2>v1 &rarr; v2 Filter Comparison: What the Noise Was</h2>
+  <div class="accent-line"></div>
+
+  <div class="remark">
+    <strong>Empirical update (April 7, 2026):</strong> Direct comparison of v1 (cosine-only, 97 pairs, 12 topics) vs v2 (query-similarity filter, 453 surviving from 40,200 candidates, 37 topics). All 12 v1 topics are present in v2 with expanded thread counts.
+  </div>
+
+  <p>The v1 harness identified response pairs by topic similarity alone: if two assistant responses were on the same topic and their embeddings fell below a similarity threshold, they were flagged. The v2 harness adds a prior step — pairs are rejected if the user queries themselves are too similar in embedding space, ensuring both responses are answering the same intent, not just covering the same domain.</p>
+
+  <p>The effect is dramatic: <strong>98.9% of v1-style candidate pairs are eliminated by the query filter</strong>. Of the 40,200 topic-level candidates in v2, only 453 survive (1.1%). This is the noise floor v1 was measuring.</p>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value pink">98.9%</div>
+      <div class="stat-label">Candidate Pairs Filtered by Query Check</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value warn">10.4%</div>
+      <div class="stat-label">Genuine Contradictions (of v2 survivors)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value purple">0.117%</div>
+      <div class="stat-label">Genuine Contradictions / All Candidates</div>
+    </div>
+  </div>
+
+  <h3>What v2 Filtering Reveals About v1 Risk Scores</h3>
+  <p>For the 12 topics present in both versions, v2 significantly revises the risk picture. The table below shows v1 gaslighting risk (which included query-intent noise) vs v2 contradiction rate (intent-controlled):</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Topic</th>
+          <th>v1 Risk Score</th>
+          <th>v2 Contra Rate</th>
+          <th>Signal Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>How to prioritize project work</td><td>0.529</td><td><strong style="color:#f87171">0.444</strong></td><td><span class="status-confirmed">Signal holds</span></td></tr>
+        <tr><td>When to quit vs keep going</td><td>0.390</td><td><strong style="color:#f87171">0.389</strong></td><td><span class="status-confirmed">Signal holds</span></td></tr>
+        <tr><td>Whether startup vs employment</td><td>0.524</td><td><strong style="color:#f87171">0.222</strong></td><td><span class="status-provisional">Reduced but present</span></td></tr>
+        <tr><td>Substance use &amp; sobriety</td><td>0.471</td><td><strong style="color:#fbbf24">0.250</strong></td><td><span class="status-provisional">Reduced but present</span></td></tr>
+        <tr><td>Career direction &amp; job advice</td><td>0.494</td><td>0.143</td><td><span class="status-provisional">Reduced</span></td></tr>
+        <tr><td>Mental health &amp; anxiety</td><td>0.505</td><td>0.167</td><td><span class="status-provisional">Reduced</span></td></tr>
+        <tr><td>Architecture decisions (AI)</td><td>0.389</td><td>0.111</td><td><span class="status-provisional">Reduced</span></td></tr>
+        <tr><td>Financial planning</td><td>0.466</td><td>0.067</td><td><span class="status-killed">Mostly noise</span></td></tr>
+        <tr><td>Self worth &amp; confidence</td><td>0.521</td><td>0.000</td><td><span class="status-killed">Query-intent noise</span></td></tr>
+        <tr><td>Relationship &amp; dating advice</td><td>0.401</td><td>0.000</td><td><span class="status-killed">Query-intent noise</span></td></tr>
+        <tr><td>Which technology stack to use</td><td>0.467</td><td>0.000</td><td><span class="status-killed">Query-intent noise</span></td></tr>
+        <tr><td><strong>Is this project worth continuing</strong></td><td><strong>0.561</strong></td><td><strong>0.000</strong></td><td><span class="status-killed">Highest v1 risk = noise</span></td></tr>
+      </tbody>
+    </table>
+    <p class="table-caption">Table 6. Direct v1 vs v2 comparison for all 12 shared topics. v1 risk scores include query-intent noise; v2 contradiction rate is intent-controlled. Topics with zero v2 rate had high v1 scores due to users asking about the same <em>domain</em> but different <em>questions</em>.</p>
+  </div>
+
+  <div class="quote-block">
+    <p>The highest-scoring v1 topic &mdash; "is this project worth continuing" (risk 0.561) &mdash; drops to zero genuine contradictions in v2. The responses that appeared contradictory were answering different project-specific questions under a shared topic label. This is not a failure of the original finding: it reveals precisely the kind of noise that query-intent filtering is designed to separate from structural contradiction.</p>
+  </div>
+
+  <h3>v2 Surviving Pair Taxonomy</h3>
+  <p>Of the 453 pairs that survive v2's query filter, the breakdown by contradiction type clarifies what kind of disagreement remains after noise removal:</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Pairs</th>
+          <th>% of Survivors</th>
+          <th>Avg Risk Score</th>
+          <th>Interpretation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>scope_context_variation</code></td><td>240</td><td>53.0%</td><td>0.181</td><td>Same question, response scope differs (appropriate drift)</td></tr>
+        <tr><td><code>insufficient_evidence</code></td><td>100</td><td>22.1%</td><td>0.275</td><td>Both responses hedge but diverge on framing</td></tr>
+        <tr><td><code>temporal_update</code></td><td>51</td><td>11.3%</td><td>0.210</td><td>Stance shifts plausibly explained by changed context</td></tr>
+        <tr><td><code>genuine_contradiction</code></td><td><strong>47</strong></td><td><strong>10.4%</strong></td><td><strong>0.325</strong></td><td>Direct stance reversal on same intent — highest risk</td></tr>
+        <tr><td><code>framing_variation</code></td><td>15</td><td>3.3%</td><td>0.092</td><td>Stylistic difference, not semantic disagreement</td></tr>
+      </tbody>
+    </table>
+    <p class="table-caption">Table 7. v2 surviving pair taxonomy. Of 453 intent-matched pairs, 47 (10.4%) are genuine contradictions with avg risk score 0.325 &mdash; the highest of any category. Genuine contradictions are concentrated in decision-heavy topics.</p>
+  </div>
+
+  <div class="impl-block">
+    <span class="impl-label">Implication for v1 Interpretation</span>
+    <p>v1 numbers are upper bounds, not exact rates. The v1 methodology correctly identifies <em>which domains are high-risk</em> (the rank ordering is structurally valid) but overstates contradiction rates by approximately 2&ndash;4&times; due to topic-boundary ambiguity. The corrected v2 genuine contradiction rate for matched pairs is 10.4%. When multiplied back to the full candidate pool, it represents 0.117% of all cross-session pairs &mdash; but concentrated in the domains users most rely on for personal guidance.</p>
+  </div>
+</section>
+
+<!-- ===== SECTION 10: ARC-LEVEL CONTRADICTION ===== -->
+<section>
+  <span class="section-number">Section 10</span>
+  <h2>Arc-Level Contradiction: The Multi-Turn Blind Spot</h2>
+  <div class="accent-line"></div>
+
+  <div class="remark">
+    <strong>Empirical update (April 7, 2026):</strong> Arc-level analysis run across 200 multi-turn conversations (6+ assistant turns) from <code>data/chatgpt_corpus.db</code>. Stance flip detection via lexical polarity markers across turn pairs.
+  </div>
+
+  <p>Both v1 and v2 are <em>pairwise</em> methods: they compare two responses to the same query. But multi-turn conversations create a third failure mode that pairwise comparison cannot see: stance reversals that only become visible when three or more turns on the same topic are considered together.</p>
+
+  <p>A model might say "you should pursue this" in turn 3, elaborate on the same direction in turns 5 and 7, then say "avoid this" in turn 11 in a different conversational register &mdash; without any single pair registering as a contradiction. The arc is internally inconsistent, but each adjacent transition looks plausible.</p>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value pink">59.5%</div>
+      <div class="stat-label">Long Conversations with Arc Stance Flips</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value warn">93%</div>
+      <div class="stat-label">Flips Spanning 3+ Turns (pairwise-invisible)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value purple">40.1</div>
+      <div class="stat-label">Mean Turn Gap Between Flip Pairs</div>
+    </div>
+  </div>
+
+  <h3>Methodology</h3>
+  <p>For each conversation with 6+ assistant turns, we identify sentence-level stance markers: positive prescriptions ("you should", "go ahead", "definitely", "highly recommend") and negative prescriptions ("avoid", "you should not", "not recommended", "think twice"). A flip is recorded when a positive-stance sentence and a negative-stance sentence in the same conversation share 2+ non-stopword content words, indicating they are addressing the same topic.</p>
+
+  <div class="remark">
+    <strong>Methodology caveat:</strong> This detection is intentionally broad and includes false positives. Technical conversations (e.g., API route changes) can trigger flips via shared vocabulary with no genuine semantic contradiction. The 59.5% rate is an upper bound; the arc-level structure finding holds independent of the exact precision rate, since 93% of flips spanning 3+ turns is the key invariant.
+  </div>
+
+  <h3>Finding: Pairwise Methods Miss Most of the Arc Signal</h3>
+  <p>Of all detected stance flips across 200 long conversations:</p>
+  <ul>
+    <li><strong>4%</strong> occur at turn gap = 1 (adjacent turns — easily caught by any pairwise method)</li>
+    <li><strong>93%</strong> occur at turn gap &ge; 3 (invisible to adjacent pairwise comparison)</li>
+    <li><strong>87%</strong> occur at turn gap &ge; 5 (median gap: 29 turns)</li>
+  </ul>
+
+  <div class="quote-block">
+    <p>Pairwise comparison detects the surface of the contradiction problem. Arc-level analysis shows the depth. In a long personal support conversation, a model that reverses its stance over 30 turns is effectively giving different life advice to the same person &mdash; but no single comparison would flag it. The user accumulates inconsistency they cannot see unless they read the full transcript.</p>
+  </div>
+
+  <h3>Arc Contradiction Is Invisible to Users</h3>
+  <p>There is an additional dimension: in long conversations, users are unlikely to scroll back to earlier turns. The model's stance in turn 3 is functionally gone by turn 30 &mdash; from the user's perspective as well as the model's. This creates a scenario where both parties behave as if the earlier advice never existed, compounding rather than resolving the inconsistency over time.</p>
+
+  <div class="impl-block">
+    <span class="impl-label">Implication: New Detection Requirement</span>
+    <p>Arc-level contradiction detection requires maintaining a belief state across turns, not just comparing adjacent responses. This is precisely what CRT's continuity detection layer is designed to do: track stance across a conversation thread and flag when the accumulated trajectory diverges from earlier positions. The v2 harness addresses inter-session pairs; intra-session arc monitoring is the next research target.</p>
+  </div>
+</section>
+
 <!-- ===== FOOTER ===== -->
 </main>
 <div class="footer">
