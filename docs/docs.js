@@ -149,9 +149,36 @@
     }
   }
 
+  // ── Inject standard footer (replaces any existing .footer div) ──
+  function injectFooter() {
+    // Remove all existing footers
+    var old = document.querySelectorAll('.footer');
+    old.forEach(function(el) { el.remove(); });
+
+    var footer = document.createElement('div');
+    footer.className = 'footer';
+
+    // Build link list from DOCS manifest
+    var links = DOCS.filter(function(d) { return d.href !== currentFile; })
+      .slice(0, 8)
+      .map(function(d) { return '<a href="' + prefix + d.href + '">' + d.label + '</a>'; })
+      .join(' &middot; ');
+
+    footer.innerHTML = links + '<br><br>&copy; 2026 Aeteros Research';
+
+    // Insert after </main> closing, inside .page-layout
+    var pageLayout = document.querySelector('.page-layout');
+    if (pageLayout) {
+      pageLayout.appendChild(footer);
+    } else {
+      document.body.appendChild(footer);
+    }
+  }
+
   injectBootstrap();
   injectDocNav();
   injectPager();
+  injectFooter();
   // Run bootstrapify after DOM is settled
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', bootstrapify);
