@@ -67,7 +67,7 @@ export type StreamCallbacks = {
   onIntentPreview?: (intent: string, slots: string[], label: string) => void
   onIntentClassified?: (intent: string, route: string, slots: Record<string, unknown>, confidence: number, source?: string) => void
   onPlanReady?: (steps: Array<{ tool: string; input: Record<string, unknown> }>) => void
-  onToolStart?: (toolName: string, input: Record<string, unknown>, stepIndex: number) => void
+  onToolStart?: (toolName: string, input: Record<string, unknown>, stepIndex: number, metadata?: Record<string, unknown>) => void
   onToolResult?: (step: AgentStep) => void
   onValidateResult?: (conflicts: unknown[], gate: string) => void
   onTaskDone?: (answer: string, steps: AgentStep[], metadata: Record<string, unknown>) => void
@@ -78,7 +78,7 @@ export type StreamCallbacks = {
   onOrchestrationDone?: (mergedTrust: number, allOk: boolean, metadata: Record<string, unknown>) => void
   onAgentCheckpoint?: (message: string, metadata: Record<string, unknown>) => void
   onTaskCancelled?: (message: string) => void
-  onAgentThinkingToken?: (token: string, step: string) => void
+  onAgentThinkingToken?: (token: string, step: string, metadata?: Record<string, unknown>) => void
   onAgentLoopStart?: (toolsAvailable: string[], maxIterations: number) => void
   onAgentLoopComplete?: (toolsUsed: string[], iterations: number, totalDurationMs: number) => void
   onThinkingStart?: () => void
@@ -129,8 +129,8 @@ export function dispatchStreamEvent(event: StreamEvent, callbacks: StreamCallbac
       break
     }
     case 'tool_start': {
-      const meta = event.metadata as { tool_name?: string; input?: Record<string, unknown>; step_index?: number } | undefined
-      callbacks.onToolStart?.(meta?.tool_name ?? '', meta?.input ?? {}, meta?.step_index ?? 0)
+      const meta = event.metadata as { tool_name?: string; input?: Record<string, unknown>; step_index?: number; is_subagent?: boolean; subagent_task?: string } | undefined
+      callbacks.onToolStart?.(meta?.tool_name ?? '', meta?.input ?? {}, meta?.step_index ?? 0, event.metadata)
       break
     }
     case 'tool_result': {
@@ -180,8 +180,8 @@ export function dispatchStreamEvent(event: StreamEvent, callbacks: StreamCallbac
       callbacks.onTaskCancelled?.(event.content)
       break
     case 'agent_thinking_token': {
-      const meta = event.metadata as { step?: string; alignment?: number } | undefined
-      callbacks.onAgentThinkingToken?.(event.content, meta?.step ?? 'generate_answer')
+      const meta = event.metadata as { step?: string; alignment?: number; is_subagent?: boolean; subagent_task?: string } | undefined
+      callbacks.onAgentThinkingToken?.(event.content, meta?.step ?? 'generate_answer', event.metadata)
       if (meta?.alignment != null && meta.alignment < 0.3) {
         callbacks.onEpistemicEvent?.('drift', event.content.slice(0, 80), { alignment: meta.alignment })
       }

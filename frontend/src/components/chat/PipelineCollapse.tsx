@@ -13,11 +13,11 @@ import type { MascotAnimation } from '../AetherMascot'
 // ─────────────────────────────────────────────────────────────
 
 export type PipelineStep =
-  | { kind: 'thinking'; content: string; alignment?: number }
-  | { kind: 'tool'; result: ToolResult }
+  | { kind: 'thinking'; content: string; alignment?: number; isSubagent?: boolean; subagentTask?: string }
+  | { kind: 'tool'; result: ToolResult; isSubagent?: boolean; subagentTask?: string }
   | { kind: 'trust_shift'; shift: TrustShift }
   | { kind: 'retrieval'; memories: Array<RetrievalMemory>; edges?: RetrievalEdge[] }
-  | { kind: 'status'; content: string }
+  | { kind: 'status'; content: string; isSubagent?: boolean }
   | { kind: 'epistemic'; eventType: 'drift' | 'contradiction'; content: string; alignment?: number; avgAlignment?: number; stepA?: number; stepB?: number }
 
 type RetrievalMemory = {
@@ -27,8 +27,8 @@ type RetrievalMemory = {
 type RetrievalEdge = { from: string; to: string; sim: number }
 
 type AgentLoopItem =
-  | { kind: 'thinking'; content: string; alignment?: number; index: number }
-  | { kind: 'tool'; result: ToolResult; index: number }
+  | { kind: 'thinking'; content: string; alignment?: number; index: number; isSubagent?: boolean; subagentTask?: string }
+  | { kind: 'tool'; result: ToolResult; index: number; isSubagent?: boolean; subagentTask?: string }
   | { kind: 'epistemic'; eventType: 'drift' | 'contradiction'; content: string; alignment?: number; avgAlignment?: number; stepA?: number; stepB?: number; index: number }
 
 // ─────────────────────────────────────────────────────────────
@@ -66,10 +66,10 @@ function groupSteps(steps: PipelineStep[]) {
         break
       }
       case 'thinking':
-        agentLoop.push({ kind: 'thinking', content: step.content, alignment: step.alignment, index: agentIdx++ })
+        agentLoop.push({ kind: 'thinking', content: step.content, alignment: step.alignment, index: agentIdx++, isSubagent: step.isSubagent, subagentTask: step.subagentTask })
         break
       case 'tool':
-        agentLoop.push({ kind: 'tool', result: step.result, index: agentIdx++ })
+        agentLoop.push({ kind: 'tool', result: step.result, index: agentIdx++, isSubagent: step.isSubagent, subagentTask: step.subagentTask })
         break
       case 'epistemic':
         agentLoop.push({ kind: 'epistemic', eventType: step.eventType, content: step.content, alignment: step.alignment, avgAlignment: step.avgAlignment, stepA: step.stepA, stepB: step.stepB, index: agentIdx++ })
@@ -646,6 +646,141 @@ function VerificationRow({ verdict }: { verdict: string }) {
 // Section: Agent Loop
 // ─────────────────────────────────────────────────────────────
 
+function renderAgentLoopItem(item: AgentLoopItem, i: number, streaming: boolean, isLast: boolean) {
+  if (item.kind === 'thinking') {
+    return (
+      <motion.div
+        key={`think-${i}`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.15 }}
+        className="flex items-start gap-2 py-1 text-[11px] font-mono"
+      >
+        <span className="flex-shrink-0 mt-px" style={{ color: 'rgba(224,160,128,0.4)' }}>┊</span>
+        <span
+          className="italic leading-snug"
+          style={{
+            color: item.alignment != null && item.alignment < 0.35
+              ? 'rgba(212,112,88,0.6)'
+              : 'rgba(240,235,225,0.35)',
+          }}
+        >
+          {item.content.length > 80
+            ? item.content.slice(0, 80).trimEnd() + '...'
+            : item.content}
+          {streaming && isLast && (
+            <span
+              className="inline-block w-[2px] h-[0.85em] align-middle ml-0.5 animate-[blink_1s_step-end_infinite]"
+              style={{ background: 'rgba(224,160,128,0.35)' }}
+            />
+          )}
+        </span>
+        {item.alignment != null && (
+          <span
+            className="flex-shrink-0 text-[10px] ml-auto tabular-nums"
+            style={{
+              color: item.alignment < 0.35 ? 'rgba(212,112,88,0.7)'
+                : item.alignment < 0.6 ? 'rgba(212,180,80,0.5)'
+                : 'rgba(240,235,225,0.2)',
+            }}
+          >
+            {item.alignment.toFixed(2)}
+          </span>
+        )}
+      </motion.div>
+    )
+  }
+  if (item.kind === 'tool') {
+    return (
+      <motion.div
+        key={`tool-${i}`}
+        initial={{ opacity: 0, y: 3 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.15 }}
+      >
+        <ToolRow result={item.result} />
+      </motion.div>
+    )
+  }
+  return (
+    <motion.div
+      key={`ep-${i}`}
+      initial={{ opacity: 0, x: -4 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <EpistemicRow item={item} />
+    </motion.div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// Subagent group — visually nested child agent steps
+// ─────────────────────────────────────────────────────────────
+
+function SubagentGroup({
+  task,
+  items,
+  streaming,
+  globalLastIndex,
+}: {
+  task?: string
+  items: AgentLoopItem[]
+  streaming: boolean
+  globalLastIndex: number
+}) {
+  const [expanded, setExpanded] = useState(true)
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -4 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.2 }}
+      style={{
+        marginLeft: 12,
+        borderLeft: '2px solid rgba(201,164,92,0.2)',
+        paddingLeft: 8,
+        marginTop: 4,
+        marginBottom: 4,
+      }}
+    >
+      <button
+        onClick={() => setExpanded(v => !v)}
+        className="flex items-center gap-2 w-full text-left text-[11px] font-mono py-0.5 transition-opacity hover:opacity-80"
+        style={{ color: 'rgba(201,164,92,0.7)' }}
+      >
+        {expanded
+          ? <ChevronDown size={10} style={{ color: 'rgba(201,164,92,0.5)', flexShrink: 0 }} />
+          : <ChevronRight size={10} style={{ color: 'rgba(201,164,92,0.5)', flexShrink: 0 }} />
+        }
+        <span style={{ color: 'rgba(201,164,92,0.6)' }}>&#x2B21;</span>
+        <span className="tracking-wide text-[10px]">Subagent{task ? `: ${task}` : ''}</span>
+        <span className="ml-auto text-[10px]" style={{ color: 'rgba(240,235,225,0.2)' }}>
+          {items.length} step{items.length !== 1 ? 's' : ''}
+        </span>
+      </button>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.15 }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-0 mt-0.5">
+              {items.map((item, j) =>
+                renderAgentLoopItem(item, item.index, streaming, item.index === globalLastIndex)
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  )
+}
+
 function AgentLoopSection({
   items,
   streaming,
@@ -653,6 +788,28 @@ function AgentLoopSection({
   items: AgentLoopItem[]
   streaming: boolean
 }) {
+  const globalLastIndex = items.length > 0 ? items[items.length - 1].index : -1
+
+  // Build render groups: consecutive subagent items get collapsed into SubagentGroup
+  const renderGroups: Array<{ type: 'item'; item: AgentLoopItem } | { type: 'subagent'; task?: string; items: AgentLoopItem[] }> = []
+  const isSubagent = (item: AgentLoopItem) => (item.kind === 'thinking' || item.kind === 'tool') && item.isSubagent === true
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    if (isSubagent(item)) {
+      // Collect consecutive subagent items
+      const subItems: AgentLoopItem[] = [item]
+      const task = (item as any).subagentTask || undefined
+      while (i + 1 < items.length && isSubagent(items[i + 1])) {
+        i++
+        subItems.push(items[i])
+      }
+      renderGroups.push({ type: 'subagent', task, items: subItems })
+    } else {
+      renderGroups.push({ type: 'item', item })
+    }
+  }
+
   return (
     <div>
       {/* Section header */}
@@ -663,71 +820,22 @@ function AgentLoopSection({
         className="flex items-center gap-2 text-[11px] font-mono mb-1.5"
         style={{ color: '#E0A080' }}
       >
-        <span className="opacity-60">◆</span>
+        <span className="opacity-60">&#x25C6;</span>
         <span className="tracking-widest uppercase text-[10px]">Agent Loop</span>
       </motion.div>
 
       <div className="ml-3 space-y-0">
-        {items.map((item, i) =>
-          item.kind === 'thinking' ? (
-            <motion.div
-              key={`think-${i}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.15 }}
-              className="flex items-start gap-2 py-1 text-[11px] font-mono"
-            >
-              <span className="flex-shrink-0 mt-px" style={{ color: 'rgba(224,160,128,0.4)' }}>┊</span>
-              <span
-                className="italic leading-snug"
-                style={{
-                  // Color shifts from muted toward warning as alignment drops
-                  color: item.alignment != null && item.alignment < 0.35
-                    ? 'rgba(212,112,88,0.6)'
-                    : 'rgba(240,235,225,0.35)',
-                }}
-              >
-                {item.content.length > 80
-                  ? item.content.slice(0, 80).trimEnd() + '…'
-                  : item.content}
-                {streaming && i === items.length - 1 && (
-                  <span
-                    className="inline-block w-[2px] h-[0.85em] align-middle ml-0.5 animate-[blink_1s_step-end_infinite]"
-                    style={{ background: 'rgba(224,160,128,0.35)' }}
-                  />
-                )}
-              </span>
-              {item.alignment != null && (
-                <span
-                  className="flex-shrink-0 text-[10px] ml-auto tabular-nums"
-                  style={{
-                    color: item.alignment < 0.35 ? 'rgba(212,112,88,0.7)'
-                      : item.alignment < 0.6 ? 'rgba(212,180,80,0.5)'
-                      : 'rgba(240,235,225,0.2)',
-                  }}
-                >
-                  {item.alignment.toFixed(2)}
-                </span>
-              )}
-            </motion.div>
-          ) : item.kind === 'tool' ? (
-            <motion.div
-              key={`tool-${i}`}
-              initial={{ opacity: 0, y: 3 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.15 }}
-            >
-              <ToolRow result={item.result} />
-            </motion.div>
+        {renderGroups.map((group, gi) =>
+          group.type === 'subagent' ? (
+            <SubagentGroup
+              key={`sub-${gi}`}
+              task={group.task}
+              items={group.items}
+              streaming={streaming}
+              globalLastIndex={globalLastIndex}
+            />
           ) : (
-            <motion.div
-              key={`ep-${i}`}
-              initial={{ opacity: 0, x: -4 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <EpistemicRow item={item} />
-            </motion.div>
+            renderAgentLoopItem(group.item, group.item.index, streaming, group.item.index === globalLastIndex)
           )
         )}
       </div>

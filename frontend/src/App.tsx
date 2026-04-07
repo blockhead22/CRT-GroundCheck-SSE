@@ -30,7 +30,8 @@ import { RunLogPage } from './pages/RunLogPage'
 import { PipelineStepperPage } from './pages/PipelineStepperPage'
 import { newId } from './lib/id'
 import { getAetherSocket } from './lib/ws'
-import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName, authGetMe, authLogout, authSyncChats, authLoadChats, getAuthToken, updateAuthProfile, type AuthUser } from './lib/api'
+import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName, authGetMe, authLogout, authSyncChats, authLoadChats, getAuthToken, updateAuthProfile, type AuthUser, type StreamCallbacks } from './lib/api'
+import { GovernanceLayersPage } from './pages/GovernanceLayersPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { V2Page } from './pages/V2Page'
 import { DiagnosticsDrawer } from './components/chat/DiagnosticsDrawer'
@@ -48,7 +49,7 @@ export default function App() {
   // URL-synced navigation
   const navigate = useNavigate()
   const location = useLocation()
-  const validNavIds: NavId[] = ['chat', 'dashboard', 'loops', 'journal', 'jobs', 'docs', 'copilot', 'live', 'telemetry', 'settings', 'v2', 'belief-map', 'beliefs', 'pipeline-stepper']
+  const validNavIds: NavId[] = ['chat', 'dashboard', 'loops', 'journal', 'jobs', 'docs', 'copilot', 'live', 'telemetry', 'settings', 'v2', 'belief-map', 'beliefs', 'pipeline-stepper', 'governance']
   const navFromUrl = (): NavId => {
     const path = location.pathname.replace(/^\//, '').split('/')[0] || 'chat'
     return validNavIds.includes(path as NavId) ? (path as NavId) : 'chat'
@@ -129,6 +130,7 @@ export default function App() {
   const [sessionCostUsd, setSessionCostUsd] = useState(0)
   const [lastMsgCostUsd, setLastMsgCostUsd] = useState(0)
   const [useStreaming, setUseStreaming] = useState(true) // Toggle for streaming mode
+  const [useWsStreaming, setUseWsStreaming] = useState(() => localStorage.getItem('crt_ws_streaming') === 'true')
   const phaseMode = true
   const [streamPhase, setStreamPhase] = useState<string | null>(null)
   const [streamStatusLog, setStreamStatusLog] = useState<string[]>([])
@@ -911,15 +913,7 @@ export default function App() {
         streamAbortRef.current = abortController
         inflightThreadRef.current = withUser
 
-        await streamFromCrtApi({
-          threadId: withUser.id,
-          message: outgoingText,
-          generationMode,
-          cloudModelOpenAI,
-          cloudModelClaude,
-          phaseMode,
-          signal: abortController.signal,
-          callbacks: {
+        const streamCallbacks: StreamCallbacks = {
             onIntentPreview: (intent, slots, label) => {
               setIntentPreview({ intent, slots, label })
             },
@@ -937,13 +931,16 @@ export default function App() {
                 return next
               })
             },
-            onToolStart: (toolName, input, stepIndex) => {
+            onToolStart: (toolName, input, stepIndex, metadata) => {
               playMascotAnim('working')
+              const isSubagent = metadata?.is_subagent === true
+              const subagentTask = isSubagent ? String(metadata?.subagent_task || '') : undefined
               // Accumulate into pipeline steps for PipelineCollapse
               setPipelineSteps(prev => {
                 const next = [...prev, {
                   kind: 'tool' as const,
                   result: { tool: toolName, args: input as Record<string, unknown>, status: 'running' },
+                  ...(isSubagent ? { isSubagent: true, subagentTask } : {}),
                 }]
                 pipelineStepsRef.current = next
                 return next
@@ -969,14 +966,16 @@ export default function App() {
                 const last = [...prev]
                 for (let i = last.length - 1; i >= 0; i--) {
                   if (last[i].kind === 'tool') {
+                    const prev = last[i] as any
                     last[i] = {
                       kind: 'tool',
                       result: {
-                        ...(last[i] as any).result,
+                        ...prev.result,
                         result: step.output_preview ?? '',
                         durationMs: step.duration_ms,
                         status: step.status,
                       },
+                      ...(prev.isSubagent ? { isSubagent: true, subagentTask: prev.subagentTask } : {}),
                     }
                     break
                   }
@@ -1089,22 +1088,32 @@ export default function App() {
             onTaskCancelled: (message) => {
               setStreamingResponse(message)
             },
-            onAgentThinkingToken: (token, step) => {
+            onAgentThinkingToken: (token, step, metadata) => {
+              const isSubagent = step === 'spawn_agent' || metadata?.is_subagent === true
+              const subagentTask = isSubagent ? String(metadata?.subagent_task || '') : undefined
               setAgentThinkingState((prev) => {
                 if (!prev) return prev
-                if (step === 'tool_loop') {
+                if (step === 'tool_loop' || step === 'spawn_agent') {
                   const next = { ...prev, pendingReasoning: (prev.pendingReasoning ?? '') + token }
                   agentThinkingRef.current = next
                   // Also accumulate into pipeline steps as thinking stubs
                   // We merge consecutive thinking tokens into the last thinking step
                   setPipelineSteps(prevSteps => {
                     const last = prevSteps[prevSteps.length - 1]
-                    if (last && last.kind === 'thinking') {
+                    if (last && last.kind === 'thinking' && (last as any).isSubagent === isSubagent) {
                       const updated = [...prevSteps]
-                      updated[updated.length - 1] = { kind: 'thinking', content: last.content + token }
+                      updated[updated.length - 1] = {
+                        kind: 'thinking',
+                        content: last.content + token,
+                        ...(isSubagent ? { isSubagent: true, subagentTask } : {}),
+                      }
                       return updated
                     }
-                    return [...prevSteps, { kind: 'thinking' as const, content: token }]
+                    return [...prevSteps, {
+                      kind: 'thinking' as const,
+                      content: token,
+                      ...(isSubagent ? { isSubagent: true, subagentTask } : {}),
+                    }]
                   })
                   return next
                 }
@@ -1480,8 +1489,31 @@ export default function App() {
               setIntentPreview(null)
               setTaskWorking(false)
             },
-          },
-        })
+          }
+
+        // Branch: WS streaming or SSE streaming
+        const socket = getAetherSocket()
+        if (useWsStreaming && socket.connected) {
+          socket.streamChat(withUser.id, outgoingText, streamCallbacks, {
+            generationMode,
+            cloudModelOpenAI,
+            cloudModelClaude,
+            phaseMode,
+          })
+          // WS streaming is fire-and-forget (events dispatched via _dispatchToStreamCallbacks).
+          // The AbortController is not wired to WS; to cancel, disconnect or send a cancel msg.
+        } else {
+          await streamFromCrtApi({
+            threadId: withUser.id,
+            message: outgoingText,
+            generationMode,
+            cloudModelOpenAI,
+            cloudModelClaude,
+            phaseMode,
+            signal: abortController.signal,
+            callbacks: streamCallbacks,
+          })
+        }
       } else {
         // Use non-streaming API (original behavior)
         const res = await sendToCrtApi({
@@ -1921,6 +1953,8 @@ export default function App() {
                   <PipelineStepperPage />
                 ) : navActive === 'v2' ? (
                   <V2Page />
+                ) : navActive === 'governance' ? (
+                  <GovernanceLayersPage />
                 ) : navActive === 'settings' ? (
                   <SettingsPage
                     authUser={authUser}

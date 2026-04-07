@@ -18,7 +18,15 @@ import { dispatchStreamEvent, isStreamEventType, type StreamCallbacks, type Stre
 export type ClientMessage =
   | { type: 'ping' }
   | { type: 'subscribe'; channels: string[] }
-  | { type: 'chat'; thread_id: string; message: string }
+  | {
+      type: 'chat'
+      thread_id: string
+      message: string
+      generation_mode?: string | null
+      cloud_model_openai?: string | null
+      cloud_model_claude?: string | null
+      phase_mode?: boolean
+    }
 
 export type ServerEvent = {
   type: string
@@ -106,14 +114,32 @@ export class AetherSocket {
    * Stream a chat message through WS, dispatching to StreamCallbacks.
    * Drop-in replacement for streamFromCrtApi().
    */
-  streamChat(threadId: string, message: string, callbacks: StreamCallbacks): void {
+  streamChat(
+    threadId: string,
+    message: string,
+    callbacks: StreamCallbacks,
+    options?: {
+      generationMode?: string | null
+      cloudModelOpenAI?: string | null
+      cloudModelClaude?: string | null
+      phaseMode?: boolean
+    },
+  ): void {
     this.activeThreadId = threadId
     this.streamCallbacks = callbacks
 
     // Subscribe to thread events
     this.subscribeToThread(threadId)
     // Send chat
-    this.send({ type: 'chat', thread_id: threadId, message })
+    this.send({
+      type: 'chat',
+      thread_id: threadId,
+      message,
+      generation_mode: options?.generationMode ?? null,
+      cloud_model_openai: options?.cloudModelOpenAI ?? null,
+      cloud_model_claude: options?.cloudModelClaude ?? null,
+      phase_mode: options?.phaseMode,
+    })
   }
 
   subscribe(channels: string[]): void {

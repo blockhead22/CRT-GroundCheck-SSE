@@ -19,7 +19,7 @@ from starlette.websockets import WebSocketState
 
 from personal_agent.event_bus import get_event_bus
 from personal_agent.outbox import OutboxMessage, get_outbox
-from personal_agent.stream_events import make_stream_event
+from personal_agent.stream_events import make_stream_event, WS_SERVER_EVENT_TYPES
 
 logger = logging.getLogger(__name__)
 
@@ -230,6 +230,128 @@ async def _ping_loop(ws: WebSocket) -> None:
         pass
 
 
+def _parse_sse_to_dict(sse_line: str) -> Optional[dict]:
+    """Extract JSON dict from an SSE-formatted string like 'data: {...}\\n\\n'."""
+    line = sse_line.strip()
+    if line.startswith("data: "):
+        try:
+            return json.loads(line[6:])
+        except (json.JSONDecodeError, ValueError):
+            return None
+    return None
+
+
+def _build_chat_request_and_deps(
+    ws: WebSocket, data: dict, thread_id: str, message: str
+):
+    """Construct the ChatSendRequest and a minimal Request-like shim for the chat pipeline."""
+    from .models import ChatSendRequest
+
+    req = ChatSendRequest(
+        thread_id=thread_id,
+        message=message,
+        generation_mode=data.get("generation_mode"),
+        cloud_model_openai=data.get("cloud_model_openai"),
+        cloud_model_claude=data.get("cloud_model_claude"),
+        phase_mode=bool(data.get("phase_mode", False)),
+    )
+    return req
+
+
+async def _run_ws_chat(
+    ws: WebSocket, data: dict, thread_id: str, message: str
+) -> None:
+    """Bridge the synchronous SSE chat generator to the async WebSocket.
+
+    Strategy:
+    1. Build the same ChatSendRequest used by /api/chat/stream
+    2. Run generate_stream() in a thread, pushing each SSE event to an
+       asyncio.Queue as a parsed dict
+    3. Drain the queue on the async side and send JSON frames to the client
+    """
+    req = _build_chat_request_and_deps(ws, data, thread_id, message)
+
+    loop = asyncio.get_running_loop()
+    event_queue: asyncio.Queue[Optional[dict]] = asyncio.Queue()
+
+    def _generator_thread():
+        """Run in a background thread — the chat pipeline is synchronous."""
+        try:
+            # Import lazily to avoid circular imports
+            from .chat import chat_stream as _chat_stream_endpoint
+            from starlette.testclient import TestClient  # noqa: avoid
+
+            # We need a real Request object with app.state.
+            # Build a minimal ASGI scope to satisfy FastAPI's Request.
+            app = ws.app
+            scope = {
+                "type": "http",
+                "method": "POST",
+                "path": "/api/chat/stream",
+                "headers": [],
+                "query_string": b"",
+                "app": app,
+            }
+            from starlette.requests import Request as StarletteRequest
+            fake_request = StarletteRequest(scope)
+
+            from .chat_runtime import ChatStreamRuntime
+            from personal_agent.event_bus import get_event_bus
+            from personal_agent.db_utils import get_thread_session_db
+
+            _session_db = get_thread_session_db()
+            uid = None  # WS auth not yet wired; extend later
+
+            runtime = ChatStreamRuntime(
+                req=req,
+                request=fake_request,
+                authorization=None,
+                uid=uid,
+                safe_print=lambda s: logger.debug("[WS_CHAT] %s", s),
+                session_db=_session_db,
+                event_bus=get_event_bus(),
+            )
+
+            # Import the actual stream generator constructor.
+            # The /api/chat/stream endpoint wraps a local generate_stream()
+            # closure.  We replicate the same construction here by calling
+            # the endpoint and iterating the StreamingResponse body.
+            streaming_response = _chat_stream_endpoint(req, fake_request, authorization=None)
+
+            # StreamingResponse.body_iterator is our sync generator
+            for sse_chunk in streaming_response.body_iterator:
+                parsed = _parse_sse_to_dict(sse_chunk)
+                if parsed is not None:
+                    loop.call_soon_threadsafe(event_queue.put_nowait, parsed)
+        except Exception as exc:
+            logger.exception("[WS_CHAT] Generator thread error")
+            error_evt = make_stream_event("error", str(exc), allow_ws=True)
+            loop.call_soon_threadsafe(event_queue.put_nowait, error_evt)
+        finally:
+            # Sentinel: signal that the generator is done
+            loop.call_soon_threadsafe(event_queue.put_nowait, None)
+
+    # Start the generator in a background thread
+    thread = threading.Thread(target=_generator_thread, daemon=True, name=f"ws-chat-{thread_id[:8]}")
+    thread.start()
+
+    # Drain the queue and push events to the WebSocket
+    try:
+        while True:
+            event = await event_queue.get()
+            if event is None:
+                break  # generator finished
+            try:
+                if ws.client_state != WebSocketState.CONNECTED:
+                    break
+                await ws.send_json(event)
+            except Exception:
+                logger.debug("[WS_CHAT] Failed to send event, client may have disconnected")
+                break
+    except Exception:
+        logger.debug("[WS_CHAT] Queue drain interrupted")
+
+
 @router.websocket("/ws")
 async def websocket_endpoint(
     ws: WebSocket,
@@ -274,17 +396,18 @@ async def websocket_endpoint(
                 continue
 
             if msg_type == "chat":
-                thread_id = str(msg.get("thread_id") or "").strip()
+                thread_id = str(msg.get("thread_id") or "default").strip()
+                message = str(msg.get("message") or "").strip()
+                if not message:
+                    await ws.send_json(
+                        make_stream_event("error", "Empty message", allow_ws=True)
+                    )
+                    continue
                 if thread_id:
                     await registry.subscribe_to(ws, [f"thread:{thread_id}"])
-                await ws.send_json(
-                    make_stream_event(
-                        "status",
-                        "chat handler not yet wired - use /api/chat/stream",
-                        allow_ws=True,
-                        thread_id=thread_id,
-                    )
-                )
+                # Run the same chat pipeline used by SSE, bridging
+                # the sync generator to async WS via a queue.
+                await _run_ws_chat(ws, msg, thread_id, message)
                 continue
 
             await ws.send_json(

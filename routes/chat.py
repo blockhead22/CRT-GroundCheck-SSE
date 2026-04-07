@@ -4340,6 +4340,112 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             )
             result["escalation"] = _escalation_decision.to_dict()
 
+            # --- Emotional routing: advisory escalation based on conversation emotional state ---
+            try:
+                from personal_agent.emotional_router import (
+                    get_emotional_router, compute_emotional_state,
+                )
+
+                # Gather emotional signals from existing detectors
+                _emo_mood = None
+                _emo_volatility = 0.0
+                _emo_urgency = "NONE"
+                _emo_tensions = []
+                _emo_cascade_pressure = 0.0
+                _emo_held_contradictions = 0
+                _emo_drift_severity = 0.0
+
+                # Mood: detect from last assistant response in history
+                try:
+                    _last_assistant = ""
+                    for _rh in reversed(recent_history or []):
+                        if _rh.get("role") == "assistant":
+                            _last_assistant = str(_rh.get("content", ""))[:1000]
+                            break
+                    if _last_assistant:
+                        _emo_mood = _detect_response_mood(_last_assistant)
+                except Exception:
+                    pass
+
+                # Volatility: from result context if available
+                try:
+                    _emo_volatility = float(
+                        result.get("volatility_context", {}).get("volatility", 0.0)
+                        if isinstance(result.get("volatility_context"), dict)
+                        else 0.0
+                    )
+                except Exception:
+                    pass
+
+                # Urgency: from active inference if available
+                try:
+                    _ai_ctx = result.get("active_inference") or {}
+                    if isinstance(_ai_ctx, dict):
+                        _top_inq = (_ai_ctx.get("inquiries") or [None])[0] if _ai_ctx.get("inquiries") else None
+                        if _top_inq and hasattr(_top_inq, "urgency"):
+                            _emo_urgency = str(_top_inq.urgency.value).upper()
+                        elif isinstance(_top_inq, dict):
+                            _emo_urgency = str(_top_inq.get("urgency", "NONE")).upper()
+                except Exception:
+                    pass
+
+                # Held contradictions from ledger
+                try:
+                    _emo_open = engine.ledger.get_open_contradictions(limit=50)
+                    _emo_held_contradictions = sum(
+                        1 for _c in _emo_open
+                        if str(getattr(_c, "status", "")).lower() == "both"
+                    )
+                except Exception:
+                    pass
+
+                # Cascade pressure from result
+                try:
+                    _cas = result.get("cascade_result") or {}
+                    if isinstance(_cas, dict):
+                        _emo_cascade_pressure = float(_cas.get("max_pressure", 0.0))
+                except Exception:
+                    pass
+
+                # Drift severity
+                try:
+                    _drift_ctx = result.get("drift") or {}
+                    if isinstance(_drift_ctx, dict):
+                        _emo_drift_severity = float(_drift_ctx.get("alignment", 0.0))
+                except Exception:
+                    pass
+
+                _emo_state = compute_emotional_state(
+                    mood_result=_emo_mood,
+                    volatility=_emo_volatility,
+                    urgency=_emo_urgency,
+                    tensions=_emo_tensions,
+                    cascade_pressure=_emo_cascade_pressure,
+                    held_contradictions=_emo_held_contradictions,
+                    drift_severity=_emo_drift_severity,
+                )
+
+                _emo_router = get_emotional_router()
+                _emo_result = _emo_router.apply_to_decision(
+                    state=_emo_state,
+                    current_tier=_escalation_decision.start_tier,
+                    current_reason=_escalation_decision.reason,
+                )
+
+                if _emo_result["escalated"]:
+                    _escalation_decision.start_tier = _emo_result["new_tier"]
+                    _escalation_decision.reason += _emo_result["reason_suffix"]
+                    _escalation_decision.boosted = True
+                    result["escalation"] = _escalation_decision.to_dict()
+
+                result["emotional_routing"] = {
+                    "state": _emo_state.to_dict(),
+                    "recommendation": _emo_result["recommendation"].to_dict(),
+                    "escalated": _emo_result["escalated"],
+                }
+            except Exception as _emo_err:
+                logger.debug("[EMOTIONAL_ROUTING] error: %s", _emo_err)
+
             # Promote local → cloud if escalation says so
             # But respect "local_only" escalation policy — never promote
             _user_esc_policy = str(
@@ -7806,6 +7912,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                 "content": _orch_event.get("content", ""),
                                 "metadata": {
                                     "step": "spawn_agent",
+                                    "is_subagent": True,
                                     "subagent_task": _orch_event.get("subagent_task", ""),
                                 },
                             })

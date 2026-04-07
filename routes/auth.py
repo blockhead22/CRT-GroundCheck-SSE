@@ -355,6 +355,8 @@ def auth_update_settings(
         "tooling_tool_enabled_store_credential",
         "tooling_tool_enabled_web_browse",
         "tooling_tool_enabled_web_search",
+        # Streaming transport
+        "ws_streaming",  # true | false — use WebSocket instead of SSE for chat streaming
     }
 
     updated = {}

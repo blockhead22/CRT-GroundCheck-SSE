@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import math
 import sys
 import time
 from pathlib import Path
@@ -41,11 +42,108 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--out", type=Path, default=None, help="Output directory (auto-named if omitted)")
     p.add_argument("--verbose", action="store_true")
     p.add_argument("--fail-fast", action="store_true")
+    p.add_argument("--production", action="store_true",
+                   help="Score production data (no new conversations)")
+    p.add_argument("--memory-db", type=str, default=None,
+                   help="Path to crt_memory_shared.db (for --production)")
+    p.add_argument("--agent-db", type=str, default=None,
+                   help="Path to agent_runs.db (for --production)")
+    p.add_argument("--capability-probe", action="store_true",
+                   help="Run capability lab probes against a local model")
+    p.add_argument("--model", type=str, default=None,
+                   help="Model name for --capability-probe (default: gemma3:latest)")
+    p.add_argument("--categories", type=str, default=None,
+                   help="Comma-separated categories for --capability-probe")
     return p.parse_args()
+
+
+def run_production(args: argparse.Namespace) -> None:
+    """Score production databases without running new conversations."""
+    import json
+    from eval.production_scorer import ProductionScorer
+
+    memory_db = args.memory_db or str(ROOT / "personal_agent" / "crt_memory_shared.db")
+    agent_db = args.agent_db or str(ROOT / "personal_agent" / "agent_runs.db")
+
+    logger.info("Production scoring mode")
+    logger.info("  memory_db : %s", memory_db)
+    logger.info("  agent_db  : %s", agent_db)
+
+    scorer = ProductionScorer(
+        memory_db_path=memory_db,
+        agent_runs_db_path=agent_db,
+    )
+    results = scorer.score_all()
+
+    # Print results
+    print(json.dumps(results, indent=2, default=str))
+
+    # Summary table
+    print("\n-- Production Health Scores -----------------------------------------")
+    print(f"{'Dimension':<25} {'Score':>8}  Recommendations")
+    print("-" * 70)
+    for key in ["retrieval", "trust_evolution", "gate_accuracy",
+                "drift_health", "governance_bridge", "agent_performance"]:
+        entry = results.get(key, {})
+        sc = entry.get("score", float("nan"))
+        recs = entry.get("recommendations", [])
+        sc_str = f"{sc:.3f}" if not (isinstance(sc, float) and math.isnan(sc)) else "  --"
+        rec_str = recs[0] if recs else "OK"
+        print(f"{key:<25} {sc_str:>8}  {rec_str}")
+    print()
+
+    # Optionally write to file
+    if args.out:
+        out_path = Path(args.out) / "production_scores.json"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
+        logger.info("Written to %s", out_path)
+
+
+def run_capability_probe(args: argparse.Namespace) -> None:
+    """Run capability lab probes against a local model."""
+    import json
+    from personal_agent.capability_lab import CapabilityLab
+
+    model = args.model or "gemma3:latest"
+    cat_list = None
+    if args.categories:
+        cat_list = [c.strip() for c in args.categories.split(",") if c.strip()]
+
+    logger.info("Capability probe: model=%s, categories=%s", model, cat_list or "all")
+
+    lab = CapabilityLab()
+    results = lab.probe_model(model, categories=cat_list)
+
+    # Print full JSON
+    print(json.dumps(results, indent=2, default=str))
+
+    # Summary table
+    print("\n-- Capability Scores -----------------------------------------------")
+    print(f"{'Category':<25} {'Score':>8}  {'Passed':>8}  {'Total':>8}")
+    print("-" * 60)
+    for cat, info in results.get("categories", {}).items():
+        print(f"{cat:<25} {info['score']:>8.3f}  {info['passed']:>8}  {info['total']:>8}")
+    overall = results.get("overall_score", 0)
+    print("-" * 60)
+    print(f"{'OVERALL':<25} {overall:>8.3f}")
+    print()
+
+    if args.out:
+        out_path = Path(args.out) / f"capability_{model.replace(':', '_')}.json"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
+        logger.info("Written to %s", out_path)
 
 
 def main() -> None:
     args = parse_args()
+
+    if args.capability_probe:
+        return run_capability_probe(args)
+
+    if args.production:
+        return run_production(args)
 
     if args.smoke:
         args.n_turns = 20

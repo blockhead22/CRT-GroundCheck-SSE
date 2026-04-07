@@ -31,6 +31,7 @@ from .compaction import router as compaction_router
 from .gpt_logs import router as gpt_logs_router
 from .ws import router as ws_router
 from .agent_runs import router as agent_runs_router
+from .eval import router as eval_router
 
 
 def register_routes(app: FastAPI) -> None:
@@ -64,4 +65,5 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(misc_router)
     app.include_router(logs_router)
     app.include_router(agent_runs_router)
+    app.include_router(eval_router)
     app.include_router(ws_router)

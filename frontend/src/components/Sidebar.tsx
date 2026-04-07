@@ -34,6 +34,7 @@ const navSections: NavSection[] = [
   {
     heading: 'System',
     items: [
+      { id: 'governance', label: 'Governance', icon: '⛊' },
       { id: 'settings', label: 'Settings', icon: '⚙' },
       { id: 'v2', label: 'V2', icon: '▸' },
       { id: 'docs', label: 'Docs', icon: '≣', standalone: true },
