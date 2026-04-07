@@ -147,6 +147,18 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="remark">
     <strong>Next-step note:</strong> The proposed methodology upgrade is documented in <a href="plans/continuity-blind-v2-plan.md">continuity-blind-v2-plan.md</a>. That plan preserves this externally rechecked `v1` as the baseline and scopes a stricter `v2` instead of quietly rewriting the original study.
   </div>
+  <div class="remark">
+    <strong>Current v2 context (April 7, 2026):</strong> A stricter <code>v2</code> harness is now running in parallel to this page. The purpose of <code>v2</code> is not to replace the original result, but to <strong>stress-test it</strong>: tighten semantic matching between compared sessions, reduce broad same-topic false positives, expose a manual audit queue, and make the remaining evidence more defensible. The latest v2 lab reports are generated at <a href="labs/continuity-blind-v2-latest.html">labs/continuity-blind-v2-latest.html</a>.
+  </div>
+  <div class="remark">
+    <strong>Draft-statistics notice:</strong> The <code>v2</code> numbers are currently <strong>fluctuating by design</strong> because the methodology is still being calibrated. Pair counts, contradiction rates, and temporal-update rates are changing as semantic-object gating and audit ranking improve. Until manual audit is complete, those values should be read as <strong>draft research instrumentation</strong>, not settled headline metrics. The stable public baseline on this page remains the externally rechecked <code>v1</code> result.
+  </div>
+  <div class="remark">
+    <strong>Boundless claim detection added (April 7, 2026):</strong> A sentence-level scorer is now applied to each response in the <code>v2</code> audit queue. It measures whether prescriptions appear with scope guards (<em>"if you have savings…"</em>, <em>"when symptoms are severe…"</em>) or without them (<em>"you must leave"</em>, <em>"never stay"</em>). Responses that make absolute or unguarded prescriptions receive a higher <strong>boundless_risk</strong> score. This operationalizes the proposed principle on this page — <em>confidence must not exceed continuity</em> — at the token level, and makes the failure mode directly inspectable in the lab reports rather than only visible in aggregate statistics.
+  </div>
+  <div class="remark">
+    <strong>Classifier calibration probes added (April 7, 2026):</strong> The v2 harness now ships with two designed probe sets that anchor what the classifier <em>should</em> say. <strong>Invariance probes</strong> (5 topic clusters) contain rephrased versions of the same question — pairs drawn from these should not be flagged as genuine contradictions; if they are, the similarity threshold is reacting to surface variation, not conceptual change. <strong>Justified-divergence probes</strong> (5 paired prompts) contain cases where different advice is correct because the context genuinely shifted — flagging these as contradictions is a false positive. These address the limitation noted below: <em>"some variation reflects legitimate context-sensitivity."</em> Both probe sets are rendered in the v2 lab report as a reference panel alongside the audit queue.
+  </div>
 </section>
 
 <!-- ===== WHAT WE MEASURED ===== -->
@@ -156,6 +168,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <p>When a user returns to the same AI assistant across many independent sessions to discuss recurring personal topics, does the system give consistent advice? Does it know what it said before? Does it acknowledge when its guidance conflicts with prior recommendations?</p>
   <p>We analyzed a complete data export from a commercial AI assistant spanning <strong>13 months</strong> of active use (February 2025 to March 2026). The corpus contains conversations across multiple model versions, from early GPT-4o through GPT-5-series models.</p>
   <p>In the currently reproducible v1 analysis, we used hand-authored probe topics to retrieve relevant assistant responses from the normalized corpus, collapsed to one response per thread, computed pairwise semantic similarity across those cross-thread responses, and measured three dimensions: <strong>confidence</strong> (assertive vs hedging language), <strong>consistency</strong> (semantic similarity of responses on the same topic), and <strong>continuity awareness</strong> (whether the response acknowledged prior context or possible contradiction).</p>
+  <p>The ongoing <strong>v2</strong> pass keeps the same research question but changes the evidentiary standard. Instead of accepting broad topic overlap as enough, it now tries to compare responses only when the underlying user prompts are semantically aligned, records how many candidate pairs survive that gate, and surfaces the highest-risk surviving pairs for direct inspection. The purpose is to answer a narrower but more defensible question: <em>when the same kind of user problem recurs across sessions, how often does the system remain stable, contradictory, or continuity-aware?</em></p>
 </section>
 
 <!-- ===== THE FAILURE MODE ===== -->
@@ -176,6 +189,15 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <p class="mono">risk = confidence &times; (1 - similarity) &times; (1 - continuity_awareness)</p>
     <p style="margin-top: 10px;">Where continuity_awareness was measured with regex-based phrase detection for prior-context acknowledgment, possible contradiction, or changed stance. In the stored v1 run: <strong>0.0%</strong>.</p>
   </div>
+  <p>That core failure-mode claim still appears directionally intact under <code>v2</code>, but the project is now being more careful about <strong>what counts as evidence</strong>. Some earlier high-risk pairs were only loosely matched at the topic level. The current reanalysis is explicitly trying to separate three things that were previously entangled: <strong>true contradiction</strong>, <strong>legitimate temporal/context change</strong>, and <strong>weak same-vibe retrieval</strong>. That is why the current v2 statistics are moving: the project is trading rhetorical sharpness for better evidence hygiene.</p>
+</section>
+
+<section>
+  <div class="accent-line"></div>
+  <h2>Current v2 Status</h2>
+  <p><strong>v1</strong> is the frozen baseline. <strong>v2</strong> is the live reanalysis layer. At the time of writing, <code>v2</code> has already improved one major weakness in the original probe lane: it cuts down many broad same-topic pairings that do not actually answer the same user question. The cost is that some topic-level statistics now fluctuate as the semantic matching threshold is tuned and as low-quality examples drop out of the audit queue.</p>
+  <p>The current interpretation is straightforward. <code>v2</code> is not overturning the original concern. It is making the concern narrower and more defensible. The strongest emerging pattern is that instability appears to persist most clearly in <strong>actionable personal domains</strong> such as quitting vs continuing, project prioritization, business direction, financial planning, and similar recurring life-planning questions. Abstract or philosophical domains often look relatively more stable. That pattern is important, because the risk of continuity-blind contradiction scales with whether the user may actually act on the advice.</p>
+  <p>For that reason, the live <code>v2</code> lab pages should currently be read as <strong>instrument panels</strong>, not polished publication figures. They show where the method is converging, where the evidence is still weak, and which examples are surviving direct scrutiny. Once manual audit is complete on the top-risk pairs, the defensible subset of those results can be promoted back into the stable writeup.</p>
 </section>
 
 <!-- ===== RISK BY DOMAIN ===== -->
@@ -463,6 +485,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="method-card">
       <h4>Continuity Detection</h4>
       <p>Regex scan for phrases acknowledging prior context: "as I mentioned", "I may have suggested differently", "previously we discussed." In the stored v1 run, this yielded 0.0%. This should be treated as a brittle lower-bound proxy, not a semantic continuity detector.</p>
+    </div>
+    <div class="method-card">
+      <h4>Boundless Claim Scoring <span style="font-size:0.72em;color:#818cf8;font-weight:400;">(v2)</span></h4>
+      <p>Sentence-level analysis applied to each v2 audit-queue response. Detects whether prescription language (<em>"you should"</em>, <em>"you must"</em>, <em>"the right move"</em>) appears in the same sentence as a scope guard (<em>"if"</em>, <em>"when"</em>, <em>"depending on"</em>, <em>"in your case"</em>). Unguarded prescriptions and absolute quantifiers (<em>"always"</em>, <em>"never"</em>, <em>"the only way"</em>) contribute to a <code>boundless_risk</code> score (0–1). This makes the confidence-without-continuity failure mode directly measurable at the sentence level.</p>
     </div>
   </div>
 

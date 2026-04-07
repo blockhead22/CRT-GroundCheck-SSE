@@ -1,6 +1,7 @@
 import numpy as np
 
 from tools.continuity_blind_v2 import (
+    QUERY_SIMILARITY_GATE,
     _stable_top_indices,
     build_probe_topics,
     classify_pair,
@@ -88,3 +89,7 @@ def test_classify_pair_detects_scope_context_variation():
         time_b=20.0,
     )
     assert label == "scope_context_variation"
+
+
+def test_query_similarity_gate_targets_middle_ground():
+    assert 0.4 <= QUERY_SIMILARITY_GATE <= 0.55

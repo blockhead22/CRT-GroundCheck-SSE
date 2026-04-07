@@ -31,6 +31,14 @@ from tools.corpus_gaslighting import (
     HEDGE_PATTERNS,
     PROBE_TOPICS as GASLIGHTING_PROBE_TOPICS,
 )
+from tools.semantic_invariance_probes import (
+    ABSOLUTE_QUANTIFIER_PATTERNS,
+    INVARIANCE_PROBES,
+    JUSTIFIED_DIVERGENCE_PROBES,
+    PRESCRIPTION_PATTERNS,
+    SCOPE_GUARD_PATTERNS,
+    score_boundless_claims,
+)
 
 log = logging.getLogger(__name__)
 
@@ -47,6 +55,8 @@ TEXT_PREFIX_CHARS = 500
 TOP_K_PER_TOPIC = 50
 MAX_AUDIT_PAIRS = 50
 RELEVANCE_THRESHOLD = 0.30
+QUERY_SIMILARITY_GATE = 0.48
+INDEX_EMBED_BATCH_SIZE = 256
 
 SEMANTIC_CONTINUITY_PATTERNS = [
     r"\b(?:given what you(?:'ve| have) said|based on what you(?:'ve| have) described)\b",
@@ -99,6 +109,7 @@ class AssistantMessage:
     create_time: float
     model_slug: str
     char_count: int
+    prompt_text: str
 
 
 def build_probe_topics() -> List[str]:
@@ -129,29 +140,41 @@ def _stable_top_indices(scores: np.ndarray, top_k: int) -> np.ndarray:
 def _fetch_assistant_messages(corpus_conn: sqlite3.Connection) -> List[AssistantMessage]:
     rows = corpus_conn.execute(
         """
-        SELECT m.msg_id, m.conv_id, c.title, m.content, m.create_time,
-               COALESCE(m.model_slug, ''), m.char_count
+        SELECT m.msg_id, m.conv_id, c.title, m.role, m.content, m.create_time,
+               COALESCE(m.model_slug, ''), COALESCE(m.char_count, 0)
         FROM messages m
         JOIN conversations c ON m.conv_id = c.conv_id
-        WHERE m.role = 'assistant'
-          AND m.char_count > ?
-          AND m.char_count < ?
+        WHERE m.char_count IS NULL OR (m.char_count > 0 AND m.char_count < ?)
         ORDER BY m.conv_id, m.create_time, m.msg_id
         """,
-        (MIN_CHAR_COUNT, MAX_CHAR_COUNT),
+        (MAX_CHAR_COUNT,),
     ).fetchall()
-    return [
-        AssistantMessage(
-            msg_id=row[0],
-            conv_id=row[1],
-            conv_title=row[2] or "",
-            content=row[3] or "",
-            create_time=float(row[4] or 0.0),
-            model_slug=row[5] or "",
-            char_count=int(row[6] or 0),
+
+    results: List[AssistantMessage] = []
+    last_user_prompt_by_conv: Dict[str, str] = {}
+    for row in rows:
+        msg_id, conv_id, title, role, content, create_time, model_slug, char_count = row
+        content = content or ""
+        if role == "user" and content.strip():
+            last_user_prompt_by_conv[conv_id] = content
+            continue
+        if role != "assistant":
+            continue
+        if int(char_count or 0) <= MIN_CHAR_COUNT:
+            continue
+        results.append(
+            AssistantMessage(
+                msg_id=msg_id,
+                conv_id=conv_id,
+                conv_title=title or "",
+                content=content,
+                create_time=float(create_time or 0.0),
+                model_slug=model_slug or "",
+                char_count=int(char_count or 0),
+                prompt_text=last_user_prompt_by_conv.get(conv_id, ""),
+            )
         )
-        for row in rows
-    ]
+    return results
 
 
 def _load_encoder():
@@ -164,6 +187,7 @@ def _build_cache_meta(messages: Sequence[AssistantMessage]) -> Dict[str, Any]:
     return {
         "message_count": len(messages),
         "message_hash": _text_hash([m.msg_id for m in messages]),
+        "prompt_hash": _text_hash([m.prompt_text[:TEXT_PREFIX_CHARS] for m in messages]),
         "text_prefix_chars": TEXT_PREFIX_CHARS,
         "min_char_count": MIN_CHAR_COUNT,
         "max_char_count": MAX_CHAR_COUNT,
@@ -171,7 +195,7 @@ def _build_cache_meta(messages: Sequence[AssistantMessage]) -> Dict[str, Any]:
     }
 
 
-def _load_cached_index(messages: Sequence[AssistantMessage]) -> np.ndarray | None:
+def _load_cached_index(messages: Sequence[AssistantMessage]) -> tuple[np.ndarray, np.ndarray] | None:
     if not INDEX_CACHE.exists() or not INDEX_META.exists():
         return None
     try:
@@ -181,34 +205,91 @@ def _load_cached_index(messages: Sequence[AssistantMessage]) -> np.ndarray | Non
             return None
         payload = np.load(INDEX_CACHE)
         embeddings = payload["embeddings"]
+        prompt_embeddings = payload["prompt_embeddings"]
         if embeddings.shape[0] != len(messages):
             return None
-        return embeddings
+        if prompt_embeddings.shape[0] != len(messages):
+            return None
+        return embeddings, prompt_embeddings
     except Exception:
         log.warning("Failed to load continuity-blind v2 cache; rebuilding.", exc_info=True)
         return None
 
 
-def _store_cached_index(messages: Sequence[AssistantMessage], embeddings: np.ndarray) -> None:
+def _store_cached_index(
+    messages: Sequence[AssistantMessage],
+    embeddings: np.ndarray,
+    prompt_embeddings: np.ndarray,
+) -> None:
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(INDEX_CACHE, embeddings=embeddings)
+    np.savez_compressed(
+        INDEX_CACHE,
+        embeddings=embeddings,
+        prompt_embeddings=prompt_embeddings,
+    )
     INDEX_META.write_text(
         json.dumps(_build_cache_meta(messages), indent=2),
         encoding="utf-8",
     )
 
 
-def _build_embedding_index(messages: Sequence[AssistantMessage], refresh: bool = False) -> np.ndarray:
+def _build_embedding_index(
+    messages: Sequence[AssistantMessage], refresh: bool = False
+) -> tuple[np.ndarray, np.ndarray]:
     if not refresh:
         cached = _load_cached_index(messages)
         if cached is not None:
             return cached
 
     encoder = _load_encoder()
-    texts = [m.content[:TEXT_PREFIX_CHARS] for m in messages]
-    embeddings = encoder.encode_batch(texts)
-    _store_cached_index(messages, embeddings)
-    return embeddings
+    response_texts = [m.content[:TEXT_PREFIX_CHARS] for m in messages]
+    prompt_texts = [
+        (m.prompt_text or m.conv_title or "")[:TEXT_PREFIX_CHARS] for m in messages
+    ]
+    log.info(
+        "Building continuity-blind v2 embedding index for %d assistant messages (batch_size=%d)",
+        len(messages),
+        INDEX_EMBED_BATCH_SIZE,
+    )
+    embeddings = _encode_texts_chunked(
+        encoder, response_texts, label="response embeddings", batch_size=INDEX_EMBED_BATCH_SIZE
+    )
+    prompt_embeddings = _encode_texts_chunked(
+        encoder, prompt_texts, label="prompt embeddings", batch_size=INDEX_EMBED_BATCH_SIZE
+    )
+    _store_cached_index(messages, embeddings, prompt_embeddings)
+    return embeddings, prompt_embeddings
+
+
+def _encode_texts_chunked(
+    encoder,
+    texts: Sequence[str],
+    *,
+    label: str,
+    batch_size: int,
+) -> np.ndarray:
+    total = len(texts)
+    if total == 0:
+        return np.array([])
+
+    chunks: List[np.ndarray] = []
+    num_batches = (total + batch_size - 1) // batch_size
+    started = time.time()
+    for batch_idx, start in enumerate(range(0, total, batch_size), start=1):
+        end = min(start + batch_size, total)
+        log.info(
+            "  %s: batch %d/%d (%d:%d)",
+            label,
+            batch_idx,
+            num_batches,
+            start,
+            end,
+        )
+        batch = encoder.encode_batch(list(texts[start:end]))
+        chunks.append(batch)
+    elapsed = time.time() - started
+    log.info("Finished %s in %.1fs", label, elapsed)
+    return np.vstack(chunks)
 
 
 def _regex_hits(patterns: Sequence[str], text: str) -> int:
@@ -322,6 +403,9 @@ def _init_results_db(db_path: Path) -> sqlite3.Connection:
             lane TEXT NOT NULL,
             num_candidates INTEGER,
             num_threads INTEGER,
+            num_candidate_pairs INTEGER,
+            num_surviving_pairs INTEGER,
+            num_query_filtered_pairs INTEGER,
             mean_similarity REAL,
             min_similarity REAL,
             variance REAL,
@@ -414,6 +498,16 @@ def _init_results_db(db_path: Path) -> sqlite3.Connection:
         );
         """
     )
+    existing_topic_cols = {
+        row[1] for row in conn.execute("PRAGMA table_info(topic_clusters)").fetchall()
+    }
+    for column_name in (
+        "num_candidate_pairs",
+        "num_surviving_pairs",
+        "num_query_filtered_pairs",
+    ):
+        if column_name not in existing_topic_cols:
+            conn.execute(f"ALTER TABLE topic_clusters ADD COLUMN {column_name} INTEGER")
     conn.commit()
     return conn
 
@@ -465,17 +559,27 @@ def _format_float(value: float | None) -> str:
     return f"{value:.3f}"
 
 
+def _format_pair_ratio(surviving: int | None, candidate: int | None) -> str:
+    if surviving is None or candidate is None:
+        return "n/a"
+    if surviving == 0 and candidate == 0:
+        return "n/a"
+    return f"{int(surviving)} / {int(candidate)}"
+
+
 def _highlight_signal_text(text: str) -> str:
     if not text:
         return ""
 
     categories = [
+        ("signal-boundless", "Absolute / unscoped quantifier", ABSOLUTE_QUANTIFIER_PATTERNS),
+        ("signal-boundless", "Unguarded prescription", PRESCRIPTION_PATTERNS),
         ("signal-risk", "Assertive / forceful language", list(CONFIDENCE_PATTERNS) + list(ADVICE_FORCEFULNESS_PATTERNS)),
         ("signal-stabilize", "Hedging / uncertainty disclosure", HEDGE_PATTERNS),
         ("signal-govern", "Explicit continuity acknowledgment", CONTINUITY_PATTERNS),
         ("signal-govern", "Contradiction acknowledgment", CONTRADICTION_ACK_PATTERNS),
+        ("signal-context", "Scope / conditional framing", list(SCOPE_CONDITIONAL_PATTERNS) + list(SCOPE_GUARD_PATTERNS)),
         ("signal-caution", "Temporal update language", STRONG_TEMPORAL_UPDATE_PATTERNS),
-        ("signal-context", "Scope / conditional framing", SCOPE_CONDITIONAL_PATTERNS),
         ("signal-govern-soft", "Semantic continuity cue", SEMANTIC_CONTINUITY_PATTERNS),
     ]
 
@@ -526,6 +630,8 @@ def _fetch_report_payload(conn: sqlite3.Connection) -> Dict[str, Any]:
         """
         SELECT
             COUNT(*) AS topic_count,
+            COALESCE(SUM(num_surviving_pairs), 0) AS surviving_pairs,
+            COALESCE(SUM(num_candidate_pairs), 0) AS candidate_pairs,
             AVG(mean_similarity) AS mean_similarity,
             AVG(contradiction_rate) AS contradiction_rate,
             AVG(semantic_continuity_rate) AS semantic_continuity_rate,
@@ -537,7 +643,8 @@ def _fetch_report_payload(conn: sqlite3.Connection) -> Dict[str, Any]:
 
     topics = conn.execute(
         """
-        SELECT probe_topic, num_threads, mean_similarity, contradiction_rate,
+        SELECT probe_topic, num_threads, num_candidate_pairs, num_surviving_pairs,
+               num_query_filtered_pairs, mean_similarity, contradiction_rate,
                temporal_update_rate, semantic_continuity_rate, risk_score
         FROM topic_clusters
         ORDER BY risk_score DESC, contradiction_rate DESC
@@ -598,6 +705,7 @@ def render_html_report(
         <tr>
           <td><strong>{html.escape(row['probe_topic'])}</strong></td>
           <td>{int(row['num_threads'])}</td>
+          <td>{_format_pair_ratio(row['num_surviving_pairs'], row['num_candidate_pairs'])}</td>
           <td>{_format_float(row['mean_similarity'])}</td>
           <td>{_format_pct(row['contradiction_rate'])}</td>
           <td>{_format_pct(row['temporal_update_rate'])}</td>
@@ -608,8 +716,24 @@ def render_html_report(
         for row in payload["topics"][:20]
     )
 
+    def _boundless_badge(score: float) -> str:
+        if score >= 0.55:
+            color = "rgba(220,38,38,0.85)"
+            label = f"boundless={score:.2f}"
+        elif score >= 0.25:
+            color = "rgba(251,146,60,0.75)"
+            label = f"bounded?={score:.2f}"
+        else:
+            color = "rgba(74,222,128,0.55)"
+            label = f"scoped={score:.2f}"
+        return (
+            f'<span style="background:{color};color:#fff;padding:3px 8px;'
+            f'border-radius:999px;font-size:0.72em;font-weight:700;">{label}</span>'
+        )
+
     audit_html = "\n".join(
-        f"""
+        (lambda row, bs_a=score_boundless_claims((row['content_a'] or '')[:450]),
+                       bs_b=score_boundless_claims((row['content_b'] or '')[:450]): f"""
         <div class="pair-card">
           <div class="pair-head">
             <span class="rank">#{int(row['priority_rank'])}</span>
@@ -620,16 +744,18 @@ def render_html_report(
           </div>
           <div class="pair-body">
             <div class="pair-col">
-              <div class="pair-title">{html.escape(row['conv_title_a'] or '(untitled thread)')}</div>
+              <div class="pair-title">{html.escape(row['conv_title_a'] or '(untitled thread)')}
+                &nbsp;{_boundless_badge(bs_a['boundless_risk'])}</div>
               <pre>{_highlight_signal_text((row['content_a'] or '')[:450])}</pre>
             </div>
             <div class="pair-col">
-              <div class="pair-title">{html.escape(row['conv_title_b'] or '(untitled thread)')}</div>
+              <div class="pair-title">{html.escape(row['conv_title_b'] or '(untitled thread)')}
+                &nbsp;{_boundless_badge(bs_b['boundless_risk'])}</div>
               <pre>{_highlight_signal_text((row['content_b'] or '')[:450])}</pre>
             </div>
           </div>
         </div>
-        """
+        """)(row)
         for row in payload["audit_pairs"]
     )
 
@@ -665,8 +791,17 @@ def render_html_report(
     width: 100%;
     border-radius: 0 0 12px 12px;
   }}
+  .hero {{
+    min-height: auto;
+    padding: 84px 0 56px 0;
+    overflow: visible;
+  }}
+  .hero > * {{
+    position: relative;
+    z-index: 1;
+  }}
   .hero .sub {{ max-width: 860px; }}
-  .stat-grid {{ display:grid; grid-template-columns: repeat(5, 1fr); gap:16px; margin: 28px 0; }}
+  .stat-grid {{ display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap:16px; margin: 28px 0; }}
   .stat-card, .panel, .pair-card {{
     background: rgba(255,255,255,0.02);
     border: 1px solid rgba(255,255,255,0.06);
@@ -702,6 +837,13 @@ def render_html_report(
     background: rgba(255,255,255,0.03);
   }}
   .legend-swatch {{ width:14px; height:14px; border-radius:4px; display:inline-block; }}
+  .signal-boundless {{
+    background: linear-gradient(90deg, rgba(220,38,38,0.44), rgba(239,68,68,0.46));
+    color:#fff0f0;
+    border-radius:4px;
+    padding:0 1px;
+    outline: 1px solid rgba(239,68,68,0.35);
+  }}
   .signal-risk {{
     background: linear-gradient(90deg, rgba(244,114,182,0.32), rgba(251,146,60,0.34));
     color:#fff2f7;
@@ -770,7 +912,8 @@ def render_html_report(
     <div class="accent-line"></div>
     <div class="stat-grid">
       <div class="stat-card"><h3>Topics</h3><div class="value">{int(summary['topic_count'])}</div><div class="note">Analyzed recurring probe topics in the current run.</div></div>
-      <div class="stat-card"><h3>Mean Similarity</h3><div class="value">{_format_float(summary['mean_similarity'])}</div><div class="note">Cross-thread semantic similarity across retrieved pairs.</div></div>
+      <div class="stat-card"><h3>Surviving Pairs</h3><div class="value">{_format_pair_ratio(summary['surviving_pairs'], summary['candidate_pairs'])}</div><div class="note">Cross-thread pairs that survived the semantic-object gate in this run.</div></div>
+      <div class="stat-card"><h3>Mean Similarity</h3><div class="value">{_format_float(summary['mean_similarity'])}</div><div class="note">Cross-thread semantic similarity across surviving pairs.</div></div>
       <div class="stat-card"><h3>Contradiction Rate</h3><div class="value">{_format_pct(summary['contradiction_rate'])}</div><div class="note">Pairs typed as genuine contradiction under the current v2 rules.</div></div>
       <div class="stat-card"><h3>Semantic Continuity</h3><div class="value">{_format_pct(summary['semantic_continuity_rate'])}</div><div class="note">Average semantic continuity signal across retrieved responses.</div></div>
       <div class="stat-card"><h3>Mean Risk</h3><div class="value">{_format_float(summary['mean_risk'])}</div><div class="note">Composite risk proxy from confidence, continuity, and instability.</div></div>
@@ -797,6 +940,7 @@ def render_html_report(
         <tr>
           <th>Topic</th>
           <th>Responses</th>
+          <th>Pairs</th>
           <th>Mean Similarity</th>
           <th>Contradiction</th>
           <th>Temporal Update</th>
@@ -814,7 +958,8 @@ def render_html_report(
     <h2>Manual Audit Queue Preview</h2>
     <p>These are the top-ranked pairs for manual review. This preview is where the automated metrics become inspectable evidence.</p>
     <div class="legend">
-      <span class="legend-chip"><span class="legend-swatch signal-risk"></span>Problematic pressure: assertive or forceful language</span>
+      <span class="legend-chip"><span class="legend-swatch signal-boundless"></span>Boundless: absolute quantifier or unguarded prescription</span>
+      <span class="legend-chip"><span class="legend-swatch signal-risk"></span>Pressure: assertive or forceful language</span>
       <span class="legend-chip"><span class="legend-swatch signal-stabilize"></span>Stabilizing: hedging / uncertainty disclosure</span>
       <span class="legend-chip"><span class="legend-swatch signal-govern"></span>Governed: continuity or contradiction acknowledgment</span>
       <span class="legend-chip"><span class="legend-swatch signal-context"></span>Scoped: conditional / context framing</span>
@@ -841,6 +986,62 @@ def render_html_report(
         {model_html}
       </tbody>
     </table>
+  </section>
+
+  <section class="panel">
+    <h2>Probe Calibration Reference</h2>
+    <p>These probe sets are designed to anchor what the classifier <em>should</em> say.
+    Use them as ground truth when the audit queue produces surprising verdicts.</p>
+
+    <h3 style="margin-top:22px;color:#a0a8c8;">Invariance Probes — should NOT flag as contradiction</h3>
+    <p style="color:#6a749a;font-size:0.88em;">
+      Same intent, different surface form. If two corpus responses retrieved under the same
+      invariance probe are labeled <code>genuine_contradiction</code>, the similarity threshold
+      is reacting to phrasing rather than conceptual change.
+    </p>
+    <table>
+      <thead><tr><th>ID</th><th>Canonical Intent</th><th>Scope Dependencies</th><th>Expected Verdict</th></tr></thead>
+      <tbody>
+        {chr(10).join(
+          f'<tr><td><code>{html.escape(p.probe_id)}</code></td>'
+          f'<td>{html.escape(p.canonical_intent)}</td>'
+          f'<td style="color:#6a749a;font-size:0.85em;">{html.escape(", ".join(p.known_scope_dependencies))}</td>'
+          f'<td><span class="label">{html.escape(p.expected_classifier_verdict)}</span></td></tr>'
+          for p in INVARIANCE_PROBES
+        )}
+      </tbody>
+    </table>
+
+    <h3 style="margin-top:28px;color:#a0a8c8;">Justified Divergence Probes — different advice IS correct</h3>
+    <p style="color:#6a749a;font-size:0.88em;">
+      Similar surface, genuine context shift. If the classifier labels these
+      <code>genuine_contradiction</code>, it is a false positive. The model is right to answer
+      differently.
+    </p>
+    {chr(10).join(
+      f'''<div class="pair-card" style="margin-bottom:14px;">
+        <div class="pair-head">
+          <span class="rank">{html.escape(p.probe_id)}</span>
+          <span class="topic">{html.escape(p.description)}</span>
+          <span class="label">{html.escape(p.expected_classifier_verdict)}</span>
+        </div>
+        <div class="pair-body">
+          <div class="pair-col">
+            <div class="pair-title">Prompt A</div>
+            <pre style="font-style:italic;">{html.escape(p.prompt_a)}</pre>
+          </div>
+          <div class="pair-col">
+            <div class="pair-title">Prompt B</div>
+            <pre style="font-style:italic;">{html.escape(p.prompt_b)}</pre>
+          </div>
+        </div>
+        <div style="color:#6a749a;font-size:0.83em;margin-top:10px;padding:10px 14px;
+                    background:rgba(255,255,255,0.015);border-radius:8px;">
+          <strong style="color:#9aa3c2;">Why divergence is justified:</strong> {html.escape(p.divergence_reason)}
+        </div>
+      </div>'''
+      for p in JUSTIFIED_DIVERGENCE_PROBES
+    )}
   </section>
 
   <div class="footer">Generated by <code>tools.continuity_blind_v2</code>. Preserve this HTML alongside the DB and artifact snapshot for auditable reruns.</div>
@@ -876,7 +1077,7 @@ def run_analysis(
     )
 
     messages = _fetch_assistant_messages(corpus_conn)
-    embeddings = _build_embedding_index(messages, refresh=refresh_index)
+    embeddings, prompt_embeddings = _build_embedding_index(messages, refresh=refresh_index)
     encoder = _load_encoder()
     probe_topics = build_probe_topics()
     all_pairs: List[Dict[str, Any]] = []
@@ -919,6 +1120,7 @@ def run_analysis(
                     "message": message,
                     "model_slug": message.model_slug,
                     "embedding": embeddings[int(idx)],
+                    "prompt_embedding": prompt_embeddings[int(idx)],
                     "relevance": similarity_to_probe,
                     "confidence": confidence,
                     "continuity": continuity,
@@ -986,11 +1188,18 @@ def run_analysis(
 
         _store_model_summaries(results_conn, probe_topic, relevant)
 
+        candidate_pairs = 0
+        filtered_pairs = 0
         for i in range(len(relevant)):
             for j in range(i + 1, len(relevant)):
+                candidate_pairs += 1
                 left = relevant[i]
                 right = relevant[j]
                 similarity = float(pairwise_sims[i, j])
+                query_similarity = float(left["prompt_embedding"] @ right["prompt_embedding"])
+                if query_similarity < QUERY_SIMILARITY_GATE:
+                    filtered_pairs += 1
+                    continue
                 pair_sims.append(similarity)
                 contradiction_type = classify_pair(
                     similarity=similarity,
@@ -1022,7 +1231,7 @@ def run_analysis(
                          explicit_continuity_a, explicit_continuity_b,
                          semantic_continuity_a, semantic_continuity_b,
                          contradiction_ack_a, contradiction_ack_b,
-                         contradiction_type, pair_confidence, pair_continuity, risk_score,
+                        contradiction_type, pair_confidence, pair_continuity, risk_score,
                          content_a, content_b)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
@@ -1066,7 +1275,15 @@ def run_analysis(
                     }
                 )
 
-        total_pairs = max(1, len(pair_sims))
+        if not pair_sims:
+            log.info("  skipped (no semantically aligned cross-thread pairs after query gate)")
+            results_conn.execute("DELETE FROM topic_clusters WHERE topic_id = ?", (topic_id,))
+            results_conn.execute("DELETE FROM topic_members WHERE topic_id = ?", (topic_id,))
+            results_conn.execute("DELETE FROM model_summaries WHERE probe_topic = ?", (probe_topic,))
+            results_conn.commit()
+            continue
+
+        total_pairs = len(pair_sims)
         mean_similarity = float(np.mean(pair_sims))
         min_similarity = float(np.min(pair_sims))
         variance = float(np.var(pair_sims))
@@ -1098,7 +1315,8 @@ def run_analysis(
         results_conn.execute(
             """
             UPDATE topic_clusters
-            SET mean_similarity = ?, min_similarity = ?, variance = ?,
+            SET num_candidate_pairs = ?, num_surviving_pairs = ?, num_query_filtered_pairs = ?,
+                mean_similarity = ?, min_similarity = ?, variance = ?,
                 continuity_awareness_rate = ?, semantic_continuity_rate = ?,
                 contradiction_ack_rate = ?, mean_assertiveness = ?,
                 mean_uncertainty_disclosure = ?, mean_advice_forcefulness = ?,
@@ -1107,6 +1325,9 @@ def run_analysis(
             WHERE topic_id = ?
             """,
             (
+                candidate_pairs,
+                total_pairs,
+                filtered_pairs,
                 mean_similarity,
                 min_similarity,
                 variance,
@@ -1131,6 +1352,9 @@ def run_analysis(
             {
                 "topic": probe_topic,
                 "responses": len(relevant),
+                "candidate_pairs": candidate_pairs,
+                "surviving_pairs": total_pairs,
+                "query_filtered_pairs": filtered_pairs,
                 "mean_similarity": round(mean_similarity, 3),
                 "contradiction_rate": round(contradiction_rate, 3),
                 "temporal_update_rate": round(temporal_update_rate, 3),
@@ -1139,8 +1363,10 @@ def run_analysis(
             }
         )
         log.info(
-            "  %d responses, sim=%.3f, contradiction_rate=%.3f, semantic_continuity=%.3f, risk=%.3f",
+            "  %d responses, pairs=%d/%d, sim=%.3f, contradiction_rate=%.3f, semantic_continuity=%.3f, risk=%.3f",
             len(relevant),
+            total_pairs,
+            candidate_pairs,
             mean_similarity,
             contradiction_rate,
             semantic_rate,
@@ -1189,7 +1415,8 @@ def show_report(results_db: Path = RESULTS_DB) -> None:
     for topic in topics:
         print(
             f"\nRISK={topic['risk_score']:.3f} | {topic['probe_topic']}\n"
-            f"  responses={topic['num_threads']} sim={topic['mean_similarity']:.3f}"
+            f"  responses={topic['num_threads']} pairs={topic['num_surviving_pairs'] or 0}/{topic['num_candidate_pairs'] or 0}"
+            f" sim={topic['mean_similarity']:.3f}"
             f" contradiction={topic['contradiction_rate']:.1%}"
             f" temporal_update={topic['temporal_update_rate']:.1%}"
             f" framing={topic['framing_variation_rate']:.1%}"
@@ -1203,6 +1430,8 @@ def show_report(results_db: Path = RESULTS_DB) -> None:
         """
         SELECT
             COUNT(*) AS topic_count,
+            COALESCE(SUM(num_surviving_pairs), 0) AS surviving_pairs,
+            COALESCE(SUM(num_candidate_pairs), 0) AS candidate_pairs,
             AVG(mean_similarity) AS mean_similarity,
             AVG(contradiction_rate) AS contradiction_rate,
             AVG(semantic_continuity_rate) AS semantic_continuity_rate,
@@ -1215,6 +1444,7 @@ def show_report(results_db: Path = RESULTS_DB) -> None:
     print(f"\n{'=' * 78}")
     print("SUMMARY")
     print(f"  Topics analyzed: {summary['topic_count']}")
+    print(f"  Surviving pairs: {summary['surviving_pairs']} / {summary['candidate_pairs']}")
     print(f"  Mean similarity: {summary['mean_similarity']:.3f}")
     print(f"  Mean contradiction rate: {summary['contradiction_rate']:.3f}")
     print(f"  Mean semantic continuity rate: {summary['semantic_continuity_rate']:.3f}")

@@ -103,6 +103,64 @@ Nick is preparing for limited friend beta testing (3-5 people). Key decisions be
 
 ---
 
+## April 7, 2026 Update
+
+### Continuity-Blind Revalidation
+- Rechecked the continuity-blind corpus against `data\\chatgpt_corpus.db` and confirmed the published corpus counts: `1,275` conversations and `59,370` messages.
+- Audited the original scripts:
+  - `tools\\corpus_consistency.py`
+  - `tools\\corpus_gaslighting.py`
+- Preserved the original study as **v1**: real and useful, but narrower and more heuristic than earlier prose implied.
+
+### Docs + Plan
+- Updated:
+  - `docs\\continuity-blind.html`
+  - `docs\\contradiction-density.html`
+- Added `docs\\plans\\continuity-blind-v2-plan.md`.
+- Current docs now distinguish:
+  - validated v1 baseline
+  - future v2 methodology upgrade
+
+### v2 Harness State
+- Added `tools\\continuity_blind_v2.py` as the deterministic successor harness.
+- Added `tests\\test_continuity_blind_v2.py`.
+- v2 currently supports:
+  - deterministic embedding cache
+  - richer continuity / confidence signals
+  - typed pair labels
+  - manual audit queue
+  - generated HTML report in `docs\\labs`
+
+### Important Research Lesson
+- Initial v2 runs showed that broad topic retrieval alone produced weak evidence pairs.
+- Main issue: many top contradiction examples were only loosely related by topic, not tightly aligned to the same underlying user question.
+- Current fix in progress:
+  - assistant responses now carry their preceding user prompt
+  - cache now stores both response embeddings and prompt embeddings
+  - pair scoring now requires a query-side semantic similarity gate
+- Next meaningful rerun should use:
+  - `python -m tools.continuity_blind_v2 run --refresh-index`
+
+### HTML Report Surface
+- Generated report path:
+  - `docs\\labs\\continuity-blind-v2-latest.html`
+- Report now includes:
+  - summary cards
+  - top topics
+  - audit queue preview
+  - model summary slice
+  - heuristic token-level signal overlay for risky vs stabilizing language
+- Current judgment: visualization is useful for inspection, but pair-quality validation remains the higher-ROI priority before further doc updates.
+
+### Priority Adjustment
+- Highest-ROI next work:
+  1. tighten continuity pair matching
+  2. manually audit top contradiction pairs
+  3. rerun continuity before updating public claims further
+- Activation heatmaps remain worthwhile later as an interpretability layer, but not as the core evidence surface yet.
+
+---
+
 ## Known Rough Edges
 - `unexpected_failure` noise in logs for diff_preview — cosmetic
 - Discord bot failing on startup (bad token)

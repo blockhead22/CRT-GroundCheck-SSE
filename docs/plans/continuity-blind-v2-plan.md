@@ -2,7 +2,51 @@
 
 Date: April 7, 2026
 
-Status: Planning document only. This defines the next methodology upgrade after the externally rechecked `v1` baseline.
+Status: **Mostly shipped.** Core v2 harness is live. See Shipped section below for delta vs original plan.
+
+---
+
+## Shipped (April 7, 2026)
+
+### Delivered as planned
+
+- Deterministic retrieval via precomputed embedding index (`artifacts/continuity_blind_v2/`)
+- Probe-lane analysis over merged topic list (consistency + gaslighting probe topics)
+- Semantic continuity detection (explicit + semantic + contradiction-ack layers)
+- Typed contradiction classification: `genuine_contradiction`, `framing_variation`, `scope_context_variation`, `temporal_update`, `insufficient_evidence`
+- Multi-signal confidence: lexical assertiveness, epistemic posture, advice forcefulness, uncertainty disclosure
+- Per-model summary slice
+- Manual audit queue (top pairs by risk, stored in `data/chatgpt_gaslighting_v2.db`)
+- Static HTML report auto-generated after each run (`docs/labs/continuity-blind-v2-*.html`)
+- Token-level heuristic signal overlay in the HTML report
+
+### Added beyond the original plan
+
+**Boundless claim scoring** (`tools/semantic_invariance_probes.py`)
+
+The original plan had no mechanism for flagging claims that exceed their epistemic warrant. A sentence-level scorer was added:
+- `PRESCRIPTION_PATTERNS` — detects model advice-giving language
+- `SCOPE_GUARD_PATTERNS` — detects conditional framing in the same sentence
+- `ABSOLUTE_QUANTIFIER_PATTERNS` — detects always/never/definitely/the-only-way etc.
+- `score_boundless_claims(text)` — returns `boundless_risk` (0–1), scoped vs unscoped prescription counts
+- Integrated into the HTML report: per-response risk badge (green/amber/red) on each audit pair card
+
+**Semantic invariance probe sets** (`tools/semantic_invariance_probes.py`)
+
+A calibration harness for the classifier. Two probe types:
+- `InvarianceProbe` (5 probes): same intent, different surface form — pairs drawn from these should NOT be flagged as genuine contradictions. If they are, the cosine threshold is reacting to phrasing.
+- `JustifiedDivergenceProbe` (5 probes): similar surface, genuine context shift — different advice IS correct. If the classifier flags these, it is a false positive.
+- Rendered in the HTML report as a "Probe Calibration Reference" section.
+
+All tests pass: `tests/test_semantic_invariance_probes.py` (31 tests).
+
+### Not yet done from original plan
+
+- Discovery lane (topic extraction from corpus, not just hand-authored probe list)
+- Full manual adjudication set (audit queue exists but human labeling not done)
+- v1 → v2 comparison table published
+
+---
 
 ## Purpose
 
