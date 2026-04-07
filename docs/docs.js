@@ -118,14 +118,40 @@
       });
     });
 
-    // Toggle handler
-    toggle.addEventListener('click', function() {
+    // Desktop dropdown click handlers
+    var allGroups = groupsEl.querySelectorAll('.docnav-group');
+    allGroups.forEach(function(grp) {
+      var lbl = grp.querySelector('.docnav-group-label');
+      lbl.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var wasOpen = grp.classList.contains('open');
+        // Close all
+        allGroups.forEach(function(g) { g.classList.remove('open'); });
+        // Toggle clicked
+        if (!wasOpen) grp.classList.add('open');
+      });
+    });
+
+    // Click outside closes dropdowns
+    document.addEventListener('click', function() {
+      allGroups.forEach(function(g) { g.classList.remove('open'); });
+    });
+
+    // Mobile toggle handler
+    toggle.addEventListener('click', function(e) {
+      e.stopPropagation();
       mobileMenu.classList.toggle('open');
       toggle.innerHTML = mobileMenu.classList.contains('open') ? '&#10005;' : '&#9776;';
     });
 
-    document.body.insertBefore(nav, document.body.firstChild);
-    document.body.insertBefore(mobileMenu, nav.nextSibling);
+    // Insert nav inside .page-layout if it exists, otherwise body
+    var pageLayout = document.querySelector('.page-layout');
+    if (pageLayout) {
+      pageLayout.insertBefore(nav, pageLayout.firstChild);
+    } else {
+      document.body.insertBefore(nav, document.body.firstChild);
+    }
+    document.body.insertBefore(mobileMenu, document.body.firstChild);
   }
 
   // ── Inject prev/next pager into main ──

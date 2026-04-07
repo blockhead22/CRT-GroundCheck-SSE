@@ -741,7 +741,7 @@ td code {
   grid-column: 1 / -1;
   position: sticky;
   top: 0;
-  z-index: 200;
+  z-index: 9999;
   width: 100%;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
@@ -820,9 +820,8 @@ td code {
   padding: 6px 0;
   z-index: 300;
 }
-.docnav-group:hover .docnav-dropdown,
 .docnav-group.open .docnav-dropdown { display: block; }
-.docnav-group:hover .docnav-group-arrow { transform: rotate(180deg); }
+.docnav-group.open .docnav-group-arrow { transform: rotate(180deg); }
 
 .docnav-dropdown a {
   display: block;
