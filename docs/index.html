@@ -86,6 +86,28 @@
 
   <p>The dominant deployment paradigm treats each conversation as independent. RAG adds retrieval, but retrieval is not belief. Finding a relevant document is not the same as knowing what you think about it, how confident you are, whether it conflicts with something else you know, or whether your position has changed over time.</p>
 
+  <h3>v2 Validation (April 2026)</h3>
+  <p>A stricter reanalysis with query-intent filtering confirmed that the signal is real but the original magnitude was overstated. Of 40,200 candidate contradiction pairs, <strong>98.9% were filtered out</strong> as topic-boundary noise &mdash; pairs where the user asked different questions that happened to fall under the same domain. Of the 453 surviving intent-matched pairs, <strong>47 are genuine contradictions</strong> (10.4%) with the highest average risk score of any category.</p>
+
+  <div class="stat-row">
+    <div class="stat-cell">
+      <div class="stat-value bad">12.4%</div>
+      <div class="stat-label">Hard Contradiction Rate at 3+ Months</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-value bad">59.5%</div>
+      <div class="stat-label">Long Conversations With Stance Flips</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-value bad">93%</div>
+      <div class="stat-label">Flips Invisible to Pairwise Methods</div>
+    </div>
+  </div>
+
+  <p>Two additional findings sharpen the picture. First, <strong>time is the primary amplifier</strong>: the hard contradiction rate nearly doubles from 7% at short time gaps to 12.4% at 3+ months. The longer a user relies on the system, the worse it gets. Second, <strong>most contradiction is invisible to pairwise comparison</strong>: arc-level analysis across 200 multi-turn conversations found that 93% of stance flips span 3+ turns, meaning no single pair comparison would catch them.</p>
+
+  <p>Most critically, the contradictions concentrate in <a href="sensitive-domains.html">sensitive domains</a> where inconsistency carries real consequences. The same system taught a user to measure their cannabis bowl size in one session and told them to quit entirely 192 days later &mdash; while the user was also navigating an antidepressant transition. Neither session knew about the other.</p>
+
   <p>For any system intended to provide ongoing personal support &mdash; health guidance, career advice, project collaboration &mdash; statelessness is not just a limitation. It is a form of structural gaslighting. The user builds trust over time. The system resets that trust every session while maintaining the appearance of continuity.</p>
 </section>
 
@@ -311,8 +333,15 @@
   <div class="paper-card">
     <h3>We measured what stateless systems actually do</h3>
     <p>The contradiction density analysis was the empirical anchor. 59,370 messages across 13 months of real conversation. Not synthetic benchmarks. Not GPT-generated test data. Actual long-term interaction with a single user who cared about consistency.</p>
-    <p>The findings were damning: zero continuity awareness, <span class="eval-inline"><span class="bad">0.34</span></span> mean self-consistency, and the system confidently contradicting its own prior statements on topics the user considered settled.</p>
+    <p>The initial v1 findings were damning: zero continuity awareness, <span class="eval-inline"><span class="bad">0.34</span></span> mean self-consistency. A v2 reanalysis with stricter intent-matching confirmed the signal: 47 genuine contradictions survive query filtering (10.4% of intent-matched pairs), concentrated in decision-heavy domains. Time amplifies the failure &mdash; hard contradiction rate nearly doubles at 3+ months. Arc-level analysis found 59.5% of long conversations contain stance flips invisible to pairwise detection.</p>
     <a class="paper-link" href="contradiction-density.html">Read: Contradiction Density in Stateless AI Systems &rarr;</a>
+  </div>
+
+  <div class="paper-card">
+    <h3>We found it in the domains that matter most</h3>
+    <p>The general contradiction finding becomes a concrete harm concern in sensitive domains. We extracted stance-bearing advice on substance use and dating readiness from the full corpus and found the system alternating between incompatible frameworks: teaching measured cannabis use in one session, advising abstinence 192 days later, and framing weed as the root of cognitive problems a month after that &mdash; all to the same user navigating a medication transition. No session knew about the others.</p>
+    <p>The pattern is identical in dating: "you deserve connection" in April, "step away from dating" in January, with no acknowledgment that the prior stance existed.</p>
+    <a class="paper-link" href="sensitive-domains.html">Read: Sensitive Domain Contradictions &rarr;</a>
   </div>
 
   <div class="paper-card">
@@ -435,17 +464,21 @@
   <h2>Read the Research</h2>
 
   <div class="nav-grid">
+    <a href="contradiction-density.html">Contradiction Density</a>
+    <a href="continuity-blind.html">Continuity-Blind</a>
+    <a href="sensitive-domains.html">Sensitive Domains</a>
+    <a href="whitepaper.html">Whitepaper</a>
+    <a href="immune-agents.html">Immune Agents</a>
+    <a href="experiments.html">Experiments</a>
+    <a href="architecture.html">Architecture</a>
     <a href="cascade-complexity.html">Cascade Complexity</a>
     <a href="geometric-memory.html">Belief Loci</a>
-    <a href="contradiction-density.html">Contradiction Density</a>
-    <a href="emotion-governance.html">Emotion Governance</a>
     <a href="variance-probing.html">Variance Probing</a>
-    <a href="immune-agents.html">Immune Agents</a>
-    <a href="claim-evaluation-guide.html">Claim Evaluation Guide</a>
-    <a href="architecture.html">Architecture</a>
-    <a href="experiments.html">Experiments</a>
-    <a href="whitepaper.html">Whitepaper</a>
-    <a href="continuity-blind.html">Continuity-Blind</a>
+    <a href="variance-landscape.html">Variance Landscape</a>
+    <a href="emotion-governance.html">Emotion Governance</a>
+    <a href="throughline.html">Throughline</a>
+    <a href="glossary.html">Glossary</a>
+    <a href="claim-evaluation-guide.html">Research Guide</a>
   </div>
 </section>
 </main>
