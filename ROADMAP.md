@@ -408,10 +408,15 @@ Last updated: April 4, 2026 (v3.7)
 - [x] Pipeline optimization: vectorized similarity scoring (numpy batch matmul), timing instrumentation
 - [x] Session finalization: idle_scheduler auto-finalizes after 30min inactivity (summaries + pattern analysis)
 - [x] Frontend rebuild: PipelineCollapse timing fix (wasStreaming ref, 1.5s auto-collapse), toFixed(2) standardized, CopilotPage API dedup (initial load once, side data every 5th poll), hero graph simplified (200px visible section)
-- [x] Alignment scoring fix: intent-bridged scoring (prepends intent echo to reasoning before encoding), drift thresholds tuned (_low 0.25→0.15, _dropping delta 0.15→0.20, detect_drift threshold 0.15→0.12). Eliminates false drift on legitimate tool-mediated steps.
-- [x] Checkpoint acceptance tests: test_checkpoint_flows.py covers ask_user pause/resume, diff_write approve, Layer 2 alignment verification
-- [x] Pipeline parallelization: ThreadPoolExecutor for preference profile fetch concurrent with other pre-gen work
-- [x] Verified self-audit mode: VerifiedSelfAuditor cross-validates execution state, self-model, execution beliefs, governance agents, memory health. Detects cross-system anomalies. Wired into heartbeat Step 8c + /api/copilot/self-audit endpoint. First run: health=61.7%, 6/6 governance, 802 active memories, flagged 99% deprecation ratio.
+- [x] Alignment scoring fix: intent-bridged scoring, drift thresholds tuned. Eliminates false drift on tool-mediated steps.
+- [x] Checkpoint acceptance tests: test_checkpoint_flows.py covers ask_user, diff_write, Layer 2 alignment
+- [x] Pipeline parallelization: ThreadPoolExecutor for preference profile fetch
+- [x] Verified self-audit mode: cross-system health check (61.7%, 6/6 governance, 802 memories). Heartbeat Step 8c + /api/copilot/self-audit
+- [x] KV cache: keep_alive=24h on both Ollama paths, num_ctx configurable via CRT_OLLAMA_NUM_CTX
+- [x] Agent runs API: 5 endpoints + 4 activation analytics endpoints (stats, recent, coactivation, dead-memories)
+- [x] Retrieval activation logging: every query's activation pattern saved to SQLite (memory IDs, scores, trusts, PCA coords, edges, contradictions). Post-response enrichment with generation metadata.
+- [x] Activation analytics API: co-activation matrix, dead memory detection, fragile region mapping
+- [x] PCA map: extended auto-collapse to 4s when PCA data present so user can study activation map
 
 ---
 

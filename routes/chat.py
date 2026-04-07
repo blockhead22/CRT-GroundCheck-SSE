@@ -5902,6 +5902,39 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         except Exception as _e:
             logger.debug(f"[EPISODIC_BG] Error processing interaction: {_e}")
 
+        # Activation log enrichment: update the retrieval activation record
+        # with post-generation data (PCA coords, edges, contradictions, response type)
+        try:
+            from personal_agent.activation_log import log_activation, ActivationRecord, make_query_hash
+            _act_mems = _result.get("retrieved_memories") or []
+            if _act_mems:
+                _act = ActivationRecord(
+                    activation_id=f"act_{int(time.time()*1000)}_{hash(_message) % 10000}",
+                    timestamp=time.time(),
+                    thread_id=_thread_id,
+                    query=_message[:500],
+                    query_hash=make_query_hash(_message),
+                    memory_ids=[str(m.get("memory_id") or m.get("id") or "") for m in _act_mems],
+                    scores=[float(m.get("score") or 0) for m in _act_mems],
+                    trusts=[float(m.get("trust") or 0) for m in _act_mems],
+                    kinds=[str(m.get("kind") or "") for m in _act_mems],
+                    pca_coords=[
+                        {"x": float(m.get("pca_x") or 0), "y": float(m.get("pca_y") or 0),
+                         "memory_id": str(m.get("memory_id") or "")}
+                        for m in _act_mems if m.get("pca_x") is not None
+                    ],
+                    edges=_result.get("retrieval_edges") or [],
+                    contradictions_detected=1 if _result.get("contradiction_detected") else 0,
+                    contradiction_ids=[str((_result.get("contradiction_entry") or {}).get("ledger_id", ""))]
+                        if _result.get("contradiction_detected") else [],
+                    belief_confidence=float(_result.get("confidence") or 0),
+                    response_type=str(_result.get("response_type") or ""),
+                    generation_source=str((_gen_info or {}).get("generation_mode") or ""),
+                )
+                log_activation(str(_engine_memory.db_path), _act)
+        except Exception as _act_err:
+            logger.debug(f"[ACTIVATION_LOG] Post-gen enrichment failed: {_act_err}")
+
         # Training data log (append-only JSONL)
         try:
             from personal_agent.training_log import log_chat_turn

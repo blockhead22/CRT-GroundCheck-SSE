@@ -5232,6 +5232,26 @@ class CRTEnhancedRAG:
         _retrieval_latency = (time.perf_counter() - _t_retrieve) * 1000
         print(f"[PIPELINE_TIMING] retrieval={_retrieval_latency:.1f}ms k={retrieval_k} results={len(retrieved)}")
 
+        # ── ACTIVATION LOGGING: record retrieval pattern for analytics ──
+        try:
+            from personal_agent.activation_log import (
+                log_activation, ActivationRecord, make_query_hash,
+            )
+            _act_record = ActivationRecord(
+                activation_id=f"act_{int(time.time()*1000)}_{id(retrieved) % 10000}",
+                timestamp=time.time(),
+                thread_id=thread_id or "",
+                query=user_text[:500],
+                query_hash=make_query_hash(user_text),
+                memory_ids=[m.memory_id for m, _ in retrieved],
+                scores=[round(s, 4) for _, s in retrieved],
+                trusts=[round(m.trust, 3) for m, _ in retrieved],
+                kinds=[str(getattr(m, "kind", "") or "") for m, _ in retrieved],
+            )
+            log_activation(str(self.memory.db_path), _act_record)
+        except Exception as _act_err:
+            logger.debug(f"[ACTIVATION_LOG] Failed: {_act_err}")
+
         # Turn-awareness: inject retrieval metadata so the LLM can explain
         # what it did when asked about its process.
         if retrieved:

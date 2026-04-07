@@ -124,8 +124,13 @@ export function PipelineCollapse({
         setElapsedMs(Date.now() - startRef.current)
         startRef.current = 0
       }
-      // Auto-collapse after 1.5s (was 700ms — too fast to read summary)
-      const t = setTimeout(() => setExpanded(false), 1500)
+      // Auto-collapse after delay — longer if PCA graph is showing
+      // so user can study the activation map
+      const hasPCA = steps.some(s =>
+        s.kind === 'retrieval' && (s as any).memories?.some?.((m: any) => m.pca_x)
+      )
+      const collapseDelay = hasPCA ? 4000 : 1500
+      const t = setTimeout(() => setExpanded(false), collapseDelay)
       return () => clearTimeout(t)
     }
 

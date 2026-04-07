@@ -153,6 +153,64 @@ def get_tool_usage() -> Dict[str, int]:
         return {}
 
 
+@router.get("/activations/stats")
+def get_activation_stats() -> Dict[str, Any]:
+    """Aggregate activation statistics."""
+    try:
+        from personal_agent.activation_log import get_activation_stats
+        return get_activation_stats("personal_agent/crt_memory_shared.db")
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@router.get("/activations/recent")
+def get_recent_activations(
+    limit: int = Query(20, ge=1, le=100),
+    thread_id: Optional[str] = Query(None),
+) -> List[Dict[str, Any]]:
+    """Recent retrieval activations with PCA coords and edges."""
+    try:
+        from personal_agent.activation_log import get_recent_activations
+        return get_recent_activations(
+            "personal_agent/crt_memory_shared.db",
+            limit=limit,
+            thread_id=thread_id,
+        )
+    except Exception as e:
+        return []
+
+
+@router.get("/activations/coactivation")
+def get_coactivation(
+    min_count: int = Query(3, ge=2, le=50),
+) -> List[Dict[str, Any]]:
+    """Memory pairs that frequently co-activate."""
+    try:
+        from personal_agent.activation_log import get_coactivation_matrix
+        return get_coactivation_matrix(
+            "personal_agent/crt_memory_shared.db",
+            min_coactivations=min_count,
+        )
+    except Exception as e:
+        return []
+
+
+@router.get("/activations/dead-memories")
+def get_dead_memories(
+    min_trust: float = Query(0.3, ge=0.0, le=1.0),
+) -> List[Dict[str, Any]]:
+    """High-trust memories that never activate in recent retrievals."""
+    try:
+        from personal_agent.activation_log import get_dead_memories
+        return get_dead_memories(
+            "personal_agent/crt_memory_shared.db",
+            "personal_agent/crt_memory_shared.db",
+            min_trust=min_trust,
+        )
+    except Exception as e:
+        return []
+
+
 @router.get("/{run_id}")
 def get_run_detail(run_id: str) -> Dict[str, Any]:
     """Full detail for a single run including steps and drift events."""
