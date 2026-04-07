@@ -15,6 +15,7 @@ import { ContradictionResolutionCard } from './ContradictionResolutionCard'
 import { TrustDeltaStrip } from './TrustDeltaStrip'
 import { cleanMemoryText } from '../../lib/memoryUtils'
 import { ContradictionDrawer } from './ContradictionDrawer'
+import { GateFailDrawer } from './GateFailDrawer'
 import { resolveContradiction } from '../../lib/api'
 
 // ─────────────────────────────────────────────────────────────
@@ -351,6 +352,7 @@ export function MessageBubble(props: {
   const [gateAccepting, setGateAccepting] = useState(false)
   const [gateAccepted, setGateAccepted] = useState(false)
   const [contradictionDrawerOpen, setContradictionDrawerOpen] = useState(false)
+  const [gateFailDrawerOpen, setGateFailDrawerOpen] = useState(false)
   const [contraResolved, setContraResolved] = useState(false)
 
   // ledger_id from gate_debug — declared early so handleAcceptGateClaim can close over it
@@ -916,12 +918,12 @@ export function MessageBubble(props: {
             <div className="flex items-center gap-1.5">
               {gatesFailed && (
                 <button
-                  onClick={() => setGateDebugOpen((v) => !v)}
+                  onClick={() => setGateFailDrawerOpen(true)}
                   className="rounded-full px-2 py-0.5 text-[10px] font-medium transition-opacity hover:opacity-80"
                   style={{ background: 'rgba(251,113,133,0.15)', color: '#fb7185' }}
                   title={meta?.gate_reason ? `Gate blocked: ${meta.gate_reason}` : 'Click to see why this was blocked'}
                 >
-                  gate fail{meta?.gate_reason ? ` · ${meta.gate_reason.replace(/_/g, ' ').slice(0, 30)}` : ''} {meta?.gate_debug ? (gateDebugOpen ? '▲' : '▼') : ''}
+                  gate fail{meta?.gate_reason ? ` · ${meta.gate_reason.replace(/_/g, ' ').slice(0, 30)}` : ''} ›
                 </button>
               )}
               {contradictionDetected && (
@@ -1017,6 +1019,32 @@ export function MessageBubble(props: {
         threadId={props.threadId ?? 'default'}
         open={contradictionDrawerOpen}
         onClose={() => setContradictionDrawerOpen(false)}
+      />
+
+      {/* Gate failure drawer — detailed breakdown of why a gate blocked */}
+      <GateFailDrawer
+        open={gateFailDrawerOpen}
+        onClose={() => setGateFailDrawerOpen(false)}
+        gateReason={meta?.gate_reason ?? 'unknown'}
+        gateDebug={meta?.gate_debug ? {
+          slot: meta.gate_debug.slot,
+          intent_align: meta.gate_debug.intent_align,
+          memory_align: meta.gate_debug.memory_align,
+          grounding_score: meta.gate_debug.grounding,
+          grounding: meta.gate_debug.grounding,
+          hard_conflicts: meta.gate_debug.hard_conflicts,
+          open_total: meta.gate_debug.open_total,
+          trigger: meta.gate_debug.trigger,
+          explanation: meta.gate_debug.explanation,
+          stored: meta.gate_debug.stored,
+          incoming: meta.gate_debug.incoming,
+        } : undefined}
+        retrievedMemories={meta?.retrieved_memories}
+        contradictionCount={meta?.unresolved_contradictions_total ?? 0}
+        onOpenContradictions={() => {
+          setGateFailDrawerOpen(false)
+          setContradictionDrawerOpen(true)
+        }}
       />
     </motion.div>
   )

@@ -140,10 +140,14 @@ def _build_fresh(thread_id: str, memory_db_path: str) -> str:
 
     # 4. Format — sort by trust descending so highest-trust facts come first,
     # and include trust scores so the model knows which memories to prioritize.
+    from .crt_memory import sanitize_memory_for_prompt as _sanitize_mem
+
     top_memories.sort(key=lambda m: getattr(m, "trust", 0), reverse=True)
     lines = ["", "## What I know about you (sorted by trust, highest first):"]
     for m in top_memories:
-        text = m.text.strip()[:200]
+        text = _sanitize_mem(m.text.strip()[:200])
+        if not text:
+            continue
         trust = getattr(m, "trust", 0)
         lines.append(f"- [trust:{trust:.2f}] {text}")
 
@@ -151,7 +155,9 @@ def _build_fresh(thread_id: str, memory_db_path: str) -> str:
         lines.append("")
         lines.append("Recent observations (provisional):")
         for m in provisional:
-            text = m.text.strip()[:200]
+            text = _sanitize_mem(m.text.strip()[:200])
+            if not text:
+                continue
             lines.append(f"- {text}")
 
     # 5. Narrative synthesis — synthesized understanding (belief-level, not raw facts)

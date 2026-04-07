@@ -26,6 +26,7 @@ const navSections: NavSection[] = [
       { id: 'loops', label: 'Loops', icon: 'L' },
       { id: 'journal', label: 'Journal', icon: 'J' },
       { id: 'telemetry', label: 'Telemetry', icon: '⬡' },
+      { id: 'agent-runs', label: 'Agent Runs', icon: '▶' },
       { id: 'jobs', label: 'Jobs', icon: '☷' },
     ],
   },

@@ -4383,9 +4383,11 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
 
                 # Retrieved memories with trust scores
                 if _pc_memories:
+                    from personal_agent.crt_memory import sanitize_memory_for_prompt as _sanitize_mem
                     _mem_lines = ["Relevant memories about the user:"]
                     for _m in (list(_pc_memories) if isinstance(_pc_memories, list) else [])[:10]:
                         _mt = (_m.get("text") or "").strip()
+                        _mt = _sanitize_mem(_mt)
                         _mtr = _m.get("trust")
                         if _mt:
                             _trust_tag = f" [trust={_mtr:.2f}]" if _mtr is not None else ""

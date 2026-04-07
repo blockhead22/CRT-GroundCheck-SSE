@@ -26,6 +26,7 @@ import { LiveFeedPage } from './pages/LiveFeedPage'
 import BeliefMapPage from './pages/BeliefMapPage'
 import { BeliefsPage } from './pages/BeliefsPage'
 import { TelemetryPage } from './pages/TelemetryPage'
+import { RunLogPage } from './pages/RunLogPage'
 import { newId } from './lib/id'
 import { getAetherSocket } from './lib/ws'
 import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName, authGetMe, authLogout, authSyncChats, authLoadChats, getAuthToken, updateAuthProfile, type AuthUser } from './lib/api'
@@ -1913,6 +1914,8 @@ export default function App() {
                   <BeliefsPage threadId={selectedThread?.id ?? 'default'} />
                 ) : navActive === 'telemetry' ? (
                   <TelemetryPage threadId={selectedThread?.id} />
+                ) : navActive === 'agent-runs' ? (
+                  <RunLogPage />
                 ) : navActive === 'v2' ? (
                   <V2Page />
                 ) : navActive === 'settings' ? (

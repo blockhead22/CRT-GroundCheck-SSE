@@ -124,13 +124,8 @@ export function PipelineCollapse({
         setElapsedMs(Date.now() - startRef.current)
         startRef.current = 0
       }
-      // Auto-collapse after delay — longer if PCA graph is showing
-      // so user can study the activation map
-      const hasPCA = steps.some(s =>
-        s.kind === 'retrieval' && (s as any).memories?.some?.((m: any) => m.pca_x)
-      )
-      const collapseDelay = hasPCA ? 4000 : 1500
-      const t = setTimeout(() => setExpanded(false), collapseDelay)
+      // Auto-collapse after stream ends — user can re-expand and click nodes
+      const t = setTimeout(() => setExpanded(false), 1500)
       return () => clearTimeout(t)
     }
 
@@ -371,48 +366,9 @@ function RetrievalSection({
 }) {
   const hasPCA = memories.some(m => m.pca_x !== undefined && m.pca_x !== 0)
   const W = 360, H = 240, CX = W / 2, CY = H / 2, PAD = 28
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null)
 
-  // Fetch full belief map for background context
-  const [bgNodes, setBgNodes] = useState<Array<{ id: string; x: number; y: number; trust: number; kind?: string }>>([])
-  const bgFetchedRef = useRef(false)
-  useEffect(() => {
-    if (bgFetchedRef.current) return
-    bgFetchedRef.current = true
-    fetch('/api/variance/embedding-map?dimensions=2&thread_id=default')
-      .then(r => r.json())
-      .then(data => {
-        const mems = data.memories || []
-        setBgNodes(mems.map((m: any) => ({
-          id: m.memory_id || '',
-          x: m.pca_x ?? 0,
-          y: m.pca_y ?? 0,
-          trust: m.trust ?? 0.5,
-          kind: m.kind,
-        })))
-      })
-      .catch(() => {})
-  }, [])
-
-  const hasBgMap = bgNodes.length > 0
-
-  // Build bg coordinate space — used to position ALL nodes consistently
-  const bgById = new Map(bgNodes.map(n => [n.id, n]))
-  const bgXs = bgNodes.map(n => n.x)
-  const bgYs = bgNodes.map(n => n.y)
-  const minBgX = bgXs.length ? Math.min(...bgXs) : -1
-  const maxBgX = bgXs.length ? Math.max(...bgXs) : 1
-  const minBgY = bgYs.length ? Math.min(...bgYs) : -1
-  const maxBgY = bgYs.length ? Math.max(...bgYs) : 1
-  const bgRangeX = (maxBgX - minBgX) || 1
-  const bgRangeY = (maxBgY - minBgY) || 1
-
-  // Map raw PCA coords to screen space
-  const bgToScreen = (x: number, y: number) => ({
-    sx: PAD + ((x - minBgX) / bgRangeX) * (W - 2 * PAD),
-    sy: PAD + ((y - minBgY) / bgRangeY) * (H - 2 * PAD),
-  })
-
-  // Compute node positions — prefer bg map coords (matched by ID), fall back to retrieval PCA, then hash circle
+  // Compute node positions — use real PCA if available, fallback to hash circle
   const nodes = memories.map((mem, i) => {
     const trust = shiftById[mem.id] ? shiftById[mem.id].to : mem.trust
     const prevTrust = shiftById[mem.id] ? mem.trust : undefined
@@ -420,12 +376,7 @@ function RetrievalSection({
     const kind = mem.kind || 'observation'
 
     let cx: number, cy: number
-    const bgNode = bgById.get(mem.id)
-    if (hasBgMap && bgNode) {
-      // Use the full-map coordinate space so active nodes overlay the bg correctly
-      const pos = bgToScreen(bgNode.x, bgNode.y)
-      cx = pos.sx; cy = pos.sy
-    } else if (hasPCA && mem.pca_x !== undefined && mem.pca_y !== undefined) {
+    if (hasPCA && mem.pca_x !== undefined && mem.pca_y !== undefined) {
       cx = PAD + ((mem.pca_x + 1) / 2) * (W - 2 * PAD)
       cy = PAD + ((mem.pca_y + 1) / 2) * (H - 2 * PAD)
     } else {
@@ -437,25 +388,6 @@ function RetrievalSection({
     }
     return { ...mem, trust, prevTrust, reason, kind, cx, cy, radius: Math.max(5, trust * 14 + 3), index: i }
   })
-
-  // Compute zoom viewBox — center on active nodes with padding, revealing surrounding bg cluster
-  const activeIds = new Set(memories.map(m => m.id))
-  let viewBox = `0 0 ${W} ${H}`
-  if (hasBgMap && nodes.length > 0) {
-    const minCx = Math.min(...nodes.map(n => n.cx))
-    const maxCx = Math.max(...nodes.map(n => n.cx))
-    const minCy = Math.min(...nodes.map(n => n.cy))
-    const maxCy = Math.max(...nodes.map(n => n.cy))
-    const zoomPad = 55
-    const vx = Math.max(0, minCx - zoomPad)
-    const vy = Math.max(0, minCy - zoomPad)
-    const vw = Math.min(W, maxCx + zoomPad) - vx
-    const vh = Math.min(H, maxCy + zoomPad) - vy
-    // Enforce minimum zoom window so we never get too tight
-    const finalW = Math.max(vw, 110)
-    const finalH = Math.max(vh, 80)
-    viewBox = `${vx} ${vy} ${finalW} ${finalH}`
-  }
 
   // Build edges from backend cosine similarities (preferred) or fallback to word overlap
   const nodeById = new Map(nodes.map(n => [n.id, n]))
@@ -525,43 +457,21 @@ function RetrievalSection({
         </span>
       </motion.div>
 
-      {/* Epistemic graph */}
-      <div style={{ position: 'relative', height: 200, borderRadius: 8, background: 'rgba(20,18,16,0.6)', border: '1px solid rgba(240,235,225,0.05)', overflow: 'hidden', marginBottom: 4 }}>
-        <svg width="100%" height="100%" viewBox={viewBox} style={{ position: 'absolute', top: 0, left: 0 }}>
-
-          {/* Background layer — full belief map, dimmed */}
-          {hasBgMap && bgNodes.map((bn, bi) => {
-            const pos = bgToScreen(bn.x, bn.y)
-            const isActive = activeIds.has(bn.id)
-            if (isActive) return null // active nodes rendered separately
-            const kindColor = KIND_COLORS[bn.kind || 'observation'] || 'rgba(240,235,225,0.3)'
-            return (
-              <motion.circle
-                key={`bg-${bn.id || bi}`}
-                cx={pos.sx} cy={pos.sy} r={2.5}
-                fill={kindColor}
-                opacity={0.12 + bn.trust * 0.06}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.12 + bn.trust * 0.06 }}
-                transition={{ delay: 0.1 + bi * 0.003, duration: 0.4 }}
-              />
-            )
-          })}
-
-          {/* Query pulse — originates from the centroid of active nodes */}
-          {(() => {
-            const qx = nodes.length ? nodes.reduce((s, n) => s + n.cx, 0) / nodes.length : CX
-            const qy = nodes.length ? nodes.reduce((s, n) => s + n.cy, 0) / nodes.length : CY
-            return (
-              <motion.circle
-                cx={qx} cy={qy} r={8}
-                fill="none" stroke="rgba(201,164,92,0.4)" strokeWidth={1.5}
-                initial={{ r: 4, opacity: 0.8 }}
-                animate={{ r: 60, opacity: 0 }}
-                transition={{ duration: 1.5, ease: 'easeOut' }}
-              />
-            )
-          })()}
+      {/* Epistemic graph — click any node to open full belief map */}
+      <div
+        style={{ position: 'relative', height: 200, borderRadius: 8, background: 'rgba(20,18,16,0.6)', border: '1px solid rgba(240,235,225,0.05)', overflow: 'hidden', marginBottom: 4, cursor: 'pointer' }}
+        onClick={() => window.location.pathname = '/belief-map'}
+        title="Click to open full belief map"
+      >
+        <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} style={{ position: 'absolute', top: 0, left: 0 }}>
+          {/* Query pulse — golden ring expanding from center */}
+          <motion.circle
+            cx={CX} cy={CY} r={8}
+            fill="none" stroke="rgba(201,164,92,0.4)" strokeWidth={1.5}
+            initial={{ r: 4, opacity: 0.8 }}
+            animate={{ r: 80, opacity: 0 }}
+            transition={{ duration: 1.5, ease: 'easeOut' }}
+          />
 
           {/* Centroid labels — domain clusters */}
           {[...kindCentroids.entries()].filter(([, c]) => c.count >= 1).map(([kind, c]) => {
@@ -606,39 +516,54 @@ function RetrievalSection({
             )
           })}
 
-          {/* Nodes — active retrieved memories, positioned in bg-map space */}
+          {/* Nodes — memory dots with hover + click to belief map */}
           {nodes.map((node, i) => {
             const kindColor = KIND_COLORS[node.kind] || 'rgba(240,235,225,0.5)'
             const trustBrightness = 0.4 + node.trust * 0.6
-            const glowActive = node.trust >= 0.5
+            const glowActive = node.trust >= 0.6
+            const isHovered = hoveredNode === node.id
             return (
               <motion.g key={node.id || i}
                 initial={{ opacity: 0, scale: 0 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3 + i * 0.1, type: 'spring', damping: 15 }}
+                onMouseEnter={() => setHoveredNode(node.id)}
+                onMouseLeave={() => setHoveredNode(null)}
+                onClick={(e) => { e.stopPropagation(); window.location.pathname = '/belief-map' }}
+                style={{ cursor: 'pointer' }}
               >
-                {/* Activation pulse ring — expands out on enter */}
-                <motion.circle cx={node.cx} cy={node.cy} r={node.radius}
-                  fill="none" stroke={kindColor} strokeWidth={1}
-                  initial={{ r: node.radius, opacity: 0.9 }}
-                  animate={{ r: node.radius + 18, opacity: 0 }}
-                  transition={{ delay: 0.4 + i * 0.1, duration: 0.8, ease: 'easeOut' }}
-                />
-                {/* Trust glow halo — persistent soft ring */}
+                {/* Trust glow halo */}
                 {glowActive && (
                   <motion.circle cx={node.cx} cy={node.cy} r={node.radius + 5}
-                    fill="none" stroke={kindColor} strokeWidth={1.5} opacity={0.3}
+                    fill="none" stroke={kindColor} strokeWidth={1.5} opacity={isHovered ? 0.6 : 0.25}
                     initial={{ r: node.radius }}
                     animate={{ r: node.radius + 5 }}
                     transition={{ duration: 0.5, delay: 0.5 + i * 0.1 }}
                   />
                 )}
+                {/* Hover ring */}
+                {isHovered && (
+                  <circle cx={node.cx} cy={node.cy} r={node.radius + 8}
+                    fill="none" stroke="rgba(240,235,225,0.3)" strokeWidth={1}
+                    strokeDasharray="3 2" />
+                )}
                 {/* Node circle */}
                 <circle cx={node.cx} cy={node.cy} r={node.radius}
-                  fill={kindColor} opacity={trustBrightness} />
-                {/* White center dot — marks activated node */}
-                <circle cx={node.cx} cy={node.cy} r={1.5}
-                  fill="rgba(240,235,225,0.7)" />
+                  fill={kindColor} opacity={isHovered ? 1 : trustBrightness} />
+                {/* Hover tooltip — memory text */}
+                {isHovered && (
+                  <text x={node.cx} y={node.cy - node.radius - 6}
+                    textAnchor="middle" fill="rgba(240,235,225,0.7)"
+                    fontSize={7} fontFamily="var(--font-mono, monospace)">
+                    {cleanMemoryText(node.text).slice(0, 40)}
+                  </text>
+                )}
+                {/* Score connection line to center (query) */}
+                {node.score && node.score > 0.3 && (
+                  <line x1={CX} y1={CY} x2={node.cx} y2={node.cy}
+                    stroke="rgba(201,164,92,0.08)" strokeWidth={0.5}
+                    strokeDasharray="2 4" />
+                )}
               </motion.g>
             )
           })}
@@ -646,34 +571,34 @@ function RetrievalSection({
 
         {/* Legend */}
         <div style={{ position: 'absolute', bottom: 3, right: 6, display: 'flex', gap: 8, fontSize: 7, fontFamily: 'var(--font-mono, monospace)' }}>
-          {hasBgMap && (
-            <span style={{ color: 'rgba(240,235,225,0.2)' }}>{bgNodes.length} total</span>
-          )}
           {edges.some(e => e.type === 'similar') && (
             <span style={{ color: 'rgba(52,211,153,0.6)' }}>— similar</span>
           )}
           {edges.some(e => e.type === 'contradiction') && (
             <span style={{ color: 'rgba(212,112,88,0.6)' }}>-- contra</span>
           )}
-          {hasBgMap
-            ? <span style={{ color: 'rgba(201,164,92,0.4)' }}>◎ zoomed</span>
-            : hasPCA && <span style={{ color: 'rgba(201,164,92,0.4)' }}>◎ pca</span>
-          }
+          {hasPCA && <span style={{ color: 'rgba(201,164,92,0.4)' }}>◎ pca</span>}
+          <span style={{ color: 'rgba(240,235,225,0.2)' }}>click → full map</span>
         </div>
       </div>
 
-      {/* Memory labels below graph — with kind badge */}
+      {/* Memory labels below graph — with kind badge, clickable */}
       <div className="ml-1 space-y-0.5">
         {nodes.map((node, i) => {
           const kindColor = KIND_COLORS[node.kind] || 'rgba(240,235,225,0.35)'
           const trustColor = node.trust >= 0.7 ? '#34d399' : node.trust >= 0.4 ? '#c9a45c' : 'rgba(240,235,225,0.35)'
+          const isHovered = hoveredNode === node.id
           return (
             <motion.div
               key={node.id || i}
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.6 + i * 0.08, duration: 0.15 }}
-              className="flex items-center gap-1.5 text-[10px]"
+              className="flex items-center gap-1.5 text-[10px] cursor-pointer hover:opacity-80"
+              onMouseEnter={() => setHoveredNode(node.id)}
+              onMouseLeave={() => setHoveredNode(null)}
+              onClick={() => window.location.pathname = '/belief-map'}
+              style={{ background: isHovered ? 'rgba(240,235,225,0.03)' : 'transparent', borderRadius: 3, padding: '1px 2px', margin: '-1px -2px' }}
             >
               <span style={{ width: 5, height: 5, borderRadius: '50%', background: kindColor, flexShrink: 0 }} />
               <span className="font-mono" style={{ color: trustColor, flexShrink: 0, width: 26 }}>{node.trust.toFixed(2)}</span>
@@ -683,7 +608,7 @@ function RetrievalSection({
               }}>
                 {KIND_LABELS[node.kind] || node.kind}
               </span>
-              <span className="truncate" style={{ color: 'rgba(240,235,225,0.4)' }}>
+              <span className="truncate" style={{ color: isHovered ? 'rgba(240,235,225,0.6)' : 'rgba(240,235,225,0.4)' }}>
                 {cleanMemoryText(node.text).slice(0, 70)}
               </span>
             </motion.div>

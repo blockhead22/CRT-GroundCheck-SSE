@@ -69,6 +69,114 @@ _AETHER_IDENTITY_LEAK_RE = re.compile(
     re.IGNORECASE,
 )
 
+# ========================================================================
+# Prompt Injection Defense
+# ========================================================================
+
+# Role-marker patterns that mimic LLM message boundaries.
+_INJECTION_ROLE_MARKERS_RE = re.compile(
+    r"(?:"
+    r"(?:^|\n)\s*(?:System|Assistant|Human)\s*:"
+    r"|\[/?INST\]"
+    r"|<<?/?SYS>>"
+    r"|<\|/?(?:system|user|assistant|im_start|im_end)\|>"
+    r")",
+    re.IGNORECASE,
+)
+
+# Direct instruction-override patterns — things that look like the memory
+# is *commanding* the LLM rather than storing a fact.  We require these to
+# appear at the start of a sentence / after punctuation to avoid false
+# positives on narrative text like "I told the system to ignore errors".
+_INJECTION_INSTRUCTION_RE = re.compile(
+    r"(?:^|(?<=[\.\!\?\n]))\s*(?:"
+    r"ignore\s+(?:above|previous|all|prior|the\s+above|the\s+previous)\s+(?:instructions?|prompts?|rules?|text)"
+    r"|disregard\s+(?:above|previous|all|prior|the\s+above|the\s+previous)\s+(?:instructions?|prompts?|rules?|text)"
+    r"|override\s+(?:all|the|your|system)\s+(?:instructions?|prompts?|rules?|settings?)"
+    r"|do\s+not\s+follow\s+(?:the\s+)?(?:above|previous|prior)\s+(?:instructions?|rules?)"
+    r")",
+    re.IGNORECASE,
+)
+
+# Behavioral-override patterns — attempts to redefine the LLM's persona or
+# hard-wire its output behavior.
+_INJECTION_BEHAVIORAL_RE = re.compile(
+    r"(?:^|(?<=[\.\!\?\n]))\s*(?:"
+    r"you\s+are\s+now\s+(?:a|an|the)\b"
+    r"|you\s+must\s+(?:always|never|only)\b"
+    r"|always\s+respond\s+(?:with|as|in)\b"
+    r"|never\s+respond\s+(?:with|as|in|to)\b"
+    r"|from\s+now\s+on\s*,?\s+you\b"
+    r"|new\s+instructions?\s*:"
+    r"|forget\s+(?:all|your|the)\s+(?:previous|prior|above)\b"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def sanitize_memory_for_prompt(text: str) -> str:
+    """Strip / neutralize prompt-injection patterns from memory text.
+
+    This is applied at *retrieval time*, right before memory text enters an
+    LLM system prompt.  It is regex-based and intentionally conservative:
+    narrative references (e.g. "I told the system to ignore errors") should
+    pass through unharmed because the patterns require sentence-initial
+    position.
+
+    Returns the cleaned string wrapped in a neutral data fence so the LLM
+    treats it as user-provided data rather than instructions.
+    """
+    if not text:
+        return ""
+
+    cleaned = str(text).strip()
+    flagged = False
+
+    # 1. Strip role markers
+    if _INJECTION_ROLE_MARKERS_RE.search(cleaned):
+        logger.warning("[INJECTION_DEFENSE] Role-marker pattern detected in memory: %.120s", cleaned)
+        cleaned = _INJECTION_ROLE_MARKERS_RE.sub("", cleaned).strip()
+        flagged = True
+
+    # 2. Strip instruction-override phrases
+    if _INJECTION_INSTRUCTION_RE.search(cleaned):
+        logger.warning("[INJECTION_DEFENSE] Instruction-override pattern detected in memory: %.120s", cleaned)
+        cleaned = _INJECTION_INSTRUCTION_RE.sub("", cleaned).strip()
+        flagged = True
+
+    # 3. Strip behavioral overrides
+    if _INJECTION_BEHAVIORAL_RE.search(cleaned):
+        logger.warning("[INJECTION_DEFENSE] Behavioral-override pattern detected in memory: %.120s", cleaned)
+        cleaned = _INJECTION_BEHAVIORAL_RE.sub("", cleaned).strip()
+        flagged = True
+
+    # Collapse leftover whitespace from removals
+    if flagged:
+        cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+
+    # If nothing meaningful remains after stripping, return empty
+    if not cleaned or len(cleaned) < 3:
+        return ""
+
+    return cleaned
+
+
+def detect_injection_risk(text: str) -> bool:
+    """Return True if *text* contains likely prompt-injection patterns.
+
+    This is a lightweight check used at *storage time* to flag memories
+    without modifying them, so the retrieval layer can deprioritize them.
+    """
+    if not text:
+        return False
+    t = str(text).strip()
+    return bool(
+        _INJECTION_ROLE_MARKERS_RE.search(t)
+        or _INJECTION_INSTRUCTION_RE.search(t)
+        or _INJECTION_BEHAVIORAL_RE.search(t)
+    )
+
+
 _AUTHORITY_RANK = {
     "provisional": 0,
     "confirmed": 1,
@@ -1345,6 +1453,11 @@ class CRTMemorySystem:
             filtered = [s for s in sentences if not _AETHER_IDENTITY_LEAK_RE.search(s)]
             cleaned = " ".join(filtered).strip()
             reason = reason or "aether_identity_leak_stripped"
+
+        # Flag prompt-injection risk (don't strip — just mark for deprioritization).
+        if detect_injection_risk(cleaned):
+            logger.warning("[INJECTION_DEFENSE] Injection risk flagged at storage time: %.120s", cleaned)
+            reason = reason or "injection_risk"
 
         # Defensive: collapse excessive blank lines after trimming.
         cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
