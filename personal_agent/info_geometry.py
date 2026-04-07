@@ -1,4 +1,4 @@
-"""Information Geometry for Memory Splats -- Step 8
+"""Information Geometry for Belief Loci -- Step 8
 
 The Fisher information metric as the "right" distance between beliefs.
 
@@ -8,7 +8,7 @@ Two beliefs that are "close" in embedding space might be very different
 informationally, and vice versa.
 
 The Fisher metric accounts for the curvature of probability space.
-For Gaussian distributions (our splats), the Fisher metric has a
+For Gaussian distributions (our belief loci), the Fisher metric has a
 closed-form expression that weights dimensions by their precision
 (inverse variance). Dimensions where the splat is tight (certain)
 contribute MORE to distance than dimensions where it's wide (uncertain).
@@ -38,15 +38,17 @@ import numpy as np
 
 try:
     from .memory_splats import (
-        MemorySplat, create_splat, create_splat_from_type,
+        BeliefLocus, create_locus, create_locus_from_type,
         cosine_similarity, bhattacharyya_distance,
         kl_divergence, overlap_integral,
+        MemorySplat, create_splat, create_splat_from_type,  # backwards compat aliases
     )
 except ImportError:
     from memory_splats import (
-        MemorySplat, create_splat, create_splat_from_type,
+        BeliefLocus, create_locus, create_locus_from_type,
         cosine_similarity, bhattacharyya_distance,
         kl_divergence, overlap_integral,
+        MemorySplat, create_splat, create_splat_from_type,  # backwards compat aliases
     )
 
 
@@ -54,8 +56,8 @@ except ImportError:
 # Fisher-Rao distance for diagonal Gaussians
 # ---------------------------------------------------------------------------
 
-def fisher_rao_distance(a: MemorySplat, b: MemorySplat) -> float:
-    """Fisher-Rao distance between two diagonal Gaussian splats.
+def fisher_rao_distance(a: BeliefLocus, b: BeliefLocus) -> float:
+    """Fisher-Rao distance between two diagonal Gaussian belief loci.
 
     The exact Fisher-Rao geodesic distance for multivariate Gaussians
     doesn't have a simple closed form. We use the commonly used
@@ -72,7 +74,7 @@ def fisher_rao_distance(a: MemorySplat, b: MemorySplat) -> float:
     diff_mu = a.mu - b.mu
 
     # Term 1: precision-weighted center distance
-    # Dimensions where both splats are tight (low sigma) amplify differences
+    # Dimensions where both loci are tight (low sigma) amplify differences
     # Dimensions where both are wide (high sigma) dampen differences
     mean_term = np.sum(diff_mu ** 2 / sigma_avg)
 
@@ -84,7 +86,7 @@ def fisher_rao_distance(a: MemorySplat, b: MemorySplat) -> float:
     return float(np.sqrt(mean_term + cov_term))
 
 
-def fisher_mean_component(a: MemorySplat, b: MemorySplat) -> float:
+def fisher_mean_component(a: BeliefLocus, b: BeliefLocus) -> float:
     """Just the precision-weighted center distance (no cov term).
 
     Useful for isolating "how far apart are these beliefs,
@@ -95,7 +97,7 @@ def fisher_mean_component(a: MemorySplat, b: MemorySplat) -> float:
     return float(np.sqrt(np.sum(diff_mu ** 2 / sigma_avg)))
 
 
-def fisher_cov_component(a: MemorySplat, b: MemorySplat) -> float:
+def fisher_cov_component(a: BeliefLocus, b: BeliefLocus) -> float:
     """Just the covariance shape divergence.
 
     Useful for detecting "these beliefs are about the same thing
@@ -110,7 +112,7 @@ def fisher_cov_component(a: MemorySplat, b: MemorySplat) -> float:
 # ---------------------------------------------------------------------------
 
 def fisher_dimension_contributions(
-    a: MemorySplat, b: MemorySplat,
+    a: BeliefLocus, b: BeliefLocus,
     top_k: int = 20,
 ) -> Tuple[np.ndarray, List[Tuple[int, float, str]]]:
     """Break down Fisher distance by dimension.
@@ -150,7 +152,7 @@ def fisher_dimension_contributions(
 # Fisher distance matrix (for topology, retrieval, etc.)
 # ---------------------------------------------------------------------------
 
-def fisher_distance_matrix(splats: List[MemorySplat]) -> np.ndarray:
+def fisher_distance_matrix(splats: List[BeliefLocus]) -> np.ndarray:
     """Pairwise Fisher-Rao distance matrix."""
     n = len(splats)
     D = np.zeros((n, n), dtype=np.float32)
@@ -181,9 +183,9 @@ class MetricComparison:
 
 
 def compare_all_metrics(
-    a: MemorySplat, b: MemorySplat, label: str = ""
+    a: BeliefLocus, b: BeliefLocus, label: str = ""
 ) -> MetricComparison:
-    """Compute all metrics between two splats for comparison."""
+    """Compute all metrics between two belief loci for comparison."""
     cos = cosine_similarity(a, b)
     bd = bhattacharyya_distance(a, b)
     kl_ab = kl_divergence(a, b)
@@ -213,7 +215,7 @@ def compare_all_metrics(
 def demo_info_geometry():
     """Show how Fisher distance reveals things cosine misses."""
     print("=" * 70)
-    print("INFORMATION GEOMETRY -- Fisher Metric for Memory Splats")
+    print("INFORMATION GEOMETRY -- Fisher Metric for Belief Loci")
     print("=" * 70)
 
     np.random.seed(42)
@@ -232,15 +234,15 @@ def demo_info_geometry():
     shifted /= np.linalg.norm(shifted)
 
     # Pair A: tight splats (high certainty)
-    tight_a = create_splat("tight_a", base.copy(), "certain belief A", "fact")
+    tight_a = create_locus("tight_a", base.copy(), "certain belief A", "fact")
     tight_a.sigma *= 0.3  # very tight
-    tight_b = create_splat("tight_b", shifted.copy(), "certain belief B", "fact")
+    tight_b = create_locus("tight_b", shifted.copy(), "certain belief B", "fact")
     tight_b.sigma *= 0.3
 
     # Pair B: wide splats (low certainty)
-    wide_a = create_splat("wide_a", base.copy(), "uncertain belief A", "belief")
+    wide_a = create_locus("wide_a", base.copy(), "uncertain belief A", "belief")
     wide_a.sigma *= 3.0  # very wide
-    wide_b = create_splat("wide_b", shifted.copy(), "uncertain belief B", "belief")
+    wide_b = create_locus("wide_b", shifted.copy(), "uncertain belief B", "belief")
     wide_b.sigma *= 3.0
 
     m_tight = compare_all_metrics(tight_a, tight_b, "certain pair")
@@ -264,9 +266,9 @@ def demo_info_geometry():
     print(f"  Cosine sees them as identical. Fisher sees the shape difference.")
 
     same_center = base.copy()
-    tight = create_splat("same_tight", same_center.copy(), "I know this", "fact")
+    tight = create_locus("same_tight", same_center.copy(), "I know this", "fact")
     tight.sigma *= 0.2
-    wide = create_splat("same_wide", same_center.copy(), "I think this maybe", "belief")
+    wide = create_locus("same_wide", same_center.copy(), "I think this maybe", "belief")
     wide.sigma *= 5.0
 
     m = compare_all_metrics(tight, wide, "same center, diff shape")
@@ -283,8 +285,8 @@ def demo_info_geometry():
     print(f"  Where exactly do two beliefs disagree, weighted by certainty?")
 
     # Create splats where a few dimensions are very certain and different
-    splat_a = create_splat("decomp_a", base.copy(), "belief A", "belief")
-    splat_b = create_splat("decomp_b", shifted.copy(), "belief B", "belief")
+    splat_a = create_locus("decomp_a", base.copy(), "belief A", "belief")
+    splat_b = create_locus("decomp_b", shifted.copy(), "belief B", "belief")
 
     # Make splat_a very certain on dims 0-9 (tight sigma)
     splat_a.sigma[:10] *= 0.05
@@ -312,33 +314,33 @@ def demo_info_geometry():
     print(f"\n  === SCENARIO 4: Retrieval ranking -- Fisher vs Cosine ===")
     print(f"  Given a query belief, do Fisher and cosine rank neighbors differently?")
 
-    query = create_splat("query", base.copy(), "query belief", "belief")
+    query = create_locus("query", base.copy(), "query belief", "belief")
     query.sigma *= 0.5  # moderately certain
 
     candidates = []
     # Close in cosine, uncertain
-    c1 = create_splat("close_uncertain", (base + np.random.randn(d).astype(np.float32) * 0.05),
+    c1 = create_locus("close_uncertain", (base + np.random.randn(d).astype(np.float32) * 0.05),
                        "close but uncertain", "belief")
     c1.mu /= np.linalg.norm(c1.mu)
     c1.sigma *= 4.0
     candidates.append(c1)
 
     # Close in cosine, certain
-    c2 = create_splat("close_certain", (base + np.random.randn(d).astype(np.float32) * 0.05),
+    c2 = create_locus("close_certain", (base + np.random.randn(d).astype(np.float32) * 0.05),
                        "close and certain", "fact")
     c2.mu /= np.linalg.norm(c2.mu)
     c2.sigma *= 0.3
     candidates.append(c2)
 
     # Medium distance, certain
-    c3 = create_splat("medium_certain", (base + np.random.randn(d).astype(np.float32) * 0.15),
+    c3 = create_locus("medium_certain", (base + np.random.randn(d).astype(np.float32) * 0.15),
                        "medium distance, certain", "fact")
     c3.mu /= np.linalg.norm(c3.mu)
     c3.sigma *= 0.3
     candidates.append(c3)
 
     # Far in cosine, very certain
-    c4 = create_splat("far_certain", (base + np.random.randn(d).astype(np.float32) * 0.3),
+    c4 = create_locus("far_certain", (base + np.random.randn(d).astype(np.float32) * 0.3),
                        "far but very certain", "fact")
     c4.mu /= np.linalg.norm(c4.mu)
     c4.sigma *= 0.1

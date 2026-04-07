@@ -39,6 +39,14 @@ For the full roadmap see [ROADMAP.md](ROADMAP.md).
 #### Immune Agents
 - **TemplateDetector assertive collapse fix** (`template_detector.py`): Added `_check_assertive_repetition()` — normalizes responses, checks uniqueness ratio. If < 0.3 (70%+ identical), classifies as TEMPLATE_LOCK even without hedge patterns. `assertive_collapse` field added to DetectionResult. Closes 5/6 → 6/6 governance validation.
 
+#### Research Papers
+- **Contradiction-density paper** (`docs/contradiction-density.html`): Full empirical paper. 1,275 sessions, 59,370 messages, 0% continuity awareness, gaslighting risk tables by domain, Law 6 derivation, CRT as solution. All data from production ChatGPT corpus analysis.
+- **Geometric memory position paper** (`docs/geometric-memory.html`): Theory paper. BeliefLocus formal definition, 5 geometric operations (overlap, contraction, fade, expansion, update), variance-to-locus pipeline, adaptive temperature governance (5 regimes), Riemannian geometry connection.
+- **Functional emotion governance paper** (`docs/emotion-governance.html`): Position paper bridging Anthropic's 171 emotion vectors to CRT governance. Cascade pressure as desperation signal, three-regime emotional architecture, belief/speech gap as emotional disclosure, drift detection as monitoring, emotional routing implementation.
+
+#### Terminology
+- **Gaussian Splat renamed to Belief Locus** across entire codebase. `MemorySplat` class → `BeliefLocus` (with backwards compat alias). 13 Python files, 4 markdown files, 1 HTML paper updated. "3D Gaussian Splatting" references preserved as external technique name.
+
 ### Fixed
 - **cleanMemoryText** regex: handles truncated/unclosed `[SYSTEM NOTE` blocks by stripping everything after the marker.
 - **Route learning cache override**: Personal-fact patterns now fire before cache lookup, preventing stale broad_recall classifications from replaying.

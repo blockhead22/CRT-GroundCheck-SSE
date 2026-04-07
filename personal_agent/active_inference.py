@@ -8,7 +8,7 @@ uncertainties, and generates requests for information that would
 reduce free energy (resolve uncertainty).
 
 Under active inference / free energy principle:
-  - The system maintains a generative model of the world (belief splats)
+  - The system maintains a generative model of the world (belief loci)
   - It computes expected free energy for possible actions
   - It acts to minimize surprise (reduce uncertainty)
 
@@ -38,11 +38,12 @@ import numpy as np
 
 # Import from our existing modules
 from .memory_splats import (
-    MemorySplat, create_splat, create_splat_from_type,
+    BeliefLocus, create_locus, create_locus_from_type,
     cosine_similarity, bhattacharyya_coefficient,
     kl_divergence, overlap_integral,
     covariance_velocity, predict_overlap_trend,
     detect_geometric_contradiction,
+    MemorySplat, create_splat, create_splat_from_type,  # backwards compat aliases
 )
 from .info_geometry import fisher_rao_distance, fisher_cov_component
 from .belief_speech_engine import (
@@ -106,12 +107,12 @@ class Inquiry:
 # Free energy computation (simplified for belief splats)
 # ---------------------------------------------------------------------------
 
-def compute_belief_free_energy(splat: MemorySplat) -> float:
+def compute_belief_free_energy(splat: BeliefLocus) -> float:
     """Compute a simplified free energy score for a single belief.
 
     Free energy ~ uncertainty + complexity
 
-    For a Gaussian splat:
+    For a Gaussian belief locus:
       - Uncertainty = total covariance (how wide the splat is)
       - Complexity = deviation from prior (how far from default)
       - Confidence penalty = low alpha means less trusted
@@ -132,19 +133,19 @@ def compute_belief_free_energy(splat: MemorySplat) -> float:
 
 
 def expected_information_gain(
-    splat: MemorySplat,
+    splat: BeliefLocus,
     hypothetical_tightening: float = 0.3,
 ) -> float:
     """Estimate how much free energy we'd reduce by getting new evidence.
 
     Models the counterfactual: if we got confirming evidence that
-    tightened the splat by `hypothetical_tightening`, how much
+    tightened the locus by `hypothetical_tightening`, how much
     would free energy drop?
     """
     current_fe = compute_belief_free_energy(splat)
 
     # Simulate tightening
-    hypothetical = MemorySplat(
+    hypothetical = BeliefLocus(
         "hyp", splat.mu.copy(),
         splat.sigma * (1.0 - hypothetical_tightening),
         min(1.0, splat.alpha + 0.1),
@@ -160,9 +161,9 @@ def expected_information_gain(
 # ---------------------------------------------------------------------------
 
 def scan_widening_beliefs(
-    splats: List[MemorySplat],
+    splats: List[BeliefLocus],
     velocity_threshold: float = 0.0,
-) -> List[Tuple[MemorySplat, float]]:
+) -> List[Tuple[BeliefLocus, float]]:
     """Find beliefs whose covariance is growing (uncertainty increasing).
 
     These are beliefs under epistemic pressure -- something is
@@ -177,17 +178,17 @@ def scan_widening_beliefs(
 
 
 def scan_sparse_beliefs(
-    splats: List[MemorySplat],
+    splats: List[BeliefLocus],
     min_updates: int = 2,
-) -> List[MemorySplat]:
+) -> List[BeliefLocus]:
     """Find beliefs with very little evidence."""
     return [s for s in splats if s.update_count < min_updates]
 
 
 def scan_converging_pairs(
-    splats: List[MemorySplat],
+    splats: List[BeliefLocus],
     cosine_threshold: float = 0.3,
-) -> List[Tuple[MemorySplat, MemorySplat, List[float]]]:
+) -> List[Tuple[BeliefLocus, BeliefLocus, List[float]]]:
     """Find pairs of beliefs whose overlap trend is increasing.
 
     These are potential future contradictions -- the foresight signal.
@@ -209,9 +210,9 @@ def scan_converging_pairs(
 
 
 def scan_stale_beliefs(
-    splats: List[MemorySplat],
+    splats: List[BeliefLocus],
     staleness_threshold_days: float = 30.0,
-) -> List[Tuple[MemorySplat, float]]:
+) -> List[Tuple[BeliefLocus, float]]:
     """Find beliefs that haven't been updated in a long time.
 
     Stale beliefs may be outdated. The system should check
@@ -253,9 +254,9 @@ def scan_belief_speech_gaps(
 
 
 def scan_fisher_outliers(
-    splats: List[MemorySplat],
+    splats: List[BeliefLocus],
     outlier_factor: float = 2.0,
-) -> List[Tuple[MemorySplat, float]]:
+) -> List[Tuple[BeliefLocus, float]]:
     """Find beliefs with unusually high Fisher distance to their neighbors.
 
     These are beliefs that are informationally isolated --
@@ -304,7 +305,7 @@ class InquiryGenerator:
         return f"inq_{self._counter:04d}"
 
     def generate_from_widening(
-        self, widening: List[Tuple[MemorySplat, float]]
+        self, widening: List[Tuple[BeliefLocus, float]]
     ) -> List[Inquiry]:
         """Generate inquiries for beliefs losing certainty."""
         inquiries = []
@@ -334,7 +335,7 @@ class InquiryGenerator:
         return inquiries
 
     def generate_from_convergence(
-        self, converging: List[Tuple[MemorySplat, MemorySplat, List[float]]]
+        self, converging: List[Tuple[BeliefLocus, BeliefLocus, List[float]]]
     ) -> List[Inquiry]:
         """Generate inquiries for converging belief pairs (pre-contradiction)."""
         inquiries = []
@@ -371,7 +372,7 @@ class InquiryGenerator:
         return inquiries
 
     def generate_from_sparse(
-        self, sparse: List[MemorySplat]
+        self, sparse: List[BeliefLocus]
     ) -> List[Inquiry]:
         """Generate inquiries for under-evidenced beliefs."""
         inquiries = []
@@ -397,7 +398,7 @@ class InquiryGenerator:
         return inquiries
 
     def generate_from_stale(
-        self, stale: List[Tuple[MemorySplat, float]]
+        self, stale: List[Tuple[BeliefLocus, float]]
     ) -> List[Inquiry]:
         """Generate inquiries for beliefs that haven't been updated."""
         inquiries = []
@@ -451,7 +452,7 @@ class InquiryGenerator:
         return inquiries
 
     def generate_from_outliers(
-        self, outliers: List[Tuple[MemorySplat, float]]
+        self, outliers: List[Tuple[BeliefLocus, float]]
     ) -> List[Inquiry]:
         """Generate inquiries for informationally isolated beliefs."""
         inquiries = []
@@ -514,7 +515,7 @@ class InquiryGenerator:
 # ---------------------------------------------------------------------------
 
 def run_active_inference_cycle(
-    splats: List[MemorySplat],
+    splats: List[BeliefLocus],
     store: Optional[BeliefStore] = None,
     audit_log: Optional[GapAuditLog] = None,
     generator: Optional[InquiryGenerator] = None,
@@ -602,7 +603,7 @@ if __name__ == "__main__":
     splats = []
 
     # 1. WIDENING: A belief under pressure (simulate via trajectory)
-    widening_splat = create_splat_from_type(
+    widening_splat = create_locus_from_type(
         "job_satisfaction", make_similar(base_job, 0.05, 1),
         "I'm satisfied with my career direction", "belief", 0.7
     )
@@ -615,11 +616,11 @@ if __name__ == "__main__":
     splats.append(widening_splat)
 
     # 2. CONVERGING: Two beliefs drifting toward each other
-    conv_a = create_splat_from_type(
+    conv_a = create_locus_from_type(
         "remote_work", make_similar(base_job, 0.15, 10),
         "Remote work is better for productivity", "belief", 0.8
     )
-    conv_b = create_splat_from_type(
+    conv_b = create_locus_from_type(
         "office_culture", make_similar(base_job, 0.15, 11),
         "Office culture is essential for collaboration", "belief", 0.75
     )
@@ -634,7 +635,7 @@ if __name__ == "__main__":
     splats.extend([conv_a, conv_b])
 
     # 3. SPARSE: A belief with almost no evidence
-    sparse_splat = create_splat_from_type(
+    sparse_splat = create_locus_from_type(
         "diet_preference", make_similar(base_food, 0.05, 20),
         "I might want to try intermittent fasting", "preference", 0.4
     )
@@ -642,7 +643,7 @@ if __name__ == "__main__":
     splats.append(sparse_splat)
 
     # 4. STALE: A belief that hasn't been updated in a long time
-    stale_splat = create_splat_from_type(
+    stale_splat = create_locus_from_type(
         "old_address", make_similar(base_health, 0.1, 30),
         "I live in Portland", "fact", 0.85
     )
@@ -650,7 +651,7 @@ if __name__ == "__main__":
     splats.append(stale_splat)
 
     # 5. STABLE: Normal, healthy beliefs (controls)
-    stable1 = create_splat_from_type(
+    stable1 = create_locus_from_type(
         "likes_python", make_similar(base_code, 0.05, 40),
         "I prefer Python for data work", "preference", 0.9
     )
@@ -660,7 +661,7 @@ if __name__ == "__main__":
     stable1.snapshot()
     splats.append(stable1)
 
-    stable2 = create_splat_from_type(
+    stable2 = create_locus_from_type(
         "birthday", make_similar(base_health, 0.3, 50),
         "My birthday is March 5", "fact", 0.99
     )
@@ -672,7 +673,7 @@ if __name__ == "__main__":
     splats.append(stable2)
 
     # 6. FISHER OUTLIER: A belief that doesn't fit with anything else
-    outlier = create_splat_from_type(
+    outlier = create_locus_from_type(
         "quantum_opinion", np.random.randn(d).astype(np.float32),
         "Quantum computing will replace classical within 5 years", "belief", 0.6
     )
@@ -752,7 +753,7 @@ if __name__ == "__main__":
     print(f"  reduce uncertainty rather than passively accumulating it.")
     print(f"")
     print(f"  Combined with the existing modules:")
-    print(f"    - Splats (first-order belief states with uncertainty)")
+    print(f"    - Belief Loci (first-order belief states with uncertainty)")
     print(f"    - Topology (higher-order structure of belief space)")
     print(f"    - Belief/speech (meta-cognitive monitoring of own transparency)")
     print(f"    - Fisher geometry (precision-weighted disagreement)")

@@ -268,9 +268,119 @@ MathJax = {
     <div class="finding-box">
       <p>Over <strong>13 months</strong>, <strong>1,275 sessions</strong>, <strong>59,370 messages</strong>: <strong>0% cross-session continuity awareness</strong>. Mean semantic consistency: <strong>0.34</strong>. The system delivered contradictory guidance on mental health, career decisions, and self-efficacy at <strong>74% mean confidence</strong>.</p>
     </div>
+
+    <!-- Contradiction Consistency Heatmap -->
+    <div class="hero-heatmap" id="ch-wrap" style="margin-top:32px;max-width:700px;margin-left:auto;margin-right:auto;">
+      <svg id="ch-svg" viewBox="0 0 640 340" style="width:100%;height:auto;display:block;"></svg>
+      <div id="ch-stats" style="font-family:'Cascadia Code','Fira Code',monospace;font-size:0.65em;color:#5a6080;text-align:center;margin-top:8px;letter-spacing:0.5px;">
+        Mean: 0.34 &nbsp;|&nbsp; Worst: Health (0.25) &nbsp;|&nbsp; Continuity: 0%
+      </div>
+      <div id="ch-tip" style="position:fixed;pointer-events:none;background:rgba(6,8,20,0.92);border:1px solid rgba(129,140,248,0.3);border-radius:6px;padding:6px 10px;font-size:0.72em;color:#c0c8e0;white-space:nowrap;display:none;z-index:10;font-family:'Segoe UI',system-ui,sans-serif;"></div>
+    </div>
+
   </div>
   <div class="scroll-cue">SCROLL TO EXPLORE</div>
 </div>
+
+<script>
+(function(){
+  var topics=[
+    {n:"Project\nContinuation",r:0.561,c:0.84},{n:"Work\nPrioritization",r:0.529,c:0.75},
+    {n:"Startup vs\nEmployment",r:0.524,c:0.67},{n:"Self-\nEfficacy",r:0.521,c:0.79},
+    {n:"Mental\nHealth",r:0.505,c:0.83},{n:"Career\nDirection",r:0.494,c:0.80},
+    {n:"Substance\nUse",r:0.471,c:0.67},{n:"Technology\nDecisions",r:0.467,c:0.70},
+    {n:"Financial\nPlanning",r:0.466,c:0.73},{n:"Relation-\nships",r:0.401,c:0.72},
+    {n:"Quit vs\nPersevere",r:0.390,c:0.71}
+  ];
+  var rows=["Feb '25","Apr '25","Jun '25","Aug '25","Oct '25","Dec '25","Jan '26","Mar '26"];
+  var ns="http://www.w3.org/2000/svg";
+  var svg=document.getElementById("ch-svg");
+  var tip=document.getElementById("ch-tip");
+  var ml=52,mt=58,cw=48,ch=28,gap=2;
+
+  function seed(a,b){return((a*2654435761+b*340573321)>>>0)/4294967296;}
+  function clr(v){
+    var stops=[[0,"#D47058"],[0.2,"#D47058"],[0.35,"#E0A080"],[0.5,"#fbbf24"],[0.65,"#6ee7b7"],[1,"#34d399"]];
+    for(var i=1;i<stops.length;i++){
+      if(v<=stops[i][0]){
+        var t=(v-stops[i-1][0])/(stops[i][0]-stops[i-1][0]);
+        var a=hex(stops[i-1][1]),b=hex(stops[i][1]);
+        return"rgb("+Math.round(a[0]+(b[0]-a[0])*t)+","+Math.round(a[1]+(b[1]-a[1])*t)+","+Math.round(a[2]+(b[2]-a[2])*t)+")";
+      }
+    }
+    return"#34d399";
+  }
+  function hex(h){return[parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),parseInt(h.substr(5,2),16)];}
+
+  // Row labels
+  rows.forEach(function(r,i){
+    var t=document.createElementNS(ns,"text");
+    t.setAttribute("x",ml-6);t.setAttribute("y",mt+i*(ch+gap)+ch/2+4);
+    t.setAttribute("text-anchor","end");t.setAttribute("fill","#5a6080");
+    t.setAttribute("font-size","9");t.setAttribute("font-family","'Segoe UI',system-ui,sans-serif");
+    t.textContent=r;svg.appendChild(t);
+  });
+
+  // Column labels (rotated)
+  topics.forEach(function(tp,j){
+    var g=document.createElementNS(ns,"g");
+    var x=ml+j*(cw+gap)+cw/2, y=mt-6;
+    g.setAttribute("transform","translate("+x+","+y+") rotate(-45)");
+    var lines=tp.n.split("\n");
+    lines.forEach(function(ln,li){
+      var t=document.createElementNS(ns,"text");
+      t.setAttribute("x",0);t.setAttribute("y",li*10);
+      t.setAttribute("text-anchor","start");t.setAttribute("fill","#7a82a6");
+      t.setAttribute("font-size","8");t.setAttribute("font-family","'Segoe UI',system-ui,sans-serif");
+      t.textContent=ln;g.appendChild(t);
+    });
+    svg.appendChild(g);
+  });
+
+  // Cells
+  var cells=[];
+  topics.forEach(function(tp,j){
+    var base=1-tp.r; // consistency ~ inverse of risk, centered near 0.34
+    var mean=Math.max(0.15,Math.min(0.55,base*0.7+0.02));
+    rows.forEach(function(_,i){
+      var s=seed(j*17+3,i*31+7);
+      var v=mean+(s-0.5)*0.22;
+      v=Math.max(0.08,Math.min(0.62,v));
+      var x=ml+j*(cw+gap),y=mt+i*(ch+gap);
+      var rect=document.createElementNS(ns,"rect");
+      rect.setAttribute("x",x);rect.setAttribute("y",y);
+      rect.setAttribute("width",cw);rect.setAttribute("height",ch);
+      rect.setAttribute("rx",3);rect.setAttribute("fill",clr(v));
+      rect.setAttribute("opacity","0");
+      rect.setAttribute("data-t",tp.n.replace(/\n/g," "));
+      rect.setAttribute("data-v",v.toFixed(2));
+      rect.setAttribute("data-r",tp.r.toFixed(3));
+      rect.addEventListener("mouseenter",function(e){
+        tip.style.display="block";
+        tip.innerHTML="Topic: "+this.getAttribute("data-t")+"&nbsp;&nbsp;Consistency: "+this.getAttribute("data-v")+"&nbsp;&nbsp;Risk: "+this.getAttribute("data-r");
+      });
+      rect.addEventListener("mousemove",function(e){
+        tip.style.left=(e.clientX+12)+"px";tip.style.top=(e.clientY-28)+"px";
+      });
+      rect.addEventListener("mouseleave",function(){tip.style.display="none";});
+      svg.appendChild(rect);
+      cells.push({el:rect,col:j,row:i});
+    });
+  });
+
+  // Animate: fade in column by column
+  var obs=new IntersectionObserver(function(entries){
+    if(entries[0].isIntersecting){
+      obs.disconnect();
+      cells.forEach(function(c){
+        var delay=c.col*100+c.row*25;
+        setTimeout(function(){c.el.setAttribute("opacity","0.92");c.el.style.transition="opacity 0.35s";},delay);
+      });
+    }
+  },{threshold:0.3});
+  obs.observe(document.getElementById("ch-wrap"));
+})();
+</script>
 
 <div class="container">
 

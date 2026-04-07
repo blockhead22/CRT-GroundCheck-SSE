@@ -113,7 +113,7 @@ def load_raw_metadata() -> dict[str, dict]:
 
 
 # ---------------------------------------------------------------------------
-# Core conversion: response distribution -> MemorySplat
+# Core conversion: response distribution -> BeliefLocus
 # ---------------------------------------------------------------------------
 @dataclass
 class BeliefSplat:
@@ -306,7 +306,7 @@ def build_trajectory(
 ) -> BeliefTrajectory:
     """Build a full belief trajectory for one prompt across temperatures."""
     splats_by_temp: dict[float, list[BeliefSplat]] = {}
-    primary_splats: list[MemorySplat] = []
+    primary_splats: list[BeliefLocus] = []
 
     sorted_temps = sorted(embeddings_by_temp.keys())
 
@@ -552,7 +552,7 @@ def run_pipeline(save: bool = True) -> dict:
     6. Save results
     """
     print("=" * 60)
-    print("  VARIANCE → SPLATS PIPELINE")
+    print("  VARIANCE → LOCI PIPELINE")
     print("=" * 60)
 
     # 1. Load
@@ -813,7 +813,7 @@ def run_synthetic_test():
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Variance → Splats Pipeline")
+    parser = argparse.ArgumentParser(description="Variance → Loci Pipeline")
     parser.add_argument("--synthetic", action="store_true",
                         help="Run synthetic test (no experiment data needed)")
     parser.add_argument("--no-save", action="store_true",

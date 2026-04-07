@@ -3,13 +3,13 @@
 The foresight engine. Every other memory system is a rearview mirror.
 This one looks through the windshield.
 
-Core idea: two memory splats drifting toward each other in belief space
+Core idea: two belief loci drifting toward each other in belief space
 will eventually conflict. The system can see the collision before it happens
 by tracking trajectories and extrapolating convergence.
 
 Three signals:
   1. CENTER CONVERGENCE -- are the means getting closer?
-  2. COVARIANCE EXPANSION -- is either splat widening (uncertainty growing)?
+  2. COVARIANCE EXPANSION -- is either locus widening (uncertainty growing)?
   3. OVERLAP TREND -- is the overlap integral increasing over time?
 
 The combined signal → convergence score → urgency classification:
@@ -33,10 +33,12 @@ from enum import Enum
 import numpy as np
 
 from .memory_splats import (
-    MemorySplat, create_splat, create_splat_from_type,
+    BeliefLocus, create_locus, create_locus_from_type,
     bhattacharyya_coefficient, bhattacharyya_distance,
     overlap_integral, kl_divergence, cosine_similarity,
-    update_splat_with_evidence,
+    update_locus_with_evidence,
+    MemorySplat, create_splat, create_splat_from_type,  # backwards compat aliases
+    update_splat_with_evidence,  # backwards compat alias
 )
 
 
@@ -57,7 +59,7 @@ class Urgency(Enum):
 
 @dataclass
 class TrajectoryState:
-    """Extracted trajectory features for a single splat."""
+    """Extracted trajectory features for a single belief locus."""
     center_velocity: Optional[np.ndarray]  # direction + speed of center drift
     center_speed: float                     # magnitude of velocity
     covariance_velocity: float              # rate of total uncertainty change
@@ -67,8 +69,8 @@ class TrajectoryState:
     time_span: float                        # seconds between first and last snapshot
 
 
-def extract_trajectory(splat: MemorySplat, use_last_n: int = 5) -> Optional[TrajectoryState]:
-    """Extract trajectory features from a splat's history.
+def extract_trajectory(splat: BeliefLocus, use_last_n: int = 5) -> Optional[TrajectoryState]:
+    """Extract trajectory features from a belief locus's history.
 
     Uses weighted linear regression on the last N snapshots.
     More recent snapshots get more weight.
@@ -143,7 +145,7 @@ def extract_trajectory(splat: MemorySplat, use_last_n: int = 5) -> Optional[Traj
 
 @dataclass
 class ConvergenceResult:
-    """Full analysis of whether two splats are heading toward conflict."""
+    """Full analysis of whether two belief loci are heading toward conflict."""
     splat_a_id: str
     splat_b_id: str
 
@@ -170,8 +172,8 @@ class ConvergenceResult:
 
 
 def analyze_convergence(
-    a: MemorySplat,
-    b: MemorySplat,
+    a: BeliefLocus,
+    b: BeliefLocus,
     # Thresholds
     cosine_conflict_threshold: float = 0.7,
     overlap_watch_threshold: float = 1e-6,
@@ -181,7 +183,7 @@ def analyze_convergence(
 ) -> ConvergenceResult:
     """The main prediction engine.
 
-    Analyzes two splats' trajectories and predicts whether they're
+    Analyzes two belief loci trajectories and predicts whether they're
     heading toward a contradiction.
     """
     # --- Current state ---
@@ -227,9 +229,9 @@ def analyze_convergence(
             overlaps = []
             times = []
             for i in range(max(0, n_shared - 5), n_shared):
-                snap_a = MemorySplat("tmp", a.trajectory[i]['mu'],
+                snap_a = BeliefLocus("tmp", a.trajectory[i]['mu'],
                                      a.trajectory[i]['sigma'], a.trajectory[i]['alpha'])
-                snap_b = MemorySplat("tmp", b.trajectory[i]['mu'],
+                snap_b = BeliefLocus("tmp", b.trajectory[i]['mu'],
                                      b.trajectory[i]['sigma'], b.trajectory[i]['alpha'])
                 overlaps.append(overlap_integral(snap_a, snap_b))
                 times.append(a.trajectory[i]['timestamp'])
@@ -293,10 +295,10 @@ def analyze_convergence(
         n_shared = min(len(a.trajectory), len(b.trajectory))
         if n_shared >= 3:
             # Compare oldest and newest overlap in the window
-            snap_old_a = MemorySplat("t", a.trajectory[-n_shared]['mu'],
+            snap_old_a = BeliefLocus("t", a.trajectory[-n_shared]['mu'],
                                      a.trajectory[-n_shared]['sigma'],
                                      a.trajectory[-n_shared]['alpha'])
-            snap_old_b = MemorySplat("t", b.trajectory[-n_shared]['mu'],
+            snap_old_b = BeliefLocus("t", b.trajectory[-n_shared]['mu'],
                                      b.trajectory[-n_shared]['sigma'],
                                      b.trajectory[-n_shared]['alpha'])
             old_overlap = max(1e-30, overlap_integral(snap_old_a, snap_old_b))
@@ -388,11 +390,11 @@ class ConvergenceAlert:
 
 
 def scan_for_convergence(
-    splats: List[MemorySplat],
+    splats: List[BeliefLocus],
     min_cosine: float = 0.2,   # only check related pairs
     min_urgency: Urgency = Urgency.WATCH,
 ) -> List[ConvergenceAlert]:
-    """Scan all pairs of splats for convergence.
+    """Scan all pairs of belief loci for convergence.
 
     Pre-filters by cosine similarity (unrelated pairs can't converge
     into contradiction). Returns alerts sorted by priority.
@@ -458,11 +460,11 @@ def simulate_belief_drift():
     print(f"\n  Base cosine (work vs freetime): {float(np.dot(work_dir, freetime_dir)):.4f}")
 
     # Create initial splats
-    work_splat = create_splat_from_type(
+    work_splat = create_locus_from_type(
         "enjoy_work", work_dir.copy(),
         "I enjoy my work", "belief", 0.8
     )
-    freetime_splat = create_splat_from_type(
+    freetime_splat = create_locus_from_type(
         "need_freetime", freetime_dir.copy(),
         "I need more free time", "belief", 0.7
     )
@@ -554,8 +556,8 @@ def simulate_stable_beliefs():
     related = base + noise
     related /= np.linalg.norm(related)
 
-    splat_a = create_splat_from_type("stable_a", base, "I like hiking", "preference")
-    splat_b = create_splat_from_type("stable_b", related, "Nature is calming", "belief")
+    splat_a = create_locus_from_type("stable_a", base, "I like hiking", "preference")
+    splat_b = create_locus_from_type("stable_b", related, "Nature is calming", "belief")
 
     print(f"\n  Base cosine: {float(np.dot(base, related)):.4f}")
     print(f"  {'Step':>4} | {'Cosine':>7} | {'Conv.Score':>10} | {'Urgency':>10}")
@@ -595,7 +597,7 @@ def simulate_sudden_reversal():
     direction = np.random.randn(d).astype(np.float32)
     direction /= np.linalg.norm(direction)
 
-    splat = create_splat_from_type("reversing", direction.copy(),
+    splat = create_locus_from_type("reversing", direction.copy(),
                                    "I want to stay at this company", "belief", 0.9)
 
     print(f"\n  {'Step':>4} | {'Avg Sigma':>10} | {'Cov Velocity':>12} | {'Alpha':>6} | Notes")
@@ -608,25 +610,25 @@ def simulate_sudden_reversal():
             # Confirming evidence
             nearby = direction + np.random.randn(d).astype(np.float32) * 0.02
             nearby /= np.linalg.norm(nearby)
-            update_splat_with_evidence(splat, nearby, weight=0.1)
+            update_locus_with_evidence(splat, nearby, weight=0.1)
             notes = "confirming"
         elif step == 5:
             # REVERSAL: contradicting evidence
             opposite = -direction + np.random.randn(d).astype(np.float32) * 0.1
             opposite /= np.linalg.norm(opposite)
-            update_splat_with_evidence(splat, opposite, weight=0.3)
+            update_locus_with_evidence(splat, opposite, weight=0.3)
             notes = "<-- REVERSAL"
         elif step < 10:
             # More contradicting evidence
             opposite = -direction + np.random.randn(d).astype(np.float32) * 0.1
             opposite /= np.linalg.norm(opposite)
-            update_splat_with_evidence(splat, opposite, weight=0.15)
+            update_locus_with_evidence(splat, opposite, weight=0.15)
             notes = "contradicting"
         else:
             # Settling into new belief
             new_dir = -direction + np.random.randn(d).astype(np.float32) * 0.02
             new_dir /= np.linalg.norm(new_dir)
-            update_splat_with_evidence(splat, new_dir, weight=0.1)
+            update_locus_with_evidence(splat, new_dir, weight=0.1)
             notes = "settling"
 
         splat.trajectory.append({

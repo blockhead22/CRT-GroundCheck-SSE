@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cascade Propagation Visualizer — Aeteros Research</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']], tags: 'ams' },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #060814; color: #c0c8e0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; line-height: 1.75; overflow-x: hidden; }
+
+  /* ===== HERO ===== */
+  .hero {
+    position: relative; width: 100%; min-height: 30vh;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, #060814 0%, #0c1228 30%, #1a0e2e 60%, #0d1a3a 100%);
+    overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+    background: radial-gradient(ellipse at 30% 50%, rgba(99,102,241,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 30%, rgba(236,72,153,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(59,130,246,0.05) 0%, transparent 50%);
+    animation: drift 20s ease-in-out infinite alternate;
+  }
+  @keyframes drift { 0% { transform: translate(0,0) rotate(0deg); } 100% { transform: translate(-2%,1%) rotate(1deg); } }
+  .hero-inner {
+    position: relative; z-index: 1; text-align: center; max-width: 880px; padding: 50px 30px 40px;
+  }
+  .hero-badge {
+    display: inline-block; font-size: 0.7em; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
+    color: #818cf8; border: 1px solid rgba(129,140,248,0.25); border-radius: 20px; padding: 6px 18px;
+    margin-bottom: 20px; background: rgba(129,140,248,0.06);
+  }
+  .hero h1 {
+    font-size: 2.4em; font-weight: 700; color: #fff; letter-spacing: -1.5px; line-height: 1.15; margin-bottom: 14px;
+  }
+  .hero h1 .grad {
+    background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .hero .sub { font-size: 0.95em; color: #7a82a6; margin-bottom: 8px; }
+  .formula-box {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 16px 24px; display: inline-block; margin-top: 12px;
+  }
+
+  /* ===== LAYOUT ===== */
+  .container { max-width: 1200px; margin: 0 auto; padding: 40px 30px; }
+  h2 { font-size: 1.8em; color: #fff; margin-bottom: 16px; letter-spacing: -0.5px; font-weight: 700; }
+  h3 { font-size: 1.1em; color: #d0d4e8; margin: 24px 0 12px 0; font-weight: 600; }
+  .accent-line { width: 48px; height: 3px; background: linear-gradient(90deg, #818cf8, #c084fc); border-radius: 2px; margin-bottom: 28px; }
+  .section-number { font-size: 0.68em; color: #818cf8; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; display: block; margin-bottom: 8px; }
+
+  /* ===== CONTROLS ===== */
+  .controls-bar {
+    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 16px 24px; margin-bottom: 24px;
+  }
+  .control-group { display: flex; align-items: center; gap: 10px; }
+  .control-group label { font-size: 0.82em; color: #7a82a6; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+  .control-group .val { font-family: 'Cascadia Code', 'Fira Code', monospace; color: #818cf8; font-size: 0.9em; min-width: 36px; }
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none; width: 140px; height: 6px;
+    background: rgba(255,255,255,0.08); border-radius: 3px; outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    background: #818cf8; cursor: pointer; border: 2px solid #060814;
+  }
+  .btn {
+    padding: 8px 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04); color: #c0c8e0; font-size: 0.82em;
+    cursor: pointer; transition: all 0.2s; font-family: inherit; font-weight: 600;
+  }
+  .btn:hover { background: rgba(129,140,248,0.12); border-color: rgba(129,140,248,0.3); color: #fff; }
+  .hint { font-size: 0.75em; color: #5a6080; font-style: italic; }
+
+  /* ===== STAT CARDS ===== */
+  .stat-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
+  .stat-card {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 16px 14px; text-align: center;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+  .stat-card:hover { border-color: rgba(129,140,248,0.3); transform: translateY(-2px); }
+  .stat-card .stat-value { font-size: 1.6em; font-weight: 700; color: #fff; line-height: 1; margin-bottom: 4px; font-family: 'Cascadia Code', 'Fira Code', monospace; }
+  .stat-card .stat-value.accent { color: #818cf8; }
+  .stat-card .stat-value.purple { color: #c084fc; }
+  .stat-card .stat-value.pink { color: #f472b6; }
+  .stat-card .stat-value.green { color: #34d399; }
+  .stat-card .stat-value.amber { color: #fbbf24; }
+  .stat-card .stat-label { font-size: 0.65em; color: #6a7096; text-transform: uppercase; letter-spacing: 1px; }
+
+  /* ===== SVG AREA ===== */
+  .viz-wrapper {
+    background: rgba(255,255,255,0.015); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px; overflow: hidden; position: relative;
+  }
+  #cascadeSvg { display: block; width: 100%; cursor: crosshair; }
+
+  /* ===== TOOLTIP ===== */
+  .tooltip {
+    position: absolute; pointer-events: none; z-index: 100;
+    background: rgba(6,8,20,0.95); border: 1px solid rgba(129,140,248,0.3);
+    border-radius: 8px; padding: 10px 14px; font-size: 0.78em;
+    backdrop-filter: blur(12px); display: none; max-width: 260px;
+  }
+  .tooltip .tt-name { color: #fff; font-weight: 600; margin-bottom: 4px; }
+  .tooltip .tt-detail { color: #7a82a6; }
+  .tooltip .tt-detail span { color: #818cf8; font-family: 'Cascadia Code', 'Fira Code', monospace; }
+
+  /* ===== TABLE ===== */
+  .table-wrap { overflow-x: auto; margin: 24px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82em; }
+  thead th {
+    text-align: left; padding: 10px 12px; color: #5a6080; font-weight: 600; font-size: 0.75em;
+    text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 2px solid rgba(255,255,255,0.06);
+  }
+  tbody td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.03); color: #a0a8c8; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.9em; }
+  tbody td:first-child { font-family: 'Segoe UI', system-ui, sans-serif; }
+  tbody tr:hover td { background: rgba(129,140,248,0.03); }
+  tbody tr.blocked td { color: #fbbf24; }
+  .table-caption { font-size: 0.78em; color: #5a6080; font-style: italic; margin-top: 8px; text-align: center; }
+
+  /* ===== ASCII BLOCK ===== */
+  pre.ascii-cascade {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 8px; padding: 24px; margin: 20px 0; overflow-x: auto;
+    font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.78em;
+    color: #9098b8; line-height: 1.7;
+  }
+  pre.ascii-cascade .src { color: #D47058; font-weight: 700; }
+  pre.ascii-cascade .fw  { color: #fbbf24; font-weight: 700; }
+  pre.ascii-cascade .imp { color: #34d399; }
+  pre.ascii-cascade .blk { color: #f472b6; }
+
+  /* ===== SVG ANIMATIONS ===== */
+  @keyframes pulse-ring {
+    0% { r: 12; opacity: 0.8; }
+    100% { r: 30; opacity: 0; }
+  }
+  @keyframes shield-flash {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+
+  /* ===== FOOTER ===== */
+  .footer {
+    text-align: center; padding: 40px 30px; color: #3a3f5c; font-size: 0.75em;
+    border-top: 1px solid rgba(255,255,255,0.04); margin-top: 60px;
+  }
+  .footer a { color: #5a6080; text-decoration: none; }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 768px) {
+    .stat-row { grid-template-columns: repeat(3, 1fr); }
+    .controls-bar { flex-direction: column; align-items: flex-start; }
+    .hero h1 { font-size: 1.6em; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== HERO ===== -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">Interactive Visualization</div>
+    <h1>Cascade <span class="grad">Propagation</span> Visualizer</h1>
+    <p class="sub">Click any node in the belief dependency graph to trigger a revision cascade.<br>Watch geometric damping, firewall blocking, and pressure accumulation in real time.</p>
+    <div class="formula-box">
+      \[\delta(v) = \max_{u \to v} \left( w_{uv} \cdot L \cdot \delta(u) \right)\]
+    </div>
+  </div>
+</div>
+
+<!-- ===== MAIN ===== -->
+<div class="container">
+
+  <!-- Controls -->
+  <div class="controls-bar">
+    <div class="control-group">
+      <label>Damping (L)</label>
+      <input type="range" id="dampingSlider" min="0.5" max="1.0" step="0.01" value="0.90">
+      <span class="val" id="dampingVal">0.90</span>
+    </div>
+    <button class="btn" id="resetBtn">Reset Cascade</button>
+    <button class="btn" id="autoBtn">Auto-Run Demo</button>
+    <span class="hint">Click any node to trigger a cascade</span>
+  </div>
+
+  <!-- Stats -->
+  <div class="stat-row">
+    <div class="stat-card"><div class="stat-value accent" id="statDepth">-</div><div class="stat-label">Depth</div></div>
+    <div class="stat-card"><div class="stat-value purple" id="statWidth">-</div><div class="stat-label">Width</div></div>
+    <div class="stat-card"><div class="stat-value green" id="statAffected">-</div><div class="stat-label">Affected</div></div>
+    <div class="stat-card"><div class="stat-value pink" id="statPressure">-</div><div class="stat-label">Max Pressure</div></div>
+    <div class="stat-card"><div class="stat-value amber" id="statConverged">-</div><div class="stat-label">Converged</div></div>
+  </div>
+
+  <!-- SVG Visualization -->
+  <div class="viz-wrapper">
+    <svg id="cascadeSvg" viewBox="0 0 1140 620" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrowGray" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="none" stroke="#2a2f48" stroke-width="1"/>
+        </marker>
+        <marker id="arrowCyan" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="none" stroke="#22d3ee" stroke-width="1"/>
+        </marker>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="glowStrong">
+          <feGaussianBlur stdDeviation="6" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <!-- Edges and nodes rendered by JS -->
+    </svg>
+    <div class="tooltip" id="tooltip">
+      <div class="tt-name"></div>
+      <div class="tt-detail"></div>
+    </div>
+  </div>
+
+  <!-- Impact Table -->
+  <section style="margin-top: 40px;">
+    <span class="section-number">Live Cascade Data</span>
+    <h2>Node Impact Table</h2>
+    <div class="accent-line"></div>
+    <div class="table-wrap">
+      <table id="impactTable">
+        <thead>
+          <tr>
+            <th>Node</th>
+            <th>Trust</th>
+            <th>Depth</th>
+            <th>Impact</th>
+            <th>Pressure</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="impactBody">
+          <tr><td colspan="6" style="text-align:center; color:#5a6080;">Click a node to trigger a cascade</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="table-caption">Impact = max incoming propagation. Pressure = sum of all incoming impacts.</div>
+  </section>
+
+  <!-- ASCII Fallback -->
+  <section>
+    <span class="section-number">Static Representation</span>
+    <h2>ASCII Cascade Tree</h2>
+    <div class="accent-line"></div>
+    <pre class="ascii-cascade"><span class="src">[Source: "favorite color = orange" trust=0.95]</span>
+    &#9500;&#9472;&#9472;&#9472; <span class="imp">0.90</span> &#9472;&#9472;&#9654; [color preferences] trust=0.80  impact=<span class="imp">0.855</span>
+    &#9474;                &#9500;&#9472;&#9472;&#9472; <span class="imp">0.70</span> &#9472;&#9472;&#9654; [warm tones bias] trust=0.65  impact=<span class="imp">0.539</span>
+    &#9474;                &#9474;                &#9492;&#9472;&#9472;&#9472; <span class="imp">0.60</span> &#9472;&#9472;&#9654; [sunset photos] trust=0.50  impact=<span class="imp">0.291</span>
+    &#9474;                &#9492;&#9472;&#9472;&#9472; <span class="imp">0.50</span> &#9472;&#9472;&#9654; [outfit choices] trust=0.40  impact=<span class="imp">0.385</span>
+    &#9500;&#9472;&#9472;&#9472; <span class="imp">0.80</span> &#9472;&#9472;&#9654; [design aesthetic] trust=0.70  impact=<span class="imp">0.760</span>
+    &#9474;                &#9500;&#9472;&#9472;&#9472; <span class="imp">0.60</span> &#9472;&#9472;&#9654; [website theme] trust=0.55  impact=<span class="imp">0.410</span>
+    &#9474;                &#9492;&#9472;&#9472;&#9472; <span class="imp">0.50</span> &#9472;&#9472;&#9654; [room decor] trust=0.60  impact=<span class="imp">0.342</span>
+    &#9500;&#9472;&#9472;&#9472; <span class="imp">0.70</span> &#9472;&#9472;&#9654; [food preferences] trust=0.55  impact=<span class="imp">0.665</span>
+    &#9474;                &#9492;&#9472;&#9472;&#9472; <span class="imp">0.40</span> &#9472;&#9472;&#9654; [restaurant picks] trust=0.45  impact=<span class="imp">0.239</span>
+    &#9492;&#9472;&#9472;&#9472; <span class="imp">0.40</span> &#9472;&#9472;&#9654; <span class="fw">&#x2B21; [HELD: "also likes blue"] trust=0.60  &#9608;&#9608; FIREWALL &#9608;&#9608;</span>
+                     &#9492;&#9472;&#9472;&#9472; <span class="blk">(blocked) &#9472;&#9472;&#9654; [cool tones bias] trust=0.55  &#x2718; not reached</span>
+                                        &#9492;&#9472;&#9472;&#9472; <span class="blk">(blocked) &#9472;&#9472;&#9654; [winter palette] trust=0.50  &#x2718; not reached</span></pre>
+  </section>
+
+  <div class="footer">
+    Aeteros Research &mdash; Cascade Propagation Visualizer &mdash;
+    <a href="cascade-complexity.html">Read the Paper</a>
+  </div>
+</div>
+
+<script>
+// ===== GRAPH DATA =====
+// A belief dependency graph about personal color preferences cascading
+const NODES = [
+  { id: 'fav_color',     label: 'favorite color = orange', trust: 0.95, x: 140, y: 310, held: false },
+  { id: 'color_prefs',   label: 'color preferences',       trust: 0.80, x: 340, y: 160, held: false },
+  { id: 'warm_tones',    label: 'warm tones bias',         trust: 0.65, x: 540, y: 80,  held: false },
+  { id: 'sunset_photos', label: 'sunset photos',           trust: 0.50, x: 740, y: 50,  held: false },
+  { id: 'outfit',        label: 'outfit choices',          trust: 0.40, x: 540, y: 220, held: false },
+  { id: 'design',        label: 'design aesthetic',        trust: 0.70, x: 340, y: 380, held: false },
+  { id: 'website',       label: 'website theme',           trust: 0.55, x: 540, y: 340, held: false },
+  { id: 'room_decor',    label: 'room decor',              trust: 0.60, x: 540, y: 450, held: false },
+  { id: 'food_prefs',    label: 'food preferences',        trust: 0.55, x: 340, y: 530, held: false },
+  { id: 'restaurants',   label: 'restaurant picks',        trust: 0.45, x: 540, y: 570, held: false },
+  { id: 'held_blue',     label: 'HELD: also likes blue',   trust: 0.60, x: 340, y: 80,  held: true },
+  { id: 'cool_tones',    label: 'cool tones bias',         trust: 0.55, x: 540, y: 140, held: false },  // behind firewall
+  { id: 'winter',        label: 'winter palette',          trust: 0.50, x: 740, y: 170, held: false },
+  { id: 'gift_ideas',    label: 'gift ideas',              trust: 0.50, x: 740, y: 310, held: false },
+  { id: 'brand_loyalty', label: 'brand loyalty',           trust: 0.45, x: 740, y: 450, held: false },
+];
+
+const EDGES = [
+  { from: 'fav_color',   to: 'color_prefs',   weight: 0.90 },
+  { from: 'fav_color',   to: 'design',         weight: 0.80 },
+  { from: 'fav_color',   to: 'food_prefs',     weight: 0.70 },
+  { from: 'fav_color',   to: 'held_blue',      weight: 0.40 },
+  { from: 'color_prefs', to: 'warm_tones',     weight: 0.70 },
+  { from: 'color_prefs', to: 'outfit',         weight: 0.50 },
+  { from: 'color_prefs', to: 'cool_tones',     weight: 0.60 },
+  { from: 'warm_tones',  to: 'sunset_photos',  weight: 0.60 },
+  { from: 'warm_tones',  to: 'room_decor',     weight: 0.40 },
+  { from: 'design',      to: 'website',        weight: 0.60 },
+  { from: 'design',      to: 'room_decor',     weight: 0.50 },
+  { from: 'design',      to: 'brand_loyalty',  weight: 0.40 },
+  { from: 'food_prefs',  to: 'restaurants',    weight: 0.40 },
+  { from: 'held_blue',   to: 'cool_tones',     weight: 0.70 },
+  { from: 'cool_tones',  to: 'winter',         weight: 0.60 },
+  { from: 'outfit',      to: 'brand_loyalty',  weight: 0.50 },
+  { from: 'website',     to: 'gift_ideas',     weight: 0.50 },
+  { from: 'room_decor',  to: 'gift_ideas',     weight: 0.60 },
+  { from: 'room_decor',  to: 'brand_loyalty',  weight: 0.30 },
+  { from: 'color_prefs', to: 'held_blue',      weight: 0.30 },
+  { from: 'food_prefs',  to: 'outfit',         weight: 0.20 },
+  { from: 'sunset_photos', to: 'gift_ideas',   weight: 0.30 },
+  { from: 'design',      to: 'outfit',         weight: 0.35 },
+  { from: 'warm_tones',  to: 'brand_loyalty',  weight: 0.25 },
+  { from: 'restaurants',  to: 'brand_loyalty', weight: 0.20 },
+];
+
+// ===== STATE =====
+const svg = document.getElementById('cascadeSvg');
+const tooltip = document.getElementById('tooltip');
+let damping = 0.90;
+let cascadeActive = false;
+let cascadeTimeouts = [];
+let nodeImpacts = {};   // id -> impact
+let nodeDepths = {};    // id -> depth
+let nodePressure = {};  // id -> sum of all incoming
+let blockedSet = new Set();
+let affectedSet = new Set();
+
+// Node map for quick lookup
+const nodeMap = {};
+NODES.forEach(n => nodeMap[n.id] = n);
+
+// Adjacency: from -> [{to, weight}]
+const adj = {};
+EDGES.forEach(e => {
+  if (!adj[e.from]) adj[e.from] = [];
+  adj[e.from].push({ to: e.to, weight: e.weight });
+});
+
+// ===== RENDERING =====
+function hexPoints(cx, cy, r) {
+  let pts = [];
+  for (let i = 0; i < 6; i++) {
+    const angle = Math.PI / 3 * i - Math.PI / 6;
+    pts.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
+  }
+  return pts.join(' ');
+}
+
+function impactColor(impact) {
+  if (impact <= 0) return '#34d399';
+  if (impact < 0.2) return '#34d399';
+  if (impact < 0.4) return '#a3e635';
+  if (impact < 0.6) return '#fbbf24';
+  if (impact < 0.8) return '#f97316';
+  return '#D47058';
+}
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1,3), 16);
+  const g = parseInt(hex.slice(3,5), 16);
+  const b = parseInt(hex.slice(5,7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function renderGraph() {
+  // Clear
+  while (svg.children.length > 1) svg.removeChild(svg.lastChild); // keep <defs>
+
+  // Edge group (behind nodes)
+  const edgeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  edgeGroup.id = 'edges';
+  svg.appendChild(edgeGroup);
+
+  EDGES.forEach((e, i) => {
+    const from = nodeMap[e.from], to = nodeMap[e.to];
+    // Shorten line so arrow doesn't overlap node
+    const dx = to.x - from.x, dy = to.y - from.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const rTo = to.held ? 22 : (to.trust * 20 + 6);
+    const rFrom = from.held ? 22 : (from.trust * 20 + 6);
+    const ratio = (dist - rTo - 4) / dist;
+    const ratioStart = rFrom / dist;
+
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', from.x + dx * ratioStart);
+    line.setAttribute('y1', from.y + dy * ratioStart);
+    line.setAttribute('x2', from.x + dx * ratio);
+    line.setAttribute('y2', from.y + dy * ratio);
+    line.setAttribute('stroke', '#1e2340');
+    line.setAttribute('stroke-width', Math.max(1, e.weight * 2.5));
+    line.setAttribute('marker-end', 'url(#arrowGray)');
+    line.setAttribute('data-edge-idx', i);
+    line.id = `edge-${e.from}-${e.to}`;
+    edgeGroup.appendChild(line);
+
+    // Weight label (midpoint)
+    const mx = (from.x + to.x) / 2;
+    const my = (from.y + to.y) / 2;
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', mx);
+    label.setAttribute('y', my - 6);
+    label.setAttribute('text-anchor', 'middle');
+    label.setAttribute('font-size', '9');
+    label.setAttribute('fill', '#3a3f5c');
+    label.setAttribute('font-family', "'Cascadia Code', 'Fira Code', monospace");
+    label.textContent = e.weight.toFixed(2);
+    edgeGroup.appendChild(label);
+  });
+
+  // Node group
+  const nodeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  nodeGroup.id = 'nodes';
+  svg.appendChild(nodeGroup);
+
+  NODES.forEach(n => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.id = `node-${n.id}`;
+    g.style.cursor = 'pointer';
+
+    const r = n.trust * 20 + 6;
+    const fill = n.held ? 'rgba(251,191,36,0.12)' : 'rgba(52,211,153,0.15)';
+    const stroke = n.held ? '#fbbf24' : '#34d399';
+
+    if (n.held) {
+      // Hexagon for held contradictions
+      const hex = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      hex.setAttribute('points', hexPoints(n.x, n.y, r + 4));
+      hex.setAttribute('fill', fill);
+      hex.setAttribute('stroke', stroke);
+      hex.setAttribute('stroke-width', '2');
+      hex.setAttribute('stroke-dasharray', '4,2');
+      hex.id = `shape-${n.id}`;
+      g.appendChild(hex);
+
+      // Shield icon
+      const shield = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      shield.setAttribute('x', n.x);
+      shield.setAttribute('y', n.y + 4);
+      shield.setAttribute('text-anchor', 'middle');
+      shield.setAttribute('font-size', '14');
+      shield.setAttribute('fill', '#fbbf24');
+      shield.setAttribute('opacity', '0.6');
+      shield.id = `shield-${n.id}`;
+      shield.textContent = '\u{1F6E1}';
+      g.appendChild(shield);
+    } else {
+      // Circle for regular beliefs
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', n.x);
+      circle.setAttribute('cy', n.y);
+      circle.setAttribute('r', r);
+      circle.setAttribute('fill', fill);
+      circle.setAttribute('stroke', stroke);
+      circle.setAttribute('stroke-width', '1.5');
+      circle.id = `shape-${n.id}`;
+      g.appendChild(circle);
+    }
+
+    // Trust text inside
+    const trustText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    trustText.setAttribute('x', n.x);
+    trustText.setAttribute('y', n.held ? n.y - 12 : n.y + 4);
+    trustText.setAttribute('text-anchor', 'middle');
+    trustText.setAttribute('font-size', '10');
+    trustText.setAttribute('fill', '#e0e4f0');
+    trustText.setAttribute('font-family', "'Cascadia Code', 'Fira Code', monospace");
+    trustText.textContent = n.trust.toFixed(2);
+    g.appendChild(trustText);
+
+    // Label below
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', n.x);
+    label.setAttribute('y', n.y + r + 16);
+    label.setAttribute('text-anchor', 'middle');
+    label.setAttribute('font-size', '10');
+    label.setAttribute('fill', '#7a82a6');
+    label.setAttribute('font-family', "'Segoe UI', system-ui, sans-serif");
+    label.textContent = n.label;
+    g.appendChild(label);
+
+    // Click handler
+    g.addEventListener('click', () => triggerCascade(n.id));
+
+    // Hover
+    g.addEventListener('mouseenter', (ev) => {
+      const tt = tooltip;
+      tt.querySelector('.tt-name').textContent = n.label;
+      const imp = nodeImpacts[n.id];
+      const dep = nodeDepths[n.id];
+      const prs = nodePressure[n.id];
+      let detail = `Trust: <span>${n.trust.toFixed(2)}</span>`;
+      if (n.held) detail += `<br>Type: <span>Held Contradiction (Firewall)</span>`;
+      if (imp !== undefined) detail += `<br>Impact: <span>${imp.toFixed(4)}</span>`;
+      if (dep !== undefined) detail += `<br>Depth: <span>${dep}</span>`;
+      if (prs !== undefined) detail += `<br>Pressure: <span>${prs.toFixed(4)}</span>`;
+      if (blockedSet.has(n.id)) detail += `<br>Status: <span style="color:#fbbf24">Blocked by firewall</span>`;
+      tt.querySelector('.tt-detail').innerHTML = detail;
+      tt.style.display = 'block';
+      tt.style.left = (ev.offsetX + 16) + 'px';
+      tt.style.top = (ev.offsetY - 10) + 'px';
+    });
+    g.addEventListener('mousemove', (ev) => {
+      tooltip.style.left = (ev.offsetX + 16) + 'px';
+      tooltip.style.top = (ev.offsetY - 10) + 'px';
+    });
+    g.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+
+    nodeGroup.appendChild(g);
+  });
+}
+
+// ===== CASCADE LOGIC =====
+function resetCascade() {
+  cascadeTimeouts.forEach(t => clearTimeout(t));
+  cascadeTimeouts = [];
+  cascadeActive = false;
+  nodeImpacts = {};
+  nodeDepths = {};
+  nodePressure = {};
+  blockedSet = new Set();
+  affectedSet = new Set();
+
+  // Reset visuals
+  NODES.forEach(n => {
+    const shape = document.getElementById(`shape-${n.id}`);
+    if (!shape) return;
+    if (n.held) {
+      shape.setAttribute('fill', 'rgba(251,191,36,0.12)');
+      shape.setAttribute('stroke', '#fbbf24');
+    } else {
+      shape.setAttribute('fill', 'rgba(52,211,153,0.15)');
+      shape.setAttribute('stroke', '#34d399');
+    }
+    shape.removeAttribute('filter');
+    // Remove pulse rings
+    const ring = document.getElementById(`ring-${n.id}`);
+    if (ring) ring.remove();
+  });
+  EDGES.forEach(e => {
+    const line = document.getElementById(`edge-${e.from}-${e.to}`);
+    if (line) {
+      line.setAttribute('stroke', '#1e2340');
+      line.setAttribute('marker-end', 'url(#arrowGray)');
+      line.removeAttribute('stroke-dasharray');
+      line.removeAttribute('filter');
+    }
+  });
+
+  // Reset stats
+  ['statDepth','statWidth','statAffected','statPressure','statConverged'].forEach(id => {
+    document.getElementById(id).textContent = '-';
+  });
+  document.getElementById('impactBody').innerHTML =
+    '<tr><td colspan="6" style="text-align:center; color:#5a6080;">Click a node to trigger a cascade</td></tr>';
+}
+
+function triggerCascade(sourceId) {
+  if (cascadeActive) resetCascade();
+  cascadeActive = true;
+
+  const L = damping;
+  const delta0 = 1.0;
+  const threshold = 0.01;
+
+  // BFS cascade
+  const queue = [{ id: sourceId, impact: delta0, depth: 0 }];
+  const visited = new Set();
+  nodeImpacts = { [sourceId]: delta0 };
+  nodeDepths = { [sourceId]: 0 };
+  nodePressure = {};
+  blockedSet = new Set();
+  affectedSet = new Set([sourceId]);
+
+  const widthPerLevel = { 0: 1 };
+  let maxDepth = 0;
+  let totalImpact = delta0;
+
+  // Collect BFS steps for animation
+  const steps = [{ id: sourceId, impact: delta0, depth: 0, fromId: null, isSource: true }];
+
+  // BFS
+  const bfsQueue = [{ id: sourceId, impact: delta0, depth: 0 }];
+  const processedEdges = new Set();
+
+  while (bfsQueue.length > 0) {
+    const { id: nodeId, impact, depth } = bfsQueue.shift();
+    const neighbors = adj[nodeId] || [];
+
+    for (const { to, weight } of neighbors) {
+      const edgeKey = `${nodeId}->${to}`;
+      const propagated = impact * weight * L;
+
+      // Track pressure (sum all incoming)
+      nodePressure[to] = (nodePressure[to] || 0) + propagated;
+
+      // Check firewall
+      if (nodeMap[to].held) {
+        blockedSet.add(to);
+        steps.push({ id: to, impact: propagated, depth: depth + 1, fromId: nodeId, blocked: true });
+        continue;
+      }
+
+      // Below threshold
+      if (propagated < threshold) continue;
+
+      // MAX aggregation
+      if (nodeImpacts[to] !== undefined && nodeImpacts[to] >= propagated) continue;
+
+      nodeImpacts[to] = propagated;
+      nodeDepths[to] = depth + 1;
+      const newDepth = depth + 1;
+      widthPerLevel[newDepth] = (widthPerLevel[newDepth] || 0) + 1;
+      maxDepth = Math.max(maxDepth, newDepth);
+      totalImpact += propagated;
+      affectedSet.add(to);
+
+      steps.push({ id: to, impact: propagated, depth: newDepth, fromId: nodeId, blocked: false });
+      bfsQueue.push({ id: to, impact: propagated, depth: newDepth });
+    }
+  }
+
+  const maxWidth = Math.max(...Object.values(widthPerLevel));
+  const pressureValues = Object.values(nodePressure);
+  const maxPressure = pressureValues.length ? Math.max(...pressureValues) : 0;
+  const rho = L * Math.max(...EDGES.map(e => e.weight));
+
+  // ===== ANIMATE =====
+  steps.forEach((step, idx) => {
+    const delay = idx * 300;
+
+    const t = setTimeout(() => {
+      const node = nodeMap[step.id];
+      const shape = document.getElementById(`shape-${step.id}`);
+      if (!shape) return;
+
+      if (step.isSource) {
+        // Source node: red pulse
+        shape.setAttribute('fill', 'rgba(212,112,88,0.35)');
+        shape.setAttribute('stroke', '#D47058');
+        shape.setAttribute('stroke-width', '3');
+        shape.setAttribute('filter', 'url(#glowStrong)');
+
+        // Pulse ring
+        const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        ring.setAttribute('cx', node.x);
+        ring.setAttribute('cy', node.y);
+        ring.setAttribute('r', '12');
+        ring.setAttribute('fill', 'none');
+        ring.setAttribute('stroke', '#D47058');
+        ring.setAttribute('stroke-width', '2');
+        ring.setAttribute('opacity', '0.8');
+        ring.id = `ring-${step.id}`;
+        const anim = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+        anim.setAttribute('attributeName', 'r');
+        anim.setAttribute('from', '12');
+        anim.setAttribute('to', '35');
+        anim.setAttribute('dur', '1s');
+        anim.setAttribute('repeatCount', '3');
+        const animOp = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+        animOp.setAttribute('attributeName', 'opacity');
+        animOp.setAttribute('from', '0.8');
+        animOp.setAttribute('to', '0');
+        animOp.setAttribute('dur', '1s');
+        animOp.setAttribute('repeatCount', '3');
+        ring.appendChild(anim);
+        ring.appendChild(animOp);
+        document.getElementById('nodes').appendChild(ring);
+      } else if (step.blocked) {
+        // Firewall block animation
+        const shield = document.getElementById(`shield-${step.id}`);
+        if (shield) {
+          shield.setAttribute('opacity', '1');
+          shield.setAttribute('font-size', '18');
+          // Flash
+          let flashCount = 0;
+          const flashInterval = setInterval(() => {
+            shield.setAttribute('opacity', flashCount % 2 === 0 ? '1' : '0.3');
+            flashCount++;
+            if (flashCount > 5) {
+              clearInterval(flashInterval);
+              shield.setAttribute('opacity', '0.8');
+              shield.setAttribute('font-size', '14');
+            }
+          }, 150);
+        }
+        shape.setAttribute('stroke-width', '3');
+        shape.setAttribute('stroke', '#f97316');
+
+        // Light up edge
+        if (step.fromId) {
+          const edgeLine = document.getElementById(`edge-${step.fromId}-${step.id}`);
+          if (edgeLine) {
+            edgeLine.setAttribute('stroke', '#f97316');
+            edgeLine.setAttribute('stroke-dasharray', '6,3');
+            edgeLine.setAttribute('marker-end', 'url(#arrowCyan)');
+          }
+        }
+      } else {
+        // Normal impact propagation
+        const color = impactColor(step.impact);
+        const fillOpacity = 0.1 + step.impact * 0.25;
+        shape.setAttribute('fill', hexToRgba(color, fillOpacity));
+        shape.setAttribute('stroke', color);
+        shape.setAttribute('stroke-width', '2');
+        shape.setAttribute('filter', 'url(#glow)');
+
+        // Light up incoming edge
+        if (step.fromId) {
+          const edgeLine = document.getElementById(`edge-${step.fromId}-${step.id}`);
+          if (edgeLine) {
+            edgeLine.setAttribute('stroke', '#22d3ee');
+            edgeLine.setAttribute('stroke-width', Math.max(1.5, (nodeMap[step.fromId] ? EDGES.find(e=>e.from===step.fromId&&e.to===step.id)?.weight||0.5 : 0.5) * 3));
+            edgeLine.setAttribute('stroke-dasharray', '8,4');
+            edgeLine.setAttribute('marker-end', 'url(#arrowCyan)');
+            edgeLine.setAttribute('filter', 'url(#glow)');
+          }
+        }
+      }
+
+      // Update stats progressively
+      document.getElementById('statDepth').textContent = maxDepth;
+      document.getElementById('statWidth').textContent = maxWidth;
+      document.getElementById('statAffected').textContent = affectedSet.size;
+      document.getElementById('statPressure').textContent = maxPressure.toFixed(3);
+      document.getElementById('statConverged').textContent = rho < 1 ? 'Yes' : 'No';
+
+      // Update table
+      updateTable();
+    }, delay);
+
+    cascadeTimeouts.push(t);
+  });
+}
+
+function updateTable() {
+  const body = document.getElementById('impactBody');
+  body.innerHTML = '';
+
+  // Sort by depth, then impact desc
+  const entries = NODES.map(n => ({
+    id: n.id,
+    label: n.label,
+    trust: n.trust,
+    held: n.held,
+    depth: nodeDepths[n.id],
+    impact: nodeImpacts[n.id],
+    pressure: nodePressure[n.id],
+    blocked: blockedSet.has(n.id),
+    affected: affectedSet.has(n.id),
+  })).filter(e => e.affected || e.blocked);
+
+  entries.sort((a, b) => (a.depth ?? 99) - (b.depth ?? 99));
+
+  entries.forEach(e => {
+    const tr = document.createElement('tr');
+    if (e.blocked) tr.className = 'blocked';
+    const status = e.blocked ? 'Firewall' : (e.depth === 0 ? 'Source' : (e.impact < 0.01 ? 'Below threshold' : 'Affected'));
+    const impactStr = e.impact !== undefined ? e.impact.toFixed(4) : '-';
+    const depthStr = e.depth !== undefined ? e.depth : '-';
+    const pressureStr = e.pressure !== undefined ? e.pressure.toFixed(4) : '-';
+    tr.innerHTML = `
+      <td>${e.held ? '\u2B21 ' : ''}${e.label}</td>
+      <td>${e.trust.toFixed(2)}</td>
+      <td>${depthStr}</td>
+      <td style="color:${e.impact ? impactColor(e.impact) : '#5a6080'}">${impactStr}</td>
+      <td>${pressureStr}</td>
+      <td style="color:${e.blocked ? '#fbbf24' : e.depth === 0 ? '#D47058' : '#34d399'}">${status}</td>
+    `;
+    body.appendChild(tr);
+  });
+
+  if (entries.length === 0) {
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#5a6080;">Click a node to trigger a cascade</td></tr>';
+  }
+}
+
+// ===== CONTROLS =====
+const dampingSlider = document.getElementById('dampingSlider');
+const dampingVal = document.getElementById('dampingVal');
+dampingSlider.addEventListener('input', () => {
+  damping = parseFloat(dampingSlider.value);
+  dampingVal.textContent = damping.toFixed(2);
+});
+
+document.getElementById('resetBtn').addEventListener('click', resetCascade);
+
+document.getElementById('autoBtn').addEventListener('click', () => {
+  resetCascade();
+  setTimeout(() => triggerCascade('fav_color'), 200);
+});
+
+// ===== INIT =====
+renderGraph();
+</script>
+</body>
+</html>

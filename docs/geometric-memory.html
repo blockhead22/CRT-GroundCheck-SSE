@@ -60,6 +60,23 @@ MathJax = {
   }
   @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 0.7; } }
 
+  /* ===== BELIEF LOCI VIZ ===== */
+  .hero-loci { margin: 28px auto 0; max-width: 660px; }
+  .hero-loci svg { display: block; width: 100%; height: auto; border-radius: 10px; }
+  .hero-loci .bl-label { font-family: 'Segoe UI', system-ui, sans-serif; fill: #7a82a6; font-size: 11px; text-anchor: middle; }
+  .hero-loci .bl-trust { font-family: 'Cascadia Code', 'Fira Code', monospace; fill: #818cf8; font-size: 10px; text-anchor: middle; }
+  .hero-loci .bl-axis { fill: #2a2f48; font-size: 9px; font-family: 'Segoe UI', system-ui, sans-serif; }
+  .hero-loci .bl-contra { font-family: 'Cascadia Code', 'Fira Code', monospace; fill: #f472b6; font-size: 9px; text-anchor: middle; }
+  .hero-loci .bl-stats { display: flex; justify-content: center; gap: 18px; margin-top: 10px; font-size: 0.72em; color: #5a6080; letter-spacing: 0.5px; }
+  .hero-loci .bl-stats span { color: #818cf8; }
+  .hero-loci .bl-replay {
+    display: inline-block; margin-top: 10px; padding: 5px 16px; border-radius: 6px;
+    border: 1px solid rgba(129,140,248,0.2); background: rgba(129,140,248,0.06);
+    color: #818cf8; font-size: 0.72em; cursor: pointer; font-family: inherit; font-weight: 600;
+    letter-spacing: 0.5px; transition: all 0.2s;
+  }
+  .hero-loci .bl-replay:hover { background: rgba(129,140,248,0.14); border-color: rgba(129,140,248,0.4); }
+
   /* ===== LAYOUT ===== */
   .container { max-width: 880px; margin: 0 auto; padding: 80px 30px; }
   section { margin-bottom: 80px; }
@@ -258,9 +275,186 @@ MathJax = {
     <div class="finding-box">
       <p>Memory items modeled as <strong>belief loci</strong> with center (semantic embedding), covariance (uncertainty shape), and confidence (contribution weight). Contradiction becomes <strong>geometric overlap</strong>. Volatility becomes <strong>covariance expansion</strong>. Temperature governance derived from locus parameters. The key insight: LLM response variance at temperature sweep directly produces locus parameters &mdash; no conversion needed. The experimental output <em>is</em> the belief.</p>
     </div>
+
+    <!-- Belief Loci Animation -->
+    <div class="hero-loci" id="bl-root">
+      <svg id="bl-svg" viewBox="0 0 620 280" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="bl-gradA"><stop offset="0%" stop-color="#34d399" stop-opacity="0.9"/><stop offset="100%" stop-color="#34d399" stop-opacity="0"/></radialGradient>
+          <radialGradient id="bl-gradB"><stop offset="0%" stop-color="#60a5fa" stop-opacity="0.9"/><stop offset="100%" stop-color="#60a5fa" stop-opacity="0"/></radialGradient>
+          <radialGradient id="bl-gradC"><stop offset="0%" stop-color="#D47058" stop-opacity="0.9"/><stop offset="100%" stop-color="#D47058" stop-opacity="0"/></radialGradient>
+          <radialGradient id="bl-gradOverlap"><stop offset="0%" stop-color="#f472b6" stop-opacity="0.35"/><stop offset="100%" stop-color="#f472b6" stop-opacity="0"/></radialGradient>
+        </defs>
+        <!-- grid -->
+        <g id="bl-grid" opacity="0.15">
+          <line x1="60" y1="30" x2="60" y2="240" stroke="#3a3f5c" stroke-width="0.5"/>
+          <line x1="170" y1="30" x2="170" y2="240" stroke="#3a3f5c" stroke-width="0.5"/>
+          <line x1="280" y1="30" x2="280" y2="240" stroke="#3a3f5c" stroke-width="0.5"/>
+          <line x1="390" y1="30" x2="390" y2="240" stroke="#3a3f5c" stroke-width="0.5"/>
+          <line x1="500" y1="30" x2="500" y2="240" stroke="#3a3f5c" stroke-width="0.5"/>
+          <line x1="60" y1="70" x2="560" y2="70" stroke="#3a3f5c" stroke-width="0.5"/>
+          <line x1="60" y1="135" x2="560" y2="135" stroke="#3a3f5c" stroke-width="0.5"/>
+          <line x1="60" y1="200" x2="560" y2="200" stroke="#3a3f5c" stroke-width="0.5"/>
+        </g>
+        <text x="310" y="258" class="bl-axis" text-anchor="middle">Semantic Dimension 1</text>
+        <text x="18" y="140" class="bl-axis" text-anchor="middle" transform="rotate(-90,18,140)">Semantic Dim 2</text>
+        <!-- overlap (hidden initially) -->
+        <ellipse id="bl-overlap" cx="220" cy="125" rx="0" ry="0" fill="url(#bl-gradOverlap)" opacity="0"/>
+        <!-- loci -->
+        <circle id="bl-locA" cx="190" cy="125" r="0" fill="url(#bl-gradA)" opacity="0"/>
+        <circle id="bl-locB" cx="400" cy="145" r="0" fill="url(#bl-gradB)" opacity="0"/>
+        <circle id="bl-locC" cx="580" cy="115" r="0" fill="url(#bl-gradC)" opacity="0"/>
+        <!-- contradiction line -->
+        <line id="bl-cline" x1="190" y1="125" x2="190" y2="125" stroke="#f472b6" stroke-width="1" stroke-dasharray="4,3" opacity="0"/>
+        <text id="bl-clabel" x="220" y="80" class="bl-contra" opacity="0">contradiction: overlap = 0.73</text>
+        <text id="bl-bolt" x="220" y="105" text-anchor="middle" font-size="14" opacity="0">&#9889;</text>
+        <!-- labels -->
+        <text id="bl-labA" x="190" y="0" class="bl-label" opacity="0">favorite color = orange</text>
+        <text id="bl-trA" x="190" y="0" class="bl-trust" opacity="0">trust: 0.85</text>
+        <text id="bl-labB" x="400" y="0" class="bl-label" opacity="0">likes warm tones</text>
+        <text id="bl-trB" x="400" y="0" class="bl-trust" opacity="0">trust: 0.60</text>
+        <text id="bl-labC" x="580" y="0" class="bl-label" opacity="0">favorite color = green</text>
+        <text id="bl-trC" x="580" y="0" class="bl-trust" opacity="0">trust: 0.70</text>
+      </svg>
+      <div style="text-align:center">
+        <div class="bl-stats" id="bl-stats" style="opacity:0">
+          <span>3</span> loci &nbsp;|&nbsp; <span>1</span> contradiction &nbsp;|&nbsp; <span>1</span> deprecated
+        </div>
+        <button class="bl-replay" id="bl-replay" style="opacity:0" onclick="window._blReplay()">&#8635; Replay</button>
+      </div>
+    </div>
+
   </div>
   <div class="scroll-cue">&#9660; SCROLL</div>
 </div>
+
+<script>
+(function(){
+  var raf = requestAnimationFrame, start = null, dur = 10000;
+  function lerp(a,b,t){ return a+(b-a)*Math.min(1,Math.max(0,t)); }
+  function ease(t){ return t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2); }
+
+  var A = {cx:190,cy:125}, B = {cx:400,cy:145}, C0 = {cx:540,cy:115}, C1 = {cx:260,cy:120};
+  var locA,locB,locC,overlap,cline,clabel,bolt;
+  var labA,trA,labB,trB,labC,trC,stats,replay;
+
+  function init(){
+    locA=document.getElementById('bl-locA'); locB=document.getElementById('bl-locB');
+    locC=document.getElementById('bl-locC'); overlap=document.getElementById('bl-overlap');
+    cline=document.getElementById('bl-cline'); clabel=document.getElementById('bl-clabel');
+    bolt=document.getElementById('bl-bolt');
+    labA=document.getElementById('bl-labA'); trA=document.getElementById('bl-trA');
+    labB=document.getElementById('bl-labB'); trB=document.getElementById('bl-trB');
+    labC=document.getElementById('bl-labC'); trC=document.getElementById('bl-trC');
+    stats=document.getElementById('bl-stats'); replay=document.getElementById('bl-replay');
+  }
+
+  function setCirc(el,cx,cy,r,op){
+    el.setAttribute('cx',cx); el.setAttribute('cy',cy);
+    el.setAttribute('r',Math.max(0,r)); el.setAttribute('opacity',op);
+  }
+  function setLabel(lab,tr,cx,cy,r,trustVal,op){
+    lab.setAttribute('x',cx); lab.setAttribute('y',cy+r+16); lab.setAttribute('opacity',op);
+    tr.setAttribute('x',cx); tr.setAttribute('y',cy+r+28); tr.setAttribute('opacity',op);
+    tr.textContent='trust: '+trustVal.toFixed(2);
+  }
+
+  function frame(ts){
+    if(!start) start=ts;
+    var t=(ts-start)/dur, p;
+
+    // Act 1: appear (0-0.2)
+    if(t<0.2){
+      p=ease(t/0.2);
+      setCirc(locA,A.cx,A.cy,lerp(0,55,p),lerp(0,0.7,p));
+      setLabel(labA,trA,A.cx,A.cy,lerp(0,55,p),0.85,lerp(0,1,p));
+      setCirc(locB,B.cx,B.cy,lerp(0,40,p),lerp(0,0.55,p));
+      setLabel(labB,trB,B.cx,B.cy,lerp(0,40,p),0.60,lerp(0,1,p));
+      setCirc(locC,C0.cx,C0.cy,0,0);
+      setLabel(labC,trC,C0.cx,C0.cy,0,0.70,0);
+    }
+    // Act 2: contraction (0.2-0.4)
+    else if(t<0.4){
+      p=ease((t-0.2)/0.2);
+      var rA=lerp(55,40,p), opA=lerp(0.7,0.88,p), trustA=lerp(0.85,0.92,p);
+      setCirc(locA,A.cx,A.cy,rA,opA);
+      setLabel(labA,trA,A.cx,A.cy,rA,trustA,1);
+      setCirc(locB,B.cx,B.cy,40,0.55);
+      setLabel(labB,trB,B.cx,B.cy,40,0.60,1);
+    }
+    // Act 3: contradiction (0.4-0.7)
+    else if(t<0.7){
+      p=ease((t-0.4)/0.3);
+      setCirc(locA,A.cx,A.cy,40,0.88);
+      setLabel(labA,trA,A.cx,A.cy,40,0.92,1);
+      setCirc(locB,B.cx,B.cy,40,0.55);
+      setLabel(labB,trB,B.cx,B.cy,40,0.60,1);
+      // C slides in
+      var ccx=lerp(C0.cx,C1.cx,p), ccy=lerp(C0.cy,C1.cy,p);
+      setCirc(locC,ccx,ccy,lerp(0,48,Math.min(1,p*2.5)),lerp(0,0.65,Math.min(1,p*2)));
+      setLabel(labC,trC,ccx,ccy,lerp(0,48,Math.min(1,p*2.5)),0.70,lerp(0,1,Math.min(1,p*2)));
+      // overlap
+      var op2=p>0.4?ease((p-0.4)/0.6):0;
+      var ocx=(A.cx+ccx)/2, ocy=(A.cy+ccy)/2;
+      overlap.setAttribute('cx',ocx); overlap.setAttribute('cy',ocy);
+      overlap.setAttribute('rx',lerp(0,32,op2)); overlap.setAttribute('ry',lerp(0,28,op2));
+      overlap.setAttribute('opacity',lerp(0,0.8,op2));
+      // line
+      cline.setAttribute('x1',A.cx); cline.setAttribute('y1',A.cy);
+      cline.setAttribute('x2',ccx); cline.setAttribute('y2',ccy);
+      cline.setAttribute('opacity',lerp(0,0.7,op2));
+      clabel.setAttribute('x',ocx); clabel.setAttribute('y',Math.min(A.cy,ccy)-48);
+      clabel.setAttribute('opacity',lerp(0,1,op2));
+      bolt.setAttribute('x',ocx); bolt.setAttribute('y',ocy+5);
+      bolt.setAttribute('opacity',lerp(0,1,op2));
+    }
+    // Act 4: resolution (0.7-1.0)
+    else{
+      p=ease((Math.min(t,1)-0.7)/0.3);
+      setCirc(locA,A.cx,A.cy,40,0.88);
+      setLabel(labA,trA,A.cx,A.cy,40,0.92,1);
+      setCirc(locB,B.cx,B.cy,40,0.55);
+      setLabel(labB,trB,B.cx,B.cy,40,0.60,1);
+      // C fades
+      var cop=lerp(0.65,0.12,p);
+      setCirc(locC,C1.cx,C1.cy,48,cop);
+      var trCop=lerp(1,0.25,p);
+      labC.setAttribute('x',C1.cx); labC.setAttribute('y',C1.cy+48+16);
+      labC.setAttribute('opacity',trCop);
+      trC.setAttribute('x',C1.cx); trC.setAttribute('y',C1.cy+48+28);
+      trC.setAttribute('opacity',trCop); trC.textContent='trust: '+lerp(0.70,0.15,p).toFixed(2);
+      // overlap fades
+      var ocx=(A.cx+C1.cx)/2, ocy=(A.cy+C1.cy)/2;
+      overlap.setAttribute('cx',ocx); overlap.setAttribute('cy',ocy);
+      overlap.setAttribute('rx',lerp(32,8,p)); overlap.setAttribute('ry',lerp(28,6,p));
+      overlap.setAttribute('opacity',lerp(0.8,0,p));
+      cline.setAttribute('x2',C1.cx); cline.setAttribute('y2',C1.cy);
+      cline.setAttribute('opacity',lerp(0.7,0,p));
+      clabel.setAttribute('opacity',lerp(1,0,p));
+      bolt.setAttribute('opacity',lerp(1,0,p));
+      // show stats
+      if(p>0.7){
+        var sp=ease((p-0.7)/0.3);
+        stats.style.opacity=sp; replay.style.opacity=sp;
+      }
+    }
+    if(t<1.05) raf(frame);
+  }
+
+  function run(){
+    start=null;
+    stats.style.opacity=0; replay.style.opacity=0;
+    // reset all
+    [locA,locB,locC,overlap].forEach(function(e){e.setAttribute('r',0);e.setAttribute('opacity',0);});
+    [cline,clabel,bolt].forEach(function(e){e.setAttribute('opacity',0);});
+    [labA,trA,labB,trB,labC,trC].forEach(function(e){e.setAttribute('opacity',0);});
+    raf(frame);
+  }
+
+  window._blReplay=function(){ run(); };
+  document.addEventListener('DOMContentLoaded',function(){ init(); run(); });
+})();
+</script>
 
 <!-- ===== CONTENT ===== -->
 <div class="container">

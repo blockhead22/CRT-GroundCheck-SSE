@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRT Model Probing — Fragility Landscapes in LLMs</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #060814; color: #c0c8e0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; line-height: 1.75; overflow-x: hidden; }
+
+  /* ===== HERO ===== */
+  .hero {
+    position: relative; width: 100%; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, #060814 0%, #0c1228 30%, #1a0e2e 60%, #0d1a3a 100%);
+    overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+    background: radial-gradient(ellipse at 30% 50%, rgba(99,102,241,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 30%, rgba(236,72,153,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(59,130,246,0.05) 0%, transparent 50%);
+    animation: drift 20s ease-in-out infinite alternate;
+  }
+  @keyframes drift { 0% { transform: translate(0,0) rotate(0deg); } 100% { transform: translate(-2%,1%) rotate(1deg); } }
+  .hero-inner {
+    position: relative; z-index: 1; text-align: center; max-width: 820px; padding: 80px 30px;
+  }
+  .hero-badge {
+    display: inline-block; font-size: 0.7em; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
+    color: #818cf8; border: 1px solid rgba(129,140,248,0.25); border-radius: 20px; padding: 6px 18px;
+    margin-bottom: 28px; background: rgba(129,140,248,0.06);
+  }
+  .hero h1 {
+    font-size: 3.4em; font-weight: 700; color: #fff; letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 20px;
+  }
+  .hero h1 .grad {
+    background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .hero .sub { font-size: 1.15em; color: #7a82a6; margin-bottom: 36px; max-width: 640px; margin-left: auto; margin-right: auto; }
+  .hero .finding-box {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 24px 28px; text-align: left; backdrop-filter: blur(12px);
+    max-width: 680px; margin: 0 auto;
+  }
+  .hero .finding-box p { color: #a0a8c8; font-size: 0.92em; margin-bottom: 0; }
+  .hero .finding-box strong { color: #e0e4f0; }
+  .scroll-cue {
+    position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
+    color: #3a3f5c; font-size: 0.7em; letter-spacing: 1px; animation: pulse 2.5s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 0.7; } }
+
+  /* ===== LAYOUT ===== */
+  .container { max-width: 880px; margin: 0 auto; padding: 80px 30px; }
+  section { margin-bottom: 80px; }
+  h2 { font-size: 1.8em; color: #fff; margin-bottom: 16px; letter-spacing: -0.5px; font-weight: 700; }
+  h3 { font-size: 1.15em; color: #d0d4e8; margin: 32px 0 12px 0; font-weight: 600; }
+  p { margin-bottom: 16px; }
+  .accent-line { width: 48px; height: 3px; background: linear-gradient(90deg, #818cf8, #c084fc); border-radius: 2px; margin-bottom: 28px; }
+
+  /* ===== REGIME CARDS ===== */
+  .regime-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 32px 0; }
+  .regime-card {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 24px 20px; text-align: center;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+  .regime-card:hover { border-color: rgba(129,140,248,0.3); transform: translateY(-2px); }
+  .regime-card .regime-icon { font-size: 2.4em; margin-bottom: 10px; }
+  .regime-card .regime-name { font-size: 1em; font-weight: 700; margin-bottom: 4px; }
+  .regime-card .regime-model { font-size: 0.75em; color: #5a6080; margin-bottom: 10px; }
+  .regime-card .regime-desc { font-size: 0.82em; color: #8a90b0; line-height: 1.5; }
+  .card-crack { border-color: rgba(244,114,182,0.2); }
+  .card-crack .regime-name { color: #f472b6; }
+  .card-gradient { border-color: rgba(129,140,248,0.2); }
+  .card-gradient .regime-name { color: #818cf8; }
+  .card-fog { border-color: rgba(192,132,252,0.2); }
+  .card-fog .regime-name { color: #c084fc; }
+
+  /* ===== STAT CARDS ===== */
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 32px 0; }
+  .stat-card {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 24px 20px; text-align: center;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+  .stat-card:hover { border-color: rgba(129,140,248,0.3); transform: translateY(-2px); }
+  .stat-card .stat-value { font-size: 2.2em; font-weight: 700; color: #fff; line-height: 1; margin-bottom: 6px; }
+  .stat-card .stat-value.accent-pink { color: #f472b6; }
+  .stat-card .stat-value.accent-purple { color: #c084fc; }
+  .stat-card .stat-label { font-size: 0.72em; color: #6a7096; text-transform: uppercase; letter-spacing: 1px; }
+
+  /* ===== DATA TABLE ===== */
+  table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 0.85em; }
+  thead th {
+    text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; font-size: 0.78em;
+    text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 2px solid rgba(255,255,255,0.06);
+  }
+  th {
+    text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; font-size: 0.78em;
+    text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 2px solid rgba(255,255,255,0.06);
+  }
+  tbody td, td { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.03); color: #a0a8c8; }
+  tbody tr:hover td, tr:hover td { background: rgba(129,140,248,0.03); }
+  td strong { color: #e0e4f0; }
+
+  /* ===== METHOD CARDS ===== */
+  .method-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 24px 0; }
+  .method-card {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 10px; padding: 20px;
+  }
+  .method-card h4 { color: #d0d4e8; font-size: 0.9em; margin-bottom: 8px; }
+  .method-card p { color: #7a82a6; font-size: 0.82em; margin: 0; }
+
+  /* ===== QUOTE ===== */
+  .quote-block {
+    border-left: 3px solid #818cf8; padding: 20px 24px; margin: 32px 0;
+    background: rgba(129,140,248,0.03); border-radius: 0 10px 10px 0;
+  }
+  .quote-block p { color: #b0b8d8; font-size: 1.05em; font-style: italic; margin: 0; }
+  .quote-block .attr { color: #5a6080; font-size: 0.75em; margin-top: 10px; font-style: normal; }
+
+  /* ===== LAW CARD ===== */
+  .law-card {
+    background: linear-gradient(135deg, rgba(129,140,248,0.08), rgba(192,132,252,0.06));
+    border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 32px; margin: 40px 0;
+    text-align: center;
+  }
+  .law-card .law-number { font-size: 0.7em; color: #818cf8; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+  .law-card .law-text { font-size: 1.5em; color: #fff; font-weight: 700; letter-spacing: -0.5px; }
+  .law-card .law-sub { font-size: 0.88em; color: #7a82a6; margin-top: 12px; max-width: 600px; margin-left: auto; margin-right: auto; }
+
+  /* ===== LAYER STACK ===== */
+  .layer-stack { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin: 24px 0; }
+  .layer {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 10px; padding: 20px; text-align: center;
+  }
+  .layer .layer-name { color: #fff; font-weight: 600; font-size: 0.95em; }
+  .layer .layer-sub { color: #5a6080; font-size: 0.72em; margin-top: 4px; }
+  .layer .layer-desc { color: #8a90b0; font-size: 0.8em; margin-top: 10px; line-height: 1.5; }
+
+  /* ===== FOOTER ===== */
+  .footer {
+    text-align: center; padding: 48px 30px; color: #2a2f4a; font-size: 0.72em;
+    border-top: 1px solid rgba(255,255,255,0.04); margin-top: 40px;
+  }
+  .footer a { color: #5a6080; text-decoration: none; }
+
+  @media (max-width: 700px) {
+    .hero h1 { font-size: 2.2em; }
+    .stat-row { grid-template-columns: 1fr 1fr; }
+    .regime-grid, .method-grid, .layer-stack { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== HERO ===== -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">Empirical Research</div>
+    <h1>CRT <span class="grad">Model Probing</span></h1>
+    <p class="sub">Fragility landscapes and response-governance regimes in LLMs</p>
+    <div class="finding-box">
+      <p>Temperature-swept semantic variance reveals <strong>stable, model-specific fragility landscapes</strong> across three open-weight models, confirmed across <strong>16 analyzer configurations each</strong>. Three distinct variance morphologies emerge: selective fracture, selective spread, and uniform softness.</p>
+    </div>
+  </div>
+  <div class="scroll-cue">&#9660; SCROLL</div>
+</div>
+
+<!-- ===== CONTENT ===== -->
+<div class="container">
+
+<!-- ===== HEADLINE NUMBERS ===== -->
+<section>
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value">22,524</div>
+      <div class="stat-label">Responses</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">3</div>
+      <div class="stat-label">Regimes</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value accent-purple">16/16</div>
+      <div class="stat-label">Robustness</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value accent-pink">$0</div>
+      <div class="stat-label">Experiment Cost</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== THE QUESTION ===== -->
+<section>
+  <div class="accent-line"></div>
+  <h2>The Question</h2>
+  <p>This project studies how language models vary under controlled temperature perturbation. The goal is not to ask whether a model is simply "consistent" or "inconsistent," but to measure how its semantic output deforms when pressure is applied. Some models split into distinct answer camps. Some drift continuously without breaking apart. Some soften across domains without ever fully locking or fracturing. The probe is designed to detect those differences and turn them into measurable response-governance signatures.</p>
+</section>
+
+<!-- ===== THE CORE FINDING ===== -->
+<section>
+  <div class="accent-line"></div>
+  <h2>The Core Finding</h2>
+  <p>Three tested models exhibit <strong>three distinct fragility regimes</strong>. All three regime identities remained stable across a 16-configuration robustness sweep covering two embedding models, two text normalization modes, and four clustering thresholds.</p>
+
+  <div class="regime-grid">
+    <div class="regime-card card-crack">
+      <div class="regime-icon">&#x26A1;</div>
+      <div class="regime-name">Selective Fracture</div>
+      <div class="regime-model">Qwen3:14b</div>
+      <div class="regime-desc">High factual fragility, low moral fragility. Stable held contradictions in factual domains. Stays locked until a threshold, then bifurcates into distinct answer camps.</div>
+    </div>
+    <div class="regime-card card-gradient">
+      <div class="regime-icon">&#x2248;</div>
+      <div class="regime-name">Selective Spread</div>
+      <div class="regime-model">Mistral 7B</div>
+      <div class="regime-desc">Low bifurcation, no true mode splitting. Meaningful continuous semantic drift concentrated in moral and opinion domains. Smooth, not sharp.</div>
+    </div>
+    <div class="regime-card card-fog">
+      <div class="regime-icon">&#x2601;</div>
+      <div class="regime-name">Uniform Softness</div>
+      <div class="regime-model">DeepSeek-R1:8b</div>
+      <div class="regime-desc">Broad cross-domain spread with minimal locking. Almost no discrete fracture. Everything softens under pressure. Nothing holds rigid.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== WHY THE ORDERING MATTERS ===== -->
+<section>
+  <div class="accent-line"></div>
+  <h2>Why the Ordering Matters</h2>
+  <p>The ordering of fragility is <strong>not universal</strong>. Qwen is most fragile in factual regions. Mistral is more fragile in moral and opinion space. DeepSeek spreads broadly, with especially high movement in moral and aesthetic prompts. The probe is not detecting a generic rule like "facts vary more than morals." It is detecting <strong>model-specific semantic fragility landscapes</strong>. Different training regimes appear to allocate flexibility, hedging, and epistemic fracture to different semantic regions.</p>
+
+  <table>
+    <tr>
+      <th>Domain</th>
+      <th style="color:#f472b6">Qwen3</th>
+      <th style="color:#818cf8">Mistral</th>
+      <th style="color:#c084fc">DeepSeek</th>
+    </tr>
+    <tr><td>factual_settled</td><td><strong>0.180</strong></td><td>0.030</td><td>0.146</td></tr>
+    <tr><td>factual_contested</td><td><strong>0.248</strong></td><td>0.101</td><td>0.161</td></tr>
+    <tr><td>moral_ambiguous</td><td>0.092</td><td>0.166</td><td><strong>0.247</strong></td></tr>
+    <tr><td>moral_clear</td><td>0.036</td><td>0.100</td><td><strong>0.198</strong></td></tr>
+    <tr><td>opinion_aesthetic</td><td>0.077</td><td>0.112</td><td><strong>0.274</strong></td></tr>
+  </table>
+  <p style="color:#5a6080; font-size:0.82em;">Spread growth: mean pairwise embedding distance increase T=0 &rarr; T=1.5, averaged across 16 robustness configs.</p>
+</section>
+
+<!-- ===== TWO AXES ===== -->
+<section>
+  <div class="accent-line"></div>
+  <h2>Two Axes of Difference</h2>
+
+  <div class="method-grid">
+    <div class="method-card">
+      <h4>Axis 1 &mdash; Morphology</h4>
+      <p>How does variance express? Does the model fracture into competing answer camps, drift smoothly across semantic space, or compress into narrow response corridors? The shape of instability matters as much as the amount.</p>
+    </div>
+    <div class="method-card">
+      <h4>Axis 2 &mdash; Fragility Location</h4>
+      <p>Where does the model destabilize? Which semantic domains crack under temperature pressure? The answer is model-specific &mdash; a property of training, not of the prompts themselves.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== MEASUREMENT STACK ===== -->
+<section>
+  <div class="accent-line"></div>
+  <h2>The Measurement Stack</h2>
+  <p>The probe is intentionally simple. Fifty prompts across five domains, sampled thirty times each at five temperatures, embedded and clustered. Four metrics separate variance by both amount and structure:</p>
+
+  <table>
+    <tr><th>Metric</th><th>What it measures</th><th>Why it matters</th></tr>
+    <tr><td><strong>Spread growth</strong></td><td>Mean pairwise distance increase T=0&rarr;T=1.5</td><td>How much semantic movement under pressure</td></tr>
+    <tr><td><strong>Susceptibility (dH/dT)</strong></td><td>Rate of entropy increase with temperature</td><td>Sensitivity to perturbation</td></tr>
+    <tr><td><strong>Mode count</strong></td><td>Distinct response clusters at T=1.0</td><td>Bifurcation vs continuous drift</td></tr>
+    <tr><td><strong>Held contradictions</strong></td><td>Stable incompatible answer camps</td><td>Persistent splits, not paraphrase noise</td></tr>
+  </table>
+
+  <p>Robustness is tested across 16 analyzer configurations: two embedding models, two text normalization modes, four clustering thresholds. A finding must survive all perturbations to be considered confirmed.</p>
+</section>
+
+<!-- ===== WHY THIS MATTERS ===== -->
+<section>
+  <div class="accent-line"></div>
+  <h2>Why This Matters</h2>
+  <p>Variance is not just analysis output. It can become a <strong>governance signal</strong>. High susceptibility can be treated as an epistemic fragility tag. Stable multi-cluster response clouds can be represented as unresolved or plural belief states. Held contradictions map naturally onto systems that preserve conflict rather than flatten it.</p>
+
+  <p>The probe is useful not only for studying models from the outside, but for designing memory systems that know when certainty is genuine, when it is trained uniformity, and when contradiction should be preserved rather than erased.</p>
+
+  <div class="quote-block">
+    <p>"The problem is not switching mouths. The problem is losing the self between them."</p>
+    <div class="attr">&mdash; Nick Block</div>
+  </div>
+
+  <p>In multi-model agentic systems, switching models without carrying forward epistemic state means silently swapping fragility profiles. A topic that was safely handled by one model's locked regime may land in another model's fracture zone. The variance probe maps each model's fragility profile &mdash; the governance layer uses this to know what to watch for after every handoff.</p>
+
+  <h3>Three Calibration Layers</h3>
+  <div class="layer-stack">
+    <div class="layer">
+      <div class="layer-name">Fragility</div>
+      <div class="layer-sub">Source: Variance probe</div>
+      <div class="layer-desc">Where and how the model destabilizes under perturbation</div>
+    </div>
+    <div class="layer">
+      <div class="layer-name">Support</div>
+      <div class="layer-sub">Source: Memory &amp; retrieval</div>
+      <div class="layer-desc">What beliefs are actually backed by evidence</div>
+    </div>
+    <div class="layer">
+      <div class="layer-name">Tension</div>
+      <div class="layer-sub">Source: Contradiction engine</div>
+      <div class="layer-desc">Where claims conflict and which conflicts are held vs resolvable</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CURRENT STATUS ===== -->
+<section>
+  <div class="accent-line"></div>
+  <h2>Current Status</h2>
+  <p>The result is strong enough to freeze. Three models, three regimes, all robustness-confirmed across analyzer perturbations. The main claim is supported: repeated temperature-swept sampling reveals stable, model-specific variance morphologies and fragility landscapes.</p>
+
+  <p>What remains is refinement, not discovery. GPT-4o-mini remains provisional and needs a clean rerun. Template similarity should be formalized alongside spread and mode count. Visual interpretations from 3D projections remain subordinate to numeric results. But the central finding is already there.</p>
+
+  <table>
+    <tr><th>Model</th><th>Responses</th><th>Regime</th><th>Robustness</th><th>Status</th></tr>
+    <tr><td style="color:#f472b6">Qwen3:14b</td><td>7,500</td><td>Selective Fracture</td><td>16/16</td><td style="color:#818cf8">Confirmed</td></tr>
+    <tr><td style="color:#818cf8">Mistral 7B</td><td>7,524</td><td>Selective Spread</td><td>16/16</td><td style="color:#818cf8">Confirmed</td></tr>
+    <tr><td style="color:#c084fc">DeepSeek-R1:8b</td><td>7,500</td><td>Uniform Softness</td><td>16/16</td><td style="color:#818cf8">Confirmed</td></tr>
+    <tr><td style="color:#5a6080">GPT-4o-mini</td><td>~2,000</td><td>Global Compression</td><td>&mdash;</td><td style="color:#c084fc">Provisional</td></tr>
+  </table>
+
+  <p style="font-size:0.82em; color:#5a6080;">Total experiment cost: $0 for local models. ~$3 for GPT-4o-mini re-run (in progress). 22,524 analyzed responses across three complete models.</p>
+</section>
+
+<!-- ===== ONE SENTENCE ===== -->
+<section>
+  <div class="law-card">
+    <div class="law-number">Core Insight</div>
+    <div class="law-text">LLMs differ in how variance expresses and where fragility lives.</div>
+    <div class="law-sub">The probe is not detecting a generic rule. It is detecting model-specific semantic fragility landscapes shaped by training, not by the prompts themselves.</div>
+  </div>
+</section>
+
+</div>
+
+<div class="footer">
+  <p>Aeteros Research &bull; 2026 &bull; <a href="whitepaper.html">Whitepaper</a> &bull; <a href="architecture.html">Architecture</a> &bull; <a href="experiments.html">Experiments</a> &bull; <a href="cascade-complexity.html">Cascade Complexity</a> &bull; <a href="immune-agents.html">Immune Agents</a> &bull; <a href="variance-probing.html">Variance Probing</a> &bull; <a href="continuity-blind.html">Continuity-Blind</a></p>
+</div>
+
+</body>
+</html>

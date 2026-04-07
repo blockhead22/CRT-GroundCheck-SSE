@@ -10,7 +10,7 @@ What each module tells us about LLM beliefs:
    held, evolving, or contextual?
 2. Memory Graph — What's the dependency structure between beliefs?
 3. Temporal Governance — How do beliefs decay with temperature (as proxy for time)?
-4. Memory Splats — Already done by variance_to_splats.py
+4. Belief Loci — Already done by variance_to_splats.py
 5. Predictive Contradiction — Can we predict which beliefs will split
    at higher temperatures from their lower-temperature trajectories?
 6. Belief Topology — What's the topological structure of the model's
@@ -37,8 +37,9 @@ if str(Path(__file__).parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).parent))
 
 from personal_agent.memory_splats import (
-    MemorySplat, bhattacharyya_distance, overlap_integral,
+    BeliefLocus, bhattacharyya_distance, overlap_integral,
     kl_divergence, cosine_similarity as splat_cosine,
+    MemorySplat,  # backwards compat alias
 )
 from personal_agent.info_geometry import (
     fisher_rao_distance, fisher_mean_component, fisher_cov_component,

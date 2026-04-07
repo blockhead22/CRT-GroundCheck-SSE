@@ -18,8 +18,9 @@ sys.path.insert(0, r"D:\AI_round2")
 import numpy as np
 
 from personal_agent.memory_splats import (
-    MemorySplat, create_splat, create_splat_from_type,
+    BeliefLocus, create_locus, create_locus_from_type,
     cosine_similarity, overlap_integral,
+    MemorySplat, create_splat, create_splat_from_type,  # backwards compat aliases
 )
 from personal_agent.info_geometry import fisher_rao_distance
 from personal_agent.memory_graph import (
@@ -64,7 +65,7 @@ def experiment_location_cascade():
 
     splats = {}
     for name, (text, mtype, conf, emb) in beliefs.items():
-        s = create_splat(name, emb, text, mtype, confidence=conf)
+        s = create_locus(name, emb, text, mtype, confidence=conf)
         splats[name] = s
         bdg.add_belief(s)
 
@@ -84,7 +85,7 @@ def experiment_location_cascade():
     print(f"  Max out-degree: {bdg.max_out_degree()}")
 
     # Revision: Portland -> Austin
-    new_loc = create_splat("location_new", make_embedding(), "I live in Austin", "fact", confidence=0.9)
+    new_loc = create_locus("location_new", make_embedding(), "I live in Austin", "fact", confidence=0.9)
     delta_0 = fisher_rao_distance(splats["location"], new_loc)
     print(f"\n  Revision: location 'Portland' -> 'Austin'")
     print(f"  Fisher-Rao impact: {delta_0:.3f}")
@@ -124,7 +125,7 @@ def experiment_firewall():
     splats = {}
     for name in names:
         emb = make_embedding(prev_emb, 0.15)
-        s = create_splat(name, emb, f"My {name.replace('_', ' ')}", "belief", confidence=0.7)
+        s = create_locus(name, emb, f"My {name.replace('_', ' ')}", "belief", confidence=0.7)
         splats[name] = s
         bdg.add_belief(s)
         prev_emb = emb
@@ -214,7 +215,7 @@ def experiment_damping():
     prev_emb = make_embedding()
     for i in range(20):
         emb = make_embedding(prev_emb, 0.1)
-        s = create_splat(f"node_{i}", emb, f"Belief {i}", "belief")
+        s = create_locus(f"node_{i}", emb, f"Belief {i}", "belief")
         bdg.add_belief(s)
         if i > 0:
             bdg.add_dependency(f"node_{i-1}", f"node_{i}", EdgeType.SUPPORTS, weight=w)
@@ -240,7 +241,7 @@ def experiment_instability():
     # Stable cycle (weak coupling)
     bdg_stable = BeliefDependencyGraph(cascade_threshold=0.01)
     for name in ["A", "B", "C"]:
-        bdg_stable.add_belief(create_splat(name, make_embedding(), f"Belief {name}", "belief"))
+        bdg_stable.add_belief(create_locus(name, make_embedding(), f"Belief {name}", "belief"))
     bdg_stable.add_dependency("A", "B", EdgeType.SUPPORTS, weight=0.3)
     bdg_stable.add_dependency("B", "C", EdgeType.SUPPORTS, weight=0.3)
     bdg_stable.add_dependency("C", "A", EdgeType.SUPPORTS, weight=0.3)
@@ -254,7 +255,7 @@ def experiment_instability():
     # Unstable cycle (strong coupling, amplifying nodes L>1)
     bdg_unstable = BeliefDependencyGraph(cascade_threshold=0.01)
     for name in ["X", "Y", "Z"]:
-        bdg_unstable.add_belief(create_splat(name, make_embedding(), f"Belief {name}", "belief"))
+        bdg_unstable.add_belief(create_locus(name, make_embedding(), f"Belief {name}", "belief"))
     bdg_unstable.add_dependency("X", "Y", EdgeType.SUPPORTS, weight=1.0)
     bdg_unstable.add_dependency("Y", "Z", EdgeType.SUPPORTS, weight=1.0)
     bdg_unstable.add_dependency("Z", "X", EdgeType.SUPPORTS, weight=1.0)
@@ -284,7 +285,7 @@ def experiment_width_bound():
     # Build a tree with branching factor d=3, depth k=3
     bdg = BeliefDependencyGraph(cascade_threshold=0.01)
     root_emb = make_embedding()
-    bdg.add_belief(create_splat("root", root_emb, "Root belief", "belief"))
+    bdg.add_belief(create_locus("root", root_emb, "Root belief", "belief"))
 
     # Build tree level by level
     nodes_at_level = {"root"}
@@ -294,7 +295,7 @@ def experiment_width_bound():
         for parent in nodes_at_level:
             for child_idx in range(3):
                 child_name = f"{parent}_c{child_idx}"
-                bdg.add_belief(create_splat(child_name, make_embedding(root_emb, 0.2), f"Belief {child_name}", "belief"))
+                bdg.add_belief(create_locus(child_name, make_embedding(root_emb, 0.2), f"Belief {child_name}", "belief"))
                 bdg.add_dependency(parent, child_name, EdgeType.SUPPORTS, weight=0.8)
                 next_level.add(child_name)
                 total_nodes += 1
