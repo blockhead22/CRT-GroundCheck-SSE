@@ -6,24 +6,29 @@
 (function() {
 
   // ── Doc manifest (reading order) ──
+  // Reading order: Problem → Evidence → Architecture → Theory → Reference
   var DOCS = [
-    { href: 'index.html',                label: 'Home',                 group: null },
-    { href: 'contradiction-density.html',label: 'Contradiction Density',group: 'Research' },
-    { href: 'continuity-blind.html',     label: 'Continuity Blind',     group: 'Research' },
-    { href: 'sensitive-domains.html',    label: 'Sensitive Domains',    group: 'Research' },
-    { href: 'whitepaper.html',           label: 'Whitepaper',           group: 'Research' },
-    { href: 'immune-agents.html',        label: 'Immune Agents',        group: 'Research' },
-    { href: 'experiments.html',          label: 'Experiments',          group: 'Research' },
-    { href: 'architecture.html',         label: 'Architecture',         group: 'Theory' },
-    { href: 'cascade-complexity.html',   label: 'Cascade Complexity',   group: 'Theory' },
-    { href: 'geometric-memory.html',     label: 'Geometric Memory',     group: 'Theory' },
-    { href: 'variance-probing.html',     label: 'Variance Probing',     group: 'Theory' },
-    { href: 'variance-landscape.html',   label: 'Variance Landscape',   group: 'Theory' },
-    { href: 'emotion-governance.html',   label: 'Emotion Governance',   group: 'Theory' },
-    { href: 'throughline.html',          label: 'Throughline',          group: 'Reference' },
-    { href: 'glossary.html',             label: 'Glossary',             group: 'Reference' },
-    { href: 'claim-evaluation-guide.html',label: 'Research Guide',      group: 'Reference' },
-    { href: 'why-this-matters.html',     label: 'Why This Matters',    group: 'Reference' },
+    { href: 'index.html',                 label: 'Home',                  group: null },
+    // The Problem (what's broken and proof it's broken)
+    { href: 'contradiction-density.html',  label: 'Contradiction Density', group: 'Evidence' },
+    { href: 'sensitive-domains.html',      label: 'Sensitive Domains',     group: 'Evidence' },
+    { href: 'continuity-blind.html',       label: 'Continuity Blind',      group: 'Evidence' },
+    { href: 'variance-probing.html',       label: 'Variance Probing',      group: 'Evidence' },
+    { href: 'experiments.html',            label: 'Experiments',            group: 'Evidence' },
+    // The Solution (how CRT works)
+    { href: 'whitepaper.html',             label: 'Whitepaper',             group: 'Architecture' },
+    { href: 'architecture.html',           label: 'Architecture',           group: 'Architecture' },
+    { href: 'immune-agents.html',          label: 'Immune Agents',          group: 'Architecture' },
+    // The Theory (formal foundations)
+    { href: 'cascade-complexity.html',     label: 'Cascade Complexity',     group: 'Theory' },
+    { href: 'geometric-memory.html',       label: 'Geometric Memory',       group: 'Theory' },
+    { href: 'emotion-governance.html',     label: 'Emotion Governance',     group: 'Theory' },
+    { href: 'variance-landscape.html',     label: 'Variance Landscape',     group: 'Theory' },
+    // Reference (how to use this, why it matters)
+    { href: 'throughline.html',            label: 'Throughline',             group: 'Reference' },
+    { href: 'claim-evaluation-guide.html', label: 'Research Guide',          group: 'Reference' },
+    { href: 'why-this-matters.html',       label: 'Why This Matters',       group: 'Reference' },
+    { href: 'glossary.html',              label: 'Glossary',                group: 'Reference' },
   ];
 
   // Detect subdirectory (labs/) and adjust prefix
