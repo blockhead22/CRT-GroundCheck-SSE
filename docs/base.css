@@ -701,12 +701,13 @@ td code {
 .footer {
   width: 100%;
   font-family: var(--mono);
-  font-size: 0.7em;
-  color: var(--text-dim);
+  font-size: 0.72em;
+  color: var(--text-secondary);
   text-align: center;
   padding: 40px 24px 52px 24px;
-  border-top: 1px solid var(--border);
-  background: var(--bg-raised);
+  border-top: 1px solid var(--border-light);
+  background: rgba(255,255,255,0.02);
+  line-height: 2;
 }
 .footer a {
   color: var(--text-secondary);
