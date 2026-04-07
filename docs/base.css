@@ -126,6 +126,8 @@ pre, code {
   justify-content: center;
   background: var(--hero-bg);
   overflow: hidden;
+  isolation: isolate;
+  z-index: 1;
 }
 .hero::before {
   content: '';
