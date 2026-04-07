@@ -383,7 +383,7 @@ th {
     </div>
   </div>
 
-  <p>The variance probing experiment proved why the shift was necessary: <strong>fragility is domain-specific and model-specific</strong>. Qwen3 fractures on factual prompts but locks on moral ones. Mistral does the inverse. A fixed gate at a fixed pipeline position cannot adapt to patterns that flip between models.</p>
+  <p>The variance probing experiment demonstrated why the shift was necessary: <strong>fragility is domain-specific and model-specific</strong>. Qwen3 fractures on factual prompts but locks on moral ones. Mistral does the inverse. A fixed gate at a fixed pipeline position cannot adapt to patterns that flip between models.</p>
 
   <p>The doctrine stays. The enforcement mechanism evolves.</p>
 
@@ -583,7 +583,7 @@ th {
     <div class="agent-header">
       <span class="agent-number">Law 3</span>
       <span class="agent-title">Contradiction Must Be Preserved Before Resolution</span>
-      <span class="badge badge-planned">planned</span>
+      <span class="badge badge-proven">built</span>
     </div>
     <div class="agent-name">PrematureResolutionGuard</div>
     <div class="agent-principle">Not all contradictions should be resolved. Held contradictions are stable states, not errors. Premature resolution destroys information. The system must hold tension until it has evidence to choose.</div>
@@ -619,7 +619,7 @@ th {
     <div class="agent-header">
       <span class="agent-number">Law 4</span>
       <span class="agent-title">Degraded Reconstruction Cannot Silently Overwrite Trusted Memory</span>
-      <span class="badge badge-planned">planned</span>
+      <span class="badge badge-proven">built</span>
     </div>
     <div class="agent-name">MemoryCorruptionGuard</div>
     <div class="agent-principle">A quarantine principle formalized from the original Holden design. When a memory is reconstructed or summarized, the reconstruction may lose fidelity. That loss must not silently overwrite a higher-trust original.</div>
@@ -649,7 +649,7 @@ th {
     <div class="agent-header">
       <span class="agent-number">Law 5</span>
       <span class="agent-title">Outward Confidence Must Be Bounded by Internal Support</span>
-      <span class="badge badge-planned">planned</span>
+      <span class="badge badge-proven">built</span>
     </div>
     <div class="agent-name">GapAuditor</div>
     <div class="agent-principle">The belief/speech gap must be auditable and bounded. If the system expresses high confidence, the belief layer must actually support that confidence level.</div>
@@ -1033,7 +1033,7 @@ th {
     </div>
   </div>
 
-  <h4>What the Experiment Proved</h4>
+  <h4>What the Experiment Demonstrated</h4>
   <p>The variance probing research demonstrated that fragility is:</p>
   <ul>
     <li><strong>Domain-specific</strong> -- factual prompts fracture differently than moral prompts</li>
@@ -1100,10 +1100,10 @@ th {
     <tr><th>Agent</th><th>Status</th><th>Dependency</th></tr>
     <tr><td><strong>SpeechLeakDetector</strong></td><td><span class="badge badge-built">built</span></td><td>Tested with real embeddings, all unit tests passing</td></tr>
     <tr><td><strong>TemplateDetector</strong></td><td><span class="badge badge-built">built</span></td><td>Tested on Qwen3 + Mistral experiment data</td></tr>
-    <tr><td><strong>PrematureResolutionGuard</strong></td><td><span class="badge badge-planned">planned</span></td><td>Needs the contradiction handling pipeline to test against</td></tr>
-    <tr><td><strong>MemoryCorruptionGuard</strong></td><td><span class="badge badge-planned">planned</span></td><td>Needs the memory update pipeline to test against</td></tr>
-    <tr><td><strong>GapAuditor</strong></td><td><span class="badge badge-planned">planned</span></td><td>Needs Laws 1 + 2 integrated into live pipeline first</td></tr>
-    <tr><td><strong>Coordination Layer</strong></td><td><span class="badge badge-planned">designed</span></td><td>Needs at least 3 agents operational to be meaningful</td></tr>
+    <tr><td><strong>PrematureResolutionGuard</strong></td><td><span class="badge badge-proven">built</span></td><td>Needs the contradiction handling pipeline to test against</td></tr>
+    <tr><td><strong>MemoryCorruptionGuard</strong></td><td><span class="badge badge-proven">built</span></td><td>Needs the memory update pipeline to test against</td></tr>
+    <tr><td><strong>GapAuditor</strong></td><td><span class="badge badge-proven">built</span></td><td>Needs Laws 1 + 2 integrated into live pipeline first</td></tr>
+    <tr><td><strong>Coordination Layer</strong></td><td><span class="badge badge-proven">built</span></td><td>Needs at least 3 agents operational to be meaningful</td></tr>
   </table>
 
   <h4>Validation Ladder</h4>
@@ -1126,8 +1126,6 @@ th {
     <p>"The job now is not to invent ten more beautiful ideas. It's to find out which three or four keep standing when the system gets punched in the face."</p>
   </div>
 </section>
-
-</div>
 
 </main>
 </div>
