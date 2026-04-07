@@ -829,7 +829,7 @@ td code {
 .doc-pager a:hover .doc-pager-title { color: var(--text); }
 .doc-pager-next { text-align: right; margin-left: auto; }
 
-/* ===== RESPONSIVE ===== */
+/* ===== RESPONSIVE: TABLET ===== */
 @media (max-width: 900px) {
   .page-layout { grid-template-columns: 1fr; }
   .sidebar {
@@ -837,18 +837,64 @@ td code {
     height: auto;
     border-right: none;
     border-bottom: 1px solid var(--border);
-    padding: 24px 24px;
+    padding: 16px 20px;
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 4px 16px;
+    gap: 4px 12px;
   }
   .sidebar-title { width: 100%; margin-bottom: 8px; }
   .sidebar-spacer { display: none; }
   .sidebar-footer { display: none; }
-  .main { padding: 40px 24px 80px 24px; }
+  .main { padding: 32px 20px 60px 20px; }
   h2 { font-size: 1.5em; }
-  .stat-row { grid-template-columns: 1fr; }
+  .stat-row { grid-template-columns: 1fr 1fr; }
   .agent-list { grid-template-columns: 1fr; }
   .pipeline-row { grid-template-columns: 32px 1fr; }
   .pipeline-tag { display: none; }
+  .doc-pager a { max-width: 200px; }
+}
+
+/* ===== RESPONSIVE: MOBILE ===== */
+@media (max-width: 600px) {
+  /* Hide sidebar entirely — docnav provides navigation */
+  .sidebar { display: none; }
+
+  .main {
+    padding: 20px 14px 48px 14px;
+    max-width: 100vw;
+  }
+  h1 { font-size: 1.4em; }
+  h2 { font-size: 1.25em; }
+  h3 { font-size: 1.05em; }
+  p, li { font-size: 0.9em; line-height: 1.6; }
+
+  /* Docnav: keep scrollable, shrink text */
+  .docnav { height: 34px; }
+  .docnav-home { padding: 0 10px; font-size: 0.58em; }
+  .docnav a:not(.docnav-home) { padding: 0 9px; font-size: 0.58em; }
+
+  /* Stat cards stack vertically */
+  .stat-row { grid-template-columns: 1fr; gap: 8px; }
+  .stat-card { padding: 12px; }
+  .stat-value { font-size: 1.5em; }
+
+  /* Tables: force small text, let wrap handle overflow */
+  .table-wrap { margin: 16px -14px; padding: 0 14px; }
+  table { font-size: 0.75em; }
+  th, td { padding: 6px 8px; }
+
+  /* Cards and blocks: reduce padding */
+  .remark, .quote-block, .impl-block, .proof-block { padding: 14px; margin: 16px 0; }
+  .principle, .layer, .pipeline-layer, .immune-card, .agent-card,
+  .method-card, .regime-card, .phase-card, .glossary-entry,
+  .example-card, .scorecard { padding: 14px; }
+
+  /* Pager: stack vertically */
+  .doc-pager { flex-direction: column; align-items: stretch; gap: 8px; margin-top: 40px; }
+  .doc-pager a { max-width: 100%; }
+  .doc-pager-next { text-align: left; margin-left: 0; }
+
+  /* Grids that assume desktop widths */
+  .method-grid, .regime-grid, .agent-list { grid-template-columns: 1fr; }
+  .pipeline-row { grid-template-columns: 1fr; }
 }
