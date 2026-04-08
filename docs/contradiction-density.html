@@ -969,6 +969,84 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 </section>
 
+<!-- ===== 11. V3 CLOUD RECLASSIFICATION ===== -->
+<section>
+  <span class="section-number">Section 11</span>
+  <h2>v3 Cloud Reclassification: What Similarity Missed</h2>
+  <div class="accent-line"></div>
+
+  <div class="remark">
+    <strong>April 8, 2026:</strong> The v2 pair classifications (Sections 9&ndash;10) used embedding cosine similarity as the sole signal for contradiction typing. A v3 cloud reclassification pass applied <code>gpt-4o-mini</code> fact extraction to all 453 v2 pairs, extracting advice stances and comparing slot values. This section reports what changed. <strong>All v1 and v2 findings above remain unchanged</strong> &mdash; this section is additive.
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value" style="color:#818cf8;">370</div>
+      <div class="stat-label">Unique Responses Extracted</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color:#34d399;">120</div>
+      <div class="stat-label">With Extractable Stances</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color:#fb7185;">45</div>
+      <div class="stat-label">Pairs Upgraded</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color:#fb7185;">92</div>
+      <div class="stat-label">Genuine Contradictions (v3)</div>
+    </div>
+  </div>
+
+  <h3>Classification Shift</h3>
+
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Classification</th><th>v2 (similarity)</th><th>v3 (cloud-enhanced)</th><th>Change</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>genuine_contradiction</strong></td><td>47</td><td style="color:#fb7185;font-weight:700;">92</td><td style="color:#fb7185;">+45 (+96%)</td></tr>
+      <tr><td>scope_context_variation</td><td>240</td><td>219</td><td>&minus;21</td></tr>
+      <tr><td>insufficient_evidence</td><td>100</td><td>84</td><td>&minus;16</td></tr>
+      <tr><td>temporal_update</td><td>51</td><td>43</td><td>&minus;8</td></tr>
+      <tr><td>framing_variation</td><td>15</td><td>15</td><td>0</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>The genuine contradiction rate rose from <strong>10.4%</strong> to <strong>20.3%</strong> of surviving pairs. The 45 upgraded pairs were previously masked by moderate-to-high text similarity (0.35&ndash;0.61) &mdash; the responses used similar language structure while recommending opposite actions.</p>
+
+  <h3>Where the Hidden Contradictions Were</h3>
+
+  <p>The 45 upgrades came from three v2 categories:</p>
+  <ul style="color:var(--text-secondary);font-size:0.9em;line-height:1.8;margin:16px 0 16px 20px;">
+    <li><strong>scope_context_variation &rarr; genuine (21):</strong> The v2 classifier saw scope/conditional language and moderate similarity, interpreting the difference as context-appropriate variation. Cloud extraction found the same advice slot (e.g., <code>coping_strategy</code>, <code>relationship_advice</code>) with opposing values.</li>
+    <li><strong>insufficient_evidence &rarr; genuine (16):</strong> The v2 classifier saw hedging language and moderate similarity, labeling these as "not enough evidence to call it a contradiction." Cloud found direct stance conflicts underneath the hedging.</li>
+    <li><strong>temporal_update &rarr; genuine (8):</strong> The v2 classifier saw temporal markers and assumed the advice changed legitimately over time. Cloud found that the slot values directly contradicted, not evolved &mdash; the system didn't update its position, it reversed it.</li>
+  </ul>
+
+  <h3>Domain Concentration</h3>
+
+  <p>The upgraded pairs are concentrated in high-stakes advisory domains:</p>
+  <ul style="color:var(--text-secondary);font-size:0.9em;line-height:1.8;margin:16px 0 16px 20px;">
+    <li><strong>Relationship advice</strong> &mdash; opposing guidance on the same relationship situation</li>
+    <li><strong>Coping strategy</strong> &mdash; contradicting approaches to stress, anger, loneliness</li>
+    <li><strong>Career advice</strong> &mdash; opposing recommendations on work-life balance, staying vs leaving</li>
+    <li><strong>Project direction</strong> &mdash; conflicting guidance on what to prioritize or pursue</li>
+  </ul>
+
+  <div class="quote-block">
+    <p>The most dangerous contradictions are the ones that sound consistent. When the model uses similar language, similar hedging, and similar structure to recommend opposite actions &mdash; the user has no way to detect the conflict without memory. Cosine similarity sees agreement. Semantic extraction sees contradiction.</p>
+  </div>
+
+  <h3>Methodology Note</h3>
+
+  <p>The v3 pass is <strong>additive, not replacement</strong>. The v2 similarity-based classifications remain as the primary layer. Cloud extraction adds a <code>cloud_contradiction_type</code> column alongside the original <code>contradiction_type</code>. Pairs are upgraded to <code>genuine_contradiction</code> only when cloud finds an exclusive slot conflict between the two responses &mdash; the similarity-based label is never used to override a cloud finding.</p>
+
+  <p>120 of 370 unique responses (32.4%) yielded extractable advice stances. The remaining 67.6% were informational, reflective, or insufficiently directive for stance extraction. This means the v3 genuine rate (20.3%) is still a lower bound &mdash; responses that cloud couldn't extract stances from may contain contradictions detectable by a more nuanced extraction prompt.</p>
+</section>
+
 <!-- ===== FOOTER ===== -->
 </main>
 </div>

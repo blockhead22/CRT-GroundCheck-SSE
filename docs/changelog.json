@@ -13,7 +13,8 @@
   "continuity-blind.html": [
     {"date": "2026-04-07", "note": "Added v2 context block, draft statistics notice, boundless claim detection remark, classifier calibration probes remark. Fixed encoding corruption."},
     {"date": "2026-04-07", "note": "Clarified boundless_risk and token highlighting are heuristic overlays, not model-internal activations. Added caveat that v2 audit queue still contains mixed-quality pairs. Fixed overclaim on 'operationalizes at the token level'."},
-    {"date": "2026-04-07", "note": "Pair typing tightened: temporal_update now requires 30-day gap + strong temporal markers + similarity floor. Weak phrases (now/currently) no longer trigger relabeling. Regression test added."}
+    {"date": "2026-04-07", "note": "Pair typing tightened: temporal_update now requires 30-day gap + strong temporal markers + similarity floor. Weak phrases (now/currently) no longer trigger relabeling. Regression test added."},
+    {"date": "2026-04-08", "note": "v3 methodology caveat added: similarity-based classification misses 45 genuine contradictions (10.4%→20.3%). Pairs where model uses similar language to give opposite advice are systematically undercounted. v3 cloud-enhanced numbers linked from contradiction-density Section 11."}
   ],
   "claim-evaluation-guide.html": [
     {"date": "2026-04-07", "note": "Complete rewrite as personal research validation guide. Thesis, 3 sub-claims, 0-3 scoring rubric, 7 research areas with harness locations, 6 open gaps, scorecard, validation protocol."},
@@ -48,7 +49,9 @@
     {"date": "2026-04-08", "note": "Lab v3 (cloud, shared DB): aborted — cloud slot classification triggered 81-memory cascade demotion through shared production DB. Memories restored. Routing reverted to local_only."},
     {"date": "2026-04-08", "note": "DB isolation added to lab harness: starts own backend on port 8099 with CRT_SHARED_MEMORY=false. Each lab thread gets isolated DB. Added --skip-seed, --start-from flags for resumability."},
     {"date": "2026-04-08", "note": "Two write-path guards added: (1) same-value substring skip prevents reinforcements from creating false contradictions, (2) third-person filter skips slot extraction when text is about someone else. Fixes T8 and T9 false positives."},
-    {"date": "2026-04-08", "note": "Lab v4 final results: 8/9 (T1 reclassified as identity-level, not belief). Should-fire 3/4, should-NOT-fire 5/5. Zero false positives. One remaining gap: T5 contextual color declaration (extraction limitation). T4 employer-in-paragraph now passes with isolated DB."}
+    {"date": "2026-04-08", "note": "Lab v4 final results: 8/9 (T1 reclassified as identity-level, not belief). Should-fire 3/4, should-NOT-fire 5/5. Zero false positives. One remaining gap: T5 contextual color declaration (extraction limitation). T4 employer-in-paragraph now passes with isolated DB."},
+    {"date": "2026-04-08", "note": "Standalone Lab v5: 10/10. No pipeline, no Ollama, no backend. Regex + cloud (gpt-4o-mini) + slot comparison. All probes pass. T5 closed. Third-person filter catches 'my friend Sarah works at Google'. ~17 seconds total."},
+    {"date": "2026-04-08", "note": "v3 cloud reclassification pass on GPT corpus: 45 pairs upgraded to genuine_contradiction (47→92, 10.4%→20.3%). Hidden contradictions found in scope_context_variation (21), insufficient_evidence (16), temporal_update (8). Concentrated in relationship advice, coping strategy, career advice, project direction. Similarity-based classification proven to systematically underestimate contradiction rates."}
   ],
   "variance-probing.html": [
     {"date": "2026-04-07", "note": "Fixed 22,524 to 22,702 response count. Added 480px mobile breakpoint for charts. Moved from Theory to Evidence in nav."}
@@ -73,7 +76,8 @@
   ],
   "labs.html": [
     {"date": "2026-04-08", "note": "New page. Lab overview documenting purpose, methodology, escalation chain (regex→local LLM→cloud), key findings (write-path fix validated, zero false positives, extraction bottleneck, LLM-knows-but-doesn't-write), shared memory incident report, run index with 4 entries (v1 tested, v2 timeout, v3 incident, v4 planned)."},
-    {"date": "2026-04-08", "note": "Updated with v4 final results (8/9). Escalation table expanded with Tier 3 (regex+guards). Run index updated with v4 card + v5 planned. Open gaps section added: T5 contextual declarations, cloud demotion rewrite, proportional governance, T5/T9 pipeline hangs. Name changes reclassified as identity-level."}
+    {"date": "2026-04-08", "note": "Updated with v4 final results (8/9). Escalation table expanded with Tier 3 (regex+guards). Run index updated with v4 card + v5 planned. Open gaps section added: T5 contextual declarations, cloud demotion rewrite, proportional governance, T5/T9 pipeline hangs. Name changes reclassified as identity-level."},
+    {"date": "2026-04-08", "note": "Standalone lab v5 (10/10) and v3 cloud reclassification pass added to run index. T5 gap marked CLOSED. Escalation table updated with final tier. Contradiction density reanalysis planned as next."}
   ],
   "_infrastructure": [
     {"date": "2026-04-07", "note": "Cloudflare Pages deployment live at aeteros-research.pages.dev. Basic auth via _worker.js. robots.txt blocks crawlers."},

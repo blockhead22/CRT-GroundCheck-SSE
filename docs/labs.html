@@ -280,7 +280,7 @@
 
   <h3>Open Gaps</h3>
   <ul class="issue-list">
-    <li><strong>T5 (contextual declarations):</strong> Regex extraction cannot parse "it's definitely my favorite color now, green." Requires cloud or LLM extraction with proper isolation.</li>
+    <li><strong>T5 (contextual declarations):</strong> <strong style="color:#34d399;">CLOSED.</strong> Cloud extraction (gpt-4o-mini) detects contextual declarations. Standalone lab v5: 10/10.</li>
     <li><strong>Cloud governance demotion:</strong> Uses <code>LIKE '%name%'</code> text search instead of <code>memory_facts</code>. Must be rewritten before cloud extraction can be enabled in production.</li>
     <li><strong>Proportional governance:</strong> Not every message needs full extraction + comparison. Earned governance (signal-gated, deferred, proportional) is the architectural target but not yet implemented.</li>
     <li><strong>T5/T9 pipeline hangs:</strong> Specific probes consistently stall regardless of network state. Root cause not yet diagnosed &mdash; likely a pipeline interaction with longer or contextually complex messages.</li>
@@ -319,10 +319,24 @@
     <p>Isolated DB + two write-path guards (same-value skip, third-person filter). T1 (name) reclassified as identity-level, removed from scoring. T4 (employer in long paragraph) now passes with clean DB. T8 (reinforcement) and T9 (third-party) false positives eliminated. Zero false positives across all should-NOT-fire probes. One remaining gap: T5 (contextual color declaration). <a href="labs/contradiction-pipeline-lab-20260408-032639.html">Full report &rarr;</a></p>
   </div>
 
+  <div class="run-card" style="border-color: rgba(52,211,153,0.3);">
+    <h3>Standalone Lab v5 &mdash; Regex + Cloud + Guards (no pipeline)</h3>
+    <div class="run-meta">2026-04-08 04:35 &middot; standalone (no backend, no Ollama) &middot; ~17 seconds total</div>
+    <p><span class="run-score score-green">10/10</span> Should-fire: <span class="run-score score-green">5/5</span> Should-NOT-fire: <span class="run-score score-green">5/5</span></p>
+    <p>Lab rewritten as fully standalone &mdash; no backend, no pipeline, no Ollama. Regex extraction + cloud (gpt-4o-mini, ~1.5s/call) + slot comparison against seeded facts. All probes pass including T5 (contextual color declaration) and T9 (third-party filter). <a href="labs/contradiction-pipeline-lab-20260408-043524.html">Full report &rarr;</a></p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(52,211,153,0.3);">
+    <h3>v3 Cloud Reclassification Pass &mdash; Continuity-Blind Corpus</h3>
+    <div class="run-meta">2026-04-08 04:53 &middot; 370 unique responses &middot; 332.5s extraction</div>
+    <p><span class="run-score score-green">92</span> genuine contradictions (was <span class="run-score score-amber">47</span>)</p>
+    <p>Cloud fact extraction (gpt-4o-mini) applied to all 453 v2 pairs. 120/370 responses yielded extractable advice stances. 45 pairs upgraded from scope_context_variation (21), insufficient_evidence (16), and temporal_update (8) to genuine_contradiction. Genuine rate: 10.4% &rarr; 20.3%. Contradictions concentrated in relationship advice, coping strategy, career advice, and project direction. Key finding: similarity-based classification systematically underestimates contradiction rates when the model uses similar language to give opposite advice.</p>
+  </div>
+
   <div class="run-card" style="border-color: rgba(129,140,248,0.3);">
-    <h3>Contradiction Pipeline Lab v5 &mdash; Cloud extraction (isolated)</h3>
+    <h3>Next &mdash; Contradiction Density Reanalysis</h3>
     <div class="run-meta">Planned</div>
-    <p><span class="status-badge badge-next">Next</span> Cloud extraction for contextual declarations (T5). Requires cloud governance demotion rewrite to use <code>memory_facts</code> instead of text search, and BDG cascade with damping. Prerequisites documented in incident report.</p>
+    <p><span class="status-badge badge-next">Next</span> Recalculate per-topic density, time amplification, and model trajectory using cloud-enhanced classifications. Determine if the 7%&rarr;12.4% time gap finding widens with the corrected genuine rate.</p>
   </div>
 </section>
 

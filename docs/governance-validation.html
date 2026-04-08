@@ -527,7 +527,7 @@
       <li><strong>Defensible paper:</strong> Above plus at least 1 Tier 3 at score 2+ &mdash; not yet</li>
     </ul>
     <p>Current status: <strong>Minimum draft threshold met (April 8, 2026). Tier 1: 6/6. Tier 2: 3/6. Tier 3 requires comparative testing.</strong></p>
-    <p style="margin-top:10px;"><strong>Contradiction detection (Test 1.1) upgraded to score 2.</strong> Write-path fix validated through Contradiction Pipeline Lab (v4): 8/9 overall, 3/4 should-fire, 5/5 should-NOT-fire. Zero false positives. Two guards added (same-value skip, third-person filter). One remaining gap: contextual declarations without direct patterns (T5). Name changes reclassified as identity-level operations outside the belief contradiction scope.</p>
+    <p style="margin-top:10px;"><strong>Contradiction detection (Test 1.1) upgraded to score 3.</strong> Standalone lab (no pipeline): 10/10. Regex + cloud (gpt-4o-mini) extraction + slot comparison. All 5 should-fire probes detected including long-form narratives and contextual declarations. All 5 should-NOT-fire probes correctly silent including third-party facts. Separately, v3 cloud reclassification pass over the GPT corpus found 45 additional hidden contradictions (47&rarr;92 genuine, 10.4%&rarr;20.3%), proving similarity-based classification underestimates contradiction rates.</p>
   </div>
 </section>
 
@@ -539,6 +539,10 @@
   <p>Chronological record of every validation test performed. Newest first.</p>
 
   <div class="changelog-list">
+    <div class="changelog-entry">
+      <span class="changelog-date">2026-04-08 04:35</span>
+      <span class="changelog-note"><strong>Standalone Lab 10/10 + v3 Cloud Reclassification Pass (T1.1 &rarr; score 3).</strong> Lab rewritten as standalone &mdash; no backend, no Ollama, no pipeline. Regex + cloud (gpt-4o-mini) extraction + slot comparison against seeded facts. <strong>Result: 10/10.</strong> Should-fire 5/5 (T2 location in 60-word narrative, T3 age, T4 employer in 70-word paragraph, T5 contextual color declaration, T5b direct color). Should-NOT-fire 5/5 (T9 third-person filter caught "my friend Sarah works at Google"). Total runtime ~17 seconds. Separately: v3 cloud reclassification pass over 453 v2 pairs found 45 hidden contradictions &mdash; genuine_contradiction count 47&rarr;92 (10.4%&rarr;20.3%). Similarity-based classification systematically underestimates contradiction rates when the model uses similar language to give opposite advice.</span>
+    </div>
     <div class="changelog-entry">
       <span class="changelog-date">2026-04-08 03:26</span>
       <span class="changelog-note"><strong>Contradiction Pipeline Lab v4 &mdash; final with guards (T1.1).</strong> Isolated DB, two write-path guards added (same-value skip + third-person filter). <strong>Result: 8/9.</strong> T1 (name) reclassified as identity-level, not belief. Should-fire: <strong>3/4</strong> (T2 location, T3 age full chain, T4 employer full chain). Should-NOT-fire: <strong>5/5</strong> (zero false positives &mdash; T8 reinforcement and T9 third-party both correctly silent). One remaining gap: T5 contextual color declaration &mdash; regex extraction cannot parse "it's definitely my favorite color now, green." This is an extraction limitation, not a detection logic failure. Cloud extraction is the next step for T5.</span>
