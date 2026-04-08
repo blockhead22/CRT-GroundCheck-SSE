@@ -4783,6 +4783,55 @@ class CRTEnhancedRAG:
             except Exception as e:
                 logger.warning(f"[ML_CONTRADICTION] Failed to check ML contradictions: {e}", exc_info=True)
 
+            # SLOT-AWARE EARLY CHECK: If ML didn't catch it, check exclusive slots directly.
+            # This runs BEFORE promotion so the memory stays provisional if contradicted.
+            if not contradiction_detected and user_memory is not None:
+                try:
+                    from .slot_discovery import get_slot_type, SlotType
+                    _early_facts = extract_fact_slots(user_text) or {}
+                    if _early_facts:
+                        _early_priors = self._load_thread_user_memories(
+                            thread_id=thread_id,
+                            exclude_memory_id=user_memory.memory_id,
+                        )
+                        for _eslot, _enew in _early_facts.items():
+                            _etype = get_slot_type(_eslot, db_path=getattr(self.memory, 'db_path', None))
+                            if _etype != SlotType.EXCLUSIVE:
+                                continue
+                            _enew_norm = getattr(_enew, "normalized", None)
+                            for _epm in _early_priors:
+                                _epf = extract_fact_slots(_epm.text) or {}
+                                _eold = _epf.get(_eslot)
+                                if _eold is None:
+                                    continue
+                                _eold_norm = getattr(_eold, "normalized", None)
+                                if _eold_norm and _enew_norm and _eold_norm != _enew_norm:
+                                    print(f"[SLOT_EARLY_CHECK] EXCLUSIVE contradiction: {_eslot} '{_eold_norm}' -> '{_enew_norm}'")
+                                    logger.info(f"[SLOT_EARLY_CHECK] Exclusive slot '{_eslot}' contradiction: '{_eold_norm}' -> '{_enew_norm}'")
+                                    user_vector = encode_vector(user_text)
+                                    drift = self.crt_math.drift_meaning(user_vector, _epm.vector)
+                                    contradiction_entry = self._record_and_cascade(
+                                        old_memory_id=_epm.memory_id,
+                                        new_memory_id=user_memory.memory_id,
+                                        drift_mean=drift,
+                                        confidence_delta=_epm.confidence - 0.95,
+                                        query=user_text,
+                                        summary=f"Slot correction ({_eslot}): '{_eold_norm}' -> '{_enew_norm}'",
+                                        old_text=_epm.text,
+                                        new_text=user_text,
+                                        old_vector=_epm.vector,
+                                        new_vector=user_vector,
+                                        thread_id=thread_id,
+                                    )
+                                    contradiction_detected = True
+                                    # Demote old memory trust
+                                    self.memory.evolve_trust_for_contradiction(_epm, user_vector)
+                                    break
+                            if contradiction_detected:
+                                break
+                except Exception as _slot_err:
+                    logger.warning(f"[SLOT_EARLY_CHECK] Error: {_slot_err}", exc_info=True)
+
             # Name declarations: store the memory, check for contradictions, then fall
             # through to the reasoning engine for a natural response.
             # (Previously returned a hardcoded "Thanks  -  noted" template  -  removed.)
