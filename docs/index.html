@@ -228,22 +228,22 @@
 
   <p>CORE starts from three design laws. These are not suggestions or best practices. They are structural commitments that shape every decision in the architecture.</p>
 
-  <div class="law-block">
-    <div class="law-num">Law 1</div>
-    <div class="law-title">Belief/Speech Separation</div>
-    <div class="law-body">What the system believes and what it says are different things, and the gap between them must be auditable. The LLM generates speech. The governance layer holds belief. When they diverge, the system flags it &mdash; it does not silently let the mouth overwrite the mind. Fallback models are vocal cords, not epistemic authorities.</div>
-  </div>
-
-  <div class="law-block">
-    <div class="law-num">Law 2</div>
-    <div class="law-title">Earned Contradiction Resolution</div>
-    <div class="law-body">Contradictions are signals, not errors. They are preserved until evidence resolves them &mdash; never silently overwritten. The system may lean, quarantine, downgrade, or mark provisionally resolved. But full resolution must be earned through corroboration, trust hierarchy, or later confirmation. Silent destructive resolution is forbidden.</div>
-  </div>
-
-  <div class="law-block">
-    <div class="law-num">Law 3</div>
-    <div class="law-title">Emergent Structure Over Hardcoded Logic</div>
-    <div class="law-body">Behavior emerges from memory, reflection, compression, and contradiction handling &mdash; not from runtime hacks. No "if user says X, answer Y" unless it is a protected memory anchor. The system learns its own patterns. Dynamic slot discovery is a natural extension. Regex is acceptable as a fast tier, but never the ceiling.</div>
+  <div class="principle-grid">
+    <div class="principle principle-speech">
+      <div class="p-num">Law 1</div>
+      <div class="p-text">Belief/Speech Separation</div>
+      <div class="p-sub">What the system believes and what it says are different things, and the gap between them must be auditable. The LLM generates speech. The governance layer holds belief. When they diverge, the system flags it &mdash; it does not silently let the mouth overwrite the mind.</div>
+    </div>
+    <div class="principle principle-contra">
+      <div class="p-num">Law 2</div>
+      <div class="p-text">Earned Contradiction Resolution</div>
+      <div class="p-sub">Contradictions are signals, not errors. They are preserved until evidence resolves them &mdash; never silently overwritten. Full resolution must be earned through corroboration, trust hierarchy, or later confirmation.</div>
+    </div>
+    <div class="principle principle-trust">
+      <div class="p-num">Law 3</div>
+      <div class="p-text">Emergent Structure Over Hardcoded Logic</div>
+      <div class="p-sub">Behavior emerges from memory, reflection, compression, and contradiction handling &mdash; not from runtime hacks. The system learns its own patterns. Regex is acceptable as a fast tier, but never the ceiling.</div>
+    </div>
   </div>
 
   <p>These three laws produce a single architectural insight that anchors the entire project:</p>
@@ -266,105 +266,21 @@
   <span class="chapter-num">Chapter 3</span>
   <h2>The Architecture</h2>
 
-  <p>Every message to Aether passes through a 12-step pipeline. Each step has a specific job, and governance checkpoints are woven throughout &mdash; not bolted on at the end.</p>
+  <p>Every message passes through a 12-step pipeline. Each step has a specific job, and governance checkpoints are woven throughout &mdash; not bolted on at the end.</p>
 
-  <div class="pipeline">
-    <div class="pipeline-row">
-      <div class="pipeline-idx">1</div>
-      <div class="pipeline-content">
-        <div class="pipeline-name">Input</div>
-        <div class="pipeline-desc">Raw message intake, session context loading</div>
-      </div>
-      <div class="pipeline-tag">Preprocessing</div>
-    </div>
-    <div class="pipeline-row">
-      <div class="pipeline-idx">2</div>
-      <div class="pipeline-content">
-        <div class="pipeline-name">Intent Classification</div>
-        <div class="pipeline-desc">Local model routes by purpose: question, correction, preference, task</div>
-      </div>
-      <div class="pipeline-tag">Routing</div>
-    </div>
-    <div class="pipeline-row">
-      <div class="pipeline-idx">3</div>
-      <div class="pipeline-content">
-        <div class="pipeline-name">Epistemic Routing</div>
-        <div class="pipeline-desc">Model selection by fragility profile, cost, and task complexity</div>
-      </div>
-      <div class="pipeline-tag">Governance L4</div>
-    </div>
-    <div class="pipeline-row">
-      <div class="pipeline-idx">4</div>
-      <div class="pipeline-content">
-        <div class="pipeline-name">Context Assembly</div>
-        <div class="pipeline-desc">Session state, user profile, belief priors loaded into prompt</div>
-      </div>
-      <div class="pipeline-tag">State</div>
-    </div>
-    <div class="pipeline-row">
-      <div class="pipeline-idx">5</div>
-      <div class="pipeline-content">
-        <div class="pipeline-name">Memory Retrieval</div>
-        <div class="pipeline-desc">Semantic search + trust-weighted ranking across persistent memory</div>
-      </div>
-      <div class="pipeline-tag">Memory</div>
-    </div>
-    <div class="pipeline-row">
-      <div class="pipeline-idx">6</div>
-      <div class="pipeline-content">
-        <div class="pipeline-name">Pre-Generation Governance</div>
-        <div class="pipeline-desc">Drift detection, contradiction check, confidence gating</div>
-      </div>
-      <div class="pipeline-tag">Governance L1&ndash;L3</div>
-    </div>
-    <div class="pipeline-row">
-      <div class="pipeline-idx">7</div>
-      <div class="pipeline-content">
-        <div class="pipeline-name">Generation</div>
-        <div class="pipeline-desc">LLM produces response with governance-constrained prompt</div>
-      </div>
-      <div class="pipeline-tag">LLM</div>
-    </div>
-    <div class="pipeline-row">
-      <div class="pipeline-idx">8</div>
-      <div class="pipeline-content">
-        <div class="pipeline-name">Slot Extraction</div>
-        <div class="pipeline-desc">Facts, preferences, corrections parsed from response and user message</div>
-      </div>
-      <div class="pipeline-tag">Learning</div>
-    </div>
-    <div class="pipeline-row">
-      <div class="pipeline-idx">9</div>
-      <div class="pipeline-content">
-        <div class="pipeline-name">Execution Verification</div>
-        <div class="pipeline-desc">Did the response actually address the query? Belief vs speech gap audit</div>
-      </div>
-      <div class="pipeline-tag">Governance L5</div>
-    </div>
-    <div class="pipeline-row">
-      <div class="pipeline-idx">10</div>
-      <div class="pipeline-content">
-        <div class="pipeline-name">Contradiction Detection</div>
-        <div class="pipeline-desc">New facts checked against existing beliefs; conflicts logged, not erased</div>
-      </div>
-      <div class="pipeline-tag">Memory</div>
-    </div>
-    <div class="pipeline-row">
-      <div class="pipeline-idx">11</div>
-      <div class="pipeline-content">
-        <div class="pipeline-name">Final Governance</div>
-        <div class="pipeline-desc">Epistemic posture check, immune agent sweep, cascade pressure eval</div>
-      </div>
-      <div class="pipeline-tag">Governance L6</div>
-    </div>
-    <div class="pipeline-row">
-      <div class="pipeline-idx">12</div>
-      <div class="pipeline-content">
-        <div class="pipeline-name">Render</div>
-        <div class="pipeline-desc">Final response delivered with trust metadata, pipeline summary, drift indicators</div>
-      </div>
-      <div class="pipeline-tag">Output</div>
-    </div>
+  <div class="pipeline-stack">
+    <div class="pipeline-layer"><div class="pipeline-layer-accent"></div><div class="pipeline-layer-content"><div class="pipeline-layer-name">1. Input</div><div class="pipeline-layer-desc">Raw message intake, session context loading</div></div><div class="pipeline-layer-annotation">Preprocessing</div></div>
+    <div class="pipeline-layer"><div class="pipeline-layer-accent"></div><div class="pipeline-layer-content"><div class="pipeline-layer-name">2. Intent Classification</div><div class="pipeline-layer-desc">Local model routes by purpose: question, correction, preference, task</div></div><div class="pipeline-layer-annotation">Routing</div></div>
+    <div class="pipeline-layer"><div class="pipeline-layer-accent"></div><div class="pipeline-layer-content"><div class="pipeline-layer-name">3. Epistemic Routing</div><div class="pipeline-layer-desc">Model selection by fragility profile, cost, and task complexity</div></div><div class="pipeline-layer-annotation">Governance L4</div></div>
+    <div class="pipeline-layer"><div class="pipeline-layer-accent"></div><div class="pipeline-layer-content"><div class="pipeline-layer-name">4. Context Assembly</div><div class="pipeline-layer-desc">Session state, user profile, belief priors loaded into prompt</div></div><div class="pipeline-layer-annotation">State</div></div>
+    <div class="pipeline-layer"><div class="pipeline-layer-accent"></div><div class="pipeline-layer-content"><div class="pipeline-layer-name">5. Memory Retrieval</div><div class="pipeline-layer-desc">Semantic search + trust-weighted ranking across persistent memory</div></div><div class="pipeline-layer-annotation">Memory</div></div>
+    <div class="pipeline-layer"><div class="pipeline-layer-accent"></div><div class="pipeline-layer-content"><div class="pipeline-layer-name">6. Pre-Generation Governance</div><div class="pipeline-layer-desc">Drift detection, contradiction check, confidence gating</div></div><div class="pipeline-layer-annotation">Governance L1&ndash;L3</div></div>
+    <div class="pipeline-layer"><div class="pipeline-layer-accent"></div><div class="pipeline-layer-content"><div class="pipeline-layer-name">7. Generation</div><div class="pipeline-layer-desc">LLM produces response with governance-constrained prompt</div></div><div class="pipeline-layer-annotation">LLM</div></div>
+    <div class="pipeline-layer"><div class="pipeline-layer-accent"></div><div class="pipeline-layer-content"><div class="pipeline-layer-name">8. Slot Extraction</div><div class="pipeline-layer-desc">Facts, preferences, corrections parsed from response and user message</div></div><div class="pipeline-layer-annotation">Learning</div></div>
+    <div class="pipeline-layer"><div class="pipeline-layer-accent"></div><div class="pipeline-layer-content"><div class="pipeline-layer-name">9. Execution Verification</div><div class="pipeline-layer-desc">Did the response actually address the query? Belief vs speech gap audit</div></div><div class="pipeline-layer-annotation">Governance L5</div></div>
+    <div class="pipeline-layer"><div class="pipeline-layer-accent"></div><div class="pipeline-layer-content"><div class="pipeline-layer-name">10. Contradiction Detection</div><div class="pipeline-layer-desc">New facts checked against existing beliefs; conflicts logged, not erased</div></div><div class="pipeline-layer-annotation">Memory</div></div>
+    <div class="pipeline-layer"><div class="pipeline-layer-accent"></div><div class="pipeline-layer-content"><div class="pipeline-layer-name">11. Final Governance</div><div class="pipeline-layer-desc">Epistemic posture check, immune agent sweep, cascade pressure eval</div></div><div class="pipeline-layer-annotation">Governance L6</div></div>
+    <div class="pipeline-layer"><div class="pipeline-layer-accent"></div><div class="pipeline-layer-content"><div class="pipeline-layer-name">12. Render</div><div class="pipeline-layer-desc">Final response delivered with trust metadata, pipeline summary, drift indicators</div></div><div class="pipeline-layer-annotation">Output</div></div>
   </div>
 
   <p>Six governance layers monitor the pipeline at different scales:</p>
@@ -385,30 +301,30 @@
 
   <p>And five autonomous immune agents enforce constitutional laws across the pipeline:</p>
 
-  <div class="agent-list">
-    <div class="agent-cell">
-      <div class="agent-name">SpeechLeakDetector</div>
-      <div class="agent-desc">Catches LLM output bleeding into belief state</div>
+  <div class="immune-grid">
+    <div class="immune-card">
+      <div class="im-name">SpeechLeakDetector</div>
+      <div class="im-desc">Catches LLM output bleeding into belief state</div>
     </div>
-    <div class="agent-cell">
-      <div class="agent-name">TemplateDetector</div>
-      <div class="agent-desc">Flags rote, templated responses that bypass reasoning</div>
+    <div class="immune-card">
+      <div class="im-name">TemplateDetector</div>
+      <div class="im-desc">Flags rote, templated responses that bypass reasoning</div>
     </div>
-    <div class="agent-cell">
-      <div class="agent-name">PrematureResolutionGuard</div>
-      <div class="agent-desc">Blocks contradictions from resolving without evidence</div>
+    <div class="immune-card">
+      <div class="im-name">PrematureResolutionGuard</div>
+      <div class="im-desc">Blocks contradictions from resolving without evidence</div>
     </div>
-    <div class="agent-cell">
-      <div class="agent-name">MemoryCorruptionGuard</div>
-      <div class="agent-desc">Prevents writes that would degrade memory integrity</div>
+    <div class="immune-card">
+      <div class="im-name">MemoryCorruptionGuard</div>
+      <div class="im-desc">Prevents writes that would degrade memory integrity</div>
     </div>
-    <div class="agent-cell">
-      <div class="agent-name">GapAuditor</div>
-      <div class="agent-desc">Measures and reports belief/speech divergence per response</div>
+    <div class="immune-card">
+      <div class="im-name">GapAuditor</div>
+      <div class="im-desc">Measures and reports belief/speech divergence per response</div>
     </div>
-    <div class="agent-cell">
-      <div class="agent-name">ContinuityAuditor</div>
-      <div class="agent-desc">Verifies cross-session consistency of claims and preferences</div>
+    <div class="immune-card">
+      <div class="im-name">ContinuityAuditor</div>
+      <div class="im-desc">Verifies cross-session consistency of claims and preferences</div>
     </div>
   </div>
 

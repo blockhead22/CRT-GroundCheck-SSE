@@ -25,7 +25,6 @@
     { href: 'emotion-governance.html',     label: 'Emotion Governance',     group: 'Theory' },
     { href: 'variance-landscape.html',     label: 'Variance Landscape',     group: 'Theory' },
     // Reference (how to use this, why it matters)
-    { href: 'throughline.html',            label: 'Throughline',             group: 'Reference' },
     { href: 'claim-evaluation-guide.html', label: 'Research Guide',          group: 'Reference' },
     { href: 'why-this-matters.html',       label: 'Why This Matters',       group: 'Reference' },
     { href: 'glossary.html',              label: 'Glossary',                group: 'Reference' },
