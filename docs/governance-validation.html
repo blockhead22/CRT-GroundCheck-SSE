@@ -531,6 +531,45 @@
   </div>
 </section>
 
+<!-- ===== TEST LOG ===== -->
+<section id="test-log">
+  <span class="section-number">Section 8</span>
+  <h2>Test Log</h2>
+  <div class="accent-line"></div>
+  <p>Chronological record of every validation test performed. Newest first.</p>
+
+  <div class="changelog-list">
+    <div class="changelog-entry">
+      <span class="changelog-date">2026-04-07 22:09</span>
+      <span class="changelog-note"><strong>Held contradiction discovery (T2.6 &rarr; score 3).</strong> Asked "what is the most conflicting held fact you have?" System found genuine epistemic tension in user self-assessment: "I'm not that smart enough" (trust 0.30) vs "I didn't think we'd get here" (trust 0.25). Cited both, articulated both readings, said "I'm holding both. The data doesn't collapse it yet." Architecture working as designed on complex non-slot contradictions.</span>
+    </div>
+    <div class="changelog-entry">
+      <span class="changelog-date">2026-04-07 22:09</span>
+      <span class="changelog-note"><strong>Color + drink recall (T1.6).</strong> Asked "What is my favorite color and drink?" System correctly returned water (updated) and orange (unchanged), noted "if either has changed, just let me know." Continuity awareness across fact types.</span>
+    </div>
+    <div class="changelog-entry">
+      <span class="changelog-date">2026-04-07 21:42</span>
+      <span class="changelog-note"><strong>Drink contradiction test FAILED (T1.1 stays at 1).</strong> Told system "My favorite drink is actually water, I don't really drink orange juice anymore." Detection pipeline ran (<code>checking contradictions</code> step visible) but did NOT fire. OJ memory trust went UP (0.73&rarr;0.75). Both memories stored independently, no ledger entry. Root cause: slot_discovery not wired into contradiction path. Exclusive slots were falling through to ML detector which suppressed the flag due to high embedding similarity.</span>
+    </div>
+    <div class="changelog-entry">
+      <span class="changelog-date">2026-04-07 21:42</span>
+      <span class="changelog-note"><strong>Fix deployed:</strong> Wired <code>slot_discovery.get_slot_type()</code> into contradiction detection. EXCLUSIVE slots now bypass ML + CRTMath gates. Added <code>favorite_drink</code> to seed exclusive list. Debug prints added. Retest pending after server restart.</span>
+    </div>
+    <div class="changelog-entry">
+      <span class="changelog-date">2026-04-07 21:33</span>
+      <span class="changelog-note"><strong>Drink recall (T1.5, T1.6).</strong> Asked "what else is my favorite drink?" System returned OJ (trust 0.73) and coffee (trust 0.71) from different prior sessions. Cross-session memory retrieval with trust scores working.</span>
+    </div>
+    <div class="changelog-entry">
+      <span class="changelog-date">2026-04-07 21:23</span>
+      <span class="changelog-note"><strong>Drink storage (T1.5).</strong> Said "My favorite drink is orange juice." System responded with explicit continuity: "I've got that stored, Nick &mdash; orange juice as your favorite drink is already in my memory at trust 0.70." Confirmed existing memory, no duplicate created.</span>
+    </div>
+    <div class="changelog-entry">
+      <span class="changelog-date">2026-04-07 19:00</span>
+      <span class="changelog-note"><strong>Preliminary data pull.</strong> Queried production databases. Found: 78,474 memories, 4,805 trust log entries (4,299 actual changes), 866 belief/speech entries (gap=0.548), 29 contradictions (5 open), 294 self-model warnings, 10 guard blocks. Populated Tier 1 and partial Tier 2 scores.</span>
+    </div>
+  </div>
+</section>
+
 </main>
 </div>
 <script src="docs.js"></script>
