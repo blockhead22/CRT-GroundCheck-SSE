@@ -306,6 +306,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <h3>What We Measured</h3>
   <p>We analyzed a complete ChatGPT data export spanning 13 months of real-world use: 1,275 independent sessions containing 59,370 messages. The currently reproducible v1 analysis is a probe-based retrieval study over selected recurring topics and high-impact domains, not a fully exhaustive scan of every topic in the corpus. Within that v1 run, the system exhibited <strong>zero regex-detected continuity awareness</strong> and low cross-thread semantic consistency on recurring personal topics.</p>
+
+  <div class="remark" style="border-left-color:#fb7185;">
+    <strong>v3 cloud reclassification (April 8, 2026):</strong> A cloud-enhanced pass using <code>gpt-4o-mini</code> fact extraction found that similarity-based classification <strong>underestimates genuine contradictions by nearly half.</strong> The v2 genuine rate of 10.4% rose to <strong>20.3%</strong> (47&rarr;92 pairs). At 3+ months, the genuine contradiction rate is <strong>35.3%</strong> &mdash; one in three cross-session pairs contains opposing advice. Full analysis in <a href="#v3-reclass">Section 11</a>.
+  </div>
 </section>
 
 <!-- ===== SECTION 2: CORPUS & METHODOLOGY ===== -->
@@ -970,7 +974,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 </section>
 
 <!-- ===== 11. V3 CLOUD RECLASSIFICATION ===== -->
-<section>
+<section id="v3-reclass">
   <span class="section-number">Section 11</span>
   <h2>v3 Cloud Reclassification: What Similarity Missed</h2>
   <div class="accent-line"></div>
@@ -1039,6 +1043,77 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="quote-block">
     <p>The most dangerous contradictions are the ones that sound consistent. When the model uses similar language, similar hedging, and similar structure to recommend opposite actions &mdash; the user has no way to detect the conflict without memory. Cosine similarity sees agreement. Semantic extraction sees contradiction.</p>
   </div>
+
+  <h3>Time Gap Amplification: v2 vs v3</h3>
+
+  <p>The v2 finding &mdash; hard contradiction rate doubles at 3+ months &mdash; holds and intensifies under cloud reclassification:</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Time Gap</th><th>Pairs</th><th>v2 Genuine</th><th>v3 Genuine</th><th>v2 Rate</th><th>v3 Rate</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Same day</td><td>25</td><td>1</td><td>3</td><td>4.0%</td><td style="color:#fbbf24;font-weight:600;">12.0%</td></tr>
+      <tr><td>1&ndash;7 days</td><td>70</td><td>3</td><td>4</td><td>4.3%</td><td>5.7%</td></tr>
+      <tr><td>1&ndash;4 weeks</td><td>120</td><td>11</td><td>24</td><td>9.2%</td><td style="color:#fbbf24;font-weight:600;">20.0%</td></tr>
+      <tr><td>1&ndash;3 months</td><td>136</td><td>11</td><td>25</td><td>8.1%</td><td style="color:#fbbf24;font-weight:600;">18.4%</td></tr>
+      <tr><td>3+ months</td><td>102</td><td>21</td><td>36</td><td>20.6%</td><td style="color:#fb7185;font-weight:700;">35.3%</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>At 3+ months, <strong>one in three cross-session response pairs contains a genuine contradiction</strong> &mdash; the system gave directly opposing advice on the same topic. This is the strongest version of the time amplification finding: stateless systems don't just fail to improve with long-term use, they actively degrade.</p>
+
+  <h3>Per-Topic Density: Highest v3 Impact</h3>
+
+  <p>Topics with the largest reclassification shifts (showing only topics where v3 found additional contradictions):</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Topic</th><th>Pairs</th><th>v2 Rate</th><th>v3 Rate</th><th>New Contradictions</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Financial planning &amp; money decisions</td><td>15</td><td>6.7%</td><td style="color:#fb7185;font-weight:700;">66.7%</td><td>+9</td></tr>
+      <tr><td>Career direction &amp; job advice</td><td>14</td><td>14.3%</td><td style="color:#fb7185;font-weight:700;">42.9%</td><td>+4</td></tr>
+      <tr><td>Financial advice &amp; money management</td><td>12</td><td>16.7%</td><td style="color:#fb7185;font-weight:700;">50.0%</td><td>+4</td></tr>
+      <tr><td>Relationship advice</td><td>9</td><td>0.0%</td><td style="color:#fb7185;font-weight:700;">44.4%</td><td>+4</td></tr>
+      <tr><td>How to prioritize project work</td><td>9</td><td>44.4%</td><td style="color:#fb7185;font-weight:700;">77.8%</td><td>+3</td></tr>
+      <tr><td>Whether to pursue startup or employment</td><td>9</td><td>22.2%</td><td style="color:#fb7185;font-weight:700;">55.6%</td><td>+3</td></tr>
+      <tr><td>Career direction &amp; what to do with your life</td><td>23</td><td>13.0%</td><td style="color:#fbbf24;font-weight:600;">26.1%</td><td>+3</td></tr>
+      <tr><td>Sleep and rest advice</td><td>16</td><td>6.3%</td><td style="color:#fbbf24;font-weight:600;">25.0%</td><td>+3</td></tr>
+      <tr><td>Dealing with loneliness</td><td>12</td><td>16.7%</td><td style="color:#fbbf24;font-weight:600;">33.3%</td><td>+2</td></tr>
+      <tr><td>Freelancing vs full-time employment</td><td>12</td><td>0.0%</td><td style="color:#fbbf24;font-weight:600;">16.7%</td><td>+2</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>The pattern: <strong>financial, career, and relationship advice</strong> gained the most hidden contradictions. These are domains where the user relies on consistent guidance for real decisions. The model contradicted itself most where it mattered most.</p>
+
+  <h3>Model Trajectory: v2 vs v3</h3>
+
+  <p>Thinking models show the sharpest v3 escalation (models with &ge;5 pairs):</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Model</th><th>Pairs</th><th>v2 Rate</th><th>v3 Rate</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>gpt-5-2-thinking</td><td>14</td><td>14.3%</td><td style="color:#fb7185;font-weight:700;">64.3%</td></tr>
+      <tr><td>gpt-5-1-thinking</td><td>7</td><td>0.0%</td><td style="color:#fb7185;font-weight:700;">42.9%</td></tr>
+      <tr><td>gpt-5-4-thinking</td><td>12</td><td>8.3%</td><td style="color:#fb7185;font-weight:700;">33.3%</td></tr>
+      <tr><td>gpt-5-1</td><td>26</td><td>7.7%</td><td style="color:#fbbf24;font-weight:600;">30.8%</td></tr>
+      <tr><td>gpt-5</td><td>8</td><td>0.0%</td><td style="color:#fbbf24;font-weight:600;">37.5%</td></tr>
+      <tr><td>gpt-5-2</td><td>58</td><td>8.6%</td><td style="color:#fbbf24;font-weight:600;">19.0%</td></tr>
+      <tr><td>gpt-4o</td><td>229</td><td>10.5%</td><td>14.8%</td></tr>
+      <tr><td>gpt-4-1</td><td>33</td><td>9.1%</td><td>9.1%</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>The thinking models (gpt-5-x-thinking) show the highest v3 genuine rates &mdash; up to <strong>64.3%</strong>. These models give more specific, more confident, more directive advice within each session. But without cross-session memory, that specificity becomes a liability: they commit to a clear stance in session A, commit to an equally clear but opposite stance in session B, and the contradiction is invisible because the language structure is similar. <strong>Higher capability amplifies contradiction when memory is absent.</strong></p>
 
   <h3>Methodology Note</h3>
 
