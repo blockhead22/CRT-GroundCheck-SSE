@@ -894,6 +894,22 @@ td code {
 }
 .docnav-mobile-menu a:hover { background: var(--bg-raised); }
 .docnav-mobile-menu a.docnav-active { color: var(--accent-indigo); background: rgba(129,140,248,0.06); }
+.docnav-mobile-theme {
+  display: block;
+  width: 100%;
+  margin-top: 20px;
+  padding: 12px 16px;
+  font-family: var(--mono);
+  font-size: 0.82em;
+  color: var(--text-secondary);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+.docnav-mobile-theme:hover { background: var(--bg-inset); }
 
 /* Separator (legacy compat) */
 .docnav-sep { display: none; }

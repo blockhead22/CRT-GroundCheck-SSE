@@ -119,6 +119,28 @@
       });
     });
 
+    // Theme toggle in mobile menu
+    var mobileThemeBtn = document.createElement('button');
+    mobileThemeBtn.className = 'docnav-mobile-theme';
+    mobileThemeBtn.innerHTML = '&#9790; Toggle Theme';
+    mobileThemeBtn.addEventListener('click', function() {
+      var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      var next = isLight ? 'dark' : 'light';
+      localStorage.setItem('aether-theme', next);
+      if (next === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        mobileThemeBtn.innerHTML = '&#9728; Toggle Theme';
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        mobileThemeBtn.innerHTML = '&#9790; Toggle Theme';
+      }
+    });
+    // Set initial icon
+    if (document.documentElement.getAttribute('data-theme') === 'light') {
+      mobileThemeBtn.innerHTML = '&#9728; Toggle Theme';
+    }
+    mobileMenu.appendChild(mobileThemeBtn);
+
     // Desktop dropdown click handlers
     var allGroups = groupsEl.querySelectorAll('.docnav-group');
     allGroups.forEach(function(grp) {
