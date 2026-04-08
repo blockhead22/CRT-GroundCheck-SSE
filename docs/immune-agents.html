@@ -54,11 +54,11 @@ th {
     transition: border-color 0.3s;
   }
   .agent-card:hover { border-color: rgba(129,140,248,0.25); }
-  .agent-card.law-1 { border-left: 3px solid #f472b6; }
-  .agent-card.law-2 { border-left: 3px solid #34d399; }
-  .agent-card.law-3 { border-left: 3px solid #fbbf24; }
-  .agent-card.law-4 { border-left: 3px solid #c084fc; }
-  .agent-card.law-5 { border-left: 3px solid #818cf8; }
+  .agent-card.law-1 { box-shadow: inset 3px 0 0 #f472b6; }
+  .agent-card.law-2 { box-shadow: inset 3px 0 0 #34d399; }
+  .agent-card.law-3 { box-shadow: inset 3px 0 0 #fbbf24; }
+  .agent-card.law-4 { box-shadow: inset 3px 0 0 #c084fc; }
+  .agent-card.law-5 { box-shadow: inset 3px 0 0 #818cf8; }
 
   .agent-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
   .agent-number { font-size: 0.68em; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
@@ -327,8 +327,10 @@ th {
     <div class="finding-box">
       <p>Five laws. Five specialized agents. Each watches for a specific failure pattern in the belief-speech pipeline. <strong>None are tied to a pipeline stage.</strong> They all watch the same stream.</p>
     </div>
-    <!-- Hero viz removed: shield formation SVG was causing colored band artifacts -->
-
+    <!-- Hero viz: shield formation -->
+    <div id="hero-shield" style="margin-top:24px;max-width:400px;margin-left:auto;margin-right:auto;">
+      <svg id="hs-svg" viewBox="0 0 400 200" style="width:100%;height:auto;display:block;"></svg>
+    </div>
   </div>
   <div class="scroll-cue">&#9660; SCROLL</div>
 </div>
@@ -336,8 +338,10 @@ th {
 <script>
 (function() {
   function buildHeroShield() {
-    // Disabled: hero shield animation removed due to colored band rendering artifacts
-    return;
+    if (!window.gsap) return;
+    var svg = document.getElementById('hs-svg');
+    if (!svg) return;
+    var ns = 'http://www.w3.org/2000/svg';
 
     var cx = 200, cy = 100;
     var agents = [
