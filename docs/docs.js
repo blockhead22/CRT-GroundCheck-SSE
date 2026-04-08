@@ -23,7 +23,6 @@
     { href: 'cascade-complexity.html',     label: 'Cascade Complexity',     group: 'Theory' },
     { href: 'geometric-memory.html',       label: 'Geometric Memory',       group: 'Theory' },
     { href: 'emotion-governance.html',     label: 'Emotion Governance',     group: 'Theory' },
-    { href: 'variance-landscape.html',     label: 'Variance Landscape',     group: 'Theory' },
     // Reference (how to use this, why it matters)
     { href: 'claim-evaluation-guide.html', label: 'Research Guide',          group: 'Reference' },
     { href: 'why-this-matters.html',       label: 'Why This Matters',       group: 'Reference' },
