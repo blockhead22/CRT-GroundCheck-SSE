@@ -29,6 +29,7 @@
     { href: 'claim-evaluation-guide.html', label: 'Research Guide',          group: 'Reference' },
     { href: 'why-this-matters.html',       label: 'Why This Matters',       group: 'Reference' },
     { href: 'glossary.html',              label: 'Glossary',                group: 'Reference' },
+    { href: 'about.html',                label: 'About Aeteros',           group: 'Reference' },
   ];
 
   // Detect subdirectory (labs/) and adjust prefix
