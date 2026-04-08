@@ -414,14 +414,16 @@ code {
   padding: 24px 28px;
   background: var(--bg-raised);
   border: 1px solid var(--border);
+  border-radius: 10px;
   margin: 28px 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 .law-num,
 .law-number {
   font-family: var(--mono);
   font-size: 0.62em;
-  font-weight: 500;
-  color: var(--text-faint);
+  font-weight: 600;
+  color: var(--accent-indigo);
   letter-spacing: 2px;
   text-transform: uppercase;
   margin-bottom: 8px;
