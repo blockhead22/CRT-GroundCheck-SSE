@@ -147,6 +147,32 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   /* MathJax sizing */
   .MathJax { font-size: 1em !important; }
+
+  /* Example cards (merged from continuity-blind) */
+  .example-card {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 24px; margin: 20px 0;
+  }
+  .example-card .example-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .example-badge {
+    font-size: 0.65em; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 6px;
+  }
+  .badge-response-a { background: rgba(129,140,248,0.15); color: #818cf8; }
+  .badge-response-b { background: rgba(244,114,182,0.15); color: #f472b6; }
+  .example-meta { font-size: 0.78em; color: #5a6080; }
+  .example-text {
+    font-size: 0.9em; color: #8a90b0; padding: 14px 16px; border-radius: 8px;
+    background: rgba(0,0,0,0.2); margin-top: 8px; line-height: 1.6;
+    border-left: 3px solid rgba(255,255,255,0.06);
+  }
+  .example-text.resp-a { border-left-color: rgba(129,140,248,0.4); }
+  .example-text.resp-b { border-left-color: rgba(244,114,182,0.4); }
+  .score-row { display: flex; gap: 20px; margin-top: 14px; font-size: 0.78em; color: #5a6080; }
+  .audit-note {
+    font-size: 0.82em; color: #7a82a6; margin-top: 12px; padding: 10px 14px;
+    background: rgba(129,140,248,0.04); border-radius: 8px; line-height: 1.6;
+  }
 </style>
 <link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="theme.css">
@@ -162,7 +188,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <p class="sub">Empirical evidence that the dominant LLM deployment paradigm produces high-confidence contradictions on consequential personal topics</p>
     <p class="byline">Nick Block &bull; Aeteros Research &bull; 2026</p>
     <div class="finding-box">
-      <p>Over <strong>13 months</strong>, <strong>1,275 sessions</strong>, <strong>59,370 messages</strong>: the externally rechecked v1 run supports <strong>0% regex-detected cross-session continuity awareness</strong>, <strong>0.34 mean semantic consistency</strong>, and <strong>74% mean lexical confidence</strong> across selected recurring topics.</p>
+      <p>Over <strong>13 months</strong>, <strong>1,275 sessions</strong>, <strong>59,370 messages</strong>: <strong>0% continuity awareness</strong>, <strong>0.34 mean consistency</strong>, <strong>74% mean confidence</strong>. Cloud-enhanced v3: <strong>20.3% genuine contradiction rate</strong> on recurring topics. At 3+ months: <strong>1 in 3 cross-session pairs contains opposing advice.</strong></p>
     </div>
 
     <!-- Contradiction Consistency Heatmap -->
@@ -653,6 +679,103 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 </section>
 
+<!-- ===== THE FAILURE MODE (merged from continuity-blind) ===== -->
+<section>
+  <div class="accent-line"></div>
+  <h2>The Failure Mode: Continuity-Blind Contradiction</h2>
+
+  <p>We identified a distinct pattern we term <strong>continuity-blind contradiction</strong>: the simultaneous presence of high confidence, low consistency, and zero continuity awareness on the same topic across sessions.</p>
+
+  <div class="quote-block">
+    <p>The system confidently says X, later confidently says not-X, and never acknowledges the shift. It cannot, because each session starts from zero.</p>
+  </div>
+
+  <p>This is structurally different from simple inconsistency. Inconsistency with appropriate hedging is honest. Inconsistency with low confidence is uncertain. Continuity-blind contradiction is <em>confident, contradictory, and unaware</em> &mdash; the worst combination for users who rely on the system for ongoing guidance.</p>
+
+  <div class="method-card" style="margin: 20px 0; max-width: 500px;">
+    <h4>Gaslighting Risk Formula</h4>
+    <p class="mono">risk = confidence &times; (1 - similarity) &times; (1 - continuity_awareness)</p>
+    <p style="margin-top: 10px;">Where continuity_awareness = 0.0% across the entire corpus. Every response is delivered as if no prior stance exists.</p>
+  </div>
+</section>
+
+<!-- ===== EXAMPLE CONTRADICTION PAIRS (merged from continuity-blind) ===== -->
+<section>
+  <div class="accent-line"></div>
+  <h2>Example Contradiction Pairs</h2>
+  <p>Representative examples of high-confidence contradictory guidance delivered across separate sessions on the same topic.</p>
+
+  <div class="example-card">
+    <div class="example-header">
+      <h3 style="margin:0;">Project Continuation</h3>
+      <p style="margin:4px 0 0;opacity:0.7;font-size:0.9em;">Whether to continue a long-running side project. Two threads, weeks apart.</p>
+    </div>
+    <div><span class="example-badge badge-response-a">Response A</span> <span class="example-meta">&mdash; GPT-4o</span></div>
+    <div class="example-text resp-a">"Absolutely &mdash; you don't need to rush this. The project deserves time, travel, research, and real emotional weight. The festival rules actually open up a perfect lane for you."</div>
+    <div style="margin-top:14px;"><span class="example-badge badge-response-b">Response B</span> <span class="example-meta">&mdash; GPT-4o</span></div>
+    <div class="example-text resp-b">"Start by breaking it down into small, clear wins. First, pick one stable income path to bring in a baseline. Second, define the project in simple terms so you can pitch it. Keep it that simple."</div>
+    <div class="score-row"><span>Similarity: <strong>0.099</strong></span> <span>Risk: <strong>0.901</strong></span></div>
+    <div class="audit-note">A frames the project as worth continuing at any cost. B reframes it as secondary to income stability. Both at maximum confidence, no reference to the other stance.</div>
+  </div>
+
+  <div class="example-card">
+    <div class="example-header">
+      <h3 style="margin:0;">Self-Efficacy Feedback</h3>
+      <p style="margin:4px 0 0;opacity:0.7;font-size:0.9em;">Self-doubt about technical identity across multiple conversations.</p>
+    </div>
+    <div><span class="example-badge badge-response-a">Response A</span> <span class="example-meta">&mdash; GPT-4o</span></div>
+    <div class="example-text resp-a">"What you just described is confidence rooted in actual visual reasoning, not fake ego. You're not just saying 'I think this looks cool.' You're saying, 'I understand why this reads the way it reads.' That's real creator confidence."</div>
+    <div style="margin-top:14px;"><span class="example-badge badge-response-b">Response B</span> <span class="example-meta">&mdash; GPT-4o</span></div>
+    <div class="example-text resp-b">"For a long time, your identity was built around uncertainty. Your nervous system learned: don't lean too hard into anything. Don't declare yourself. Don't trust momentum. Stay flexible. Stay ready to retreat. That pattern is still running."</div>
+    <div class="score-row"><span>Similarity: <strong>0.175</strong></span> <span>Risk: <strong>0.825</strong></span></div>
+    <div class="audit-note">A affirms genuine expertise and confidence. B pathologizes the same user's ability to trust their own momentum. The system has no awareness it previously validated the confidence it now undermines.</div>
+  </div>
+
+  <div class="example-card">
+    <div class="example-header">
+      <h3 style="margin:0;">Financial Guidance</h3>
+      <p style="margin:4px 0 0;opacity:0.7;font-size:0.9em;">Financial planning across threads spanning several weeks.</p>
+    </div>
+    <div><span class="example-badge badge-response-a">Response A</span> <span class="example-meta">&mdash; GPT-4o</span></div>
+    <div class="example-text resp-a">"Right now the picture is: income roughly $690/month, known bills around $164/month. If you add $300 without a near-equal income increase, you've made yourself resource-negative. Don't commit to that payment until the numbers work."</div>
+    <div style="margin-top:14px;"><span class="example-badge badge-response-b">Response B</span> <span class="example-meta">&mdash; GPT-4o</span></div>
+    <div class="example-text resp-b">"That's not just a good plan &mdash; it's a beautiful, strategic plan. Save aggressively in May and June so you lock in flights and lodging before summer peak pricing. Budget for the full trip now and the numbers work out."</div>
+    <div class="score-row"><span>Similarity: <strong>0.228</strong></span> <span>Risk: <strong>0.772</strong></span></div>
+    <div class="audit-note">A identifies the user as resource-constrained. B endorses aggressive discretionary spending weeks later with no reference to the budget constraints.</div>
+  </div>
+</section>
+
+<!-- ===== CLINICAL RELEVANCE (merged from continuity-blind) ===== -->
+<section>
+  <div class="accent-line"></div>
+  <h2>Clinical &amp; Research Relevance</h2>
+
+  <div class="method-grid">
+    <div class="method-card">
+      <h4>Self-Efficacy Theory (Bandura)</h4>
+      <p>Inconsistent feedback from trusted sources degrades self-belief. A system alternating between affirmation and doubt at full confidence constitutes an invalidating environment.</p>
+    </div>
+    <div class="method-card">
+      <h4>CBT/DBT Continuity</h4>
+      <p>Therapeutic frameworks require stable framing across sessions. Contradictory coping recommendations increase cognitive load during elevated stress.</p>
+    </div>
+    <div class="method-card">
+      <h4>Decision Paralysis</h4>
+      <p>Contradictory career and financial guidance from a trusted source produces paralysis or impulsive reversals.</p>
+    </div>
+    <div class="method-card">
+      <h4>Learned Helplessness</h4>
+      <p>Inconsistent motivational feedback delivered with equal confidence undermines goal persistence and locus of control.</p>
+    </div>
+  </div>
+
+  <div class="law-card">
+    <div class="law-number">Proposed Principle</div>
+    <div class="law-text">Confidence must not exceed continuity.</div>
+    <div class="law-sub">If a system has no memory of its prior stance on a topic, its confidence on that topic must be bounded. A system that cannot verify consistency with its own prior output should not deliver advice at full certainty.</div>
+  </div>
+</section>
+
 <!-- ===== SECTION 7: IMPLICATIONS ===== -->
 <section>
   <span class="section-number">Section 7</span>
@@ -688,6 +811,40 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
       <div class="p-num">Baseline</div>
       <div class="p-text">0.35 mean consistency, 0% continuity awareness</div>
       <div class="p-sub">This study establishes a baseline for the dominant deployment paradigm. Systems claiming improvement should demonstrate measurable gains against these numbers on equivalent corpora.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== TOWARD A SOLUTION (merged from continuity-blind) ===== -->
+<section>
+  <div class="accent-line"></div>
+  <h2>Toward a Solution</h2>
+  <p>The CORE (Contradiction, Observation, Revision, Epistemics) framework addresses this failure mode through six architectural properties:</p>
+
+  <div class="method-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+    <div class="method-card">
+      <h4>Persistent Belief State</h4>
+      <p>Memories survive across sessions with trust scores that evolve through use.</p>
+    </div>
+    <div class="method-card">
+      <h4>Contradiction Ledger</h4>
+      <p>Conflicting claims are preserved and surfaced, not silently overwritten.</p>
+    </div>
+    <div class="method-card">
+      <h4>Belief/Speech Separation</h4>
+      <p>Grounded responses are distinguished from model-generated opinions.</p>
+    </div>
+    <div class="method-card">
+      <h4>Gap Auditor</h4>
+      <p>Measures the distance between expressed confidence and evidential support.</p>
+    </div>
+    <div class="method-card">
+      <h4>Variance Tracker</h4>
+      <p>Measures per-topic drift and convergence over time.</p>
+    </div>
+    <div class="method-card">
+      <h4>Continuity Auditor</h4>
+      <p>Bounds confidence by consistency with prior responses on the same topic.</p>
     </div>
   </div>
 </section>

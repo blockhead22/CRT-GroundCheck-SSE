@@ -10,9 +10,8 @@
   var DOCS = [
     { href: 'index.html',                 label: 'Home',                  group: null },
     // The Problem (what's broken and proof it's broken)
-    { href: 'contradiction-density.html',  label: 'Contradiction Density', group: 'Evidence' },
+    { href: 'contradiction-density.html',  label: 'Continuity-Blind Contradiction', group: 'Evidence' },
     { href: 'sensitive-domains.html',      label: 'Sensitive Domains',     group: 'Evidence' },
-    { href: 'continuity-blind.html',       label: 'Continuity Blind',      group: 'Evidence' },
     { href: 'variance-probing.html',       label: 'Variance Probing',      group: 'Evidence' },
     { href: 'experiments.html',            label: 'Experiments',            group: 'Evidence' },
     { href: 'governance-validation.html', label: 'Governance Validation',  group: 'Evidence' },
