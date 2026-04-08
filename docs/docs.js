@@ -15,6 +15,7 @@
     { href: 'continuity-blind.html',       label: 'Continuity Blind',      group: 'Evidence' },
     { href: 'variance-probing.html',       label: 'Variance Probing',      group: 'Evidence' },
     { href: 'experiments.html',            label: 'Experiments',            group: 'Evidence' },
+    { href: 'governance-validation.html', label: 'Governance Validation',  group: 'Evidence' },
     // The Solution (how CRT works)
     { href: 'whitepaper.html',             label: 'Whitepaper',             group: 'Architecture' },
     { href: 'architecture.html',           label: 'Architecture',           group: 'Architecture' },

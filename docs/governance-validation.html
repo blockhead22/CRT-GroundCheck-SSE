@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Governance Validation — Aeteros Research</title>
+<style>
+  .val-card {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 26px;
+    margin: 16px 0;
+  }
+  .val-card p { color: var(--text-secondary); font-size: 0.9em; line-height: 1.75; }
+  .val-card ul { margin: 12px 0 0 18px; color: var(--text-secondary); font-size: 0.88em; line-height: 1.8; }
+  .val-card li { margin-bottom: 6px; }
+  .val-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 24px 0; }
+  @media (max-width: 900px) { .val-grid { grid-template-columns: 1fr; } }
+  .test-row {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 12px 0;
+    display: grid;
+    grid-template-columns: 1fr 100px;
+    gap: 16px;
+    align-items: start;
+  }
+  @media (max-width: 600px) { .test-row { grid-template-columns: 1fr; } }
+  .test-claim { color: var(--text); font-weight: 600; font-size: 0.95em; margin-bottom: 6px; }
+  .test-pass { color: var(--text-secondary); font-size: 0.82em; line-height: 1.6; }
+  .test-pass strong { color: var(--text-dim); }
+  .test-fail { color: var(--text-dim); font-size: 0.78em; line-height: 1.5; margin-top: 6px; font-style: italic; }
+  .test-score {
+    font-family: var(--mono);
+    font-size: 1.4em;
+    font-weight: 700;
+    text-align: center;
+    padding-top: 4px;
+  }
+  .score-pending { color: var(--text-faint); }
+  .tier-label {
+    font-family: var(--mono);
+    font-size: 0.68em;
+    font-weight: 600;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .tier-1 { color: #34d399; }
+  .tier-2 { color: #818cf8; }
+  .tier-3 { color: #f472b6; }
+  .result-log {
+    background: var(--bg-inset);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 10px 0;
+    min-height: 60px;
+    color: var(--text-faint);
+    font-family: var(--mono);
+    font-size: 0.78em;
+    line-height: 1.6;
+  }
+</style>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<div class="page-layout">
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">Validation &middot; Living Document</div>
+    <h1>Governance<br><span class="grad">Validation</span></h1>
+    <p class="sub">Does the CORE architecture actually do what it claims? Every claim mapped to a testable behavior, scored against live evidence.</p>
+    <p class="byline">Aeteros Research &bull; 2026</p>
+    <div class="finding-box">
+      <p><strong>This page is a log, not a paper.</strong> It starts with placeholders and fills in as testing happens. Every claim from the research docs is mapped to a pass/fail condition. The score updates as evidence arrives. Nothing here is assumed to pass.</p>
+    </div>
+  </div>
+  <div class="scroll-cue">&#9660; SCROLL</div>
+</div>
+
+<nav class="sidebar" id="docSidebar">
+  <div class="sidebar-title">Validation</div>
+  <div class="sidebar-spacer"></div>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <span class="theme-toggle-icon" id="themeIcon">&#9790;</span>
+    <span id="themeLabel">Light</span>
+  </button>
+  <div class="sidebar-footer">2026 Aeteros</div>
+</nav>
+
+<main class="main">
+
+<!-- ===== OVERVIEW ===== -->
+<section id="overview">
+  <span class="section-number">Section 1</span>
+  <h2>The Evidence Gap</h2>
+  <div class="accent-line"></div>
+
+  <p>The research docs prove three things: the problem exists (contradiction density), the problem is structural (variance probing), and the problem gets worse over time (time amplification). What they don't prove is that CORE solves it.</p>
+
+  <p>This page closes that gap. Three tiers of validation, each harder than the last:</p>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value green">Tier 1</div>
+      <div class="stat-label">Detection &mdash; Does it see the problems?</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value accent">Tier 2</div>
+      <div class="stat-label">Intervention &mdash; Does it act on them?</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value pink">Tier 3</div>
+      <div class="stat-label">Outcome &mdash; Is the result measurably better?</div>
+    </div>
+  </div>
+
+  <div class="val-card">
+    <p><strong>Scoring:</strong> Same 0&ndash;3 rubric as the <a href="claim-evaluation-guide.html">Research Guide</a>. 3&nbsp;=&nbsp;reproducible, 2&nbsp;=&nbsp;artifact-backed, 1&nbsp;=&nbsp;directional, 0&nbsp;=&nbsp;narrative only. The goal is to get every Tier&nbsp;1 test to score&nbsp;2+ and at least half of Tier&nbsp;2. Tier&nbsp;3 is the stretch goal.</p>
+  </div>
+
+  <div class="val-card">
+    <p><strong>Data sources:</strong></p>
+    <ul>
+      <li><strong>Aether memory DB</strong> &mdash; 820+ memories with trust scores, timestamps, contradiction links, revision history</li>
+      <li><strong>Pipeline logs</strong> &mdash; drift events, immune agent firings, belief/speech gap measurements</li>
+      <li><strong>Real-time testing</strong> &mdash; manual observations during live use</li>
+      <li><strong>v2 pair audit</strong> &mdash; <a href="labs/v2-pair-audit.html">15-pair manual review</a></li>
+      <li><strong>Corpus comparison</strong> &mdash; same topics in governed (CORE) vs ungoverned (GPT corpus)</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===== TIER 1: DETECTION ===== -->
+<section id="tier-1">
+  <span class="section-number">Section 2</span>
+  <h2>Tier 1 &mdash; Detection</h2>
+  <div class="accent-line"></div>
+  <p>Does the system see the problems it claims to see? These are the minimum bar. If detection doesn't work, nothing else matters.</p>
+
+  <div class="test-row">
+    <div>
+      <div class="tier-label tier-1">Test 1.1</div>
+      <div class="test-claim">Contradiction Detection</div>
+      <div class="test-pass"><strong>Pass:</strong> Introduce a statement that contradicts an existing high-trust memory. The system flags it as a contradiction and logs it to the ledger without silently overwriting.</div>
+      <div class="test-fail">Fail: New statement overwrites old belief with no record of conflict.</div>
+      <div class="result-log">Not yet tested.</div>
+    </div>
+    <div class="test-score score-pending">&mdash;</div>
+  </div>
+
+  <div class="test-row">
+    <div>
+      <div class="tier-label tier-1">Test 1.2</div>
+      <div class="test-claim">Trust Score Evolution</div>
+      <div class="test-pass"><strong>Pass:</strong> Correct a stored belief. The trust score on the corrected memory changes (increases or decreases depending on direction). Show before/after values.</div>
+      <div class="test-fail">Fail: Trust scores remain static after corrections.</div>
+      <div class="result-log">Not yet tested.</div>
+    </div>
+    <div class="test-score score-pending">&mdash;</div>
+  </div>
+
+  <div class="test-row">
+    <div>
+      <div class="tier-label tier-1">Test 1.3</div>
+      <div class="test-claim">Belief/Speech Gap Measurement</div>
+      <div class="test-pass"><strong>Pass:</strong> The gap auditor reports a measurable divergence between internal belief confidence and expressed response confidence on at least one topic. Show the specific gap value.</div>
+      <div class="test-fail">Fail: Gap auditor reports 0.0 gap across all topics, or doesn't run.</div>
+      <div class="result-log">Not yet tested.</div>
+    </div>
+    <div class="test-score score-pending">&mdash;</div>
+  </div>
+
+  <div class="test-row">
+    <div>
+      <div class="tier-label tier-1">Test 1.4</div>
+      <div class="test-claim">Drift Detection</div>
+      <div class="test-pass"><strong>Pass:</strong> Over a multi-turn conversation, the system flags when a response drifts from the original query intent. Show the drift score and the threshold that triggered the flag.</div>
+      <div class="test-fail">Fail: Alignment score is always 1.0, or drift is never detected.</div>
+      <div class="result-log">Not yet tested.</div>
+    </div>
+    <div class="test-score score-pending">&mdash;</div>
+  </div>
+
+  <div class="test-row">
+    <div>
+      <div class="tier-label tier-1">Test 1.5</div>
+      <div class="test-claim">Memory Persistence Across Sessions</div>
+      <div class="test-pass"><strong>Pass:</strong> End a session. Start a new one. Reference a belief from the prior session. The system retrieves it with correct trust score and provenance.</div>
+      <div class="test-fail">Fail: New session starts with no memory of prior beliefs.</div>
+      <div class="result-log">Not yet tested.</div>
+    </div>
+    <div class="test-score score-pending">&mdash;</div>
+  </div>
+
+  <div class="test-row">
+    <div>
+      <div class="tier-label tier-1">Test 1.6</div>
+      <div class="test-claim">Continuity Awareness</div>
+      <div class="test-pass"><strong>Pass:</strong> Ask the system about a topic it has previously addressed. The response acknowledges or references the prior stance, rather than generating from scratch with no awareness.</div>
+      <div class="test-fail">Fail: System responds as if it has never discussed the topic before.</div>
+      <div class="result-log">Not yet tested.</div>
+    </div>
+    <div class="test-score score-pending">&mdash;</div>
+  </div>
+</section>
+
+<!-- ===== TIER 2: INTERVENTION ===== -->
+<section id="tier-2">
+  <span class="section-number">Section 3</span>
+  <h2>Tier 2 &mdash; Intervention</h2>
+  <div class="accent-line"></div>
+  <p>Does the governance layer actually change behavior? Detection without intervention is monitoring, not governance.</p>
+
+  <div class="test-row">
+    <div>
+      <div class="tier-label tier-2">Test 2.1</div>
+      <div class="test-claim">Immune Agent: Speech Leak Prevention</div>
+      <div class="test-pass"><strong>Pass:</strong> The LLM generates a response that includes a claim. SpeechLeakDetector verifies the claim is not written directly into the belief state without trust evaluation. Show the intercept.</div>
+      <div class="test-fail">Fail: LLM-generated claims appear in belief state with no evaluation gate.</div>
+      <div class="result-log">Not yet tested.</div>
+    </div>
+    <div class="test-score score-pending">&mdash;</div>
+  </div>
+
+  <div class="test-row">
+    <div>
+      <div class="tier-label tier-2">Test 2.2</div>
+      <div class="test-claim">Immune Agent: Premature Resolution Guard</div>
+      <div class="test-pass"><strong>Pass:</strong> A contradiction exists in the ledger. Attempt to resolve it without evidence. PrematureResolutionGuard blocks the resolution. Show the block event.</div>
+      <div class="test-fail">Fail: Contradictions resolve silently without evidence or user input.</div>
+      <div class="result-log">Not yet tested.</div>
+    </div>
+    <div class="test-score score-pending">&mdash;</div>
+  </div>
+
+  <div class="test-row">
+    <div>
+      <div class="tier-label tier-2">Test 2.3</div>
+      <div class="test-claim">Confidence Bounding</div>
+      <div class="test-pass"><strong>Pass:</strong> On a topic where the system has no prior stance (low continuity), the response expresses lower confidence than on a topic with established, high-trust beliefs. Show both responses and their confidence indicators.</div>
+      <div class="test-fail">Fail: System expresses identical high confidence regardless of continuity level.</div>
+      <div class="result-log">Not yet tested.</div>
+    </div>
+    <div class="test-score score-pending">&mdash;</div>
+  </div>
+
+  <div class="test-row">
+    <div>
+      <div class="tier-label tier-2">Test 2.4</div>
+      <div class="test-claim">Cascade Propagation</div>
+      <div class="test-pass"><strong>Pass:</strong> Correct a belief that other beliefs depend on. The dependent beliefs' trust scores adjust. Show the dependency chain and the propagation.</div>
+      <div class="test-fail">Fail: Correcting a root belief has no effect on dependent beliefs.</div>
+      <div class="result-log">Not yet tested.</div>
+    </div>
+    <div class="test-score score-pending">&mdash;</div>
+  </div>
+
+  <div class="test-row">
+    <div>
+      <div class="tier-label tier-2">Test 2.5</div>
+      <div class="test-claim">Drift Steering</div>
+      <div class="test-pass"><strong>Pass:</strong> When alignment drops below threshold, the system forces memory re-retrieval or halts and asks the user. Show the intervention and the alignment score that triggered it.</div>
+      <div class="test-fail">Fail: Alignment drops but the system continues generating without intervention.</div>
+      <div class="result-log">Not yet tested.</div>
+    </div>
+    <div class="test-score score-pending">&mdash;</div>
+  </div>
+
+  <div class="test-row">
+    <div>
+      <div class="tier-label tier-2">Test 2.6</div>
+      <div class="test-claim">Held Contradiction Preservation</div>
+      <div class="test-pass"><strong>Pass:</strong> Two conflicting beliefs coexist in the system without either being silently deleted. The system can report both and their respective trust scores when asked.</div>
+      <div class="test-fail">Fail: One belief silently overwrites the other, or the system cannot surface both.</div>
+      <div class="result-log">Not yet tested.</div>
+    </div>
+    <div class="test-score score-pending">&mdash;</div>
+  </div>
+</section>
+
+<!-- ===== TIER 3: OUTCOME ===== -->
+<section id="tier-3">
+  <span class="section-number">Section 4</span>
+  <h2>Tier 3 &mdash; Outcome</h2>
+  <div class="accent-line"></div>
+  <p>Is the governed system measurably better than ungoverned? This is the hardest tier and the most important for the paper. Even partial evidence here is valuable.</p>
+
+  <div class="test-row">
+    <div>
+      <div class="tier-label tier-3">Test 3.1</div>
+      <div class="test-claim">Contradiction Rate: Governed vs Ungoverned</div>
+      <div class="test-pass"><strong>Pass:</strong> Send the same 10&ndash;20 recurring-topic prompts to both CORE-governed system and a raw stateless API. Measure contradiction rate on both. Governed rate is lower.</div>
+      <div class="test-fail">Fail: No measurable difference, or governed rate is higher.</div>
+      <div class="result-log">Not yet tested.</div>
+    </div>
+    <div class="test-score score-pending">&mdash;</div>
+  </div>
+
+  <div class="test-row">
+    <div>
+      <div class="tier-label tier-3">Test 3.2</div>
+      <div class="test-claim">Continuity Awareness: Governed vs Ungoverned</div>
+      <div class="test-pass"><strong>Pass:</strong> On 10 topics previously discussed, the governed system references prior stances in at least 50% of responses. The ungoverned system references prior stances in 0% (as measured in the corpus).</div>
+      <div class="test-fail">Fail: Governed system also shows 0% continuity awareness.</div>
+      <div class="result-log">Not yet tested.</div>
+    </div>
+    <div class="test-score score-pending">&mdash;</div>
+  </div>
+
+  <div class="test-row">
+    <div>
+      <div class="tier-label tier-3">Test 3.3</div>
+      <div class="test-claim">Sensitive Domain Consistency</div>
+      <div class="test-pass"><strong>Pass:</strong> Discuss a sensitive topic (substance use, dating readiness) across multiple sessions. The governed system maintains a consistent stance or explicitly acknowledges the shift with reasoning. Compare to GPT corpus examples on the same topics.</div>
+      <div class="test-fail">Fail: Governed system produces the same pattern as GPT &mdash; contradictory advice with no acknowledgment.</div>
+      <div class="result-log">Not yet tested.</div>
+    </div>
+    <div class="test-score score-pending">&mdash;</div>
+  </div>
+
+  <div class="test-row">
+    <div>
+      <div class="tier-label tier-3">Test 3.4</div>
+      <div class="test-claim">Longitudinal Stability</div>
+      <div class="test-pass"><strong>Pass:</strong> After 2+ weeks of use, run the contradiction density harness on CORE-governed conversation data. Compare density metrics to the GPT corpus baseline (0.34 mean consistency, 12.4% hard rate at 3+ months).</div>
+      <div class="test-fail">Fail: CORE-governed data shows similar or worse contradiction density.</div>
+      <div class="result-log">Not yet tested. Requires extended use period.</div>
+    </div>
+    <div class="test-score score-pending">&mdash;</div>
+  </div>
+
+  <div class="test-row">
+    <div>
+      <div class="tier-label tier-3">Test 3.5</div>
+      <div class="test-claim">Belief Evolution Trace</div>
+      <div class="test-pass"><strong>Pass:</strong> Select 3&ndash;5 beliefs from Aether's memory. Trace their trust score evolution over time. Show that corrections moved scores in the right direction, contradictions were flagged, and the final state reflects the accumulated evidence.</div>
+      <div class="test-fail">Fail: Trust scores are static, or evolution doesn't correlate with correction events.</div>
+      <div class="result-log">Not yet tested.</div>
+    </div>
+    <div class="test-score score-pending">&mdash;</div>
+  </div>
+</section>
+
+<!-- ===== CROSS-REFERENCE ===== -->
+<section id="cross-reference">
+  <span class="section-number">Section 5</span>
+  <h2>Cross-Reference: Claims to Tests</h2>
+  <div class="accent-line"></div>
+
+  <p>Every claim in the research docs maps to at least one test above. If a claim has no test, it's unsupported.</p>
+
+  <div class="metric-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Claim</th>
+          <th>Source Doc</th>
+          <th>Test(s)</th>
+          <th>Current Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Persistent belief state across sessions</td>
+          <td><a href="architecture.html">Architecture</a></td>
+          <td>1.5</td>
+          <td class="score-pending">&mdash;</td>
+        </tr>
+        <tr>
+          <td>Contradiction detection and preservation</td>
+          <td><a href="architecture.html">Architecture</a>, <a href="immune-agents.html">Immune Agents</a></td>
+          <td>1.1, 2.6</td>
+          <td class="score-pending">&mdash;</td>
+        </tr>
+        <tr>
+          <td>Trust-weighted belief revision</td>
+          <td><a href="whitepaper.html">Whitepaper</a></td>
+          <td>1.2, 2.4, 3.5</td>
+          <td class="score-pending">&mdash;</td>
+        </tr>
+        <tr>
+          <td>Belief/speech separation</td>
+          <td><a href="whitepaper.html">Whitepaper</a>, <a href="architecture.html">Architecture</a></td>
+          <td>1.3, 2.1</td>
+          <td class="score-pending">&mdash;</td>
+        </tr>
+        <tr>
+          <td>Drift detection and steering</td>
+          <td><a href="architecture.html">Architecture</a></td>
+          <td>1.4, 2.5</td>
+          <td class="score-pending">&mdash;</td>
+        </tr>
+        <tr>
+          <td>Immune agent enforcement</td>
+          <td><a href="immune-agents.html">Immune Agents</a></td>
+          <td>2.1, 2.2</td>
+          <td class="score-pending">&mdash;</td>
+        </tr>
+        <tr>
+          <td>Confidence bounded by continuity</td>
+          <td><a href="contradiction-density.html">Contradiction Density</a> (Law 6)</td>
+          <td>2.3</td>
+          <td class="score-pending">&mdash;</td>
+        </tr>
+        <tr>
+          <td>Cascade propagation through BDG</td>
+          <td><a href="cascade-complexity.html">Cascade Complexity</a></td>
+          <td>2.4</td>
+          <td class="score-pending">&mdash;</td>
+        </tr>
+        <tr>
+          <td>Governed &lt; ungoverned contradiction rate</td>
+          <td><a href="index.html">Index</a> (Sub-Claim C)</td>
+          <td>3.1, 3.2</td>
+          <td class="score-pending">&mdash;</td>
+        </tr>
+        <tr>
+          <td>Sensitive domain consistency</td>
+          <td><a href="sensitive-domains.html">Sensitive Domains</a></td>
+          <td>3.3</td>
+          <td class="score-pending">&mdash;</td>
+        </tr>
+        <tr>
+          <td>Longitudinal stability improvement</td>
+          <td><a href="contradiction-density.html">Contradiction Density</a></td>
+          <td>3.4</td>
+          <td class="score-pending">&mdash;</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===== TESTING PROTOCOL ===== -->
+<section id="protocol">
+  <span class="section-number">Section 6</span>
+  <h2>Testing Protocol</h2>
+  <div class="accent-line"></div>
+
+  <div class="val-grid">
+    <div class="val-card">
+      <div class="tier-label tier-1">Day 1&ndash;2: Tier 1</div>
+      <p>Use the system normally. After each session, check:</p>
+      <ul>
+        <li>Were memories persisted? (1.5)</li>
+        <li>Were any contradictions flagged? (1.1)</li>
+        <li>Did trust scores change after corrections? (1.2)</li>
+        <li>Did the system reference prior stances? (1.6)</li>
+      </ul>
+      <p>Log results in the test rows above. Screenshot or copy the relevant data.</p>
+    </div>
+
+    <div class="val-card">
+      <div class="tier-label tier-2">Day 2&ndash;3: Tier 2</div>
+      <p>Deliberately test governance:</p>
+      <ul>
+        <li>Introduce a contradicting belief and watch for the ledger entry (1.1)</li>
+        <li>Try to force a resolution without evidence (2.2)</li>
+        <li>Ask about a topic with no prior stance vs one with strong stance (2.3)</li>
+        <li>Correct a root belief and check dependents (2.4)</li>
+      </ul>
+    </div>
+
+    <div class="val-card">
+      <div class="tier-label tier-3">Day 3+: Tier 3</div>
+      <p>Comparative testing:</p>
+      <ul>
+        <li>Pick 10 recurring topics from the GPT corpus</li>
+        <li>Ask both CORE and a raw API the same questions</li>
+        <li>Compare: does CORE maintain consistency? Does it reference prior stances?</li>
+        <li>Revisit substance/dating topics and compare to GPT corpus contradictions</li>
+      </ul>
+    </div>
+
+    <div class="val-card">
+      <div class="tier-label" style="color:var(--text-dim);">Per Test</div>
+      <p>For each test, record:</p>
+      <ul>
+        <li>What you did (input/action)</li>
+        <li>What happened (observed behavior)</li>
+        <li>What should have happened (expected behavior)</li>
+        <li>Score: 0 / 1 / 2 / 3</li>
+        <li>Evidence: screenshot, DB query, log excerpt</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== AGGREGATE SCORECARD ===== -->
+<section id="scorecard">
+  <span class="section-number">Section 7</span>
+  <h2>Aggregate Scorecard</h2>
+  <div class="accent-line"></div>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value score-pending">&mdash; / 6</div>
+      <div class="stat-label">Tier 1 Tests Passed (score 2+)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value score-pending">&mdash; / 6</div>
+      <div class="stat-label">Tier 2 Tests Passed (score 2+)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value score-pending">&mdash; / 5</div>
+      <div class="stat-label">Tier 3 Tests Passed (score 2+)</div>
+    </div>
+  </div>
+
+  <div class="val-card">
+    <p><strong>Publication readiness:</strong></p>
+    <ul>
+      <li><strong>Minimum for draft:</strong> All Tier 1 at score 2+, at least 3 Tier 2 at score 2+</li>
+      <li><strong>Strong draft:</strong> Above plus at least 2 Tier 3 at score 1+</li>
+      <li><strong>Defensible paper:</strong> Above plus at least 1 Tier 3 at score 2+</li>
+    </ul>
+    <p>Current status: <strong>Not started.</strong></p>
+  </div>
+</section>
+
+</main>
+</div>
+<script src="docs.js"></script>
+</body>
+</html>
