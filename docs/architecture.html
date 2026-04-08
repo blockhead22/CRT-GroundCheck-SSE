@@ -890,9 +890,11 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <p>This captures the full epistemic state of a single slot: what is currently true, what is also true, and what used to be true but was explicitly corrected. The contradiction ledger links the transition. The trust scores reflect the evidence. Nothing is deleted.</p>
 
   <div class="impl-block">
-    <span class="impl-label">Status</span>
-    <p><strong>Short-term:</strong> Debug instrumentation added to identify which gate is suppressing contradiction detection on slot-level reversals. Fix the gate, wire soft acknowledgment into generation context.<br>
-    <strong>Long-term:</strong> Multi-valued slot schema with temporal weighting. This is an architecture evolution and a potential paper contribution &mdash; no existing AI memory system supports multi-valued belief slots with contradiction-aware temporal weighting.</p>
+    <span class="impl-label">Status (updated April 8, 2026)</span>
+    <p><strong>Write-path fix deployed:</strong> Contradiction ledger entries are now created inside <code>store_memory()</code>'s slot exclusivity loop. This fires regardless of intent routing (agent loop, legacy pipeline, any path). The detection logic works &mdash; age reversal (34&rarr;35) produced a full-chain detection (metadata flag + ledger entry + trust demotion) in the Contradiction Pipeline Lab.</p>
+    <p><strong>Current bottleneck: fact extraction.</strong> The Contradiction Pipeline Lab (v1, April 8) scored 7/10. All 5 should-NOT-fire probes passed (zero false positives). Of 5 should-fire probes, 2 passed. The 3 failures share one root cause: <code>extract_fact_slots</code> (regex-based) cannot parse indirect phrasing ("my name is Adrian now"), facts buried in long paragraphs ("left Anthropic, joined OpenAI" in a 70-word daily narration), or contextual declarations ("it's definitely my favorite color now, green"). The write-path contradiction logic is correct; the upstream extraction is the limiting factor.</p>
+    <p><strong>Escalation path under test:</strong> Regex-only (2/5) &rarr; local LLM extraction via Ollama (lab v2 in progress) &rarr; cloud model extraction (if local insufficient). Each step is measured to establish which extraction capability is required for production-grade contradiction detection.</p>
+    <p><strong>Long-term:</strong> Multi-valued slot schema with temporal weighting. This is an architecture evolution and a potential paper contribution &mdash; no existing AI memory system supports multi-valued belief slots with contradiction-aware temporal weighting.</p>
   </div>
 </section>
 

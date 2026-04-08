@@ -28,7 +28,8 @@
   "architecture.html": [
     {"date": "2026-04-07", "note": "Added pipeline flow hero animation. Fixed stray </div>."},
     {"date": "2026-04-07", "note": "Added Belief Slot Evolution section: live testing finding on contradiction detection gap, multi-valued slot design target, soft acknowledgment vs hard blocking."},
-    {"date": "2026-04-07", "note": "Contradiction detection root cause fully traced: 3 blocking gates (intent routing, early promotion, agent loop bypass). Proposed fix: move slot comparison to memory write path. Cascade firewall concept identified as next architectural evolution."}
+    {"date": "2026-04-07", "note": "Contradiction detection root cause fully traced: 3 blocking gates (intent routing, early promotion, agent loop bypass). Proposed fix: move slot comparison to memory write path. Cascade firewall concept identified as next architectural evolution."},
+    {"date": "2026-04-08", "note": "Updated Belief Slot Evolution status: write-path fix deployed and validated (lab 7/10). Current bottleneck identified as fact extraction (regex), not detection logic. Escalation path documented: regex → local LLM → cloud model."}
   ],
   "immune-agents.html": [
     {"date": "2026-04-07", "note": "Changed 3 planned agent badges to built. Added shield formation hero animation. Fixed stray </div>."}
@@ -39,7 +40,10 @@
     {"date": "2026-04-07", "note": "Test 2.6 upgraded to score 3: live test showed system finding and holding genuine epistemic contradiction in user self-assessment, citing both sides with trust scores. Test 1.6 updated with 4 live demonstrations. Tier 2 score 3/6."},
     {"date": "2026-04-07", "note": "Dr. Pepper test logged: formal detection still not firing (PROVISIONAL promoted before slot check runs), but LLM compensates via retrieval — surfaced 4 conflicting memories and asked user to clarify. Two root causes identified: (1) intent router misclassifies declarations as broad_recall, (2) early promotion runs before slot comparison."},
     {"date": "2026-04-07", "note": "Mt. Dew + black color test logged: agent loop path bypasses contradiction pipeline entirely. Routing confirmed as primary blocker. Three fixes deployed but untested end-to-end: exclusive slot bypass, early slot check, routing guard for declarations."},
-    {"date": "2026-04-07", "note": "Architecture insight documented: slot comparison belongs in memory write path (not intent path). Cascade/BDG should measure incoming contradictions against full dependency graph. Multi-valued slot schema proposed (current/concurrent/deprecated with temporal weighting)."}
+    {"date": "2026-04-07", "note": "Architecture insight documented: slot comparison belongs in memory write path (not intent path). Cascade/BDG should measure incoming contradictions against full dependency graph. Multi-valued slot schema proposed (current/concurrent/deprecated with temporal weighting)."},
+    {"date": "2026-04-08", "note": "Write-path contradiction fix deployed: ledger entries now created inside store_memory() slot exclusivity loop, fires regardless of intent routing. Dedup guard prevents double entries."},
+    {"date": "2026-04-08", "note": "Contradiction Pipeline Lab v1 run: 7/10 (should-fire 2/5, should-NOT-fire 5/5). Zero false positives. Age (T3) passed full chain (metadata + ledger + demotion). Location (T2) passed via trust demotion in long-form text. Name (T1), employer (T4), favorite_color (T5) failed — root cause: extract_fact_slots (regex) cannot parse indirect phrasing, buried context, or contextual declarations."},
+    {"date": "2026-04-08", "note": "Lab v2 run in progress: enabled TwoTierFactSystem with local LLM extraction (llama3.2 via Ollama) to test whether local models improve slot extraction from natural language. Establishes escalation baseline before cloud extraction."}
   ],
   "variance-probing.html": [
     {"date": "2026-04-07", "note": "Fixed 22,524 to 22,702 response count. Added 480px mobile breakpoint for charts. Moved from Theory to Evidence in nav."}

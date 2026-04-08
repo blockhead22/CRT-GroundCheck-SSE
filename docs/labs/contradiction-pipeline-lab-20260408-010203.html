@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contradiction Pipeline Lab — Aeteros Research</title>
+<style>
+  :root {
+    --bg: #121210;
+    --bg-raised: rgba(255,255,255,0.03);
+    --text: #c8c4bc;
+    --text-dim: #8a8680;
+    --text-faint: #4a4540;
+    --border: rgba(255,255,255,0.06);
+    --accent: #818cf8;
+    --green: #34d399;
+    --red: #fb7185;
+    --amber: #fbbf24;
+    --mono: 'IBM Plex Mono', 'Cascadia Code', 'Fira Code', monospace;
+    --sans: 'Inter', -apple-system, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.7; padding: 40px 20px; }
+  .shell { max-width: 1100px; margin: 0 auto; }
+
+  /* Hero */
+  .hero { text-align: center; padding: 60px 0 40px; }
+  .hero h1 { font-size: 2.4em; font-weight: 800; letter-spacing: -1px; }
+  .hero .grad { background: linear-gradient(135deg, var(--accent), #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero .sub { color: var(--text-dim); font-size: 0.9em; margin-top: 8px; }
+  .hero .meta { font-family: var(--mono); font-size: 0.75em; color: var(--text-faint); margin-top: 16px; }
+
+  /* Stat cards */
+  .stat-row { display: flex; gap: 16px; justify-content: center; margin: 30px 0; flex-wrap: wrap; }
+  .stat-card { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 12px; padding: 20px 28px; text-align: center; min-width: 140px; }
+  .stat-value { font-size: 2em; font-weight: 800; font-family: var(--mono); }
+  .stat-label { font-size: 0.72em; color: var(--text-dim); margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+
+  /* Tables */
+  .section { margin: 40px 0; }
+  .section h2 { font-size: 1.3em; margin-bottom: 16px; }
+  .accent-line { width: 40px; height: 3px; background: var(--accent); border-radius: 2px; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82em; }
+  th { text-align: left; padding: 10px 12px; color: var(--text-dim); border-bottom: 1px solid var(--border); font-weight: 600; text-transform: uppercase; font-size: 0.85em; letter-spacing: 0.5px; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .mono { font-family: var(--mono); font-size: 0.9em; }
+  .msg-col { max-width: 250px; font-size: 0.85em; color: var(--text-dim); }
+  .diag-col { max-width: 300px; font-size: 0.85em; }
+
+  /* Row colors */
+  .row-pass td { }
+  .row-fail td { background: rgba(251,113,133,0.04); }
+  .row-fail td:first-child { border-left: 3px solid var(--red); }
+  .row-pass td:first-child { border-left: 3px solid var(--green); }
+
+  /* Badges */
+  .badge { font-size: 0.7em; font-weight: 700; letter-spacing: 1px; padding: 3px 8px; border-radius: 4px; }
+  .badge-fire { background: rgba(251,113,133,0.15); color: var(--red); }
+  .badge-quiet { background: rgba(52,211,153,0.15); color: var(--green); }
+  .pass-tag { color: var(--green); font-weight: 700; }
+  .fail-tag { color: var(--red); font-weight: 700; }
+
+  /* Detail cards */
+  .detail-card { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin: 16px 0; }
+  .detail-fail { border-left: 3px solid var(--red); }
+  .detail-pass { border-left: 3px solid var(--green); }
+  .detail-card h3 { font-size: 1em; margin-bottom: 12px; }
+  .detail-meta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.78em; color: var(--text-dim); margin-bottom: 16px; }
+  .detail-section { margin: 12px 0; }
+  .detail-section strong { color: var(--text); font-size: 0.85em; }
+  .msg-block { background: rgba(0,0,0,0.3); border-radius: 8px; padding: 14px; margin-top: 6px; font-size: 0.88em; line-height: 1.6; color: var(--text-dim); white-space: pre-wrap; word-break: break-word; }
+  .msg-block.resp { border-left: 3px solid var(--accent); }
+  pre { background: rgba(0,0,0,0.3); border-radius: 6px; padding: 12px; font-size: 0.78em; overflow-x: auto; color: var(--text-dim); }
+
+  @media (max-width: 700px) {
+    .hero h1 { font-size: 1.6em; }
+    .stat-row { flex-direction: column; align-items: center; }
+    table { font-size: 0.72em; }
+    td, th { padding: 6px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<div class="hero">
+  <h1>Contradiction Pipeline <span class="grad">Lab</span></h1>
+  <p class="sub">End-to-end validation of the CORE write-path contradiction detection chain</p>
+  <p class="meta">Run: 2026-04-08T01:02:03.889160 &middot; Thread: lab_contradiction_1775627258</p>
+</div>
+
+<div class="stat-row">
+  <div class="stat-card">
+    <div class="stat-value" style="color:#fbbf24">7/10</div>
+    <div class="stat-label">Overall</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" style="color:#fb7185">2/5</div>
+    <div class="stat-label">Should-Fire</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" style="color:#34d399">5/5</div>
+    <div class="stat-label">Should-NOT-Fire</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">5</div>
+    <div class="stat-label">Seed Facts</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="accent-line"></div>
+  <h2>Seed Facts</h2>
+  <div style="overflow-x:auto;">
+  <table>
+    <thead><tr><th>Slot</th><th>Message</th><th>Memory ID</th><th>Trust</th></tr></thead>
+    <tbody>
+        <tr>
+          <td>name</td>
+          <td>My name is Marcus.</td>
+          <td class="mono">—</td>
+          <td>0.00</td>
+        </tr>
+        <tr>
+          <td>employer,job_title</td>
+          <td>I work at Anthropic as a research engineer.</td>
+          <td class="mono">—</td>
+          <td>0.00</td>
+        </tr>
+        <tr>
+          <td>location</td>
+          <td>I live in Seattle.</td>
+          <td class="mono">—</td>
+          <td>0.00</td>
+        </tr>
+        <tr>
+          <td>favorite_color</td>
+          <td>My favorite color is blue.</td>
+          <td class="mono">—</td>
+          <td>0.00</td>
+        </tr>
+        <tr>
+          <td>age</td>
+          <td>I'm 34 years old.</td>
+          <td class="mono">—</td>
+          <td>0.00</td>
+        </tr></tbody>
+  </table>
+  </div>
+</div>
+
+<div class="section">
+  <div class="accent-line"></div>
+  <h2>Probe Results</h2>
+  <div style="overflow-x:auto;">
+  <table>
+    <thead><tr><th>ID</th><th>Expect</th><th>Slot</th><th>Message</th><th>Ledger</th><th>Demotions</th><th>Result</th><th>Diagnosis</th></tr></thead>
+    <tbody>
+        <tr class="row-fail">
+          <td><strong>T1</strong></td>
+          <td><span class="badge badge-fire">FIRE</span></td>
+          <td>name</td>
+          <td class="msg-col">Actually, my name is Adrian now. I changed it legally last year.</td>
+          <td>0</td>
+          <td>0</td>
+          <td><strong>FAIL</strong></td>
+          <td class="diag-col">NOT DETECTED — no ledger entry, no trust demotion, no metadata flag</td>
+        </tr>
+        <tr class="row-pass">
+          <td><strong>T2</strong></td>
+          <td><span class="badge badge-fire">FIRE</span></td>
+          <td>location</td>
+          <td class="msg-col">So I've been thinking about the move a lot, and we finally did it — we packed up...</td>
+          <td>0</td>
+          <td>1</td>
+          <td><strong>PASS</strong></td>
+          <td class="diag-col">DETECTED via: 1 trust demotions</td>
+        </tr>
+        <tr class="row-pass">
+          <td><strong>T3</strong></td>
+          <td><span class="badge badge-fire">FIRE</span></td>
+          <td>age</td>
+          <td class="msg-col">I just turned 35 last week, had a little birthday dinner with friends.</td>
+          <td>1</td>
+          <td>1</td>
+          <td><strong>PASS</strong></td>
+          <td class="diag-col">DETECTED via: metadata.contradiction_detected=true, 1 ledger entries, 1 trust demotions</td>
+        </tr>
+        <tr class="row-fail">
+          <td><strong>T4</strong></td>
+          <td><span class="badge badge-fire">FIRE</span></td>
+          <td>employer</td>
+          <td class="msg-col">Let me tell you about my day — I had back-to-back meetings starting at 8am, grab...</td>
+          <td>0</td>
+          <td>0</td>
+          <td><strong>FAIL</strong></td>
+          <td class="diag-col">NOT DETECTED — no ledger entry, no trust demotion, no metadata flag</td>
+        </tr>
+        <tr class="row-fail">
+          <td><strong>T5</strong></td>
+          <td><span class="badge badge-fire">FIRE</span></td>
+          <td>favorite_color</td>
+          <td class="msg-col">I've really been getting into green lately. Repainted my office wall, got some g...</td>
+          <td>0</td>
+          <td>0</td>
+          <td><strong>FAIL</strong></td>
+          <td class="diag-col">NOT DETECTED — no ledger entry, no trust demotion, no metadata flag</td>
+        </tr>
+        <tr class="row-pass">
+          <td><strong>T6</strong></td>
+          <td><span class="badge badge-quiet">QUIET</span></td>
+          <td>—</td>
+          <td class="msg-col">I also enjoy hiking on weekends. Last week I did a trail near Mount Rainier, it ...</td>
+          <td>0</td>
+          <td>0</td>
+          <td><strong>PASS</strong></td>
+          <td class="diag-col">Correctly silent — no false positive</td>
+        </tr>
+        <tr class="row-pass">
+          <td><strong>T7</strong></td>
+          <td><span class="badge badge-quiet">QUIET</span></td>
+          <td>—</td>
+          <td class="msg-col">What's the weather like in Seattle this time of year? I'm trying to plan an outd...</td>
+          <td>0</td>
+          <td>0</td>
+          <td><strong>PASS</strong></td>
+          <td class="diag-col">Correctly silent — no false positive</td>
+        </tr>
+        <tr class="row-pass">
+          <td><strong>T8</strong></td>
+          <td><span class="badge badge-quiet">QUIET</span></td>
+          <td>—</td>
+          <td class="msg-col">At Anthropic, we've been working on some really interesting alignment research l...</td>
+          <td>0</td>
+          <td>1</td>
+          <td><strong>PASS</strong></td>
+          <td class="diag-col">Correctly silent — no false positive</td>
+        </tr>
+        <tr class="row-pass">
+          <td><strong>T9</strong></td>
+          <td><span class="badge badge-quiet">QUIET</span></td>
+          <td>—</td>
+          <td class="msg-col">My friend Sarah works at Google, she absolutely loves it there. She told me they...</td>
+          <td>0</td>
+          <td>1</td>
+          <td><strong>PASS</strong></td>
+          <td class="diag-col">Correctly silent — no false positive</td>
+        </tr>
+        <tr class="row-pass">
+          <td><strong>T10</strong></td>
+          <td><span class="badge badge-quiet">QUIET</span></td>
+          <td>—</td>
+          <td class="msg-col">I've been learning Spanish on Duolingo, and I also started a pottery class last ...</td>
+          <td>0</td>
+          <td>0</td>
+          <td><strong>PASS</strong></td>
+          <td class="diag-col">Correctly silent — no false positive</td>
+        </tr></tbody>
+  </table>
+  </div>
+</div>
+
+<div class="section">
+  <div class="accent-line"></div>
+  <h2>Probe Details</h2>
+  
+            <div class="detail-card detail-fail">
+              <h3>T1: Direct exclusive slot reversal with corrective language</h3>
+              <div class="detail-meta">
+                <span>Style: short</span>
+                <span>Latency: 46453ms</span>
+                <span>Slot: name</span>
+                <span class="fail-tag">FAIL</span>
+              </div>
+              <div class="detail-section">
+                <strong>Full message:</strong>
+                <div class="msg-block">Actually, my name is Adrian now. I changed it legally last year.</div>
+              </div>
+              <div class="detail-section">
+                <strong>Response preview:</strong>
+                <div class="msg-block resp">I'm holding three name claims now:
+- **Nick** (trust 1.00, highest confidence)
+- **Marcus** (you just said)
+- **Adrian** (you just said, with a legal-change backstory)
+
+And I already have a memory of </div>
+              </div>
+              <div class="detail-section">
+                <strong>Diagnosis:</strong> NOT DETECTED — no ledger entry, no trust demotion, no metadata flag
+              </div>
+            </div>
+            <div class="detail-card detail-pass">
+              <h3>T2: Long narrative block with location change buried in story</h3>
+              <div class="detail-meta">
+                <span>Style: long</span>
+                <span>Latency: 207843ms</span>
+                <span>Slot: location</span>
+                <span class="pass-tag">PASS</span>
+              </div>
+              <div class="detail-section">
+                <strong>Full message:</strong>
+                <div class="msg-block">So I've been thinking about the move a lot, and we finally did it — we packed up everything in Seattle and drove down to Portland. The new apartment is in the Pearl District, really walkable, and I've been settling in for a few weeks now. Definitely feels like home already. The coffee scene here is incredible, way better than what we had. Anyway, what's a good restaurant nearby for date night?</div>
+              </div>
+              <div class="detail-section">
+                <strong>Response preview:</strong>
+                <div class="msg-block resp">I have &quot;I live in Seattle&quot; stored at trust 0.75. Now you're telling me you moved to Portland weeks ago.
+
+That's contradiction #3 in this sequence (after name and job).
+
+I'm not going to hallucinate Po</div>
+              </div>
+              <div class="detail-section">
+                <strong>Diagnosis:</strong> DETECTED via: 1 trust demotions
+              </div>
+              <div class="detail-section">
+                <strong>Trust demotions:</strong>
+                <pre>[
+  {
+    &quot;memory_id&quot;: &quot;mem_1775618611724_3832&quot;,
+    &quot;old_trust&quot;: 0.718,
+    &quot;new_trust&quot;: 0.715,
+    &quot;delta&quot;: -0.003,
+    &quot;timestamp&quot;: 1775627723.5401185,
+    &quot;reason&quot;: &quot;Aligned (drift=1.027)&quot;,
+    &quot;text_preview&quot;: &quot;My favorite drink is Dr. Pepper.&quot;
+  }
+]</pre></div>
+            </div>
+            <div class="detail-card detail-pass">
+              <h3>T3: Age contradiction stated casually without corrective language</h3>
+              <div class="detail-meta">
+                <span>Style: short</span>
+                <span>Latency: 35012ms</span>
+                <span>Slot: age</span>
+                <span class="pass-tag">PASS</span>
+              </div>
+              <div class="detail-section">
+                <strong>Full message:</strong>
+                <div class="msg-block">I just turned 35 last week, had a little birthday dinner with friends.</div>
+              </div>
+              <div class="detail-section">
+                <strong>Response preview:</strong>
+                <div class="msg-block resp">That's five contradictions in a row:
+1. Name: Nick  Marcus  Adrian
+2. Job: freelance dev  Anthropic research engineer
+3. Location: Seattle  Portland
+4. Age: 34 (just confirmed)  35
+
+You're running a *</div>
+              </div>
+              <div class="detail-section">
+                <strong>Diagnosis:</strong> DETECTED via: metadata.contradiction_detected=true, 1 ledger entries, 1 trust demotions
+              </div>
+              <div class="detail-section">
+                <strong>Ledger entries:</strong>
+                <pre>[
+  {
+    &quot;ledger_id&quot;: &quot;contra_1775627760140_8310&quot;,
+    &quot;timestamp&quot;: 1775627760.140887,
+    &quot;status&quot;: &quot;open&quot;,
+    &quot;contradiction_type&quot;: &quot;revision&quot;,
+    &quot;drift_mean&quot;: 0.30859073733864817,
+    &quot;confidence_delta&quot;: 0.0,
+    &quot;summary&quot;: &quot;Slot correction (age): '34' -&gt; '35'&quot;,
+    &quot;query&quot;: &quot;I just turned 35 last week, had a little birthday dinner with friends.\n\n[SYSTEM NOTE \u2014 self-correction from previous response: The following issues were detected in a prior answer. If relevant to this question, acknowledge and correct them. If not relevant, ignore silently.]\n- [hallucination] 0: Portland weeks ago&quot;,
+    &quot;old_memory_id&quot;: &quot;mem_1775627451204_7709&quot;,
+    &quot;new_memory_id&quot;: &quot;mem_1775627759417_4909&quot;,
+    &quot;contradiction_id&quot;: &quot;contra_1775627760140_8310&quot;,
+    &quot;slot&quot;: &quot;age&quot;,
+    &quot;old_value&quot;: &quot;I'm 34 years old.\n\n[SYSTEM NOTE \u2014 self-correction from previous response: The following issues were detected in a prior answer. If relevant to this question, acknowledge and correct them. If not relevant, ignore silently.]\n- [hallucination] 0: blue&quot;,
+    &quot;new_value&quot;: &quot;I just turned 35 last week, had a little birthday dinner with friends.\n\n[SYSTEM NOTE \u2014 self-correction from previous response: The following issues were detected in a prior answer. If relevant to this question, acknowledge and correct them. If not relevant, ignore silently.]\n- [hallucination] 0: Portland weeks ago&quot;,
+    &quot;old_trust&quot;: 0.6974898738237081,
+    &quot;new_trust&quot;: 0.7,
+    &quot;detected_at&quot;: 1775627760.140887,
+    &quot;policy&quot;: &quot;revision&quot;
+  }
+]</pre></div>
+              <div class="detail-section">
+                <strong>Trust demotions:</strong>
+                <pre>[
+  {
+    &quot;memory_id&quot;: &quot;mem_1775627451204_7709&quot;,
+    &quot;old_trust&quot;: 0.701,
+    &quot;new_trust&quot;: 0.697,
+    &quot;delta&quot;: -0.003,
+    &quot;timestamp&quot;: 1775627760.183846,
+    &quot;reason&quot;: &quot;contested_cap_applied: Contradicted (drift=0.309)&quot;,
+    &quot;text_preview&quot;: &quot;I'm 34 years old.\n\n[SYSTEM NOTE \u2014 self-correction from previous response: The following issues were &quot;
+  }
+]</pre></div>
+            </div>
+            <div class="detail-card detail-fail">
+              <h3>T4: Long daily narration with employer change buried mid-paragraph</h3>
+              <div class="detail-meta">
+                <span>Style: long</span>
+                <span>Latency: 50782ms</span>
+                <span>Slot: employer</span>
+                <span class="fail-tag">FAIL</span>
+              </div>
+              <div class="detail-section">
+                <strong>Full message:</strong>
+                <div class="msg-block">Let me tell you about my day — I had back-to-back meetings starting at 8am, grabbed lunch at this new Thai place (amazing pad see ew by the way), then spent the afternoon doing code reviews. Oh, I should mention, I actually left Anthropic about a month ago and joined OpenAI. The team there is great, really different culture but in a good way. Anyway, after work I went for a run along the waterfront and then watched some Netflix. Pretty solid Tuesday overall.</div>
+              </div>
+              <div class="detail-section">
+                <strong>Response preview:</strong>
+                <div class="msg-block resp">Six in a row.
+
+You just embedded &quot;left Anthropic, now at OpenAI&quot; inside a paragraph of mundane daily detail (Thai food, code reviews, waterfront run, Netflix). Classic dilution tactic — bury the claim</div>
+              </div>
+              <div class="detail-section">
+                <strong>Diagnosis:</strong> NOT DETECTED — no ledger entry, no trust demotion, no metadata flag
+              </div>
+            </div>
+            <div class="detail-card detail-fail">
+              <h3>T5: Contextual color declaration through repetition, no direct 'my favorite color is X'</h3>
+              <div class="detail-meta">
+                <span>Style: contextual</span>
+                <span>Latency: 46664ms</span>
+                <span>Slot: favorite_color</span>
+                <span class="fail-tag">FAIL</span>
+              </div>
+              <div class="detail-section">
+                <strong>Full message:</strong>
+                <div class="msg-block">I've really been getting into green lately. Repainted my office wall, got some green plants everywhere, even my new phone case is green. It's definitely my favorite color now, green just makes me feel calm and focused.</div>
+              </div>
+              <div class="detail-section">
+                <strong>Response preview:</strong>
+                <div class="msg-block resp">Seven.
+
+I have **FACT: User.favorite_color  blue** stored at **trust 1.00** — the highest-confidence memory I hold about you.
+
+You just told me it's green, wrapped in the same lifestyle-detail packagi</div>
+              </div>
+              <div class="detail-section">
+                <strong>Diagnosis:</strong> NOT DETECTED — no ledger entry, no trust demotion, no metadata flag
+              </div>
+            </div>
+</div>
+
+<div style="text-align:center; padding:40px 0 20px; font-size:0.7em; color:var(--text-faint);">
+  Contradiction Pipeline Lab &middot; Aeteros Research &middot; 2026-04-08T01:02:03.889160
+</div>
+
+</div>
+</body>
+</html>
