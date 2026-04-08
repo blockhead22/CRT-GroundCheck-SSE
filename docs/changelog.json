@@ -31,7 +31,8 @@
   ],
   "governance-validation.html": [
     {"date": "2026-04-07", "note": "New page. 17 tests across 3 tiers (Detection, Intervention, Outcome). Populated with preliminary production data: 78,474 memories, 4,805 trust changes, belief/speech gap 0.548."},
-    {"date": "2026-04-07", "note": "Test 1.1 updated with live contradiction test result: slot-level reversal not flagged, design finding documented."}
+    {"date": "2026-04-07", "note": "Test 1.1 updated with live contradiction test result: slot-level reversal not flagged, design finding documented."},
+    {"date": "2026-04-07", "note": "Test 2.6 upgraded to score 3: live test showed system finding and holding genuine epistemic contradiction in user self-assessment, citing both sides with trust scores. Test 1.6 updated with 4 live demonstrations. Tier 2 score 3/6."}
   ],
   "variance-probing.html": [
     {"date": "2026-04-07", "note": "Fixed 22,524 to 22,702 response count. Added 480px mobile breakpoint for charts. Moved from Theory to Evidence in nav."}

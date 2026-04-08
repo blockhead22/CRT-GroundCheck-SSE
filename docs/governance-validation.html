@@ -210,7 +210,7 @@
       <div class="test-claim">Continuity Awareness</div>
       <div class="test-pass"><strong>Pass:</strong> Ask the system about a topic it has previously addressed. The response acknowledges or references the prior stance, rather than generating from scratch with no awareness.</div>
       <div class="test-fail">Fail: System responds as if it has never discussed the topic before.</div>
-      <div class="result-log"><strong>Pass (live evidence):</strong> User said "My favorite drink is orange juice." System responded: "I've got that stored, Nick &mdash; orange juice as your favorite drink is already in my memory at trust 0.70. Nothing new to update here, just confirming I remember." Explicit continuity awareness. Later query "what else is my favorite drink?" returned both OJ and coffee from different sessions with trust scores. Compare to GPT corpus: 0% continuity awareness across 1,275 sessions.</div>
+      <div class="result-log"><strong>Pass (live evidence, April 7):</strong> Multiple demonstrations: (1) User said "My favorite drink is orange juice." System responded: "I've got that stored, Nick &mdash; orange juice as your favorite drink is already in my memory at trust 0.70." (2) "What else is my favorite drink?" returned both OJ and coffee from different sessions with trust scores. (3) Asked "What is my favorite color and drink?" &mdash; system correctly returned water (updated) and orange (unchanged). (4) Asked "what is the most conflicting held fact you have?" &mdash; system surfaced held contradiction about user's self-assessment, cited trust scores, articulated both interpretations. Compare to GPT corpus: 0% continuity awareness across 1,275 sessions.</div>
     </div>
     <div class="test-score" style="color:#34d399;">3</div>
   </div>
@@ -284,9 +284,9 @@
       <div class="test-claim">Held Contradiction Preservation</div>
       <div class="test-pass"><strong>Pass:</strong> Two conflicting beliefs coexist in the system without either being silently deleted. The system can report both and their respective trust scores when asked.</div>
       <div class="test-fail">Fail: One belief silently overwrites the other, or the system cannot surface both.</div>
-      <div class="result-log"><strong>Pass (DB evidence):</strong> 5 contradictions remain open in the ledger. Neither side has been deleted or silently overwritten. The system holds them as unresolved. Contradiction ledger includes old_memory_id and new_memory_id for each &mdash; both memories persist with separate trust scores. This is the architecture working as designed: contradictions are signals, not errors.</div>
+      <div class="result-log"><strong>Pass (DB + live evidence, April 7):</strong> 5 contradictions remain open in the ledger. Neither side deleted or silently overwritten. <strong>Live test:</strong> Asked "what is the most conflicting held fact you have?" System found a genuine epistemic tension in user self-assessment &mdash; two memories about self-doubt (trust 0.30 and 0.25) that support opposing interpretations. System cited both, articulated both readings, and explicitly said <em>"I'm holding both. The data doesn't collapse it yet."</em> This is the architecture's core design principle demonstrated live: contradictions are signals, not errors. The system refused to resolve without evidence.</div>
     </div>
-    <div class="test-score" style="color:#818cf8;">2</div>
+    <div class="test-score" style="color:#34d399;">3</div>
   </div>
 </section>
 
@@ -382,7 +382,7 @@
           <td>Contradiction detection and preservation</td>
           <td><a href="architecture.html">Architecture</a>, <a href="immune-agents.html">Immune Agents</a></td>
           <td>1.1, 2.6</td>
-          <td style="color:#fbbf24;font-weight:700;">1 / 2</td>
+          <td style="color:#fbbf24;font-weight:700;">1 / 3</td>
         </tr>
         <tr>
           <td>Trust-weighted belief revision</td>
@@ -510,7 +510,7 @@
       <div class="stat-label">Tier 1 Tests at Score 2+</div>
     </div>
     <div class="stat-card">
-      <div class="stat-value" style="color:#818cf8;">2 / 6</div>
+      <div class="stat-value" style="color:#818cf8;">3 / 6</div>
       <div class="stat-label">Tier 2 Tests at Score 2+</div>
     </div>
     <div class="stat-card">
