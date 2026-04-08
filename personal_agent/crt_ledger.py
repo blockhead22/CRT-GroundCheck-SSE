@@ -459,6 +459,20 @@ class ContradictionLedger:
         conn.commit()
         conn.close()
 
+    def get_contradiction_for_pair(
+        self, old_memory_id: str, new_memory_id: str
+    ) -> Optional[str]:
+        """Check if a contradiction already exists for this memory pair. Returns ledger_id or None."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT ledger_id FROM contradictions WHERE old_memory_id = ? AND new_memory_id = ? LIMIT 1",
+            (old_memory_id, new_memory_id),
+        )
+        row = cursor.fetchone()
+        conn.close()
+        return row[0] if row else None
+
     def record_contradiction_user_answer(self, ledger_id: str, answer: str) -> None:
         """Record a user answer intended to resolve a contradiction (does not auto-resolve)."""
         ts = time.time()

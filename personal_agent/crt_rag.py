@@ -253,6 +253,7 @@ class CRTEnhancedRAG:
         # CRT components
         self.memory = CRTMemorySystem(memory_db, self.config)
         self.ledger = ContradictionLedger(ledger_db, self.config)
+        self.memory.set_contradiction_ledger(self.ledger)
 
         # Governance bridge: connects memory trust to belief/speech tracking
         try:

@@ -515,6 +515,7 @@ class CRTMemorySystem:
         self.fidelity_min_threshold = 0.60
 
         self._governance_bridge = None
+        self._contradiction_ledger = None
 
         # Initialize database
         self._init_db()
@@ -526,6 +527,10 @@ class CRTMemorySystem:
     def set_governance_bridge(self, bridge) -> None:
         """Attach a GovernanceBridge for memory<->belief feedback loops."""
         self._governance_bridge = bridge
+
+    def set_contradiction_ledger(self, ledger) -> None:
+        """Attach a ContradictionLedger so the write path can record slot contradictions."""
+        self._contradiction_ledger = ledger
     
     def _get_connection(self, timeout: float = 30.0) -> sqlite3.Connection:
         """
@@ -1651,6 +1656,7 @@ class CRTMemorySystem:
         # to handle cases like "favorite color is green" vs "favorite color is orange".
         _corrective_phrases = ("not ", "actually", "always has been", "never was")
         _has_corrective_language = any(p in text.lower() for p in _corrective_phrases)
+        _write_path_contradictions = []  # Collect slot contradictions for ledger (written after memory creation)
         try:
             from .fact_slots import extract_fact_slots as _efs
             from .slot_discovery import get_slot_type, on_fact_stored, SlotType
@@ -1724,6 +1730,14 @@ class CRTMemorySystem:
                         _ex_mem_id, _slot_name, _slot_type.value, _ex_norm, _new_val_norm,
                         float(_ex_trust), _demoted_trust,
                     )
+                    # Collect for ledger entry (written after memory creation when we have memory_id)
+                    _write_path_contradictions.append({
+                        "old_memory_id": _ex_mem_id,
+                        "slot": _slot_name,
+                        "old_value": str(_ex_norm),
+                        "new_value": _new_val_norm,
+                        "old_trust": float(_ex_trust),
+                    })
 
                 # Notify slot discovery of the new fact (non-blocking)
                 try:
@@ -1832,8 +1846,8 @@ class CRTMemorySystem:
             if detected_domains and detected_domains != ["general"]:
                 domain_tags = detected_domains
             
-            # Extract facts using two-tier system (local-only, no external API)
-            extractor = TwoTierFactSystem(enable_llm=False)
+            # Extract facts using two-tier system (local LLM enabled for broader coverage)
+            extractor = TwoTierFactSystem(enable_llm=True, use_local_llm=True)
             fact_data = extractor.extract_facts(text)
             
             # Determine extraction method based on what was used
@@ -1976,6 +1990,39 @@ class CRTMemorySystem:
                     self.store_memory_facts(memory.memory_id, hard_facts)
             except Exception as e:
                 logger.debug(f"[MEMORY_FACTS] Failed to cache facts for {memory.memory_id}: {e}")
+
+        # --- Write-path contradiction ledger: record any slot conflicts found earlier ---
+        if _write_path_contradictions and self._contradiction_ledger is not None:
+            for _wpc in _write_path_contradictions:
+                try:
+                    # Deduplicate: skip if this exact pair is already recorded
+                    existing = self._contradiction_ledger.get_contradiction_for_pair(
+                        _wpc["old_memory_id"], memory.memory_id,
+                    )
+                    if existing is not None:
+                        continue
+                    self._contradiction_ledger.record_contradiction(
+                        old_memory_id=_wpc["old_memory_id"],
+                        new_memory_id=memory.memory_id,
+                        drift_mean=0.0,
+                        confidence_delta=_wpc["old_trust"] - float(trust),
+                        summary=f"Write-path slot contradiction ({_wpc['slot']}): "
+                                f"'{_wpc['old_value']}' -> '{_wpc['new_value']}'",
+                        old_text=None,
+                        new_text=text,
+                        contradiction_type="slot_reversal",
+                        thread_id=resolved_thread_id,
+                    )
+                    logger.info(
+                        "[WRITE_PATH_CONTRADICTION] Ledger entry created: slot=%s, "
+                        "old=%s, new=%s, old_mem=%s, new_mem=%s",
+                        _wpc["slot"], _wpc["old_value"], _wpc["new_value"],
+                        _wpc["old_memory_id"], memory.memory_id,
+                    )
+                except Exception as _wpc_err:
+                    logger.debug(
+                        "[WRITE_PATH_CONTRADICTION] Ledger write failed (non-fatal): %s", _wpc_err,
+                    )
 
         # SPRINT 1: After storing, if correction was detected, decay contradicted memories.
         # Narrative notes are non-authoritative — they cannot trigger contradiction decay.

@@ -1394,19 +1394,33 @@ def classify_intent_hybrid(
     ):
         _requested_personal_slots.append("favorite_drink")
     if len(set(_requested_personal_slots)) >= 2:
-        logger.info("[INTENT_ROUTER] Bundled personal-fact question detected: '%s' -> task", message[:60])
-        return TaskIntent(
-            route="task",
-            intent_type="broad_recall",
-            slots={
-                "raw_message": message,
-                "query": message,
-                "requested_slots": list(dict.fromkeys(_requested_personal_slots)),
-            },
-            confidence=0.94,
-            reason="multi_slot_personal_fact_match",
-            source="regex",
-        )
+        # Distinguish ASKING ("what is my favorite color and drink?") from
+        # DECLARING ("my favorite color is black and my favorite drink is Mt. Dew").
+        # Declarations must go through the assertion/legacy pipeline so contradiction
+        # detection can fire. Only route to broad_recall if it's a question.
+        _is_declaration = bool(re.search(
+            r"my\s+favorite\s+\w+\s+is\s+(?!$|\?)",  # "my favorite X is Y" (not ending with ?)
+            _identity_text
+        ))
+        if _is_declaration:
+            logger.info("[INTENT_ROUTER] Multi-slot DECLARATION detected: '%s' -> conversational (assertion path)", message[:60])
+            # Fall through to normal classification — don't short-circuit to broad_recall.
+            # This ensures the legacy pipeline runs contradiction detection.
+            pass
+        else:
+            logger.info("[INTENT_ROUTER] Bundled personal-fact question detected: '%s' -> task", message[:60])
+            return TaskIntent(
+                route="task",
+                intent_type="broad_recall",
+                slots={
+                    "raw_message": message,
+                    "query": message,
+                    "requested_slots": list(dict.fromkeys(_requested_personal_slots)),
+                },
+                confidence=0.94,
+                reason="multi_slot_personal_fact_match",
+                source="regex",
+            )
     _identity_patterns = (
         "who are you", "what are you", "what's your purpose", "whats your purpose",
         "how do you work", "what do you do", "tell me about yourself",
