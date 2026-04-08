@@ -128,3 +128,4 @@ models/dnnt_*/
 /data/chatgpt_export
 /.claude/worktrees/wonderful-ride/models
 /.claude/worktrees/wonderful-ride/frontend/node_modules
+/tools/tts_lab_output

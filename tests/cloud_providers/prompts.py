@@ -40,6 +40,42 @@ def slot_classification_prompt(
     return SLOT_CLASSIFICATION_SYSTEM, user_prompt
 
 
+# ── Multi-Fact Extraction (for long messages) ──────────────────
+
+MULTI_SLOT_SYSTEM = """You are a fact extraction engine for a personal AI memory system.
+Given a user statement, extract ALL personal facts about the SPEAKER (first person only).
+Ignore facts about third parties unless they relate to the speaker's life.
+
+Return a JSON array of facts. Each fact should have slot_name, value, exclusive, and category.
+Return an empty array [] if no personal facts are found.
+Respond with valid JSON only. No explanation outside the JSON."""
+
+
+def multi_slot_extraction_prompt(
+    statement: str,
+    existing_slots: List[str],
+) -> tuple[str, str]:
+    """Build prompt for extracting ALL facts from a long user statement."""
+    user_prompt = json.dumps({
+        "task": "extract_all_facts",
+        "user_statement": statement,
+        "existing_slots": existing_slots,
+        "instructions": (
+            "Extract ALL personal facts about the speaker from this statement. "
+            "Return a JSON object: {\"facts\": [...]} where each fact has: "
+            "{\"slot_name\": \"<snake_case>\", \"value\": \"<extracted value>\", "
+            "\"exclusive\": <true if only one value possible>, "
+            "\"category\": \"<identity|preference|medical|relationship|schedule|location|other>\", "
+            "\"confidence\": <0.0-1.0>}. "
+            "Use existing_slots when the fact matches an existing slot name. "
+            "Only extract facts stated in first person about the speaker. "
+            "Third-party facts (e.g. 'my friend works at X') should use slots like 'friend_employer', not 'employer'. "
+            "Return {\"facts\": []} if no personal facts found."
+        ),
+    }, indent=2)
+    return MULTI_SLOT_SYSTEM, user_prompt
+
+
 # ── Test cases for slot classification
 SLOT_TEST_CASES = [
     {

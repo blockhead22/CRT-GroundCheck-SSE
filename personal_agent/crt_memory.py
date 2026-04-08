@@ -587,7 +587,68 @@ class CRTMemorySystem:
         except Exception as e:
             logger.debug(f"[CLOUD_EXTRACT] Failed: {e}")
             return {}
-    
+
+    def _cloud_extract_multi_facts(self, text: str) -> Dict:
+        """Extract ALL facts from a long user message via cloud (gpt-4o-mini).
+        Returns dict compatible with store_memory_facts (slot -> _CloudFact)."""
+        try:
+            from tests.cloud_providers.prompts import multi_slot_extraction_prompt
+            from personal_agent.cloud_features import get_cloud_feature_service
+            svc = get_cloud_feature_service()
+            if svc is None or not svc._openai_available():
+                return {}
+
+            existing_slots = []
+            try:
+                conn = self._get_connection()
+                cur = conn.cursor()
+                cur.execute("SELECT DISTINCT slot FROM memory_facts LIMIT 50")
+                existing_slots = [r[0] for r in cur.fetchall()]
+                conn.close()
+            except Exception:
+                pass
+
+            system, prompt = multi_slot_extraction_prompt(text, existing_slots)
+            raw = svc.openai.generate(
+                prompt=prompt, system=system,
+                max_tokens=800, temperature=0.1,
+                model="gpt-4o-mini",
+            )
+            if not raw or raw.startswith("[Cloud LLM") or raw.startswith("[Ollama"):
+                return {}
+
+            import json as _json
+            clean = raw.strip()
+            if clean.startswith("```"):
+                clean = clean.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+            brace = clean.find("{")
+            if brace > 0:
+                clean = clean[brace:]
+            result = _json.loads(clean)
+
+            facts_list = result.get("facts", [])
+            if not facts_list:
+                return {}
+
+            class _CloudFact:
+                def __init__(self, v, n):
+                    self.value = v
+                    self.normalized = n
+
+            extracted = {}
+            for fact in facts_list:
+                slot_name = fact.get("slot_name", "").strip()
+                value = str(fact.get("value", "")).strip()
+                if slot_name and value:
+                    extracted[slot_name] = _CloudFact(value, value.lower())
+
+            if extracted:
+                logger.info(f"[CLOUD_MULTI_EXTRACT] Extracted {len(extracted)} facts: {list(extracted.keys())}")
+            return extracted
+        except Exception as e:
+            logger.debug(f"[CLOUD_MULTI_EXTRACT] Failed: {e}")
+            return {}
+
     def _get_connection(self, timeout: float = 30.0) -> sqlite3.Connection:
         """
         Create a properly configured SQLite connection with:
@@ -2074,19 +2135,100 @@ class CRTMemorySystem:
             except Exception as e:
                 logger.debug(f"[MEMORY_FACTS] Regex extraction failed: {e}")
 
-            # Step 2: Cloud extraction fallback (if regex found nothing and text is user-sourced)
-            if not hard_facts and source == MemorySource.USER and not _skip_slot_extraction:
-                try:
-                    hard_facts = self._cloud_extract_facts(text)
-                    if hard_facts:
-                        logger.info(f"[MEMORY_FACTS] Cloud extracted: {list(hard_facts.keys())}")
-                except Exception as e:
-                    logger.debug(f"[MEMORY_FACTS] Cloud extraction failed (non-fatal): {e}")
+            # Step 2: Cloud extraction
+            # For short messages: fallback only (if regex found nothing)
+            # For long messages (100+ chars): run multi-fact extraction to catch embedded facts
+            _cloud_facts: Dict = {}
+            if source == MemorySource.USER and not _skip_slot_extraction:
+                _is_long_message = len(text) > 100
+                if _is_long_message:
+                    # Long message: extract ALL facts (may overlap with regex)
+                    try:
+                        _cloud_facts = self._cloud_extract_multi_facts(text)
+                    except Exception as e:
+                        logger.debug(f"[MEMORY_FACTS] Cloud multi-extraction failed (non-fatal): {e}")
+                elif not hard_facts:
+                    # Short message with no regex hits: single-fact fallback
+                    try:
+                        _cloud_facts = self._cloud_extract_facts(text)
+                        if _cloud_facts:
+                            logger.info(f"[MEMORY_FACTS] Cloud extracted: {list(_cloud_facts.keys())}")
+                    except Exception as e:
+                        logger.debug(f"[MEMORY_FACTS] Cloud extraction failed (non-fatal): {e}")
+
+            # Merge: cloud fills gaps that regex missed (regex takes priority)
+            if _cloud_facts:
+                for _cf_slot, _cf_val in _cloud_facts.items():
+                    if _cf_slot not in hard_facts:
+                        hard_facts[_cf_slot] = _cf_val
 
             if hard_facts:
                 self.store_memory_facts(memory.memory_id, hard_facts)
 
+            # Step 3: Run slot comparison on cloud-extracted facts that regex missed.
+            # The regex-extracted facts already went through slot comparison at lines ~1798-1880.
+            # Cloud-only facts need the same treatment for contradiction detection.
+            if _cloud_facts and not _skip_slot_extraction:
+                try:
+                    from .slot_discovery import get_slot_type, SlotType
+                    _discovery_db = None
+                    # Determine which slots regex already processed for contradiction detection
+                    _regex_handled_slots = set()
+                    try:
+                        _regex_handled_slots = set(_new_slots.keys()) if _new_slots else set()
+                    except NameError:
+                        pass
+                    for _cf_slot, _cf_val in _cloud_facts.items():
+                        # Skip slots that regex already handled in the earlier comparison loop
+                        if _cf_slot in _regex_handled_slots:
+                            continue
+                        _cf_norm = str(getattr(_cf_val, "normalized", getattr(_cf_val, "value", _cf_val))).strip().lower()
+                        _cf_slot_type = get_slot_type(_cf_slot, db_path=_discovery_db)
+                        if _cf_slot_type == SlotType.ADDITIVE:
+                            continue
+                        # Query existing facts for this slot
+                        _conn_cf = self._get_connection()
+                        _cur_cf = _conn_cf.cursor()
+                        _cur_cf.execute("""
+                            SELECT mf.memory_id, mf.normalized, m.trust
+                            FROM memory_facts mf
+                            JOIN memories m ON mf.memory_id = m.memory_id
+                            WHERE mf.slot = ? AND m.deprecated = 0
+                              AND mf.memory_id != ?
+                        """, (_cf_slot, memory.memory_id))
+                        _cf_existing = _cur_cf.fetchall()
+                        _conn_cf.close()
+                        for _cf_ex_id, _cf_ex_norm, _cf_ex_trust in _cf_existing:
+                            _cf_ex_val = str(_cf_ex_norm).strip().lower()
+                            if (_cf_ex_val == _cf_norm
+                                    or _cf_norm in _cf_ex_val
+                                    or _cf_ex_val in _cf_norm):
+                                continue
+                            # Found a contradiction — collect for ledger
+                            _write_path_contradictions.append({
+                                "old_memory_id": _cf_ex_id,
+                                "slot": _cf_slot,
+                                "old_value": str(_cf_ex_norm),
+                                "new_value": _cf_norm,
+                                "old_trust": float(_cf_ex_trust),
+                            })
+                            logger.info(
+                                "[CLOUD_SLOT_CONTRADICTION] Cloud-extracted slot %s: '%s' vs existing '%s'",
+                                _cf_slot, _cf_norm, _cf_ex_norm,
+                            )
+                except Exception as e:
+                    logger.debug(f"[CLOUD_SLOT_COMPARE] Failed (non-fatal): {e}")
+
         # --- Write-path contradiction ledger: record any slot conflicts found earlier ---
+        # Dedup: keep only the highest-trust old memory per slot (not one ledger entry per old memory)
+        if _write_path_contradictions:
+            _deduped: Dict[str, dict] = {}
+            for _wpc in _write_path_contradictions:
+                _sk = _wpc["slot"]
+                if _sk not in _deduped or _wpc["old_trust"] > _deduped[_sk]["old_trust"]:
+                    _deduped[_sk] = _wpc
+            _write_path_contradictions = list(_deduped.values())
+
         if _write_path_contradictions and self._contradiction_ledger is not None:
             for _wpc in _write_path_contradictions:
                 try:

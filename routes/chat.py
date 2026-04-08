@@ -8107,6 +8107,36 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     except Exception as _store_err:
                         _safe_print(f"[ORCHESTRATOR] Failed to store history (non-fatal): {_store_err}")
 
+                    # ── Write-path parity: store user message as CRT memory ──
+                    # The legacy pipeline calls engine.query() which stores user
+                    # assertions via ingest_memory_write(). The orchestrator path
+                    # skips query() entirely, so user facts were never extracted,
+                    # slot-compared, or contradiction-checked. This block fixes that.
+                    try:
+                        _orch_input_kind = _orch_engine._classify_user_input(_orch_msg)
+                        if _orch_input_kind == "assertion":
+                            from personal_agent.crt_memory import MemorySource
+                            _orch_kind = "user_fact"
+                            try:
+                                from personal_agent.belief_classifier import classify_assertion_kind
+                                _orch_kind, _ = classify_assertion_kind(_orch_msg)
+                            except Exception:
+                                pass
+                            _orch_engine.ingest_memory_write(
+                                text=_orch_msg,
+                                confidence=0.7,
+                                source=MemorySource.USER,
+                                context={"type": "user_input", "kind": "assertion", "via": "orchestrator"},
+                                thread_id=req.thread_id,
+                                authority="provisional",
+                                kind=_orch_kind,
+                            )
+                            _safe_print(f"[ORCHESTRATOR_WRITE] Stored user assertion as memory: \"{_orch_msg[:60]}\"")
+                        else:
+                            _safe_print(f"[ORCHESTRATOR_WRITE] Skipped — input_kind={_orch_input_kind}")
+                    except Exception as _orch_write_err:
+                        _safe_print(f"[ORCHESTRATOR_WRITE] Failed (non-fatal): {_orch_write_err}")
+
                     # Emit trust_shift events from orchestrator run
                     try:
                         _orch_db_path = getattr(_orch_engine.memory, "db_path", None)
