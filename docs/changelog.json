@@ -81,6 +81,9 @@
     {"date": "2026-04-08", "note": "Updated with v4 final results (8/9). Escalation table expanded with Tier 3 (regex+guards). Run index updated with v4 card + v5 planned. Open gaps section added: T5 contextual declarations, cloud demotion rewrite, proportional governance, T5/T9 pipeline hangs. Name changes reclassified as identity-level."},
     {"date": "2026-04-08", "note": "Standalone lab v5 (10/10) and v3 cloud reclassification pass added to run index. T5 gap marked CLOSED. Escalation table updated with final tier. Contradiction density reanalysis planned as next."}
   ],
+  "KNOWN_BUGS.md": [
+    {"date": "2026-04-08", "note": "New file. 5 tracked bugs: orchestrator JSON code fence parsing (raw JSON renders in chat), T5/T9 pipeline hangs, excessive Ollama calls per message, slot exclusivity too broad for preferences, cloud governance flat 0.4x multiplier."}
+  ],
   "_infrastructure": [
     {"date": "2026-04-07", "note": "Cloudflare Pages deployment live at aeteros-research.pages.dev. Basic auth via _worker.js. robots.txt blocks crawlers."},
     {"date": "2026-04-07", "note": "Bootstrap 5 injected across all docs via docs.js. Dark theme overrides added to base.css."},
@@ -91,6 +94,21 @@
     {"date": "2026-04-07", "note": "Changelog system: per-page entries from changelog.json, injected by docs.js at bottom of every page."},
     {"date": "2026-04-07", "note": "Full doc sweep: fixed stale numbers (22,524→22,702), 'proved'→'demonstrated' (8 instances), immune agent count (6→5), Sonnet 3.5→4.5, 10 stray </div> tags, 6 'planned'→'built' badges."},
     {"date": "2026-04-07", "note": "Merged throughline.html into index.html. Merged variance-landscape.html into variance-probing.html. Doc count: 19→17 (then +4 new = 19 total)."},
-    {"date": "2026-04-07", "note": "CORE naming introduced (Contradiction, Observation, Revision, Epistemics). CRT→CORE transition note on index. About page documents full naming stack."}
+    {"date": "2026-04-07", "note": "CORE naming introduced (Contradiction, Observation, Revision, Epistemics). CRT→CORE transition note on index. About page documents full naming stack."},
+    {"date": "2026-04-08", "note": "Write-path contradiction fix: ledger entries created inside store_memory() slot exclusivity loop. Fires regardless of intent routing."},
+    {"date": "2026-04-08", "note": "Two write-path guards: same-value substring skip (prevents reinforcement false positives), third-person filter (prevents attribution of others' facts)."},
+    {"date": "2026-04-08", "note": "Cloud extraction wired into write path: when regex finds nothing on user messages, gpt-4o-mini extracts facts via _cloud_extract_facts(). Falls back gracefully."},
+    {"date": "2026-04-08", "note": "Cloud governance demotion rewritten in routes/chat.py: text search (LIKE '%name%') replaced with memory_facts table query. Same-value substring check added. DELETE FROM memory_facts removed."},
+    {"date": "2026-04-08", "note": "Routing settings: cloud_escalation_policy=conservative, routing_mode=cloud, cloud_slot_classification=on. Cloud governance active in production."},
+    {"date": "2026-04-08", "note": "Standalone contradiction pipeline lab: no backend, no Ollama. Regex + cloud + slot comparison. 10/10. ~17 seconds total."},
+    {"date": "2026-04-08", "note": "v3 cloud reclassification pass: gpt-4o-mini stance extraction on 370 unique responses. 45 pairs upgraded (47→92 genuine, 10.4%→20.3%)."},
+    {"date": "2026-04-08", "note": "DB isolation for lab: starts own backend on port 8099 with CRT_SHARED_MEMORY=false. Direct DB seeding bypasses pipeline."},
+    {"date": "2026-04-08", "note": "Merged continuity-blind.html into contradiction-density.html. Single unified evidence page."},
+    {"date": "2026-04-08", "note": "Labs nav section added to docs.js. Labs overview page (labs.html) with run index, escalation table, incident report."},
+    {"date": "2026-04-08", "note": "Fixed immune-agents threshold-zone colored bands: absolute positioning replaced with flexbox."},
+    {"date": "2026-04-08", "note": "Fixed docnav: sticky→fixed positioning with body padding offset."},
+    {"date": "2026-04-08", "note": "MemorySource.CORRECTION bug fixed (enum value didn't exist). Reverted to MemorySource.USER check."},
+    {"date": "2026-04-08", "note": "KNOWN_BUGS.md created: 5 tracked bugs (JSON parsing, pipeline hangs, Ollama calls, slot exclusivity, flat demotion multiplier)."},
+    {"date": "2026-04-08", "note": "Incident: shared memory cascade. Lab seed 'My name is Marcus' triggered 81-memory demotion via cloud text search. Memories restored. Root cause documented. Led to memory_facts rewrite + DB isolation."}
   ]
 }
