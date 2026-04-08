@@ -55,13 +55,18 @@ class SlotProfile:
 # ---------------------------------------------------------------------------
 
 _SEED_EXCLUSIVE = {
-    "favorite_color", "name", "first_name", "last_name", "birthday",
+    "favorite_color", "favorite_drink", "favorite_food", "favorite_book",
+    "favorite_movie", "favorite_music", "favorite_artist", "favorite_game",
+    "favorite_sport", "favorite_team", "favorite_animal",
+    "name", "first_name", "last_name", "birthday",
     "birth_date", "legal_name", "primary_city", "city", "employer",
-    "job_title", "nickname", "age", "email",
+    "job_title", "nickname", "age", "email", "phone",
+    "relationship_status", "zodiac_sign", "mbti",
 }
 
 _SEED_ADDITIVE = {
     "hobby", "skill", "interest", "project", "friend",
+    "language", "pet", "pet_name", "tool", "framework",
 }
 
 

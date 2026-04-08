@@ -6626,12 +6626,14 @@ class CRTEnhancedRAG:
             contradiction_entry = None
         
         logger.debug("Generic contradiction check: user_input_kind=%s, user_memory=%s", user_input_kind, user_memory is not None)
+        print(f"[CONTRADICTION_DEBUG] user_input_kind={user_input_kind}, user_memory={'yes' if user_memory else 'no'}, contradiction_detected_already={contradiction_detected}")
         if user_input_kind != "question" and user_memory is not None:
             # Prefer claim-level contradiction detection for common personal-profile facts.
             # This avoids false positives from pure embedding drift, and catches true conflicts
             # even when retrieval does not surface the relevant prior memory.
             new_facts = extract_fact_slots(user_query)
             logger.debug("Extracted fact slots: %s", list(new_facts.keys()) if new_facts else None)
+            print(f"[CONTRADICTION_DEBUG] extracted slots: {list(new_facts.keys()) if new_facts else 'none'}")
             if new_facts:
                 user_vector = encode_vector(user_query)
                 previous_user_memories = self._load_thread_user_memories(
@@ -6672,6 +6674,7 @@ class CRTEnhancedRAG:
                     latest_norm = getattr(latest_fact, "normalized", None)
                     new_norm = getattr(new_fact, "normalized", None)
                     logger.debug("Fact comparison: slot=%s, latest='%s', new='%s', match=%s", slot, latest_norm, new_norm, latest_norm == new_norm)
+                    print(f"[CONTRADICTION_DEBUG] slot={slot} latest='{latest_norm}' new='{new_norm}' match={latest_norm == new_norm}")
                     if latest_norm == new_norm:
                         continue
                     if slot == "name" and names_look_equivalent(
@@ -6685,7 +6688,29 @@ class CRTEnhancedRAG:
                         )
                         continue
 
-                    # Values differ - but before flagging as contradiction, check ML detector
+                    # ---- Slot type awareness ----
+                    # If slot_discovery knows this is an EXCLUSIVE slot, a different
+                    # value IS a contradiction — skip the ML detector gate entirely.
+                    # This prevents the ML detector from suppressing obvious reversals
+                    # like favorite_drink: "orange juice" -> "water".
+                    from .slot_discovery import get_slot_type, SlotType
+                    _slot_type = get_slot_type(slot, db_path=getattr(self.memory, 'db_path', None))
+                    print(f"[CONTRADICTION_DEBUG] slot_type={_slot_type.value} for slot={slot}")
+
+                    if _slot_type == SlotType.ADDITIVE:
+                        # Additive slots can hold multiple values — not a contradiction
+                        print(f"[CONTRADICTION_DEBUG] ADDITIVE slot {slot} — skipping contradiction (coexist)")
+                        logger.info(f"[SLOT_AWARE] Additive slot '{slot}': '{new_norm}' coexists with '{latest_norm}'")
+                        continue
+
+                    if _slot_type == SlotType.EXCLUSIVE:
+                        # Exclusive slot with different value = contradiction. Skip ML gate.
+                        print(f"[CONTRADICTION_DEBUG] EXCLUSIVE slot {slot}: '{latest_norm}' -> '{new_norm}' = CONTRADICTION (bypassing ML)")
+                        logger.info(f"[SLOT_AWARE] Exclusive slot '{slot}' contradiction: '{latest_norm}' -> '{new_norm}'")
+                        selected_prev = latest_mem
+                        break
+
+                    # Values differ - for UNKNOWN/TEMPORAL slots, check ML detector
                     # This catches semantic equivalents like "PhD in ML" vs "doctorate in CS"
                     if self.ml_detector:
                         ml_result = self.ml_detector.check_contradiction(
@@ -6694,8 +6719,10 @@ class CRTEnhancedRAG:
                             slot=slot,
                             context={"query": user_query}  # Pass query for retraction pattern detection
                         )
+                        print(f"[CONTRADICTION_DEBUG] ML detector result: {ml_result}")
                         if not ml_result.get("is_contradiction", True):
                             # ML says it's not a contradiction (e.g., semantic equivalence)
+                            print(f"[CONTRADICTION_DEBUG] ML BLOCKED contradiction for slot={slot}: '{latest_norm}' vs '{new_norm}' category={ml_result.get('category')}")
                             logger.debug(
                                 "ML detector says no contradiction for slot=%s: '%s' vs '%s' (category=%s)",
                                 slot, latest_norm, new_norm, ml_result.get("category", "unknown")
@@ -6712,17 +6739,26 @@ class CRTEnhancedRAG:
                     logger.info(f"[CONTRADICTION_DETECTION] Generic fact contradiction detected: query='{user_query[:60]}' vs old='{selected_prev.text[:60]}', drift={drift:.3f}")
 
                     # Phase 1.1: Use CRTMath paraphrase check as final gate
-                    is_real_contradiction, crt_reason = self.crt_math.detect_contradiction(
-                        drift=drift,
-                        confidence_new=0.95,
-                        confidence_prior=float(selected_prev.confidence),
-                        source=user_memory.source,
-                        text_new=user_query,
-                        text_prior=selected_prev.text,
-                        slot=slot,
-                        value_new=str(getattr(new_fact, "value", getattr(new_fact, "normalized", ""))),
-                        value_prior=str(getattr(latest_fact, "value", getattr(latest_fact, "normalized", ""))),
-                    )
+                    # BUT: for EXCLUSIVE slots, skip paraphrase gate — the slot type
+                    # already confirms this is a real contradiction, and embedding
+                    # similarity will be high because both discuss the same topic.
+                    _slot_type_for_gate = get_slot_type(slot, db_path=getattr(self.memory, 'db_path', None))
+                    if _slot_type_for_gate == SlotType.EXCLUSIVE:
+                        is_real_contradiction = True
+                        crt_reason = f"exclusive_slot_override:{slot}"
+                        print(f"[CONTRADICTION_DEBUG] EXCLUSIVE slot bypass of paraphrase gate for {slot}")
+                    else:
+                        is_real_contradiction, crt_reason = self.crt_math.detect_contradiction(
+                            drift=drift,
+                            confidence_new=0.95,
+                            confidence_prior=float(selected_prev.confidence),
+                            source=user_memory.source,
+                            text_new=user_query,
+                            text_prior=selected_prev.text,
+                            slot=slot,
+                            value_new=str(getattr(new_fact, "value", getattr(new_fact, "normalized", ""))),
+                            value_prior=str(getattr(latest_fact, "value", getattr(latest_fact, "normalized", ""))),
+                        )
                     if not is_real_contradiction:
                         logger.info(f"[CRT_PARAPHRASE] Skipped generic fact contradiction - {crt_reason}")
                     else:
