@@ -155,9 +155,9 @@
       <div class="test-claim">Contradiction Detection</div>
       <div class="test-pass"><strong>Pass:</strong> Introduce a statement that contradicts an existing high-trust memory. The system flags it as a contradiction and logs it to the ledger without silently overwriting.</div>
       <div class="test-fail">Fail: New statement overwrites old belief with no record of conflict.</div>
-      <div class="result-log"><strong>Preliminary (DB evidence):</strong> 29 contradictions in ledger (5 open, 24 resolved). Detection fires but conservatively &mdash; 29 out of 78,474 memories = 0.037% detection rate. Guard blocked 10 contradiction_disclosure events. System holds open contradictions rather than silently resolving. <strong>Concern:</strong> detection trigger may be too conservative. Needs deliberate contradiction test to verify live behavior.</div>
+      <div class="result-log"><strong>Tested (April 7, 2026):</strong> Deliberate slot-level reversal: told system "favorite drink is orange juice" then "favorite drink is actually water, I don't drink orange juice anymore." <strong>Result: detection did NOT fire.</strong> Both memories stored independently (OJ at 0.75, water at 0.70) with no ledger entry. OJ trust actually increased (0.73&rarr;0.75) despite explicit user correction. The detection code exists and slot extraction works correctly (both extract <code>favorite_drink</code>), but an intermediate gate (ML detector or CRTMath paraphrase check) is suppressing the flag. Debug instrumentation added. <strong>Design finding:</strong> slots need multi-value support with temporal weighting &mdash; see <a href="architecture.html">Architecture: Belief Slot Evolution</a>. Also: detection should produce soft acknowledgment, not hard blocking (previous iterations froze generation on contradiction). Score remains 1 until gate is fixed.</div>
     </div>
-    <div class="test-score" style="color:#fbbf24;">1</div>
+    <div class="test-score" style="color:#f87171;">1</div>
   </div>
 
   <div class="test-row">

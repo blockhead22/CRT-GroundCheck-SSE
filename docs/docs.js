@@ -215,6 +215,42 @@
     main.appendChild(pager);
   }
 
+  // ── Inject changelog at bottom of main ──
+  function injectChangelog() {
+    var main = document.querySelector('main.main');
+    if (!main) return;
+
+    fetch(prefix + 'changelog.json')
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(data) {
+        if (!data) return;
+        var entries = data[currentFile];
+        if (!entries || !entries.length) return;
+
+        var section = document.createElement('section');
+        section.className = 'changelog-section';
+        section.innerHTML =
+          '<div class="accent-line"></div>' +
+          '<h3 class="changelog-title">Change Log</h3>';
+
+        var list = document.createElement('div');
+        list.className = 'changelog-list';
+
+        entries.forEach(function(e) {
+          var row = document.createElement('div');
+          row.className = 'changelog-entry';
+          row.innerHTML =
+            '<span class="changelog-date">' + e.date + '</span>' +
+            '<span class="changelog-note">' + e.note + '</span>';
+          list.appendChild(row);
+        });
+
+        section.appendChild(list);
+        main.appendChild(section);
+      })
+      .catch(function() {}); // silent fail — changelog is optional
+  }
+
   // ── Inject Bootstrap 5 CSS (before first paint where possible) ──
   function injectBootstrap() {
     var bs = document.createElement('link');
@@ -329,6 +365,7 @@
   injectDocNav();
   injectPager();
   injectFooter();
+  injectChangelog();
   // Run bootstrapify after DOM is settled
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', bootstrapify);

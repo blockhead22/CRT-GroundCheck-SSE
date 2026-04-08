@@ -827,6 +827,75 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 </section>
 
+<!-- ===== DESIGN EVOLUTION: BELIEF SLOTS ===== -->
+<section>
+  <span class="section-number">Design Evolution</span>
+  <h2>Belief Slot Evolution</h2>
+  <div class="accent-line"></div>
+
+  <div class="remark">
+    <strong>Live testing finding (April 7, 2026):</strong> A deliberate contradiction test &mdash; changing favorite drink from orange juice to water &mdash; exposed a fundamental design gap. The contradiction detection pipeline ran but did not fire. The old memory was not demoted. The new memory was stored alongside the old one with no ledger entry. This section documents what was found and the architectural response.
+  </div>
+
+  <h3>The Problem: Single-Value Slots</h3>
+  <p>The current slot model treats belief slots as single-value fields: <code>favorite_drink = orange juice</code>. When a new value arrives (<code>favorite_drink = water</code>), the system should detect the conflict, record the transition, and adjust trust. Instead, it stored both values as independent memories with no connection between them.</p>
+
+  <p>The detection code exists (line 6620+ in <code>crt_rag.py</code>). The slot extraction works correctly &mdash; both <code>favorite_drink = orange juice</code> and <code>favorite_drink = actually water</code> are properly extracted. But one of the intermediate gates (ML detector or CRTMath paraphrase check) is suppressing the flag before it reaches the ledger. Debug instrumentation has been added to identify which gate.</p>
+
+  <h3>The Deeper Issue: People Live in Contradiction</h3>
+  <p>The test exposed something more fundamental than a detection threshold: <strong>belief slots are not single-value fields.</strong> A person's favorite drink is not a database column. It is a weighted, temporal, multi-valued state:</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Value</th><th>Status</th><th>Trust</th><th>Relationship</th></tr></thead>
+    <tbody>
+      <tr><td>Water</td><td><strong>Current</strong></td><td>0.75</td><td>User's most recent explicit statement</td></tr>
+      <tr><td>Coffee</td><td><strong>Concurrent</strong></td><td>0.71</td><td>Also true, not contradicted</td></tr>
+      <tr><td>Orange juice</td><td><strong>Deprecated</strong></td><td>0.40 (demoted)</td><td>User explicitly said they don't drink it anymore</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Three values for one slot, all valid, with different trust levels and temporal statuses. The system already supports this at the memory level &mdash; multiple memories coexist with different trust scores. But the slot extraction and contradiction detection layer treats slots as single-valued, which means it doesn't know that "water" supersedes "orange juice" while "coffee" coexists.</p>
+
+  <h3>What Should Happen</h3>
+  <p>When the user says "My favorite drink is actually water, I don't really drink orange juice anymore":</p>
+
+  <ol style="color:var(--text-secondary);font-size:0.9em;line-height:1.8;margin:16px 0 16px 20px;">
+    <li><strong>Detection fires:</strong> System detects <code>favorite_drink = water</code> conflicts with existing <code>favorite_drink = orange juice</code></li>
+    <li><strong>Ledger entry created:</strong> "User corrected favorite_drink from orange juice to water"</li>
+    <li><strong>Old memory demoted:</strong> OJ trust drops from 0.73 to ~0.40 with reason <code>user_correction</code></li>
+    <li><strong>New memory stored:</strong> Water at current trust level</li>
+    <li><strong>Concurrent values untouched:</strong> Coffee stays at 0.71 (no conflict)</li>
+    <li><strong>Response continues normally:</strong> Soft acknowledgment woven into the natural response, not a hard block</li>
+  </ol>
+
+  <div class="quote-block">
+    <p>Contradiction detection should produce a soft signal &mdash; an acknowledgment injected into context, a trust adjustment, a ledger entry. Not a hard block that freezes generation. The system should hold the contradiction, weight it, and keep talking. This is what the design laws say: contradictions are signals, not errors.</p>
+  </div>
+
+  <h3>Architecture Target: Multi-Valued Belief Slots</h3>
+  <p>The long-term fix is a slot model that supports multiple values with temporal and priority weighting:</p>
+
+  <pre>{
+  "slot": "favorite_drink",
+  "values": [
+    {"value": "water",        "trust": 0.75, "status": "current",    "since": "2026-04-07"},
+    {"value": "coffee",       "trust": 0.71, "status": "concurrent", "since": "2025-12-06"},
+    {"value": "orange juice", "trust": 0.40, "status": "deprecated", "reason": "user_correction",
+                                              "deprecated_at": "2026-04-07"}
+  ]
+}</pre>
+
+  <p>This captures the full epistemic state of a single slot: what is currently true, what is also true, and what used to be true but was explicitly corrected. The contradiction ledger links the transition. The trust scores reflect the evidence. Nothing is deleted.</p>
+
+  <div class="impl-block">
+    <span class="impl-label">Status</span>
+    <p><strong>Short-term:</strong> Debug instrumentation added to identify which gate is suppressing contradiction detection on slot-level reversals. Fix the gate, wire soft acknowledgment into generation context.<br>
+    <strong>Long-term:</strong> Multi-valued slot schema with temporal weighting. This is an architecture evolution and a potential paper contribution &mdash; no existing AI memory system supports multi-valued belief slots with contradiction-aware temporal weighting.</p>
+  </div>
+</section>
+
 </main>
 </div>
 <script src="docs.js"></script>

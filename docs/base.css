@@ -718,6 +718,43 @@ td code {
 }
 .footer a:hover { color: var(--text); }
 
+/* ===== CHANGELOG ===== */
+.changelog-section {
+  margin-top: 60px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+.changelog-title {
+  font-family: var(--mono);
+  font-size: 0.7em;
+  font-weight: 600;
+  color: var(--text-faint);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.changelog-list { }
+.changelog-entry {
+  display: flex;
+  gap: 14px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: baseline;
+}
+.changelog-entry:last-child { border-bottom: none; }
+.changelog-date {
+  font-family: var(--mono);
+  font-size: 0.72em;
+  color: var(--text-faint);
+  white-space: nowrap;
+  min-width: 90px;
+}
+.changelog-note {
+  font-size: 0.82em;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
 /* ===== THEME TOGGLE (sidebar) ===== */
 .theme-toggle {
   display: inline-flex;

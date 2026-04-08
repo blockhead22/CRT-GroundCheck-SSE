@@ -1,0 +1,57 @@
+{
+  "index.html": [
+    {"date": "2026-04-07", "note": "Introduced CORE naming (replaces CRT). Added v2 validation data, sensitive domain findings, time amplification stats. Merged throughline.html content. Added memory network hero animation."},
+    {"date": "2026-04-07", "note": "Principle-grid styling for thesis laws. Organized papers nav into 4 groups (Evidence, Architecture, Theory, Reference)."}
+  ],
+  "contradiction-density.html": [
+    {"date": "2026-04-07", "note": "Added Sections 9-10: v1 to v2 filter comparison (98.9% filtered, 10.4% genuine contradictions) and arc-level contradiction analysis (59.5% flip rate, 93% pairwise-invisible). Fixed stray </div> breaking page layout."}
+  ],
+  "sensitive-domains.html": [
+    {"date": "2026-04-07", "note": "New page. Substance use contradictions (192-day gap, teach-moderation vs quit-entirely). Dating readiness contradictions (open-up vs step-away). Real examples from 13-month GPT corpus."}
+  ],
+  "continuity-blind.html": [
+    {"date": "2026-04-07", "note": "Added v2 context block, draft statistics notice, boundless claim detection remark, classifier calibration probes remark. Fixed encoding corruption."}
+  ],
+  "claim-evaluation-guide.html": [
+    {"date": "2026-04-07", "note": "Complete rewrite as personal research validation guide. Thesis, 3 sub-claims, 0-3 scoring rubric, 7 research areas with harness locations, 6 open gaps, scorecard, validation protocol."},
+    {"date": "2026-04-07", "note": "Added Section 14: research writing guide with claim-evidence-interpretation formula, weak vs strong examples, 4 paragraph templates."}
+  ],
+  "why-this-matters.html": [
+    {"date": "2026-04-07", "note": "New page. External validation from BeliefShift, Suzgun (Nature MI), Sharma/Perez (ICLR 2024), MemOS, Farquhar (Nature 2024), Anthropic emotion vectors. 5 honest cautions. Mythos System Card findings (discontinuity of self, emotion-driven destructive behavior)."}
+  ],
+  "about.html": [
+    {"date": "2026-04-07", "note": "New page. Etymology (aither to Aeteros), naming convention (Aeteros > CORE > aeteros-core), business position, 4-phase path, builder section."}
+  ],
+  "architecture.html": [
+    {"date": "2026-04-07", "note": "Added pipeline flow hero animation. Fixed stray </div>."},
+    {"date": "2026-04-07", "note": "Added Belief Slot Evolution section: live testing finding on contradiction detection gap, multi-valued slot design target, soft acknowledgment vs hard blocking."}
+  ],
+  "immune-agents.html": [
+    {"date": "2026-04-07", "note": "Changed 3 planned agent badges to built. Added shield formation hero animation. Fixed stray </div>."}
+  ],
+  "governance-validation.html": [
+    {"date": "2026-04-07", "note": "New page. 17 tests across 3 tiers (Detection, Intervention, Outcome). Populated with preliminary production data: 78,474 memories, 4,805 trust changes, belief/speech gap 0.548."},
+    {"date": "2026-04-07", "note": "Test 1.1 updated with live contradiction test result: slot-level reversal not flagged, design finding documented."}
+  ],
+  "variance-probing.html": [
+    {"date": "2026-04-07", "note": "Fixed 22,524 to 22,702 response count. Added 480px mobile breakpoint for charts. Moved from Theory to Evidence in nav."}
+  ],
+  "whitepaper.html": [
+    {"date": "2026-04-07", "note": "Immune agent count 2 to 5. Planned badges to built. In-progress badge to shipped. Fixed response count."}
+  ],
+  "experiments.html": [
+    {"date": "2026-04-07", "note": "Fixed Sonnet 3.5 to Sonnet 4.5. Added 480px chart breakpoint. Fixed stray </div>."}
+  ],
+  "glossary.html": [
+    {"date": "2026-04-07", "note": "Fixed six to five immune agents. Fixed stray </div>."}
+  ],
+  "emotion-governance.html": [
+    {"date": "2026-04-07", "note": "Changed proved to demonstrated for empirical findings. Fixed stray </div>."}
+  ],
+  "cascade-complexity.html": [
+    {"date": "2026-04-07", "note": "Fixed stray </div>."}
+  ],
+  "geometric-memory.html": [
+    {"date": "2026-04-07", "note": "Fixed stray </div>."}
+  ]
+}
