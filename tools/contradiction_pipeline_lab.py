@@ -14,6 +14,7 @@ Usage:
 
 import argparse
 import json
+import os
 import time
 import sys
 from dataclasses import dataclass, field, asdict
@@ -202,15 +203,23 @@ class LabClient:
         self.base_url = base_url.rstrip("/")
         self.session = requests.Session()
 
-    def send_message(self, text: str, thread_id: str) -> Dict[str, Any]:
-        """Send a chat message and return the full response dict."""
-        resp = self.session.post(
-            f"{self.base_url}/api/chat/send",
-            json={"message": text, "thread_id": thread_id},
-            timeout=300,
-        )
-        resp.raise_for_status()
-        return resp.json()
+    def send_message(self, text: str, thread_id: str, retries: int = 2) -> Dict[str, Any]:
+        """Send a chat message and return the full response dict. Retries on timeout."""
+        for attempt in range(retries + 1):
+            try:
+                resp = self.session.post(
+                    f"{self.base_url}/api/chat/send",
+                    json={"message": text, "thread_id": thread_id},
+                    timeout=600,
+                )
+                resp.raise_for_status()
+                return resp.json()
+            except requests.exceptions.ReadTimeout:
+                if attempt < retries:
+                    print(f"      Timeout (attempt {attempt + 1}/{retries + 1}), retrying...")
+                    time.sleep(5)
+                else:
+                    return {"answer": "[TIMEOUT]", "metadata": {}, "_timeout": True}
 
     def get_ledger_open(self, thread_id: str) -> List[Dict]:
         resp = self.session.get(
@@ -250,7 +259,7 @@ class LabClient:
 
 # ── Lab Runner ───────────────────────────────────────────────────────────────
 
-def run_lab(base_url: str, thread_id: str) -> Dict[str, Any]:
+def run_lab(base_url: str, thread_id: str, skip_seed: bool = False, start_from: str = None) -> Dict[str, Any]:
     """Run the full lab: seed → test → verify → return results."""
     client = LabClient(base_url)
 
@@ -264,28 +273,33 @@ def run_lab(base_url: str, thread_id: str) -> Dict[str, Any]:
     print()
 
     # ── Phase 1: Seed ────────────────────────────────────────────────────
-    print("=== PHASE 1: SEEDING FACTS ===")
     seed_results: List[SeedResult] = []
-    for i, seed in enumerate(SEED_MESSAGES):
-        print(f"  Seed {i+1}/5: {seed['slot']} — {seed['message'][:50]}...")
-        t0 = time.time()
-        resp = client.send_message(seed["message"], thread_id)
-        elapsed = (time.time() - t0) * 1000
+    if skip_seed:
+        print("=== PHASE 1: SEEDING SKIPPED (--skip-seed) ===")
+        for seed in SEED_MESSAGES:
+            seed_results.append(SeedResult(slot=seed["slot"], message=seed["message"], response_preview="[skipped]"))
+        print()
+    else:
+        print("=== PHASE 1: SEEDING FACTS ===")
+        for i, seed in enumerate(SEED_MESSAGES):
+            print(f"  Seed {i+1}/5: {seed['slot']} — {seed['message'][:50]}...")
+            t0 = time.time()
+            resp = client.send_message(seed["message"], thread_id)
+            elapsed = (time.time() - t0) * 1000
 
-        sr = SeedResult(
-            slot=seed["slot"],
-            message=seed["message"],
-            response_preview=resp.get("answer", "")[:150],
-        )
-        # Try to extract memory_id from metadata
-        meta = resp.get("metadata", {})
-        sr.memory_id = meta.get("memory_id", "")
-        sr.initial_trust = meta.get("trust", 0.0)
-        seed_results.append(sr)
-        print(f"    OK ({elapsed:.0f}ms)")
-        time.sleep(1)  # Brief pause between seeds
+            sr = SeedResult(
+                slot=seed["slot"],
+                message=seed["message"],
+                response_preview=resp.get("answer", "")[:150],
+            )
+            meta = resp.get("metadata", {})
+            sr.memory_id = meta.get("memory_id", "")
+            sr.initial_trust = meta.get("trust", 0.0)
+            seed_results.append(sr)
+            print(f"    OK ({elapsed:.0f}ms)")
+            time.sleep(1)
 
-    print()
+        print()
 
     # Snapshot ledger state after seeding
     baseline_ledger = client.get_ledger_open(thread_id)
@@ -295,7 +309,14 @@ def run_lab(base_url: str, thread_id: str) -> Dict[str, Any]:
     # ── Phase 2: Test ────────────────────────────────────────────────────
     print("=== PHASE 2: RUNNING PROBES ===")
     probe_results: List[ProbeResult] = []
+    skipping = start_from is not None
     for probe in TEST_PROBES:
+        if skipping:
+            if probe.probe_id == start_from:
+                skipping = False
+            else:
+                print(f"  {probe.probe_id} — skipped (--start-from {start_from})")
+                continue
         expect = "SHOULD FIRE" if probe.should_fire else "should NOT fire"
         print(f"  {probe.probe_id} [{expect}]: {probe.description}")
 
@@ -307,13 +328,18 @@ def run_lab(base_url: str, thread_id: str) -> Dict[str, Any]:
         # Parse response
         meta = resp.get("metadata", {})
         answer = resp.get("answer", "")
+        timed_out = resp.get("_timeout", False)
+
+        if timed_out:
+            print(f"    TIMEOUT — skipping verification, marking as failed")
 
         # Check contradiction_detected in metadata
         contradiction_detected = bool(meta.get("contradiction_detected", False))
 
-        # Query ledger for new entries
-        time.sleep(0.5)  # Brief wait for async ledger writes
-        current_ledger = client.get_ledger_open(thread_id)
+        # Query ledger for new entries (skip if timed out)
+        if not timed_out:
+            time.sleep(0.5)
+        current_ledger = client.get_ledger_open(thread_id) if not timed_out else baseline_ledger
         new_entries = [
             e for e in current_ledger
             if e.get("ledger_id") not in baseline_ledger_ids
@@ -325,7 +351,7 @@ def run_lab(base_url: str, thread_id: str) -> Dict[str, Any]:
         ]
 
         # Query trust demotions
-        trust_deltas = client.get_trust_delta(thread_id, pre_ts - 1)
+        trust_deltas = client.get_trust_delta(thread_id, pre_ts - 1) if not timed_out else []
         demotions = [d for d in trust_deltas if d.get("delta", 0) < 0]
 
         # Build result
@@ -658,15 +684,68 @@ def generate_report(results: Dict[str, Any], output_path: Path) -> str:
 
 # ── Entry Point ──────────────────────────────────────────────────────────────
 
+def _start_isolated_backend(port: int = 8099) -> "subprocess.Popen":
+    """Start the Aether backend on an isolated port with per-thread DB isolation."""
+    import subprocess
+    env = {**os.environ, "CRT_SHARED_MEMORY": "false"}
+    # Remove Electron-specific vars that might interfere
+    env.pop("ELECTRON_RUN_AS_NODE", None)
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "crt_api:app",
+         "--host", "127.0.0.1", "--port", str(port), "--log-level", "warning"],
+        env=env,
+        cwd=str(Path(__file__).resolve().parent.parent),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    # Wait for backend to be ready
+    import urllib.request
+    for _ in range(60):
+        try:
+            urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=2)
+            return proc
+        except Exception:
+            time.sleep(1)
+    proc.kill()
+    raise RuntimeError(f"Isolated backend failed to start on port {port}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Contradiction Pipeline Lab")
-    parser.add_argument("--base-url", default="http://localhost:8000", help="Aether backend URL")
+    parser.add_argument("--base-url", default=None, help="Aether backend URL (default: start isolated instance)")
+    parser.add_argument("--port", type=int, default=8099, help="Port for isolated backend (default: 8099)")
     parser.add_argument("--thread-id", default=None, help="Thread ID (auto-generated if omitted)")
+    parser.add_argument("--no-isolate", action="store_true", help="Use existing backend (UNSAFE for shared memory)")
+    parser.add_argument("--skip-seed", action="store_true", help="Skip seeding phase (reuse existing thread data)")
+    parser.add_argument("--start-from", default=None, help="Skip probes before this ID (e.g. --start-from T5)")
     args = parser.parse_args()
 
     tid = args.thread_id or f"lab_contradiction_{int(time.time())}"
+    isolated_proc = None
 
-    results = run_lab(args.base_url, tid)
+    if args.base_url:
+        base_url = args.base_url
+    elif args.no_isolate:
+        base_url = "http://localhost:8000"
+        print("WARNING: Using shared backend. Lab data will go into shared memory!")
+    else:
+        print(f"Starting isolated backend on port {args.port} (CRT_SHARED_MEMORY=false)...")
+        isolated_proc = _start_isolated_backend(args.port)
+        base_url = f"http://127.0.0.1:{args.port}"
+        print(f"Isolated backend ready at {base_url}")
+        print(f"Lab thread will use its own DB: crt_memory_{tid}.db")
+        print()
+
+    try:
+        results = run_lab(base_url, tid, skip_seed=args.skip_seed, start_from=args.start_from)
+    finally:
+        if isolated_proc:
+            print("Shutting down isolated backend...")
+            isolated_proc.terminate()
+            try:
+                isolated_proc.wait(timeout=10)
+            except Exception:
+                isolated_proc.kill()
 
     # Generate reports
     ts_str = datetime.now().strftime("%Y%m%d-%H%M%S")

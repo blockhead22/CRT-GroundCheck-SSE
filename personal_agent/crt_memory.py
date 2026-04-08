@@ -1846,8 +1846,10 @@ class CRTMemorySystem:
             if detected_domains and detected_domains != ["general"]:
                 domain_tags = detected_domains
             
-            # Extract facts using two-tier system (local LLM enabled for broader coverage)
-            extractor = TwoTierFactSystem(enable_llm=True, use_local_llm=True)
+            # Extract facts using two-tier system (local-only; LLM extraction tested
+            # 2026-04-08 and found too slow — llama3.2 adds 30-250s per write,
+            # causing 300s timeouts on simple facts. Cloud extraction is next step.)
+            extractor = TwoTierFactSystem(enable_llm=False)
             fact_data = extractor.extract_facts(text)
             
             # Determine extraction method based on what was used
