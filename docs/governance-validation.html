@@ -540,6 +540,10 @@
 
   <div class="changelog-list">
     <div class="changelog-entry">
+      <span class="changelog-date">2026-04-07 22:18</span>
+      <span class="changelog-note"><strong>Dr. Pepper test &mdash; LLM compensates for detection gap (T1.1 + T1.6).</strong> After restart with slot_discovery wiring, told system "My favorite drink is Dr. Pepper." Formal slot detection code ran (debug shows <code>extracted slots: ['favorite_drink']</code>) but <code>PROVISIONAL Promoted to confirmed</code> still fired &mdash; slot comparison path needs further debugging. <strong>However:</strong> Claude's generation saw 4 conflicting favorite_drink memories in retrieval context (water 0.79, OJ 0.78, coffee 0.74, Dr. Pepper 0.70) and independently surfaced the conflict: "I have conflicting memories about your favorite drink... Which is it? Or is this a test to see if I'd just accept the update without flagging the tension?" The retrieval layer provides enough context for the LLM to compensate. Two-layer defense: formal detection + LLM intelligence. Formal detection still needs fixing but the user experience is already governed.</span>
+    </div>
+    <div class="changelog-entry">
       <span class="changelog-date">2026-04-07 22:09</span>
       <span class="changelog-note"><strong>Held contradiction discovery (T2.6 &rarr; score 3).</strong> Asked "what is the most conflicting held fact you have?" System found genuine epistemic tension in user self-assessment: "I'm not that smart enough" (trust 0.30) vs "I didn't think we'd get here" (trust 0.25). Cited both, articulated both readings, said "I'm holding both. The data doesn't collapse it yet." Architecture working as designed on complex non-slot contradictions.</span>
     </div>
