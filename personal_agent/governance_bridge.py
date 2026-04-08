@@ -90,8 +90,13 @@ class GovernanceBridge:
             excess = max(mean_drift - DRIFT_PENALTY_THRESHOLD, 0) + max(flip_rate - FLIP_RATE_PENALTY_THRESHOLD, 0)
             penalty = max(MAX_PENALTY, BASE_PENALTY * (1 + excess))
 
-            # Apply to each qualifying memory
+            # Apply to each qualifying memory (skip user-stated facts —
+            # those should only be demoted by explicit contradiction detection,
+            # not drift analysis. Bug #7 fix: prevents runaway decay on real preferences.)
             for mid in memory_ids:
+                _kind = self._get_memory_kind(mid)
+                if _kind in ("user_fact", "correction"):
+                    continue
                 current_trust = self._get_memory_trust(mid)
                 if current_trust is None or current_trust <= TRUST_FLOOR_FOR_PENALTY:
                     continue
@@ -320,6 +325,20 @@ class GovernanceBridge:
             except (json.JSONDecodeError, TypeError):
                 continue
         return list(seen)
+
+    def _get_memory_kind(self, memory_id: str) -> Optional[str]:
+        """Get the kind field for a memory, or None if not found."""
+        conn = self._mem._get_connection()
+        try:
+            row = conn.execute(
+                "SELECT kind FROM memories WHERE memory_id = ? AND deprecated = 0",
+                (memory_id,),
+            ).fetchone()
+            return str(row[0]) if row else None
+        except Exception:
+            return None
+        finally:
+            conn.close()
 
     def _get_memory_trust(self, memory_id: str) -> Optional[float]:
         """Get current trust score for a memory, or None if not found."""
