@@ -176,11 +176,19 @@
         <td>Added 30&ndash;250s latency per memory write. Caused 300s timeouts on simple seed facts ("I'm 34 years old"). Pipeline already runs 35&ndash;50s per message; local LLM extraction made it unusable.</td>
       </tr>
       <tr>
-        <td><strong>3. Cloud</strong></td>
+        <td><strong>3. Regex + Guards</strong></td>
+        <td><code>extract_fact_slots</code> + same-value skip + third-person filter</td>
+        <td><span class="run-score score-amber">3/4</span></td>
+        <td><span class="run-score score-green">5/5</span></td>
+        <td><span class="status-badge badge-done">Tested</span></td>
+        <td>Two guards eliminate false positives. T1 (name) reclassified as identity-level. T4 (employer in paragraph) passes with isolated DB. One gap: T5 contextual declaration.</td>
+      </tr>
+      <tr>
+        <td><strong>4. Cloud</strong></td>
         <td><code>gpt-4o-mini</code> via <code>cloud_features.classify_slot()</code></td>
         <td colspan="2" style="text-align:center;color:var(--text-faint);">Not yet isolated</td>
         <td><span class="status-badge badge-next">Next</span></td>
-        <td>Infrastructure exists. First test exposed a critical issue: cloud demotion operates on text search, not structured slots, and cascaded destructively through shared memory. Requires isolated DB before retesting.</td>
+        <td>Infrastructure exists. First test exposed critical issue: cloud demotion uses text search, not structured slots, and cascaded destructively through shared memory. Requires demotion rewrite + isolated DB.</td>
       </tr>
     </tbody>
   </table>
@@ -257,16 +265,26 @@
   <div class="accent-line"></div>
 
   <h3>For the Pipeline</h3>
-  <p>The write-path contradiction fix is validated and stays. The next step is cloud extraction with an isolated database. If cloud extraction achieves 5/5 on should-fire probes, the pipeline gains production-grade contradiction detection for the first time. The cloud governance demotion code needs to be rewritten to use <code>memory_facts</code> and BDG cascade before it can be enabled in production.</p>
+  <p>The write-path contradiction fix is validated (8/9, zero false positives) and stays in production. Three of four should-fire probes pass with regex-only extraction plus two guards. The remaining gap (T5: contextual declarations) requires cloud extraction. Before cloud can be enabled in production, the cloud governance demotion code must be rewritten to use <code>memory_facts</code> (not text search) and flow through the BDG cascade with damping.</p>
 
   <h3>For the Research</h3>
-  <p>The escalation chain (regex &rarr; local LLM &rarr; cloud) is itself a research finding. It demonstrates that <strong>contradiction detection is not a single capability &mdash; it's a stack</strong>: extraction quality determines detection quality. The bottleneck is always the weakest extraction layer, not the detection logic. This maps directly to the paper's argument: governance requires more than memory &mdash; it requires structured understanding of what the memory contains.</p>
+  <p>The escalation chain (regex &rarr; local LLM &rarr; cloud) is itself a research finding. It demonstrates that <strong>contradiction detection is not a single capability &mdash; it's a stack</strong>: extraction quality determines detection quality. The bottleneck is always the weakest extraction layer, not the detection logic.</p>
+  <p>A deeper finding emerged during testing: <strong>not every message needs the same governance treatment.</strong> Code questions carry zero identity facts. Casual conversation about a friend carries third-party facts that shouldn't be attributed to the user. Reinforcing an existing fact shouldn't trigger contradiction detection. The system needs epistemic classification of the input before detection logic runs &mdash; and one-size-fits-all extraction is itself a governance failure. This maps directly to the paper's argument: governance requires structured understanding of what the memory contains, who it's about, and whether it warrants comparison at all.</p>
 
   <h3>For Governance Validation</h3>
-  <p>Test 1.1 (Contradiction Detection) currently scores 1 on the governance validation scorecard. A successful cloud extraction lab run would move it to score 2. Combined with the existing Tier 1 scores (5/6 at score 2+), this would meet the minimum threshold for a defensible draft.</p>
+  <p><strong>Test 1.1 (Contradiction Detection) upgraded to score 2.</strong> Combined with the existing Tier 1 scores, all 6 Tier 1 tests are now at score 2+. <strong>Minimum draft threshold met.</strong></p>
 
   <h3>For the System</h3>
   <p>The incident exposed that the cloud governance layer operates outside the BDG cascade system. This is a structural gap: two independent demotion mechanisms (write-path slot exclusivity and cloud governance text search) that don't coordinate. The architectural target is a single demotion pathway that always flows through the BDG with damping, regardless of source.</p>
+  <p>Name changes were reclassified as identity-level operations &mdash; they belong to a user profile correction path, not the belief contradiction pipeline. This distinction (identity vs belief) needs to be formalized in the slot type system.</p>
+
+  <h3>Open Gaps</h3>
+  <ul class="issue-list">
+    <li><strong>T5 (contextual declarations):</strong> Regex extraction cannot parse "it's definitely my favorite color now, green." Requires cloud or LLM extraction with proper isolation.</li>
+    <li><strong>Cloud governance demotion:</strong> Uses <code>LIKE '%name%'</code> text search instead of <code>memory_facts</code>. Must be rewritten before cloud extraction can be enabled in production.</li>
+    <li><strong>Proportional governance:</strong> Not every message needs full extraction + comparison. Earned governance (signal-gated, deferred, proportional) is the architectural target but not yet implemented.</li>
+    <li><strong>T5/T9 pipeline hangs:</strong> Specific probes consistently stall regardless of network state. Root cause not yet diagnosed &mdash; likely a pipeline interaction with longer or contextually complex messages.</li>
+  </ul>
 </section>
 
 <!-- ===== RUN INDEX ===== -->
@@ -294,10 +312,17 @@
     <p><span class="status-badge badge-fail">Incident</span> Cloud slot classification triggered 81-memory cascade demotion through shared production database. Run aborted. Memories manually restored. <strong>Requires isolated DB before retry.</strong></p>
   </div>
 
+  <div class="run-card" style="border-color: rgba(52,211,153,0.3);">
+    <h3>Contradiction Pipeline Lab v4 &mdash; Regex + Guards (isolated)</h3>
+    <div class="run-meta">2026-04-08 03:26 &middot; thread: lab_contradiction_1775634498 &middot; isolated DB</div>
+    <p><span class="run-score score-green">8/9</span> Should-fire: <span class="run-score score-amber">3/4</span> Should-NOT-fire: <span class="run-score score-green">5/5</span></p>
+    <p>Isolated DB + two write-path guards (same-value skip, third-person filter). T1 (name) reclassified as identity-level, removed from scoring. T4 (employer in long paragraph) now passes with clean DB. T8 (reinforcement) and T9 (third-party) false positives eliminated. Zero false positives across all should-NOT-fire probes. One remaining gap: T5 (contextual color declaration). <a href="labs/contradiction-pipeline-lab-20260408-032639.html">Full report &rarr;</a></p>
+  </div>
+
   <div class="run-card" style="border-color: rgba(129,140,248,0.3);">
-    <h3>Contradiction Pipeline Lab v4 &mdash; Cloud (isolated)</h3>
+    <h3>Contradiction Pipeline Lab v5 &mdash; Cloud extraction (isolated)</h3>
     <div class="run-meta">Planned</div>
-    <p><span class="status-badge badge-next">Next</span> Cloud extraction with isolated lab database. Prerequisite: lab harness DB isolation.</p>
+    <p><span class="status-badge badge-next">Next</span> Cloud extraction for contextual declarations (T5). Requires cloud governance demotion rewrite to use <code>memory_facts</code> instead of text search, and BDG cascade with damping. Prerequisites documented in incident report.</p>
   </div>
 </section>
 

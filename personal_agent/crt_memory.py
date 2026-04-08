@@ -1657,10 +1657,28 @@ class CRTMemorySystem:
         _corrective_phrases = ("not ", "actually", "always has been", "never was")
         _has_corrective_language = any(p in text.lower() for p in _corrective_phrases)
         _write_path_contradictions = []  # Collect slot contradictions for ledger (written after memory creation)
+
+        # Guard 2: Third-person filter — skip fact extraction entirely if the
+        # text is about someone else, not the user.
+        _third_person_indicators = (
+            "my friend ", "my buddy ", "my colleague ", "my sister ", "my brother ",
+            "my mom ", "my dad ", "my wife ", "my husband ", "my partner ",
+            "she works ", "he works ", "she lives ", "he lives ",
+            "she is ", "he is ", "they work ", "their favorite ",
+        )
+        _first_person_indicators = ("i ", "i'm ", "i've ", "my ", "i am ", "me ", "i was ", "i used ")
+        _text_lower = text.lower().strip()
+        _has_third_person = any(ind in _text_lower for ind in _third_person_indicators)
+        _has_first_person = any(_text_lower.startswith(ind) or f" {ind}" in _text_lower for ind in _first_person_indicators)
+        _skip_slot_extraction = _has_third_person and not _has_first_person
+
+        if _skip_slot_extraction:
+            logger.info("[SLOT_EXCLUSIVITY] Skipping — third-person text detected: %s", text[:60])
+
         try:
             from .fact_slots import extract_fact_slots as _efs
             from .slot_discovery import get_slot_type, on_fact_stored, SlotType
-            _new_slots = _efs(text)
+            _new_slots = _efs(text) if not _skip_slot_extraction else {}
             _discovery_db = None  # Use default discovery DB path
             for _slot_name, _slot_fact in _new_slots.items():
                 _slot_type = get_slot_type(_slot_name, db_path=_discovery_db)
@@ -1694,8 +1712,13 @@ class CRTMemorySystem:
                 _existing_rows = _cur_ex.fetchall()
                 _conn_ex.close()
                 for _ex_mem_id, _ex_norm, _ex_trust in _existing_rows:
-                    if str(_ex_norm).strip().lower() == _new_val_norm:
-                        continue  # Same value — not a conflict
+                    _ex_val_norm = str(_ex_norm).strip().lower()
+                    # Guard 1: Same-value skip — exact match OR substring containment
+                    # "Anthropic" matches "anthropic as a research engineer" and vice versa
+                    if (_ex_val_norm == _new_val_norm
+                            or _new_val_norm in _ex_val_norm
+                            or _ex_val_norm in _new_val_norm):
+                        continue  # Same or overlapping value — not a conflict
 
                     if _slot_type == SlotType.TEMPORAL:
                         # Archive: lighter demotion — old value was true in the past
