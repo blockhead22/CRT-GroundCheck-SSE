@@ -4,13 +4,16 @@
     {"date": "2026-04-07", "note": "Principle-grid styling for thesis laws. Organized papers nav into 4 groups (Evidence, Architecture, Theory, Reference)."}
   ],
   "contradiction-density.html": [
-    {"date": "2026-04-07", "note": "Added Sections 9-10: v1 to v2 filter comparison (98.9% filtered, 10.4% genuine contradictions) and arc-level contradiction analysis (59.5% flip rate, 93% pairwise-invisible). Fixed stray </div> breaking page layout."}
+    {"date": "2026-04-07", "note": "Added Sections 9-10: v1 to v2 filter comparison (98.9% filtered, 10.4% genuine contradictions) and arc-level contradiction analysis (59.5% flip rate, 93% pairwise-invisible). Fixed stray </div> breaking page layout."},
+    {"date": "2026-04-07", "note": "Top-15 pair audit completed: 6 valid, 3 weak, 6 reject (3 duplicates, 3 topic mismatches). Dedup issue identified in harness. Audit page built at labs/v2-pair-audit.html."}
   ],
   "sensitive-domains.html": [
     {"date": "2026-04-07", "note": "New page. Substance use contradictions (192-day gap, teach-moderation vs quit-entirely). Dating readiness contradictions (open-up vs step-away). Real examples from 13-month GPT corpus."}
   ],
   "continuity-blind.html": [
-    {"date": "2026-04-07", "note": "Added v2 context block, draft statistics notice, boundless claim detection remark, classifier calibration probes remark. Fixed encoding corruption."}
+    {"date": "2026-04-07", "note": "Added v2 context block, draft statistics notice, boundless claim detection remark, classifier calibration probes remark. Fixed encoding corruption."},
+    {"date": "2026-04-07", "note": "Clarified boundless_risk and token highlighting are heuristic overlays, not model-internal activations. Added caveat that v2 audit queue still contains mixed-quality pairs. Fixed overclaim on 'operationalizes at the token level'."},
+    {"date": "2026-04-07", "note": "Pair typing tightened: temporal_update now requires 30-day gap + strong temporal markers + similarity floor. Weak phrases (now/currently) no longer trigger relabeling. Regression test added."}
   ],
   "claim-evaluation-guide.html": [
     {"date": "2026-04-07", "note": "Complete rewrite as personal research validation guide. Thesis, 3 sub-claims, 0-3 scoring rubric, 7 research areas with harness locations, 6 open gaps, scorecard, validation protocol."},
@@ -24,7 +27,8 @@
   ],
   "architecture.html": [
     {"date": "2026-04-07", "note": "Added pipeline flow hero animation. Fixed stray </div>."},
-    {"date": "2026-04-07", "note": "Added Belief Slot Evolution section: live testing finding on contradiction detection gap, multi-valued slot design target, soft acknowledgment vs hard blocking."}
+    {"date": "2026-04-07", "note": "Added Belief Slot Evolution section: live testing finding on contradiction detection gap, multi-valued slot design target, soft acknowledgment vs hard blocking."},
+    {"date": "2026-04-07", "note": "Contradiction detection root cause fully traced: 3 blocking gates (intent routing, early promotion, agent loop bypass). Proposed fix: move slot comparison to memory write path. Cascade firewall concept identified as next architectural evolution."}
   ],
   "immune-agents.html": [
     {"date": "2026-04-07", "note": "Changed 3 planned agent badges to built. Added shield formation hero animation. Fixed stray </div>."}
@@ -32,7 +36,10 @@
   "governance-validation.html": [
     {"date": "2026-04-07", "note": "New page. 17 tests across 3 tiers (Detection, Intervention, Outcome). Populated with preliminary production data: 78,474 memories, 4,805 trust changes, belief/speech gap 0.548."},
     {"date": "2026-04-07", "note": "Test 1.1 updated with live contradiction test result: slot-level reversal not flagged, design finding documented."},
-    {"date": "2026-04-07", "note": "Test 2.6 upgraded to score 3: live test showed system finding and holding genuine epistemic contradiction in user self-assessment, citing both sides with trust scores. Test 1.6 updated with 4 live demonstrations. Tier 2 score 3/6."}
+    {"date": "2026-04-07", "note": "Test 2.6 upgraded to score 3: live test showed system finding and holding genuine epistemic contradiction in user self-assessment, citing both sides with trust scores. Test 1.6 updated with 4 live demonstrations. Tier 2 score 3/6."},
+    {"date": "2026-04-07", "note": "Dr. Pepper test logged: formal detection still not firing (PROVISIONAL promoted before slot check runs), but LLM compensates via retrieval — surfaced 4 conflicting memories and asked user to clarify. Two root causes identified: (1) intent router misclassifies declarations as broad_recall, (2) early promotion runs before slot comparison."},
+    {"date": "2026-04-07", "note": "Mt. Dew + black color test logged: agent loop path bypasses contradiction pipeline entirely. Routing confirmed as primary blocker. Three fixes deployed but untested end-to-end: exclusive slot bypass, early slot check, routing guard for declarations."},
+    {"date": "2026-04-07", "note": "Architecture insight documented: slot comparison belongs in memory write path (not intent path). Cascade/BDG should measure incoming contradictions against full dependency graph. Multi-valued slot schema proposed (current/concurrent/deprecated with temporal weighting)."}
   ],
   "variance-probing.html": [
     {"date": "2026-04-07", "note": "Fixed 22,524 to 22,702 response count. Added 480px mobile breakpoint for charts. Moved from Theory to Evidence in nav."}
@@ -54,5 +61,17 @@
   ],
   "geometric-memory.html": [
     {"date": "2026-04-07", "note": "Fixed stray </div>."}
+  ],
+  "_infrastructure": [
+    {"date": "2026-04-07", "note": "Cloudflare Pages deployment live at aeteros-research.pages.dev. Basic auth via _worker.js. robots.txt blocks crawlers."},
+    {"date": "2026-04-07", "note": "Bootstrap 5 injected across all docs via docs.js. Dark theme overrides added to base.css."},
+    {"date": "2026-04-07", "note": "Cross-doc nav with 4 dropdown menus (Evidence, Architecture, Theory, Reference). Prev/next pager. Click-to-toggle with fixed positioning."},
+    {"date": "2026-04-07", "note": "19 hardcoded footers stripped, replaced with single injectFooter() in docs.js. Footer moved outside .page-layout grid."},
+    {"date": "2026-04-07", "note": "GSAP + ScrollTrigger animations: 5 custom hero animations (index, architecture, sensitive-domains, immune-agents, why-this-matters). Shared scroll animations on all pages."},
+    {"date": "2026-04-07", "note": "Mobile responsive: 600px + 480px breakpoints. Dark/light theme toggle in mobile hamburger menu."},
+    {"date": "2026-04-07", "note": "Changelog system: per-page entries from changelog.json, injected by docs.js at bottom of every page."},
+    {"date": "2026-04-07", "note": "Full doc sweep: fixed stale numbers (22,524→22,702), 'proved'→'demonstrated' (8 instances), immune agent count (6→5), Sonnet 3.5→4.5, 10 stray </div> tags, 6 'planned'→'built' badges."},
+    {"date": "2026-04-07", "note": "Merged throughline.html into index.html. Merged variance-landscape.html into variance-probing.html. Doc count: 19→17 (then +4 new = 19 total)."},
+    {"date": "2026-04-07", "note": "CORE naming introduced (Contradiction, Observation, Revision, Epistemics). CRT→CORE transition note on index. About page documents full naming stack."}
   ]
 }

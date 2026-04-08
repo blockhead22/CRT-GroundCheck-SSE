@@ -522,12 +522,12 @@
   <div class="val-card">
     <p><strong>Publication readiness:</strong></p>
     <ul>
-      <li><strong>Minimum for draft:</strong> All Tier 1 at score 2+, at least 3 Tier 2 at score 2+ &mdash; <strong style="color:#fbbf24;">almost there (Tier 1: 5/6, Tier 2: 2/6)</strong></li>
+      <li><strong>Minimum for draft:</strong> All Tier 1 at score 2+, at least 3 Tier 2 at score 2+ &mdash; <strong style="color:#fbbf24;">almost there (Tier 1: 5/6, Tier 2: 3/6)</strong></li>
       <li><strong>Strong draft:</strong> Above plus at least 2 Tier 3 at score 1+ &mdash; not yet</li>
       <li><strong>Defensible paper:</strong> Above plus at least 1 Tier 3 at score 2+ &mdash; not yet</li>
     </ul>
-    <p>Current status: <strong>Preliminary data populated from production DBs (April 7, 2026). Tier 1 nearly complete. Tier 2 has initial evidence. Tier 3 requires comparative testing.</strong></p>
-    <p style="margin-top:10px;"><strong>Biggest gap:</strong> Contradiction detection (Test 1.1) scores 1 &mdash; the system holds and manages contradictions when found, but the detection trigger fires at 0.037%, suggesting the threshold is too conservative. This is the primary area for improvement.</p>
+    <p>Current status: <strong>Preliminary data populated from production DBs (April 7, 2026). Tier 1 nearly complete. Tier 2 meets minimum threshold (3/6). Tier 3 requires comparative testing.</strong></p>
+    <p style="margin-top:10px;"><strong>Biggest gap:</strong> Contradiction detection (Test 1.1) scores 1 &mdash; three root causes identified: (1) intent router misclassifies declarations as broad_recall, (2) agent loop path bypasses contradiction pipeline, (3) early memory promotion runs before slot comparison. LLM compensates via retrieval context, but formal detection does not fire. <strong>Proposed fix:</strong> move slot comparison to memory write path so it runs regardless of routing. Mini lab experiment designed to validate fix end-to-end.</p>
   </div>
 </section>
 
@@ -539,6 +539,10 @@
   <p>Chronological record of every validation test performed. Newest first.</p>
 
   <div class="changelog-list">
+    <div class="changelog-entry">
+      <span class="changelog-date">2026-04-07 23:11</span>
+      <span class="changelog-note"><strong>Mt. Dew + black color test &mdash; agent loop bypasses pipeline entirely (T1.1).</strong> Told system "My favorite color is black and my favorite drink is Mt. Dew." Intent classified as <code>broad_recall</code> (not assertion) due to regex matching both slot names. Routed through agent loop (GPT-4.1), which does not run contradiction detection at all. Memory stored, no slot check, no ledger entry. Follow-up "what is my favorite color?" correctly returned orange at 0.96 and noted the green contradiction at 0.63. Follow-up "what is my favorite drink?" &mdash; Claude again surfaced all 4 conflicting memories with trust hierarchy (water 0.83, OJ 0.82, Dr. Pepper 0.75, coffee 0.74) and said "This looks like an evolving preference." Dashboard showed 0 open contradictions. <strong>Root cause confirmed:</strong> three independent blockers &mdash; (1) regex intent router can't distinguish declarations from questions, (2) agent loop path has no contradiction pipeline, (3) early promotion runs before slot comparison. Fix identified: move slot comparison to memory write path.</span>
+    </div>
     <div class="changelog-entry">
       <span class="changelog-date">2026-04-07 22:18</span>
       <span class="changelog-note"><strong>Dr. Pepper test &mdash; LLM compensates for detection gap (T1.1 + T1.6).</strong> After restart with slot_discovery wiring, told system "My favorite drink is Dr. Pepper." Formal slot detection code ran (debug shows <code>extracted slots: ['favorite_drink']</code>) but <code>PROVISIONAL Promoted to confirmed</code> still fired &mdash; slot comparison path needs further debugging. <strong>However:</strong> Claude's generation saw 4 conflicting favorite_drink memories in retrieval context (water 0.79, OJ 0.78, coffee 0.74, Dr. Pepper 0.70) and independently surfaced the conflict: "I have conflicting memories about your favorite drink... Which is it? Or is this a test to see if I'd just accept the update without flagging the tension?" The retrieval layer provides enough context for the LLM to compensate. Two-layer defense: formal detection + LLM intelligence. Formal detection still needs fixing but the user experience is already governed.</span>
