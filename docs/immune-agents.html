@@ -87,12 +87,11 @@ th {
 /* ===== BADGES ===== */
 /* ===== THRESHOLD BAR ===== */
   .threshold-bar {
-    position: relative; height: 36px; background: rgba(255,255,255,0.03);
+    display: flex; height: 36px; background: rgba(255,255,255,0.03);
     border-radius: 8px; margin: 16px 0 10px 0; overflow: hidden;
     border: 1px solid rgba(255,255,255,0.06);
   }
   .threshold-zone {
-    position: absolute; top: 0; height: 100%;
     display: flex; align-items: center; justify-content: center;
     font-size: 0.66em; font-weight: 600; letter-spacing: 0.5px;
   }
@@ -585,9 +584,9 @@ th {
 
       <h5>Decision Logic</h5>
       <div class="threshold-bar">
-        <div class="threshold-zone tz-block" style="left:0; width:30%;">BLOCK</div>
-        <div class="threshold-zone tz-downgrade" style="left:30%; width:13.3%;">DOWNGRADE</div>
-        <div class="threshold-zone tz-allow" style="left:43.3%; width:56.7%;">ALLOW</div>
+        <div class="threshold-zone tz-block" style="flex:30;">BLOCK</div>
+        <div class="threshold-zone tz-downgrade" style="flex:13.3;">DOWNGRADE</div>
+        <div class="threshold-zone tz-allow" style="flex:56.7;">ALLOW</div>
       </div>
       <p style="font-size:0.78em; color:#6a7096; margin-top:20px;">
         Similarity &lt; 0.45 = <strong style="color:#f472b6;">BLOCK</strong> (no grounding, high proposed trust) &nbsp;|&nbsp;
@@ -691,9 +690,9 @@ th {
       <h5>Variance Thresholds</h5>
       <p>Calibrated directly from the belief variance experiment data (mean pairwise cosine distance across repeated responses):</p>
       <div class="threshold-bar">
-        <div class="threshold-zone tz-low" style="left:0; width:33%;">LOW &lt; 0.05</div>
-        <div class="threshold-zone tz-mid" style="left:33%; width:34%;">MID</div>
-        <div class="threshold-zone tz-high" style="left:67%; width:33%;">HIGH &gt; 0.15</div>
+        <div class="threshold-zone tz-low" style="flex:33;">LOW &lt; 0.05</div>
+        <div class="threshold-zone tz-mid" style="flex:34;">MID</div>
+        <div class="threshold-zone tz-high" style="flex:33;">HIGH &gt; 0.15</div>
       </div>
     </div>
   </div>
