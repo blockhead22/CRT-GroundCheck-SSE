@@ -66,6 +66,9 @@
   "geometric-memory.html": [
     {"date": "2026-04-07", "note": "Fixed stray </div>."}
   ],
+  "labs.html": [
+    {"date": "2026-04-08", "note": "New page. Lab overview documenting purpose, methodology, escalation chain (regex→local LLM→cloud), key findings (write-path fix validated, zero false positives, extraction bottleneck, LLM-knows-but-doesn't-write), shared memory incident report, run index with 4 entries (v1 tested, v2 timeout, v3 incident, v4 planned)."}
+  ],
   "_infrastructure": [
     {"date": "2026-04-07", "note": "Cloudflare Pages deployment live at aeteros-research.pages.dev. Basic auth via _worker.js. robots.txt blocks crawlers."},
     {"date": "2026-04-07", "note": "Bootstrap 5 injected across all docs via docs.js. Dark theme overrides added to base.css."},

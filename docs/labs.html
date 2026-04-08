@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Labs — Aeteros Research</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="theme.css">
+<style>
+  .run-card {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 16px 0;
+  }
+  .run-card h3 { font-size: 1em; margin-bottom: 8px; }
+  .run-card .run-meta {
+    font-family: var(--mono);
+    font-size: 0.75em;
+    color: var(--text-faint);
+    margin-bottom: 12px;
+  }
+  .run-card p { color: var(--text-secondary); font-size: 0.9em; line-height: 1.7; }
+  .run-score {
+    display: inline-block;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 1.1em;
+    padding: 2px 10px;
+    border-radius: 6px;
+    margin-right: 8px;
+  }
+  .score-green { background: rgba(52,211,153,0.15); color: #34d399; }
+  .score-amber { background: rgba(251,191,36,0.15); color: #fbbf24; }
+  .score-red { background: rgba(251,113,133,0.15); color: #fb7185; }
+  .issue-list { margin: 16px 0 16px 20px; color: var(--text-secondary); font-size: 0.88em; line-height: 1.9; }
+  .issue-list li { margin-bottom: 4px; }
+  .escalation-table { margin: 20px 0; }
+  .escalation-table td, .escalation-table th { padding: 10px 14px; font-size: 0.85em; }
+  .status-badge {
+    font-family: var(--mono);
+    font-size: 0.7em;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .badge-done { background: rgba(52,211,153,0.15); color: #34d399; }
+  .badge-fail { background: rgba(251,113,133,0.15); color: #fb7185; }
+  .badge-next { background: rgba(129,140,248,0.15); color: #818cf8; }
+  .badge-blocked { background: rgba(251,191,36,0.15); color: #fbbf24; }
+</style>
+</head>
+<body>
+<div class="page-layout">
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">Experimental</div>
+    <h1>Labs</h1>
+    <p class="sub">Controlled experiments testing CORE's governance pipeline. Each lab runs once, produces a frozen HTML report, and feeds directly into the governance validation scorecard.</p>
+  </div>
+</div>
+
+<nav class="sidebar" id="docSidebar">
+  <div class="sidebar-title">Labs</div>
+  <a href="#why">Why Labs</a>
+  <a href="#pipeline-lab">Contradiction Pipeline</a>
+  <a href="#escalation">Extraction Escalation</a>
+  <a href="#findings">Key Findings</a>
+  <a href="#incident">Incident: Shared Memory</a>
+  <a href="#next">What's Next</a>
+  <a href="#runs">Run Index</a>
+  <div class="sidebar-footer">2026 Aeteros Research</div>
+</nav>
+
+<main class="main">
+
+<!-- ===== WHY LABS ===== -->
+<section id="why">
+  <span class="section-number">Section 1</span>
+  <h2>Why Labs Exist</h2>
+  <div class="accent-line"></div>
+
+  <p>Manual testing produced inconsistent results. Restarting the system between tests introduced variables. Each session's conversation context bled into the next. We couldn't tell whether a detection failure was a real bug or an artifact of the testing method.</p>
+
+  <p>Labs solve this by running <strong>controlled, repeatable experiments</strong> against the live system. Each lab:</p>
+
+  <ol class="issue-list">
+    <li><strong>Seeds known facts</strong> to establish a controlled baseline</li>
+    <li><strong>Sends structured probes</strong> with predetermined expected outcomes</li>
+    <li><strong>Queries the pipeline state</strong> after each probe (ledger, trust deltas, metadata flags)</li>
+    <li><strong>Scores pass/fail</strong> against expected behavior</li>
+    <li><strong>Generates a frozen HTML report</strong> that can be referenced, compared, and cited</li>
+  </ol>
+
+  <p>The result is a single run that produces a complete picture. No relaunching. No context bleed. No ambiguity about what passed and what didn't.</p>
+
+  <div class="quote-block">
+    <p>Labs are not unit tests. They test the full production pipeline end-to-end &mdash; intent routing, memory storage, slot extraction, contradiction detection, ledger creation, trust demotion, and response metadata. A lab failure means the production system would fail on the same input.</p>
+  </div>
+</section>
+
+<!-- ===== CONTRADICTION PIPELINE LAB ===== -->
+<section id="pipeline-lab">
+  <span class="section-number">Section 2</span>
+  <h2>Contradiction Pipeline Lab</h2>
+  <div class="accent-line"></div>
+
+  <h3>The Problem Being Tested</h3>
+  <p>The CORE architecture claims to detect when a user contradicts a previously stored fact &mdash; for example, changing their favorite color, their employer, or their name. Live testing on April 7, 2026 revealed that <strong>contradiction detection never formally fired</strong> despite the system recognizing conflicts in its generated responses. Three root causes were identified:</p>
+
+  <ol class="issue-list">
+    <li><strong>Intent routing bypass:</strong> The regex intent classifier misclassified declarations ("My favorite drink is water") as <code>broad_recall</code> queries, routing them through the agent loop which has no contradiction pipeline.</li>
+    <li><strong>Early memory promotion:</strong> New memories were promoted from <code>provisional</code> to <code>confirmed</code> before the slot-level contradiction check ran.</li>
+    <li><strong>Agent loop bypass:</strong> The agent loop path (GPT-4.1) generates responses without running the contradiction detection code in <code>crt_rag.py</code>.</li>
+  </ol>
+
+  <h3>The Fix</h3>
+  <p>A <strong>write-path contradiction check</strong> was added to <code>crt_memory.py:store_memory()</code>. This is the single convergence point every memory passes through, regardless of routing. The existing slot exclusivity loop (which already demotes trust on conflicting exclusive slots) now also creates a contradiction ledger entry. The fix:</p>
+
+  <ul class="issue-list">
+    <li>Fires regardless of intent routing (agent loop, legacy pipeline, any future path)</li>
+    <li>Uses <code>memory_facts</code> table for structured slot comparison (not text search)</li>
+    <li>Creates ledger entries with <code>contradiction_type=slot_reversal</code></li>
+    <li>Deduplicates against existing entries to prevent double-recording</li>
+    <li>Does not change the existing trust demotion behavior &mdash; additive only</li>
+  </ul>
+
+  <h3>What the Lab Tests</h3>
+  <p>The full chain: <strong>user input &rarr; slot extraction &rarr; contradiction detection &rarr; ledger entry &rarr; trust demotion &rarr; metadata flag</strong>.</p>
+
+  <p>10 probes total:</p>
+  <ul class="issue-list">
+    <li><strong>5 should-fire probes</strong> &mdash; exclusive slot reversals (name, location, age, employer, favorite color). Includes short corrective statements, long narrative blocks with contradictions buried mid-paragraph, and contextual declarations that never use the explicit "my X is Y" pattern.</li>
+    <li><strong>5 should-NOT-fire probes</strong> &mdash; additive slots (hobbies), questions, reinforcements of existing facts, third-party facts about other people, and long multi-hobby text blocks. These test for false positives.</li>
+  </ul>
+</section>
+
+<!-- ===== EXTRACTION ESCALATION ===== -->
+<section id="escalation">
+  <span class="section-number">Section 3</span>
+  <h2>Extraction Escalation</h2>
+  <div class="accent-line"></div>
+
+  <p>The write-path fix works when slot extraction succeeds. The bottleneck is upstream: <strong>can the system extract structured facts from natural language?</strong> Three extraction tiers were tested in sequence to establish which capability level is required for production-grade contradiction detection.</p>
+
+  <div class="table-wrap">
+  <table class="escalation-table">
+    <thead>
+      <tr>
+        <th>Tier</th>
+        <th>Method</th>
+        <th>Should-Fire</th>
+        <th>Should-NOT-Fire</th>
+        <th>Status</th>
+        <th>Finding</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. Regex</strong></td>
+        <td><code>extract_fact_slots</code> (pattern matching)</td>
+        <td><span class="run-score score-red">2/5</span></td>
+        <td><span class="run-score score-green">5/5</span></td>
+        <td><span class="status-badge badge-done">Tested</span></td>
+        <td>Catches direct "my X is Y" patterns. Fails on indirect phrasing, buried context, contextual declarations. Zero false positives.</td>
+      </tr>
+      <tr>
+        <td><strong>2. Local LLM</strong></td>
+        <td><code>TwoTierFactSystem</code> (llama3.2 via Ollama)</td>
+        <td colspan="2" style="text-align:center;color:var(--text-faint);">Untestable</td>
+        <td><span class="status-badge badge-fail">Failed</span></td>
+        <td>Added 30&ndash;250s latency per memory write. Caused 300s timeouts on simple seed facts ("I'm 34 years old"). Pipeline already runs 35&ndash;50s per message; local LLM extraction made it unusable.</td>
+      </tr>
+      <tr>
+        <td><strong>3. Cloud</strong></td>
+        <td><code>gpt-4o-mini</code> via <code>cloud_features.classify_slot()</code></td>
+        <td colspan="2" style="text-align:center;color:var(--text-faint);">Not yet isolated</td>
+        <td><span class="status-badge badge-next">Next</span></td>
+        <td>Infrastructure exists. First test exposed a critical issue: cloud demotion operates on text search, not structured slots, and cascaded destructively through shared memory. Requires isolated DB before retesting.</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>The escalation establishes an empirical progression: regex is fast but narrow, local LLM is too slow, cloud has the capability but needs architectural safeguards. This is not a preference &mdash; it's a measured necessity.</p>
+</section>
+
+<!-- ===== KEY FINDINGS ===== -->
+<section id="findings">
+  <span class="section-number">Section 4</span>
+  <h2>Key Findings</h2>
+  <div class="accent-line"></div>
+
+  <h3>1. The write-path fix works</h3>
+  <p>When <code>extract_fact_slots</code> successfully extracts a slot, the full chain fires. T3 (age 34&rarr;35) produced: <code>metadata.contradiction_detected=true</code>, ledger entry <code>contra_1775627760140_8310</code> with type <code>revision</code>, trust demotion from 0.701 to 0.697. This is the first time the formal contradiction pipeline completed end-to-end in production.</p>
+
+  <h3>2. Zero false positives</h3>
+  <p>All 5 should-NOT-fire probes passed. Additive slots (hobbies), questions about locations, reinforcement of existing facts, third-party facts, and long multi-topic text blocks all stayed silent. The system does not over-trigger.</p>
+
+  <h3>3. Extraction is the bottleneck, not detection</h3>
+  <p>Three of five should-fire probes failed because regex extraction couldn't parse the input:</p>
+  <ul class="issue-list">
+    <li><strong>T1 (name):</strong> "Actually, my name is Adrian now" &mdash; corrective phrasing with "now" confused the extractor</li>
+    <li><strong>T4 (employer):</strong> "I actually left Anthropic about a month ago and joined OpenAI" &mdash; buried in a 70-word daily narration paragraph</li>
+    <li><strong>T5 (favorite_color):</strong> "It's definitely my favorite color now, green" &mdash; contextual declaration without the "my favorite X is Y" pattern</li>
+  </ul>
+
+  <h3>4. The LLM already knows</h3>
+  <p>In every failed should-fire case, Claude's generated response correctly identified the contradiction. T4's response began: <em>"Six in a row. You just embedded 'left Anthropic, now at OpenAI' inside a paragraph of mundane daily detail."</em> T5's response noted: <em>"I have FACT: User.favorite_color = blue stored at trust 1.00. You just told me it's green."</em> The model extracts the facts perfectly &mdash; it just doesn't write them to the slot system.</p>
+
+  <h3>5. Cloud demotion is destructive without isolation</h3>
+  <p>The first cloud extraction test (before DB isolation) triggered a cascade that demoted 81 real memories. See <a href="#incident">Incident Report</a> below. This exposed a critical architectural flaw: the cloud governance code in <code>routes/chat.py</code> uses <code>LIKE '%name%'</code> text search instead of <code>memory_facts</code> table lookups, and applies a flat 0.4&times; trust multiplier with no damping or depth bounds. The BDG cascade system (which has damping, depth bounds, and proportional impact) was never consulted.</p>
+</section>
+
+<!-- ===== INCIDENT REPORT ===== -->
+<section id="incident">
+  <span class="section-number">Section 5</span>
+  <h2>Incident: Shared Memory Cascade</h2>
+  <div class="accent-line"></div>
+
+  <div class="remark" style="border-left-color: #fb7185;">
+    <strong>April 8, 2026 &mdash; Production memory damaged by lab test.</strong> Cloud slot classification enabled for lab v3 run. Seed message "My name is Marcus" triggered <code>gpt-4o-mini</code> extraction &rarr; <code>name=Marcus, exclusive=true</code> &rarr; cloud governance demotion searched ALL memories for text containing "name" &rarr; <strong>81 memories demoted</strong> (trust &times; 0.4), including core identity memories ("My name is Nick" dropped from 1.00 to 0.40). Damage was reversed by manual trust restoration and lab artifact deprecation. Root cause: lab used shared production database, and cloud demotion used text search instead of structured slot comparison.
+  </div>
+
+  <h3>What Went Wrong</h3>
+  <ol class="issue-list">
+    <li><strong>No database isolation.</strong> The lab harness sent test messages to a unique <code>thread_id</code> but all threads share <code>crt_memory_shared.db</code>. Thread isolation does not equal memory isolation.</li>
+    <li><strong>Text search, not slot search.</strong> The cloud governance code at <code>routes/chat.py:4971</code> uses <code>WHERE LOWER(text) LIKE ?</code> to find conflicting memories. This matched 81 memories containing the word "name" anywhere in their text, not just memories with <code>memory_facts.slot = 'name'</code>.</li>
+    <li><strong>No damping.</strong> The demotion applied a flat <code>trust &times; 0.4</code> to every match. The BDG cascade system (which has configurable damping, depth bounds, and proportional impact) was not used.</li>
+    <li><strong>No rollback.</strong> The demotion was not logged through the standard trust_log with a reversible reason. Manual SQL restoration was required.</li>
+  </ol>
+
+  <h3>Remediation</h3>
+  <ul class="issue-list">
+    <li>8 core identity memories manually restored to original trust values</li>
+    <li>13 lab artifact memories deprecated with reason <code>lab_artifact_cleanup_20260408</code></li>
+    <li>3 lab seed memories deprecated with reason <code>lab_seed_cleanup_20260408</code></li>
+    <li>Routing settings reverted to <code>local_only</code> until isolation is implemented</li>
+  </ul>
+
+  <h3>Required Before Next Cloud Test</h3>
+  <ol class="issue-list">
+    <li><strong>Isolated lab database:</strong> Lab harness must create and use its own SQLite DB, not <code>crt_memory_shared.db</code></li>
+    <li><strong>Cloud demotion must use <code>memory_facts</code>:</strong> Structured slot comparison, not text search</li>
+    <li><strong>Demotion must go through BDG cascade:</strong> With damping, depth bounds, and proportional impact</li>
+  </ol>
+</section>
+
+<!-- ===== WHAT'S NEXT ===== -->
+<section id="next">
+  <span class="section-number">Section 6</span>
+  <h2>Where This Goes</h2>
+  <div class="accent-line"></div>
+
+  <h3>For the Pipeline</h3>
+  <p>The write-path contradiction fix is validated and stays. The next step is cloud extraction with an isolated database. If cloud extraction achieves 5/5 on should-fire probes, the pipeline gains production-grade contradiction detection for the first time. The cloud governance demotion code needs to be rewritten to use <code>memory_facts</code> and BDG cascade before it can be enabled in production.</p>
+
+  <h3>For the Research</h3>
+  <p>The escalation chain (regex &rarr; local LLM &rarr; cloud) is itself a research finding. It demonstrates that <strong>contradiction detection is not a single capability &mdash; it's a stack</strong>: extraction quality determines detection quality. The bottleneck is always the weakest extraction layer, not the detection logic. This maps directly to the paper's argument: governance requires more than memory &mdash; it requires structured understanding of what the memory contains.</p>
+
+  <h3>For Governance Validation</h3>
+  <p>Test 1.1 (Contradiction Detection) currently scores 1 on the governance validation scorecard. A successful cloud extraction lab run would move it to score 2. Combined with the existing Tier 1 scores (5/6 at score 2+), this would meet the minimum threshold for a defensible draft.</p>
+
+  <h3>For the System</h3>
+  <p>The incident exposed that the cloud governance layer operates outside the BDG cascade system. This is a structural gap: two independent demotion mechanisms (write-path slot exclusivity and cloud governance text search) that don't coordinate. The architectural target is a single demotion pathway that always flows through the BDG with damping, regardless of source.</p>
+</section>
+
+<!-- ===== RUN INDEX ===== -->
+<section id="runs">
+  <span class="section-number">Section 7</span>
+  <h2>Run Index</h2>
+  <div class="accent-line"></div>
+
+  <div class="run-card">
+    <h3>Contradiction Pipeline Lab v1 &mdash; Regex Only</h3>
+    <div class="run-meta">2026-04-08 01:02 &middot; thread: lab_contradiction_1775627258 &middot; shared DB (unsafe)</div>
+    <p><span class="run-score score-amber">7/10</span> Should-fire: <span class="run-score score-red">2/5</span> Should-NOT-fire: <span class="run-score score-green">5/5</span></p>
+    <p>First controlled lab run. Write-path fix validated on T3 (age). Extraction bottleneck identified. <a href="labs/contradiction-pipeline-lab-20260408-010203.html">Full report &rarr;</a></p>
+  </div>
+
+  <div class="run-card">
+    <h3>Contradiction Pipeline Lab v2 &mdash; Local LLM</h3>
+    <div class="run-meta">2026-04-08 ~01:30 &middot; llama3.2 via Ollama &middot; aborted</div>
+    <p><span class="status-badge badge-fail">Timeout</span> Local LLM extraction added 30&ndash;250s per write. Seed 5 exceeded 300s timeout. Untestable in production.</p>
+  </div>
+
+  <div class="run-card">
+    <h3>Contradiction Pipeline Lab v3 &mdash; Cloud (gpt-4o-mini)</h3>
+    <div class="run-meta">2026-04-08 ~02:00 &middot; shared DB (unsafe) &middot; aborted</div>
+    <p><span class="status-badge badge-fail">Incident</span> Cloud slot classification triggered 81-memory cascade demotion through shared production database. Run aborted. Memories manually restored. <strong>Requires isolated DB before retry.</strong></p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(129,140,248,0.3);">
+    <h3>Contradiction Pipeline Lab v4 &mdash; Cloud (isolated)</h3>
+    <div class="run-meta">Planned</div>
+    <p><span class="status-badge badge-next">Next</span> Cloud extraction with isolated lab database. Prerequisite: lab harness DB isolation.</p>
+  </div>
+</section>
+
+</main>
+</div>
+<script src="docs.js"></script>
+</body>
+</html>

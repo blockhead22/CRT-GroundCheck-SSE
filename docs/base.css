@@ -780,8 +780,9 @@ td code {
 /* ===== CROSS-DOC NAV BAR ===== */
 /* ===== TOP NAV BAR ===== */
 .docnav {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
   z-index: 9999;
   width: 100%;
   background: var(--bg);
@@ -791,6 +792,8 @@ td code {
   height: 42px;
   flex-shrink: 0;
 }
+/* Offset body content so it doesn't hide behind fixed nav */
+body { padding-top: 42px; }
 .docnav-home {
   display: flex;
   align-items: center;

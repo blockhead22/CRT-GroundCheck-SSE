@@ -29,6 +29,8 @@
     { href: 'why-this-matters.html',       label: 'Why This Matters',       group: 'Reference' },
     { href: 'glossary.html',              label: 'Glossary',                group: 'Reference' },
     { href: 'about.html',                label: 'About Aeteros',           group: 'Reference' },
+    // Labs (experimental validation)
+    { href: 'labs.html',                  label: 'Lab Overview',             group: 'Labs' },
   ];
 
   // Detect subdirectory (labs/) and adjust prefix
