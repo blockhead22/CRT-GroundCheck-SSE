@@ -35,6 +35,18 @@ Active bugs tracked for future sessions. Not blocking production use unless note
 **Root cause:** Static seed lists in `slot_discovery.py` don't distinguish between truly exclusive slots (name, age) and preference slots that can hold multiple values.
 **Fix estimate:** Expand slot type system to support "primary + secondary" pattern. Medium effort.
 
+### 6. Agent loop does not surface memories or contradictions
+**Severity:** High (correctness — affects user experience on key intents)
+**Discovered:** 2026-04-08
+**Symptom:** When the agent loop path handles a message (instead of the legacy pipeline), no memories are cited in the response, no contradiction detection runs, and no pipeline steps are visible. The response generates without grounding in stored beliefs. This was visible in the "Clean memory audit feeling... wanna explain more" exchange — the legacy path showed `5 memories cited` but the agent loop path showed none for similar queries.
+**Root cause:** The agent loop (`routes/chat.py` agent loop gate) uses its own tool-based flow (introspect, memory_recall, gpt_log_search) which only fires when the orchestrator explicitly decides to call those tools. If it doesn't call `memory_recall`, no memories are surfaced. The legacy pipeline always runs retrieval. The agent loop makes retrieval optional based on the brain's judgment.
+**What needs investigation:**
+- Which intents route through agent loop vs legacy? (Check `AGENT_LOOP_GATE` in logs)
+- Does the agent loop ever create contradiction ledger entries? (Likely no — contradiction detection lives in `crt_rag.py` which only the legacy path calls)
+- Intents that 100% SHOULD surface memories but may not: `conversational` (when layer4 orchestrator fires), `broad_recall`, any intent where the user references prior context
+- The `[AGENT_LOOP_GATE] >>> LEGACY PATH (agent loop was skipped or failed)` vs `[ORCHESTRATOR] >>> ENTERING agent loop path` log lines show the split
+**Fix estimate:** Medium-high. Either (a) make the agent loop always call memory_recall as a first step, or (b) inject retrieved memories into the agent loop's context automatically, or (c) run contradiction detection as a post-step after the agent loop completes.
+
 ### 5. Cloud governance demotion uses flat 0.4x multiplier
 **Severity:** Low (partially mitigated)
 **Discovered:** 2026-04-08
