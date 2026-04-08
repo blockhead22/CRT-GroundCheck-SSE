@@ -327,10 +327,8 @@ th {
     <div class="finding-box">
       <p>Five laws. Five specialized agents. Each watches for a specific failure pattern in the belief-speech pipeline. <strong>None are tied to a pipeline stage.</strong> They all watch the same stream.</p>
     </div>
-    <!-- Hero viz: shield formation -->
-    <div id="hero-shield" style="margin-top:24px;max-width:400px;margin-left:auto;margin-right:auto;overflow:hidden;position:relative;z-index:1;">
-      <svg id="hs-svg" viewBox="0 0 400 200" style="width:100%;height:200px;display:block;overflow:hidden;"></svg>
-    </div>
+    <!-- Hero viz removed: shield formation SVG was causing colored band artifacts -->
+
   </div>
   <div class="scroll-cue">&#9660; SCROLL</div>
 </div>
@@ -338,10 +336,8 @@ th {
 <script>
 (function() {
   function buildHeroShield() {
-    if (!window.gsap) return;
-    var svg = document.getElementById('hs-svg');
-    if (!svg) return;
-    var ns = 'http://www.w3.org/2000/svg';
+    // Disabled: hero shield animation removed due to colored band rendering artifacts
+    return;
 
     var cx = 200, cy = 100;
     var agents = [
