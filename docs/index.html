@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Story of Aether &amp; CRT</title>
+<title>Aeteros CORE — Epistemic Governance Architecture</title>
 <link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="theme.css">
 <style>
@@ -19,11 +19,12 @@
 <div class="hero">
   <div class="hero-inner">
     <div class="hero-badge">Technical Narrative &mdash; Aeteros Research</div>
-    <h1>The Story of<br><span class="grad">Aether &amp; CRT</span></h1>
+    <h1>The Story of<br><span class="grad">Aeteros CORE</span></h1>
     <p class="sub">An epistemic governance architecture for AI systems that remember, reason, and account for what they believe</p>
     <p class="byline">Nick Block &bull; Aeteros &bull; 2026</p>
     <div class="finding-box">
-      <p><strong>Continuous Revision Theory (CRT)</strong> is a governance architecture that gives AI systems a persistent belief state, tracks contradictions instead of hiding them, and separates what the model believes from what it says. <strong>Aether</strong> is the production system built on CRT &mdash; a personal AI assistant with 820+ persistent memories, 6 governance layers, and 6 autonomous immune agents that enforce epistemic integrity at runtime. This document tells the full story.</p>
+      <p><strong>CORE</strong> (Contradiction, Observation, Revision, Epistemics) is the epistemic governance architecture at the heart of Aeteros. It gives AI systems a persistent belief state, tracks contradictions instead of hiding them, and separates what the model believes from what it says. The production system built on CORE includes 820+ persistent memories, 6 governance layers, and 5 autonomous immune agents that enforce epistemic integrity at runtime.</p>
+      <p style="margin-top:12px;font-size:0.82em;color:var(--text-faint);"><strong>Naming note:</strong> Throughout these documents, you will see references to "CRT" (the previous working name) alongside "CORE" (the current name). The architecture is the same &mdash; the naming convention is being updated. Where you see "CRT," read "CORE."</p>
     </div>
     <!-- Hero viz: memory network awakening -->
     <div id="hero-network" style="margin-top:28px;max-width:640px;margin-left:auto;margin-right:auto;">
@@ -138,7 +139,7 @@
 
 <!-- ===== SIDEBAR ===== -->
 <nav class="sidebar" id="docSidebar" data-manual-sidebar>
-  <div class="sidebar-title">Aether &amp; CRT</div>
+  <div class="sidebar-title">Aeteros CORE</div>
   <a href="#problem">01 The Problem</a>
   <a href="#thesis">02 The Thesis</a>
   <a href="#architecture">03 The Architecture</a>
@@ -225,7 +226,7 @@
   <span class="chapter-num">Chapter 2</span>
   <h2>The Thesis</h2>
 
-  <p>CRT starts from three design laws. These are not suggestions or best practices. They are structural commitments that shape every decision in the architecture.</p>
+  <p>CORE starts from three design laws. These are not suggestions or best practices. They are structural commitments that shape every decision in the architecture.</p>
 
   <div class="law-block">
     <div class="law-num">Law 1</div>
@@ -250,7 +251,7 @@
   <div class="thesis-block">
     <div class="thesis-label">Core Thesis</div>
     <div class="thesis-text">The model is the mouth. Persistence is the self.</div>
-    <div class="thesis-sub">Switching models in an agentic system is dangerous because most systems let the mouth become the self at every step. Every handoff is a tiny identity wipe. CRT externalizes the self into a persistent governance layer that survives model switches, session boundaries, and provider changes.</div>
+    <div class="thesis-sub">Switching models in an agentic system is dangerous because most systems let the mouth become the self at every step. Every handoff is a tiny identity wipe. CORE externalizes the self into a persistent governance layer that survives model switches, session boundaries, and provider changes.</div>
   </div>
 
   <p>Three things must persist across every boundary: <strong>task state</strong> (what are we doing), <strong>uncertainty state</strong> (what do we know and how well), and <strong>governance state</strong> (what rules apply, what is held, what is forbidden). If any of these reset, the system drifts even when every individual model works as designed.</p>
@@ -421,7 +422,7 @@
   <span class="chapter-num">Chapter 4</span>
   <h2>The Research</h2>
 
-  <p>The research behind CRT did not start as a research project. It started as an attempt to fix real problems in a real system. Each paper emerged because building Aether exposed a question that demanded formal investigation.</p>
+  <p>The research behind CORE did not start as a research project. It started as an attempt to fix real problems in a real system. Each paper emerged because building the system exposed a question that demanded formal investigation.</p>
 
   <div class="paper-card">
     <h3>It started with cascade complexity</h3>
@@ -453,7 +454,7 @@
 
   <div class="paper-card">
     <h3>We stress-tested across models</h3>
-    <p>If CRT is going to govern arbitrary LLMs, it needs to understand how different models fail. We ran variance probes across Qwen3, Mistral, and DeepSeek under identical conditions and found three fundamentally different failure modes: <strong>fracture</strong> (Qwen3 cracks hard on specific factuals), <strong>gradient</strong> (Mistral diffuses on morals but locks on facts), and <strong>fog</strong> (DeepSeek spreads uniformly &mdash; everything moves, nothing locks).</p>
+    <p>If CORE is going to govern arbitrary LLMs, it needs to understand how different models fail. We ran variance probes across Qwen3, Mistral, and DeepSeek under identical conditions and found three fundamentally different failure modes: <strong>fracture</strong> (Qwen3 cracks hard on specific factuals), <strong>gradient</strong> (Mistral diffuses on morals but locks on facts), and <strong>fog</strong> (DeepSeek spreads uniformly &mdash; everything moves, nothing locks).</p>
     <p>This is not one "right" behavior with deviations. These are three distinct instability regimes. A governance layer that assumes uniform model behavior will fail.</p>
     <a class="paper-link" href="variance-probing.html">Read: Variance Probing &mdash; Fragility Landscapes in LLMs &rarr;</a>
   </div>
@@ -461,7 +462,7 @@
   <div class="paper-card">
     <h3>Then Anthropic demonstrated the dynamics exist</h3>
     <p>In April 2026, Anthropic's interpretability team published findings on 171 functional emotion vectors in Claude Sonnet 4.5. These are measurable neural activation patterns that causally influence behavior. Amplifying a "desperate" vector increased reward hacking. Amplifying "calm" reduced it.</p>
-    <p>CRT already had the governance infrastructure for exactly these dynamics. Cascade pressure maps to desperation precursors. Drift detection maps to emotion monitoring. The three instability regimes map to emotional profiling across models. We built the control plane before they found the neurons it needs to govern.</p>
+    <p>CORE already had the governance infrastructure for exactly these dynamics. Cascade pressure maps to desperation precursors. Drift detection maps to emotion monitoring. The three instability regimes map to emotional profiling across models. We built the control plane before they found the neurons it needs to govern.</p>
     <a class="paper-link" href="emotion-governance.html">Read: Emotion Governance &mdash; Bridging Interpretability to Control &rarr;</a>
   </div>
 
@@ -483,7 +484,7 @@
   <span class="chapter-num">Chapter 5</span>
   <h2>What's Running</h2>
 
-  <p>Aether is not a prototype. It is a production system that has been in daily use for months, governing real conversations through the full CRT pipeline.</p>
+  <p>Aether is not a prototype. It is a production system that has been in daily use for months, governing real conversations through the full CORE pipeline.</p>
 
   <div class="stat-row">
     <div class="stat-cell">
@@ -527,18 +528,18 @@
   <span class="chapter-num">Chapter 6</span>
   <h2>Where It Goes</h2>
 
-  <p>CRT is being extracted into <strong>crt-core</strong>, an open-source framework that any AI system can use as its epistemic governance layer. The persistent belief state, contradiction tracking, immune agents, and governance pipeline are not Aether-specific. They are general-purpose infrastructure.</p>
+  <p>CORE is being extracted into <strong>aeteros-core</strong>, an open-source framework that any AI system can use as its epistemic governance layer. The persistent belief state, contradiction tracking, immune agents, and governance pipeline are not Aether-specific. They are general-purpose infrastructure.</p>
 
-  <p>The business path is <strong>governance-as-a-service</strong>: CRT as middleware that sits between any application and any LLM provider. You keep your existing stack. CRT adds the belief layer, the contradiction detection, the drift governance, and the immune system. An OpenAI-compatible proxy that adds epistemic integrity without requiring you to rewrite anything.</p>
+  <p>The business path is <strong>governance-as-a-service</strong>: CORE as middleware that sits between any application and any LLM provider. You keep your existing stack. CORE adds the belief layer, the contradiction detection, the drift governance, and the immune system. An OpenAI-compatible proxy that adds epistemic integrity without requiring you to rewrite anything.</p>
 
-  <p>The timing is not accidental. The <strong>EU AI Act</strong> (Article 50, effective August 2026) requires transparency infrastructure for AI systems that interact with humans. CRT provides exactly this: auditable belief states, logged contradictions, measurable belief/speech gaps, and governance compliance scores.</p>
+  <p>The timing is not accidental. The <strong>EU AI Act</strong> (Article 50, effective August 2026) requires transparency infrastructure for AI systems that interact with humans. CORE provides exactly this: auditable belief states, logged contradictions, measurable belief/speech gaps, and governance compliance scores.</p>
 
-  <p>When interpretability APIs mature &mdash; when providers expose the emotion vectors and activation patterns that Anthropic has already identified internally &mdash; CRT is ready to integrate directly. The governance layer is already built. It is waiting for the sensors.</p>
+  <p>When interpretability APIs mature &mdash; when providers expose the emotion vectors and activation patterns that Anthropic has already identified internally &mdash; CORE is ready to integrate directly. The governance layer is already built. It is waiting for the sensors.</p>
 
   <div class="thesis-block">
     <div class="thesis-label">The Trajectory</div>
     <div class="thesis-text">Every agentic system will need a belief state.</div>
-    <div class="thesis-sub">The question is whether they build it with governance or without. CRT is the case for governance-first: the math works, the architecture scales, the production system runs, and the regulatory environment is arriving.</div>
+    <div class="thesis-sub">The question is whether they build it with governance or without. CORE is the case for governance-first: the math works, the architecture scales, the production system runs, and the regulatory environment is arriving.</div>
   </div>
 </section>
 
@@ -549,7 +550,7 @@
   <span class="chapter-num">Chapter 7</span>
   <h2>The Builder</h2>
 
-  <p>Nick Block. Freelance developer. Not an ML researcher. Not from a lab. Sole builder of CRT and Aether.</p>
+  <p>Nick Block. Freelance developer. Not an ML researcher. Not from a lab. Sole builder of CORE and Aeteros.</p>
 
   <p>This project exists because of a habit of asking "why do things have to be this way?" Why do AI assistants forget everything between sessions? Why do they resolve contradictions by silently overwriting? Why does confidence have nothing to do with evidence? Each question led to a design decision, and the design decisions accumulated into an architecture.</p>
 
@@ -570,7 +571,7 @@
   <span class="chapter-num">Papers &amp; Documentation</span>
   <h2>Read the Research</h2>
 
-  <p>The documents below are organized in reading order. Start with the evidence (what's broken), then the architecture (how CRT fixes it), then the theory (why it works formally), then the reference material (how to validate and extend it).</p>
+  <p>The documents below are organized in reading order. Start with the evidence (what's broken), then the architecture (how CORE fixes it), then the theory (why it works formally), then the reference material (how to validate and extend it).</p>
 
   <h3 style="color:var(--text-dim);font-size:0.8em;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:28px 0 12px 0;">The Evidence</h3>
   <p style="color:var(--text-dim);font-size:0.85em;margin-bottom:16px;">What stateless AI systems actually do to users over time.</p>
@@ -583,7 +584,7 @@
   </div>
 
   <h3 style="color:var(--text-dim);font-size:0.8em;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:28px 0 12px 0;">The Architecture</h3>
-  <p style="color:var(--text-dim);font-size:0.85em;margin-bottom:16px;">How CRT governs the problem. Persistent belief state, contradiction tracking, immune enforcement.</p>
+  <p style="color:var(--text-dim);font-size:0.85em;margin-bottom:16px;">How CORE governs the problem. Persistent belief state, contradiction tracking, immune enforcement.</p>
   <div class="nav-grid">
     <a href="whitepaper.html">Whitepaper</a>
     <a href="architecture.html">Architecture</a>
