@@ -47,6 +47,18 @@ Active bugs tracked for future sessions. Not blocking production use unless note
 - The `[AGENT_LOOP_GATE] >>> LEGACY PATH (agent loop was skipped or failed)` vs `[ORCHESTRATOR] >>> ENTERING agent loop path` log lines show the split
 **Fix estimate:** Medium-high. Either (a) make the agent loop always call memory_recall as a first step, or (b) inject retrieved memories into the agent loop's context automatically, or (c) run contradiction detection as a post-step after the agent loop completes.
 
+### 7. Startup trust cascade — background loops batch-demote on restart
+**Severity:** High (data integrity — real memories lose trust unexpectedly)
+**Discovered:** 2026-04-08
+**Symptom:** After every restart, a wave of trust demotions appears. Legitimate memories (coffee preference, favorite colors) get hit with -3% to -4% drops. The trust delta UI shows 15+ demotions immediately after startup. Heartbeat, compaction decay, reflection, and other background loops all fire simultaneously on startup and process the entire backlog at once.
+**Root cause:** 7+ background loops start on `@app.on_event("startup")` — heartbeat, training, reflection, personality, journal, idle scheduler, DNNT retraining. They run deferred maintenance that accumulated since last session, but they don't distinguish between "stale from normal passage of time" and "stale because the system was off." Additionally, lab-induced slot demotions (from the shared memory incident) persisted in trust_log and compound with each restart cycle.
+**What needs investigation:**
+- Which specific loop is demoting coffee and color memories? (Check trust_log reason field after a clean restart)
+- Is compaction_decay running too aggressively on short-lived sessions?
+- Are the heartbeat trust adjustments aware of the slot exclusivity demotions that already happened?
+- Should background loops have a startup delay or rate limit to prevent batch-demoting?
+**Fix estimate:** Medium. Needs tracing of which loop produces which demotions, then either rate-limiting startup processing or adding a "cold start" grace period.
+
 ### 5. Cloud governance demotion uses flat 0.4x multiplier
 **Severity:** Low (partially mitigated)
 **Discovered:** 2026-04-08
