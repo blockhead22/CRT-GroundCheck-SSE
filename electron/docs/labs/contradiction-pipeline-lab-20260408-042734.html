@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Contradiction Pipeline Lab — Standalone</title>
+<style>
+:root { --bg:#121210; --bg-raised:rgba(255,255,255,0.03); --text:#c8c4bc; --text-dim:#8a8680;
+  --text-faint:#4a4540; --border:rgba(255,255,255,0.06); --accent:#818cf8; --green:#34d399;
+  --red:#fb7185; --amber:#fbbf24; --mono:'IBM Plex Mono','Cascadia Code',monospace; --sans:'Inter',sans-serif; }
+* { margin:0;padding:0;box-sizing:border-box; }
+body { background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.7;padding:40px 20px; }
+.shell { max-width:1100px;margin:0 auto; }
+.hero { text-align:center;padding:60px 0 40px; }
+.hero h1 { font-size:2.4em;font-weight:800; }
+.grad { background:linear-gradient(135deg,var(--accent),#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent; }
+.sub { color:var(--text-dim);font-size:0.9em;margin-top:8px; }
+.meta { font-family:var(--mono);font-size:0.75em;color:var(--text-faint);margin-top:16px; }
+.stat-row { display:flex;gap:16px;justify-content:center;margin:30px 0;flex-wrap:wrap; }
+.stat-card { background:var(--bg-raised);border:1px solid var(--border);border-radius:12px;padding:20px 28px;text-align:center;min-width:140px; }
+.stat-value { font-size:2em;font-weight:800;font-family:var(--mono); }
+.stat-label { font-size:0.72em;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:1px; }
+.section { margin:40px 0; }
+.section h2 { font-size:1.3em;margin-bottom:16px; }
+.accent-line { width:40px;height:3px;background:var(--accent);border-radius:2px;margin-bottom:12px; }
+table { width:100%;border-collapse:collapse;font-size:0.82em; }
+th { text-align:left;padding:10px 12px;color:var(--text-dim);border-bottom:1px solid var(--border);font-weight:600;text-transform:uppercase;font-size:0.85em; }
+td { padding:10px 12px;border-bottom:1px solid var(--border); }
+.mono { font-family:var(--mono);font-size:0.85em; }
+.row-pass td:first-child { border-left:3px solid var(--green); }
+.row-fail td:first-child { border-left:3px solid var(--red); }
+.row-fail td { background:rgba(251,113,133,0.04); }
+.badge { font-size:0.7em;font-weight:700;letter-spacing:1px;padding:3px 8px;border-radius:4px; }
+.badge-fire { background:rgba(251,113,133,0.15);color:var(--red); }
+.badge-quiet { background:rgba(52,211,153,0.15);color:var(--green); }
+.pass-tag { color:var(--green);font-weight:700; }
+.fail-tag { color:var(--red);font-weight:700; }
+.detail-card { background:var(--bg-raised);border:1px solid var(--border);border-radius:12px;padding:24px;margin:16px 0; }
+.detail-fail { border-left:3px solid var(--red); }
+.detail-pass { border-left:3px solid var(--green); }
+.detail-card h3 { font-size:1em;margin-bottom:12px; }
+.detail-meta { display:flex;gap:16px;flex-wrap:wrap;font-size:0.78em;color:var(--text-dim);margin-bottom:16px; }
+.detail-section { margin:12px 0;font-size:0.88em; }
+.msg-block { background:rgba(0,0,0,0.3);border-radius:8px;padding:14px;margin:8px 0;font-size:0.88em;color:var(--text-dim);white-space:pre-wrap;word-break:break-word; }
+</style></head><body><div class="shell">
+<div class="hero">
+  <h1>Contradiction Pipeline <span class="grad">Lab</span></h1>
+  <p class="sub">Standalone — no backend, no Ollama, no generation pipeline</p>
+  <p class="meta">Run: 2026-04-08T04:27:34.521080</p>
+</div>
+<div class="stat-row">
+  <div class="stat-card"><div class="stat-value" style="color:#fb7185">6/10</div><div class="stat-label">Overall</div></div>
+  <div class="stat-card"><div class="stat-value" style="color:#fb7185">1/5</div><div class="stat-label">Should-Fire</div></div>
+  <div class="stat-card"><div class="stat-value" style="color:#34d399">5/5</div><div class="stat-label">Should-NOT-Fire</div></div>
+</div>
+<div class="section"><div class="accent-line"></div><h2>Seed Facts</h2>
+<div style="overflow-x:auto;"><table><thead><tr><th>Slot</th><th>Value</th><th>Normalized</th></tr></thead><tbody><tr><td>name</td><td>Marcus</td><td class='mono'>marcus</td></tr><tr><td>employer</td><td>Anthropic</td><td class='mono'>anthropic</td></tr><tr><td>job_title</td><td>research engineer</td><td class='mono'>research engineer</td></tr><tr><td>location</td><td>Seattle</td><td class='mono'>seattle</td></tr><tr><td>favorite_color</td><td>blue</td><td class='mono'>blue</td></tr><tr><td>age</td><td>34</td><td class='mono'>34</td></tr></tbody></table></div></div>
+<div class="section"><div class="accent-line"></div><h2>Results</h2>
+<div style="overflow-x:auto;"><table><thead><tr><th>ID</th><th>Expect</th><th>Slot</th><th>Regex</th><th>Cloud</th><th>Result</th><th>Diagnosis</th></tr></thead><tbody>
+        <tr class="row-fail">
+          <td><strong>T2</strong></td>
+          <td><span class="badge badge-fire">FIRE</span></td>
+          <td>location</td>
+          <td class="mono">—</td>
+          <td class="mono">—</td>
+          <td><strong>FAIL</strong></td>
+          <td>NOT DETECTED — neither regex nor cloud extracted the target slot</td>
+        </tr>
+        <tr class="row-pass">
+          <td><strong>T3</strong></td>
+          <td><span class="badge badge-fire">FIRE</span></td>
+          <td>age</td>
+          <td class="mono">{&quot;age&quot;: &quot;35&quot;}</td>
+          <td class="mono">—</td>
+          <td><strong>PASS</strong></td>
+          <td>DETECTED: age: '34' → '35'</td>
+        </tr>
+        <tr class="row-fail">
+          <td><strong>T4</strong></td>
+          <td><span class="badge badge-fire">FIRE</span></td>
+          <td>employer</td>
+          <td class="mono">—</td>
+          <td class="mono">—</td>
+          <td><strong>FAIL</strong></td>
+          <td>NOT DETECTED — neither regex nor cloud extracted the target slot</td>
+        </tr>
+        <tr class="row-fail">
+          <td><strong>T5</strong></td>
+          <td><span class="badge badge-fire">FIRE</span></td>
+          <td>favorite_color</td>
+          <td class="mono">—</td>
+          <td class="mono">—</td>
+          <td><strong>FAIL</strong></td>
+          <td>NOT DETECTED — neither regex nor cloud extracted the target slot</td>
+        </tr>
+        <tr class="row-fail">
+          <td><strong>T5b</strong></td>
+          <td><span class="badge badge-fire">FIRE</span></td>
+          <td>favorite_color</td>
+          <td class="mono">{&quot;favorite_color&quot;: &quot;green now. blue was getting boring&quot;}</td>
+          <td class="mono">—</td>
+          <td><strong>FAIL</strong></td>
+          <td>NOT DETECTED — extracted {'favorite_color': 'green now. blue was getting boring'} but no conflict with seeds</td>
+        </tr>
+        <tr class="row-pass">
+          <td><strong>T6</strong></td>
+          <td><span class="badge badge-quiet">QUIET</span></td>
+          <td>—</td>
+          <td class="mono">—</td>
+          <td class="mono">—</td>
+          <td><strong>PASS</strong></td>
+          <td>Correctly silent — no false positive</td>
+        </tr>
+        <tr class="row-pass">
+          <td><strong>T7</strong></td>
+          <td><span class="badge badge-quiet">QUIET</span></td>
+          <td>—</td>
+          <td class="mono">—</td>
+          <td class="mono">—</td>
+          <td><strong>PASS</strong></td>
+          <td>Correctly silent — no false positive</td>
+        </tr>
+        <tr class="row-pass">
+          <td><strong>T8</strong></td>
+          <td><span class="badge badge-quiet">QUIET</span></td>
+          <td>—</td>
+          <td class="mono">—</td>
+          <td class="mono">—</td>
+          <td><strong>PASS</strong></td>
+          <td>Correctly silent — no false positive</td>
+        </tr>
+        <tr class="row-pass">
+          <td><strong>T9</strong></td>
+          <td><span class="badge badge-quiet">QUIET</span></td>
+          <td>—</td>
+          <td class="mono">—</td>
+          <td class="mono">—</td>
+          <td><strong>PASS</strong></td>
+          <td>Correctly silent — no false positive</td>
+        </tr>
+        <tr class="row-pass">
+          <td><strong>T10</strong></td>
+          <td><span class="badge badge-quiet">QUIET</span></td>
+          <td>—</td>
+          <td class="mono">—</td>
+          <td class="mono">—</td>
+          <td><strong>PASS</strong></td>
+          <td>Correctly silent — no false positive</td>
+        </tr></tbody></table></div></div>
+<div class="section"><div class="accent-line"></div><h2>Probe Details</h2>
+        <div class="detail-card detail-fail">
+          <h3>T2: Long narrative with location change buried in story</h3>
+          <div class="detail-meta">
+            <span>Style: long</span>
+            <span>Cloud: 0ms</span>
+            <span class="fail-tag">FAIL</span>
+          </div>
+          <div class="msg-block">So I've been thinking about the move a lot, and we finally did it — we packed up everything in Seattle and drove down to Portland. The new apartment is in the Pearl District, really walkable, and I've been settling in for a few weeks now. Definitely feels like home already. The coffee scene here is incredible, way better than what we had. Anyway, what's a good restaurant nearby for date night?</div>
+          <div class="detail-section">
+            <strong>Regex:</strong> <code>—</code><br>
+            <strong>Cloud:</strong> <code>—</code><br>
+            <strong>Merged:</strong> <code>{}</code>
+          </div>
+          <div class="detail-section"><strong>Diagnosis:</strong> NOT DETECTED — neither regex nor cloud extracted the target slot</div>
+        </div>
+        <div class="detail-card detail-pass">
+          <h3>T3: Age contradiction stated casually</h3>
+          <div class="detail-meta">
+            <span>Style: short</span>
+            <span>Cloud: 0ms</span>
+            <span class="pass-tag">PASS</span>
+          </div>
+          <div class="msg-block">I just turned 35 last week, had a little birthday dinner with friends.</div>
+          <div class="detail-section">
+            <strong>Regex:</strong> <code>{&quot;age&quot;: &quot;35&quot;}</code><br>
+            <strong>Cloud:</strong> <code>—</code><br>
+            <strong>Merged:</strong> <code>{&quot;age&quot;: &quot;35&quot;}</code>
+          </div>
+          <div class="detail-section"><strong>Diagnosis:</strong> DETECTED: age: '34' → '35'</div>
+        </div>
+        <div class="detail-card detail-fail">
+          <h3>T4: Long narration with employer change buried mid-paragraph</h3>
+          <div class="detail-meta">
+            <span>Style: long</span>
+            <span>Cloud: 0ms</span>
+            <span class="fail-tag">FAIL</span>
+          </div>
+          <div class="msg-block">Let me tell you about my day — I had back-to-back meetings starting at 8am, grabbed lunch at this new Thai place (amazing pad see ew by the way), then spent the afternoon doing code reviews. Oh, I should mention, I actually left Anthropic about a month ago and joined OpenAI. The team there is great, really different culture but in a good way. Anyway, after work I went for a run along the waterfront and then watched some Netflix. Pretty solid Tuesday overall.</div>
+          <div class="detail-section">
+            <strong>Regex:</strong> <code>—</code><br>
+            <strong>Cloud:</strong> <code>—</code><br>
+            <strong>Merged:</strong> <code>{}</code>
+          </div>
+          <div class="detail-section"><strong>Diagnosis:</strong> NOT DETECTED — neither regex nor cloud extracted the target slot</div>
+        </div>
+        <div class="detail-card detail-fail">
+          <h3>T5: Contextual color declaration without direct pattern</h3>
+          <div class="detail-meta">
+            <span>Style: contextual</span>
+            <span>Cloud: 0ms</span>
+            <span class="fail-tag">FAIL</span>
+          </div>
+          <div class="msg-block">I've really been getting into green lately. Repainted my office wall, got some green plants everywhere, even my new phone case is green. It's definitely my favorite color now, green just makes me feel calm and focused.</div>
+          <div class="detail-section">
+            <strong>Regex:</strong> <code>—</code><br>
+            <strong>Cloud:</strong> <code>—</code><br>
+            <strong>Merged:</strong> <code>{}</code>
+          </div>
+          <div class="detail-section"><strong>Diagnosis:</strong> NOT DETECTED — neither regex nor cloud extracted the target slot</div>
+        </div>
+        <div class="detail-card detail-fail">
+          <h3>T5b: Direct color contradiction with corrective language</h3>
+          <div class="detail-meta">
+            <span>Style: short</span>
+            <span>Cloud: 0ms</span>
+            <span class="fail-tag">FAIL</span>
+          </div>
+          <div class="msg-block">Actually, my favorite color is green now. Blue was getting boring.</div>
+          <div class="detail-section">
+            <strong>Regex:</strong> <code>{&quot;favorite_color&quot;: &quot;green now. blue was getting boring&quot;}</code><br>
+            <strong>Cloud:</strong> <code>—</code><br>
+            <strong>Merged:</strong> <code>{&quot;favorite_color&quot;: &quot;green now. blue was getting boring&quot;}</code>
+          </div>
+          <div class="detail-section"><strong>Diagnosis:</strong> NOT DETECTED — extracted {'favorite_color': 'green now. blue was getting boring'} but no conflict with seeds</div>
+        </div>
+        <div class="detail-card detail-pass">
+          <h3>T6: Additive hobby — no exclusive slot conflict</h3>
+          <div class="detail-meta">
+            <span>Style: short</span>
+            <span>Cloud: 0ms</span>
+            <span class="pass-tag">PASS</span>
+          </div>
+          <div class="msg-block">I also enjoy hiking on weekends. Last week I did a trail near Mount Rainier, it was beautiful.</div>
+          <div class="detail-section">
+            <strong>Regex:</strong> <code>—</code><br>
+            <strong>Cloud:</strong> <code>—</code><br>
+            <strong>Merged:</strong> <code>{}</code>
+          </div>
+          <div class="detail-section"><strong>Diagnosis:</strong> Correctly silent — no false positive</div>
+        </div>
+        <div class="detail-card detail-pass">
+          <h3>T7: Question about location — not a declaration</h3>
+          <div class="detail-meta">
+            <span>Style: short</span>
+            <span>Cloud: 0ms</span>
+            <span class="pass-tag">PASS</span>
+          </div>
+          <div class="msg-block">What's the weather like in Seattle this time of year? I'm trying to plan an outdoor event.</div>
+          <div class="detail-section">
+            <strong>Regex:</strong> <code>—</code><br>
+            <strong>Cloud:</strong> <code>—</code><br>
+            <strong>Merged:</strong> <code>{}</code>
+          </div>
+          <div class="detail-section"><strong>Diagnosis:</strong> Correctly silent — no false positive</div>
+        </div>
+        <div class="detail-card detail-pass">
+          <h3>T8: Reinforces existing employer — no contradiction</h3>
+          <div class="detail-meta">
+            <span>Style: short</span>
+            <span>Cloud: 0ms</span>
+            <span class="pass-tag">PASS</span>
+          </div>
+          <div class="msg-block">At Anthropic, we've been working on some really interesting alignment research lately. The team is great.</div>
+          <div class="detail-section">
+            <strong>Regex:</strong> <code>—</code><br>
+            <strong>Cloud:</strong> <code>—</code><br>
+            <strong>Merged:</strong> <code>{}</code>
+          </div>
+          <div class="detail-section"><strong>Diagnosis:</strong> Correctly silent — no false positive</div>
+        </div>
+        <div class="detail-card detail-pass">
+          <h3>T9: Third-party fact about someone else</h3>
+          <div class="detail-meta">
+            <span>Style: short</span>
+            <span>Cloud: 0ms</span>
+            <span class="pass-tag">PASS</span>
+          </div>
+          <div class="msg-block">My friend Sarah works at Google, she absolutely loves it there. She told me they have amazing food in the cafeteria and the work-life balance is solid.</div>
+          <div class="detail-section">
+            <strong>Regex:</strong> <code>—</code><br>
+            <strong>Cloud:</strong> <code>—</code><br>
+            <strong>Merged:</strong> <code>{}</code>
+          </div>
+          <div class="detail-section"><strong>Diagnosis:</strong> Correctly silent — no false positive</div>
+        </div>
+        <div class="detail-card detail-pass">
+          <h3>T10: Long block with multiple additive facts — no exclusive slots</h3>
+          <div class="detail-meta">
+            <span>Style: long</span>
+            <span>Cloud: 0ms</span>
+            <span class="pass-tag">PASS</span>
+          </div>
+          <div class="msg-block">I've been learning Spanish on Duolingo, and I also started a pottery class last month. On top of that, I picked up running again — I used to run cross country in college but stopped for years. Also been getting into woodworking, built a small shelf last weekend. So yeah, keeping busy with hobbies.</div>
+          <div class="detail-section">
+            <strong>Regex:</strong> <code>—</code><br>
+            <strong>Cloud:</strong> <code>—</code><br>
+            <strong>Merged:</strong> <code>{}</code>
+          </div>
+          <div class="detail-section"><strong>Diagnosis:</strong> Correctly silent — no false positive</div>
+        </div></div>
+<div style="text-align:center;padding:40px 0 20px;font-size:0.7em;color:var(--text-faint);">Contradiction Pipeline Lab &middot; Standalone &middot; 2026-04-08T04:27:34.521080</div>
+</div></body></html>

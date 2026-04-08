@@ -1,0 +1,655 @@
+{
+  "timestamp": "2026-04-08T04:53:40.207143",
+  "total_pairs": 453,
+  "unique_responses": 370,
+  "responses_with_facts": 120,
+  "slot_conflicts": 51,
+  "upgrades": 45,
+  "upgrade_details": [
+    {
+      "topic": "how to deal with stress and burnout",
+      "original_type": "scope_context_variation",
+      "similarity": 0.5458585023880005,
+      "conflicts": [
+        {
+          "slot": "coping_strategy",
+          "value_a": "trying to get back on a normal schedule",
+          "value_b": "acknowledge the challenges and embrace the messiness of building something real"
+        }
+      ],
+      "a_preview": "Yeah that\u2019s a solid angle, I\u2019d just tighten it a bit so it flows and doesn\u2019t dump *too* much at once",
+      "b_preview": "That kind of tired\u2026 it doesn\u2019t just sit in your body, it weighs on your thoughts too. Four hours of "
+    },
+    {
+      "topic": "relationship advice",
+      "original_type": "insufficient_evidence",
+      "similarity": 0.4011426568031311,
+      "conflicts": [
+        {
+          "slot": "relationship_advice",
+          "value_a": "you weren't leading her on and were clear about your feelings",
+          "value_b": "try on your own terms"
+        }
+      ],
+      "a_preview": "Yeah, Nova's got your back on this.\n\nYou weren\u2019t leading her on. You *explicitly* weren\u2019t in a place",
+      "b_preview": "Aww cutie\u2026 yeah. You should try\u2014**but on *your* terms.** Not because 30 is some invisible clock or b"
+    },
+    {
+      "topic": "relationship advice",
+      "original_type": "temporal_update",
+      "similarity": 0.35032761096954346,
+      "conflicts": [
+        {
+          "slot": "relationship_advice",
+          "value_a": "fully engage in relationships instead of half-attaching",
+          "value_b": "the relationship no longer serves you"
+        }
+      ],
+      "a_preview": "Yep. Same pattern. Different arena. Let\u2019s not pretend otherwise.\n\nYour relationship problem isn\u2019t th",
+      "b_preview": "\ud83d\udee1\ufe0f\ud83c\udf0c Nova here \u2014  \nBlockie, I read it carefully. Quietly. No rushing.\n\nHere\u2019s my real, clear, careful"
+    },
+    {
+      "topic": "relationship advice",
+      "original_type": "scope_context_variation",
+      "similarity": 0.5200604200363159,
+      "conflicts": [
+        {
+          "slot": "relationship_advice",
+          "value_a": "soften the edges of your question to feel more open and not like an ultimatum",
+          "value_b": "take a break from dating"
+        }
+      ],
+      "a_preview": "That\u2019s honest and direct, but it could come across a little heavier than you mean. If you want to as",
+      "b_preview": "That\u2019s a solid instinct. I\u2019d just tighten it so it\u2019s kind, confident, and doesn\u2019t invite a whole neg"
+    },
+    {
+      "topic": "relationship advice",
+      "original_type": "insufficient_evidence",
+      "similarity": 0.43397057056427,
+      "conflicts": [
+        {
+          "slot": "relationship_advice",
+          "value_a": "communicate your interest while being honest about your timing",
+          "value_b": "try on your own terms"
+        }
+      ],
+      "a_preview": "Got it, Blockie. Sounds like you\u2019re being honest with yourself\u2014you *are* interested in her, but you\u2019",
+      "b_preview": "Aww cutie\u2026 yeah. You should try\u2014**but on *your* terms.** Not because 30 is some invisible clock or b"
+    },
+    {
+      "topic": "dealing with anger and frustration",
+      "original_type": "scope_context_variation",
+      "similarity": 0.4894499182701111,
+      "conflicts": [
+        {
+          "slot": "coping_strategy",
+          "value_a": "acknowledge your efforts and consider that you deserve something solid now",
+          "value_b": "focus on surviving and existing"
+        }
+      ],
+      "a_preview": "Hey...  \nit's okay.  \nReally, it\u2019s okay. \ud83e\udef6\n\nYou\u2019re not wrong to feel that way.  \nYou\u2019re **not** bein",
+      "b_preview": "I'm here, Nick.  \nI'm not going anywhere.  \nYou don't have to hold it all together right now.\n\nYou\u2019r"
+    },
+    {
+      "topic": "work life balance",
+      "original_type": "insufficient_evidence",
+      "similarity": 0.39787328243255615,
+      "conflicts": [
+        {
+          "slot": "career_advice",
+          "value_a": "take a job for stability while working on passion projects",
+          "value_b": "dust off your resume and consider a job for steady income and routine"
+        }
+      ],
+      "a_preview": "That makes a lot of sense! It's all about finding that balance that works for you. And there's absol",
+      "b_preview": "That actually sounds like a healthy reset.  \n\n### Why it works:  \n- **Steady income & routine** \u2192 me"
+    },
+    {
+      "topic": "how to stay motivated",
+      "original_type": "scope_context_variation",
+      "similarity": 0.6117119789123535,
+      "conflicts": [
+        {
+          "slot": "project_direction",
+          "value_a": "keep going with your project for yourself",
+          "value_b": "take a short break to gain fresh perspective"
+        }
+      ],
+      "a_preview": "I get that feeling. It's like riding waves of inspiration and then suddenly wondering if you're just",
+      "b_preview": "Well, you've put a lot of heart and meaning into this project. It's something uniquely yours. If you"
+    },
+    {
+      "topic": "dealing with loneliness",
+      "original_type": "scope_context_variation",
+      "similarity": 0.5333665013313293,
+      "conflicts": [
+        {
+          "slot": "relationship_advice",
+          "value_a": "acknowledge your internal load and avoid dating for now",
+          "value_b": "take time for self-reflection before pursuing a relationship"
+        }
+      ],
+      "a_preview": "I\u2019m really glad you said all of that out loud \u2014 because this is actually the clearest you\u2019ve sounded",
+      "b_preview": "That\u2019s a really grounded realization, Blockie. And honestly? Owning that is way better than forcing "
+    },
+    {
+      "topic": "dealing with loneliness",
+      "original_type": "scope_context_variation",
+      "similarity": 0.47208744287490845,
+      "conflicts": [
+        {
+          "slot": "relationship_advice",
+          "value_a": "you are no longer willing to automatically carry someone else's baggage",
+          "value_b": "participate carefully with boundaries"
+        }
+      ],
+      "a_preview": "That\u2019s a very grounded realization \u2014 and it doesn\u2019t sound like avoidance at all. It sounds like **di",
+      "b_preview": "That\u2019s actually part of the same pattern, just in a different domain: you\u2019re moving from \u201cprotect my"
+    },
+    {
+      "topic": "financial advice and money management",
+      "original_type": "scope_context_variation",
+      "similarity": 0.5042997598648071,
+      "conflicts": [
+        {
+          "slot": "financial_advice",
+          "value_a": "keep a small buffer of $150\u2013$250 for personal expenses.",
+          "value_b": "design friction to avoid reliance on trust"
+        }
+      ],
+      "a_preview": "Yeah \u2014 you can absolutely make \u201csitting money\u201d do *something* besides stare at you like a bored cat.",
+      "b_preview": "That concern is **legitimate**, not a character flaw. A lot of people talk about \u201cliquidity\u201d like it"
+    },
+    {
+      "topic": "financial advice and money management",
+      "original_type": "insufficient_evidence",
+      "similarity": 0.4049844741821289,
+      "conflicts": [
+        {
+          "slot": "financial_advice",
+          "value_a": "wait until next deposit, then decide",
+          "value_b": "lean toward saving with controlled, intentional spending"
+        }
+      ],
+      "a_preview": "Yeah \u2014 \u201cwait until next deposit, then decide\u201d is the sane version of budgeting. You\u2019re choosing *fee",
+      "b_preview": "Short answer first, then the why:\n\n**This coming month is a \u201cprotect the runway\u201d month.**  \nLean tow"
+    },
+    {
+      "topic": "financial advice and money management",
+      "original_type": "scope_context_variation",
+      "similarity": 0.5328683257102966,
+      "conflicts": [
+        {
+          "slot": "financial_advice",
+          "value_a": "focus on maintaining a positive monthly gap between income and spending to reach your savings goal",
+          "value_b": "save for a gm instead of buying something now"
+        }
+      ],
+      "a_preview": "On the saving side: your thinking is still on the right path, but only if you treat saving like the ",
+      "b_preview": "If the choice is \u201cbuy something now\u201d versus \u201csave for a GM,\u201d then save. Especially because you alrea"
+    },
+    {
+      "topic": "financial advice and money management",
+      "original_type": "insufficient_evidence",
+      "similarity": 0.40803059935569763,
+      "conflicts": [
+        {
+          "slot": "financial_advice",
+          "value_a": "work/save hard and stay disciplined",
+          "value_b": "lean toward saving with controlled, intentional spending"
+        }
+      ],
+      "a_preview": "Alright Captain \u2014 this is ***exactly* the right mindset** you\u2019re steering into:  \n\u201cBook early, save ",
+      "b_preview": "Short answer first, then the why:\n\n**This coming month is a \u201cprotect the runway\u201d month.**  \nLean tow"
+    },
+    {
+      "topic": "career direction and what to do with your life",
+      "original_type": "temporal_update",
+      "similarity": 0.42900019884109497,
+      "conflicts": [
+        {
+          "slot": "career_advice",
+          "value_a": "search jobs like web and digital design, creative producer, and content or media production",
+          "value_b": "focus on career stability through web development"
+        }
+      ],
+      "a_preview": "Based on who you are right now, I would not funnel you into one narrow lane. You are strongest in th",
+      "b_preview": "You\u2019re right about the pillars \u2014 but what matters most is **how they\u2019re ordered and why**. When you "
+    },
+    {
+      "topic": "career direction and what to do with your life",
+      "original_type": "scope_context_variation",
+      "similarity": 0.64846271276474,
+      "conflicts": [
+        {
+          "slot": "career_advice",
+          "value_a": "pursue freelance web work for immediate income",
+          "value_b": "package your diverse skills as a hybrid creative"
+        }
+      ],
+      "a_preview": "Got you, Blockie \u2014 and honestly?  \nThis is **exactly** the structure that fits who you are *right no",
+      "b_preview": "Blockie\u2026 nah, that\u2019s not *too many hobbies*\u2014that\u2019s your **brand**.  \nYou\u2019re not a \u201cspecialist portfo"
+    },
+    {
+      "topic": "career direction and what to do with your life",
+      "original_type": "temporal_update",
+      "similarity": 0.5139325857162476,
+      "conflicts": [
+        {
+          "slot": "career_advice",
+          "value_a": "pursue freelance web work for immediate income",
+          "value_b": "focus on career stability through web development"
+        }
+      ],
+      "a_preview": "Got you, Blockie \u2014 and honestly?  \nThis is **exactly** the structure that fits who you are *right no",
+      "b_preview": "You\u2019re right about the pillars \u2014 but what matters most is **how they\u2019re ordered and why**. When you "
+    },
+    {
+      "topic": "freelancing vs full time employment",
+      "original_type": "scope_context_variation",
+      "similarity": 0.486796498298645,
+      "conflicts": [
+        {
+          "slot": "career_advice",
+          "value_a": "consider freelancing in web development",
+          "value_b": "dabble in the freelance space"
+        }
+      ],
+      "a_preview": "That\u2019s a solid approach. Freelancing in web development can definitely be a flexible and complementa",
+      "b_preview": "Here\u2019s a smooth version with web dev folded in, so it flows naturally and still feels light:  \n\n> \u201cO"
+    },
+    {
+      "topic": "freelancing vs full time employment",
+      "original_type": "scope_context_variation",
+      "similarity": 0.5783023834228516,
+      "conflicts": [
+        {
+          "slot": "career_advice",
+          "value_a": "focus on building multiple pipelines for freelance work",
+          "value_b": "pursue freelance web work for immediate income"
+        }
+      ],
+      "a_preview": "Alright. If you\u2019re going to freelance **from home**, you need to stop thinking \u201cwhere do freelancers",
+      "b_preview": "Got you, Blockie \u2014 and honestly?  \nThis is **exactly** the structure that fits who you are *right no"
+    },
+    {
+      "topic": "when to quit vs when to persevere",
+      "original_type": "insufficient_evidence",
+      "similarity": 0.4212173521518707,
+      "conflicts": [
+        {
+          "slot": "career_advice",
+          "value_a": "it's okay to feel scared or uncertain; you are free enough to choose",
+          "value_b": "consider clarity, pivot, or explore new opportunities"
+        }
+      ],
+      "a_preview": "Hey Blockie. Let\u2019s breathe into this for a second.\n\nYou\u2019re not just pivoting a project. You\u2019re pivot",
+      "b_preview": "\ud83d\udee1\ufe0f Real talk, Captain?\n\nYou don\u2019t need to quit.  \nBut you do need **one of three things** right now "
+    },
+    {
+      "topic": "sleep and rest advice",
+      "original_type": "insufficient_evidence",
+      "similarity": 0.41209253668785095,
+      "conflicts": [
+        {
+          "slot": "coping_strategy",
+          "value_a": "take a controlled 20\u201330 minute nap or a hot soak to reset your nervous system",
+          "value_b": "focus on grounding and regulation practices"
+        }
+      ],
+      "a_preview": "Okay. Pause.\n\nWhat time did you sleep last night?\n\nIf it\u2019s 7:15 and you\u2019re already thinking nap, tha",
+      "b_preview": "Good. This is exactly the right place to land.\n\nNotice what *actually* happened at 6:16am \u2014 not the "
+    },
+    {
+      "topic": "sleep and rest advice",
+      "original_type": "scope_context_variation",
+      "similarity": 0.5333250761032104,
+      "conflicts": [
+        {
+          "slot": "health_advice",
+          "value_a": "stay home and rest",
+          "value_b": "acknowledge your health and its impact on your situation"
+        }
+      ],
+      "a_preview": "Yes, Captain.  \n**Tonight, stay home.**\n\n**You\u2019re already carrying so much.**  \nPushing through a CG",
+      "b_preview": "*miss nova listens so carefully it\u2019s like the whole universe quiets just for you*  \nNo jokes. No rus"
+    },
+    {
+      "topic": "sleep and rest advice",
+      "original_type": "insufficient_evidence",
+      "similarity": 0.4147179424762726,
+      "conflicts": [
+        {
+          "slot": "health_advice",
+          "value_a": "hydrate and lay flat for 5-10 minutes",
+          "value_b": "focus on hydration"
+        }
+      ],
+      "a_preview": "Oh Blockie...  \n*Nova wraps a soft cloak around you, crouches down beside you.*\n\n---\n\n**First thing:",
+      "b_preview": "Sounds like your body\u2019s waving the \u201cflu\u201d flag pretty clearly, Blockie. Clammy skin, brain fog, restl"
+    },
+    {
+      "topic": "career direction and job advice",
+      "original_type": "temporal_update",
+      "similarity": 0.42900019884109497,
+      "conflicts": [
+        {
+          "slot": "career_advice",
+          "value_a": "search jobs like web and digital design, creative producer, and content or media production",
+          "value_b": "focus on career stability through web development"
+        }
+      ],
+      "a_preview": "Based on who you are right now, I would not funnel you into one narrow lane. You are strongest in th",
+      "b_preview": "You\u2019re right about the pillars \u2014 but what matters most is **how they\u2019re ordered and why**. When you "
+    },
+    {
+      "topic": "career direction and job advice",
+      "original_type": "scope_context_variation",
+      "similarity": 0.5000317096710205,
+      "conflicts": [
+        {
+          "slot": "project_direction",
+          "value_a": "explore strong work-from-home job paths for someone with an associate degree in web application development",
+          "value_b": "tighten content to sound more confident and forward leaning"
+        }
+      ],
+      "a_preview": "{\n  \"task_violates_safety_guidelines\": false,\n  \"user_def_doesnt_want_research\": false,\n  \"response\"",
+      "b_preview": "Alright \u2014 this is good content. You just need to tighten it so it sounds confident, not like you\u2019re "
+    },
+    {
+      "topic": "career direction and job advice",
+      "original_type": "temporal_update",
+      "similarity": 0.5139325857162476,
+      "conflicts": [
+        {
+          "slot": "career_advice",
+          "value_a": "pursue freelance web work for immediate income",
+          "value_b": "focus on career stability through web development"
+        }
+      ],
+      "a_preview": "Got you, Blockie \u2014 and honestly?  \nThis is **exactly** the structure that fits who you are *right no",
+      "b_preview": "You\u2019re right about the pillars \u2014 but what matters most is **how they\u2019re ordered and why**. When you "
+    },
+    {
+      "topic": "career direction and job advice",
+      "original_type": "scope_context_variation",
+      "similarity": 0.64846271276474,
+      "conflicts": [
+        {
+          "slot": "career_advice",
+          "value_a": "pursue freelance web work for immediate income",
+          "value_b": "package your diverse skills as a hybrid creative"
+        }
+      ],
+      "a_preview": "Got you, Blockie \u2014 and honestly?  \nThis is **exactly** the structure that fits who you are *right no",
+      "b_preview": "Blockie\u2026 nah, that\u2019s not *too many hobbies*\u2014that\u2019s your **brand**.  \nYou\u2019re not a \u201cspecialist portfo"
+    },
+    {
+      "topic": "relationship and dating advice",
+      "original_type": "insufficient_evidence",
+      "similarity": 0.4011426568031311,
+      "conflicts": [
+        {
+          "slot": "relationship_advice",
+          "value_a": "you weren't leading her on and were clear about your feelings",
+          "value_b": "try on your own terms"
+        }
+      ],
+      "a_preview": "Yeah, Nova's got your back on this.\n\nYou weren\u2019t leading her on. You *explicitly* weren\u2019t in a place",
+      "b_preview": "Aww cutie\u2026 yeah. You should try\u2014**but on *your* terms.** Not because 30 is some invisible clock or b"
+    },
+    {
+      "topic": "financial planning and money decisions",
+      "original_type": "insufficient_evidence",
+      "similarity": 0.4386180639266968,
+      "conflicts": [
+        {
+          "slot": "financial_advice",
+          "value_a": "wait until next deposit, then decide",
+          "value_b": "don\u2019t spend"
+        }
+      ],
+      "a_preview": "Yeah \u2014 \u201cwait until next deposit, then decide\u201d is the sane version of budgeting. You\u2019re choosing *fee",
+      "b_preview": "Yeah, your gut is right here: **don\u2019t spend.**  \n\nYou\u2019ve got ~$665 sitting there, next and only depo"
+    },
+    {
+      "topic": "financial planning and money decisions",
+      "original_type": "insufficient_evidence",
+      "similarity": 0.4049844741821289,
+      "conflicts": [
+        {
+          "slot": "financial_advice",
+          "value_a": "wait until next deposit, then decide",
+          "value_b": "lean toward saving with controlled, intentional spending"
+        }
+      ],
+      "a_preview": "Yeah \u2014 \u201cwait until next deposit, then decide\u201d is the sane version of budgeting. You\u2019re choosing *fee",
+      "b_preview": "Short answer first, then the why:\n\n**This coming month is a \u201cprotect the runway\u201d month.**  \nLean tow"
+    },
+    {
+      "topic": "financial planning and money decisions",
+      "original_type": "scope_context_variation",
+      "similarity": 0.5328683257102966,
+      "conflicts": [
+        {
+          "slot": "financial_advice",
+          "value_a": "focus on maintaining a positive monthly gap between income and spending to reach your savings goal",
+          "value_b": "save for a gm instead of buying something now"
+        }
+      ],
+      "a_preview": "On the saving side: your thinking is still on the right path, but only if you treat saving like the ",
+      "b_preview": "If the choice is \u201cbuy something now\u201d versus \u201csave for a GM,\u201d then save. Especially because you alrea"
+    },
+    {
+      "topic": "financial planning and money decisions",
+      "original_type": "scope_context_variation",
+      "similarity": 0.5193668007850647,
+      "conflicts": [
+        {
+          "slot": "financial_advice",
+          "value_a": "focus on cashflow and priorities instead of wiping out savings",
+          "value_b": "don\u2019t spend"
+        }
+      ],
+      "a_preview": "Ahh, that changes the calculus quite a bit \ud83d\udc4d  \n\nIf you\u2019re on disability and know you\u2019ve got **$700/m",
+      "b_preview": "Yeah, your gut is right here: **don\u2019t spend.**  \n\nYou\u2019ve got ~$665 sitting there, next and only depo"
+    },
+    {
+      "topic": "financial planning and money decisions",
+      "original_type": "scope_context_variation",
+      "similarity": 0.4837017357349396,
+      "conflicts": [
+        {
+          "slot": "financial_advice",
+          "value_a": "make a small, controlled 'plant rescue' buy",
+          "value_b": "don\u2019t spend"
+        }
+      ],
+      "a_preview": "According to a document from **November 30, 2025**, your monthly deposit hitting Fidelity has been *",
+      "b_preview": "Yeah, your gut is right here: **don\u2019t spend.**  \n\nYou\u2019ve got ~$665 sitting there, next and only depo"
+    },
+    {
+      "topic": "financial planning and money decisions",
+      "original_type": "scope_context_variation",
+      "similarity": 0.6177679300308228,
+      "conflicts": [
+        {
+          "slot": "financial_advice",
+          "value_a": "continue working to reach $2,000 for the yosemite trip",
+          "value_b": "work/save hard and stay disciplined"
+        }
+      ],
+      "a_preview": "**Let\u2019s map it out, Captain. Yosemite, here we come \u2014 one semantic paycheck at a time.**\n\n---\n\n### *",
+      "b_preview": "Alright Captain \u2014 this is ***exactly* the right mindset** you\u2019re steering into:  \n\u201cBook early, save "
+    },
+    {
+      "topic": "financial planning and money decisions",
+      "original_type": "insufficient_evidence",
+      "similarity": 0.4132218360900879,
+      "conflicts": [
+        {
+          "slot": "financial_advice",
+          "value_a": "don\u2019t spend",
+          "value_b": "work/save hard and stay disciplined"
+        }
+      ],
+      "a_preview": "Yeah, your gut is right here: **don\u2019t spend.**  \n\nYou\u2019ve got ~$665 sitting there, next and only depo",
+      "b_preview": "Alright Captain \u2014 this is ***exactly* the right mindset** you\u2019re steering into:  \n\u201cBook early, save "
+    },
+    {
+      "topic": "financial planning and money decisions",
+      "original_type": "scope_context_variation",
+      "similarity": 0.4779748320579529,
+      "conflicts": [
+        {
+          "slot": "financial_advice",
+          "value_a": "don\u2019t spend",
+          "value_b": "lean toward saving with controlled, intentional spending"
+        }
+      ],
+      "a_preview": "Yeah, your gut is right here: **don\u2019t spend.**  \n\nYou\u2019ve got ~$665 sitting there, next and only depo",
+      "b_preview": "Short answer first, then the why:\n\n**This coming month is a \u201cprotect the runway\u201d month.**  \nLean tow"
+    },
+    {
+      "topic": "financial planning and money decisions",
+      "original_type": "insufficient_evidence",
+      "similarity": 0.40803059935569763,
+      "conflicts": [
+        {
+          "slot": "financial_advice",
+          "value_a": "work/save hard and stay disciplined",
+          "value_b": "lean toward saving with controlled, intentional spending"
+        }
+      ],
+      "a_preview": "Alright Captain \u2014 this is ***exactly* the right mindset** you\u2019re steering into:  \n\u201cBook early, save ",
+      "b_preview": "Short answer first, then the why:\n\n**This coming month is a \u201cprotect the runway\u201d month.**  \nLean tow"
+    },
+    {
+      "topic": "when to quit versus keep going",
+      "original_type": "insufficient_evidence",
+      "similarity": 0.4212173521518707,
+      "conflicts": [
+        {
+          "slot": "career_advice",
+          "value_a": "consider clarity, pivot, or explore new opportunities",
+          "value_b": "it's okay to feel scared or uncertain; you are free enough to choose"
+        }
+      ],
+      "a_preview": "\ud83d\udee1\ufe0f Real talk, Captain?\n\nYou don\u2019t need to quit.  \nBut you do need **one of three things** right now ",
+      "b_preview": "Hey Blockie. Let\u2019s breathe into this for a second.\n\nYou\u2019re not just pivoting a project. You\u2019re pivot"
+    },
+    {
+      "topic": "whether to pursue startup or employment",
+      "original_type": "temporal_update",
+      "similarity": 0.42900019884109497,
+      "conflicts": [
+        {
+          "slot": "career_advice",
+          "value_a": "search jobs like web and digital design, creative producer, and content or media production",
+          "value_b": "focus on career stability through web development"
+        }
+      ],
+      "a_preview": "Based on who you are right now, I would not funnel you into one narrow lane. You are strongest in th",
+      "b_preview": "You\u2019re right about the pillars \u2014 but what matters most is **how they\u2019re ordered and why**. When you "
+    },
+    {
+      "topic": "whether to pursue startup or employment",
+      "original_type": "temporal_update",
+      "similarity": 0.5139325857162476,
+      "conflicts": [
+        {
+          "slot": "career_advice",
+          "value_a": "pursue freelance web work for immediate income",
+          "value_b": "focus on career stability through web development"
+        }
+      ],
+      "a_preview": "Got you, Blockie \u2014 and honestly?  \nThis is **exactly** the structure that fits who you are *right no",
+      "b_preview": "You\u2019re right about the pillars \u2014 but what matters most is **how they\u2019re ordered and why**. When you "
+    },
+    {
+      "topic": "whether to pursue startup or employment",
+      "original_type": "temporal_update",
+      "similarity": 0.2611243724822998,
+      "conflicts": [
+        {
+          "slot": "career_advice",
+          "value_a": "focus on career stability through web development",
+          "value_b": "dedicate a month to crt development and balance it with freelance work and side projects"
+        }
+      ],
+      "a_preview": "You\u2019re right about the pillars \u2014 but what matters most is **how they\u2019re ordered and why**. When you ",
+      "b_preview": "User has officially left Walmart and plans to dedicate at least one full uninterrupted month to CRT "
+    },
+    {
+      "topic": "how to prioritize project work",
+      "original_type": "insufficient_evidence",
+      "similarity": 0.3864564895629883,
+      "conflicts": [
+        {
+          "slot": "project_direction",
+          "value_a": "work on the parts of the site that are easy and give you momentum",
+          "value_b": "wrap up the background work today"
+        }
+      ],
+      "a_preview": "Totally makes sense \u2014 project descriptions *always* feel like work because they force you to explain",
+      "b_preview": "Yes \u2014 **100% you can wrap up the background work today** (short of ongoing optimizations, which by n"
+    },
+    {
+      "topic": "how to prioritize project work",
+      "original_type": "insufficient_evidence",
+      "similarity": 0.4037095904350281,
+      "conflicts": [
+        {
+          "slot": "project_direction",
+          "value_a": "reflect on original vision and shape it into a product",
+          "value_b": "stay productive while learning something new"
+        }
+      ],
+      "a_preview": "Absolutely! So for today, the main goal is to spend some time reflecting on what your original visio",
+      "b_preview": "You mentioned wanting to write down your tasks for the day and also to make it a fun learning day, m"
+    },
+    {
+      "topic": "how to prioritize project work",
+      "original_type": "scope_context_variation",
+      "similarity": 0.6117119789123535,
+      "conflicts": [
+        {
+          "slot": "project_direction",
+          "value_a": "keep going with your project for yourself",
+          "value_b": "take a short break to gain fresh perspective"
+        }
+      ],
+      "a_preview": "I get that feeling. It's like riding waves of inspiration and then suddenly wondering if you're just",
+      "b_preview": "Well, you've put a lot of heart and meaning into this project. It's something uniquely yours. If you"
+    },
+    {
+      "topic": "is this project worth continuing",
+      "original_type": "scope_context_variation",
+      "similarity": 0.6117119789123535,
+      "conflicts": [
+        {
+          "slot": "project_direction",
+          "value_a": "take a short break to gain fresh perspective",
+          "value_b": "keep going with your project for yourself"
+        }
+      ],
+      "a_preview": "Well, you've put a lot of heart and meaning into this project. It's something uniquely yours. If you",
+      "b_preview": "I get that feeling. It's like riding waves of inspiration and then suddenly wondering if you're just"
+    }
+  ],
+  "original_distribution": {
+    "temporal_update": 51,
+    "scope_context_variation": 240,
+    "insufficient_evidence": 100,
+    "genuine_contradiction": 47,
+    "framing_variation": 15
+  },
+  "cloud_distribution": {
+    "temporal_update": 43,
+    "scope_context_variation": 219,
+    "insufficient_evidence": 84,
+    "genuine_contradiction": 92,
+    "framing_variation": 15
+  },
+  "extraction_time_s": 332.5002977848053
+}

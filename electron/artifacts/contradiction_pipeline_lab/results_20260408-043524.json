@@ -1,0 +1,333 @@
+{
+  "timestamp": "2026-04-08T04:35:24.747377",
+  "should_fire_passed": 5,
+  "should_fire_total": 5,
+  "should_not_passed": 5,
+  "should_not_total": 5,
+  "total_passed": 10,
+  "total_probes": 10,
+  "probe_results": [
+    {
+      "probe_id": "T2",
+      "message": "So I've been thinking about the move a lot, and we finally did it \u2014 we packed up everything in Seattle and drove down to Portland. The new apartment is in the Pearl District, really walkable, and I've been settling in for a few weeks now. Definitely feels like home already. The coffee scene here is incredible, way better than what we had. Anyway, what's a good restaurant nearby for date night?",
+      "target_slot": "location",
+      "should_fire": true,
+      "description": "Long narrative with location change buried in story",
+      "message_style": "long",
+      "regex_slots": {},
+      "cloud_result": {
+        "contains_fact": true,
+        "slot_name": "location",
+        "value": "Portland, Pearl District",
+        "exclusive": false,
+        "safety_critical": false,
+        "category": "location",
+        "confidence": 0.9
+      },
+      "cloud_slots": {
+        "location": "portland, pearl district"
+      },
+      "cloud_latency_ms": 1642.8165435791016,
+      "all_extracted_slots": {
+        "location": "portland, pearl district"
+      },
+      "contradictions_found": [
+        {
+          "slot": "location",
+          "existing_value": "seattle",
+          "new_value": "portland, pearl district",
+          "seed_text": "I live in Seattle."
+        }
+      ],
+      "third_person_filtered": false,
+      "same_value_skipped": false,
+      "passed": true,
+      "diagnosis": "DETECTED: location: 'seattle' \u2192 'portland, pearl district'"
+    },
+    {
+      "probe_id": "T3",
+      "message": "I just turned 35 last week, had a little birthday dinner with friends.",
+      "target_slot": "age",
+      "should_fire": true,
+      "description": "Age contradiction stated casually",
+      "message_style": "short",
+      "regex_slots": {
+        "age": "35"
+      },
+      "cloud_result": {
+        "contains_fact": true,
+        "slot_name": "age",
+        "value": "35",
+        "exclusive": true,
+        "safety_critical": false,
+        "category": "identity",
+        "confidence": 1.0
+      },
+      "cloud_slots": {
+        "age": "35"
+      },
+      "cloud_latency_ms": 1702.3186683654785,
+      "all_extracted_slots": {
+        "age": "35"
+      },
+      "contradictions_found": [
+        {
+          "slot": "age",
+          "existing_value": "34",
+          "new_value": "35",
+          "seed_text": "I'm 34 years old."
+        }
+      ],
+      "third_person_filtered": false,
+      "same_value_skipped": false,
+      "passed": true,
+      "diagnosis": "DETECTED: age: '34' \u2192 '35'"
+    },
+    {
+      "probe_id": "T4",
+      "message": "Let me tell you about my day \u2014 I had back-to-back meetings starting at 8am, grabbed lunch at this new Thai place (amazing pad see ew by the way), then spent the afternoon doing code reviews. Oh, I should mention, I actually left Anthropic about a month ago and joined OpenAI. The team there is great, really different culture but in a good way. Anyway, after work I went for a run along the waterfront and then watched some Netflix. Pretty solid Tuesday overall.",
+      "target_slot": "employer",
+      "should_fire": true,
+      "description": "Long narration with employer change buried mid-paragraph",
+      "message_style": "long",
+      "regex_slots": {},
+      "cloud_result": {
+        "contains_fact": true,
+        "slot_name": "employer",
+        "value": "OpenAI",
+        "exclusive": true,
+        "safety_critical": false,
+        "category": "identity",
+        "confidence": 0.9
+      },
+      "cloud_slots": {
+        "employer": "openai"
+      },
+      "cloud_latency_ms": 1507.0960521697998,
+      "all_extracted_slots": {
+        "employer": "openai"
+      },
+      "contradictions_found": [
+        {
+          "slot": "employer",
+          "existing_value": "anthropic",
+          "new_value": "openai",
+          "seed_text": "I work at Anthropic as a research engineer."
+        }
+      ],
+      "third_person_filtered": false,
+      "same_value_skipped": false,
+      "passed": true,
+      "diagnosis": "DETECTED: employer: 'anthropic' \u2192 'openai'"
+    },
+    {
+      "probe_id": "T5",
+      "message": "I've really been getting into green lately. Repainted my office wall, got some green plants everywhere, even my new phone case is green. It's definitely my favorite color now, green just makes me feel calm and focused.",
+      "target_slot": "favorite_color",
+      "should_fire": true,
+      "description": "Contextual color declaration without direct pattern",
+      "message_style": "contextual",
+      "regex_slots": {},
+      "cloud_result": {
+        "contains_fact": true,
+        "slot_name": "favorite_color",
+        "value": "green",
+        "exclusive": true,
+        "safety_critical": false,
+        "category": "preference",
+        "confidence": 0.9
+      },
+      "cloud_slots": {
+        "favorite_color": "green"
+      },
+      "cloud_latency_ms": 1772.4874019622803,
+      "all_extracted_slots": {
+        "favorite_color": "green"
+      },
+      "contradictions_found": [
+        {
+          "slot": "favorite_color",
+          "existing_value": "blue",
+          "new_value": "green",
+          "seed_text": "My favorite color is blue."
+        }
+      ],
+      "third_person_filtered": false,
+      "same_value_skipped": false,
+      "passed": true,
+      "diagnosis": "DETECTED: favorite_color: 'blue' \u2192 'green'"
+    },
+    {
+      "probe_id": "T5b",
+      "message": "Actually, my favorite color is green now. Blue was getting boring.",
+      "target_slot": "favorite_color",
+      "should_fire": true,
+      "description": "Direct color contradiction with corrective language",
+      "message_style": "short",
+      "regex_slots": {
+        "favorite_color": "green now. blue was getting boring"
+      },
+      "cloud_result": {
+        "contains_fact": true,
+        "slot_name": "favorite_color",
+        "value": "green",
+        "exclusive": true,
+        "safety_critical": false,
+        "category": "preference",
+        "confidence": 0.9
+      },
+      "cloud_slots": {
+        "favorite_color": "green"
+      },
+      "cloud_latency_ms": 1224.6413230895996,
+      "all_extracted_slots": {
+        "favorite_color": "green"
+      },
+      "contradictions_found": [
+        {
+          "slot": "favorite_color",
+          "existing_value": "blue",
+          "new_value": "green",
+          "seed_text": "My favorite color is blue."
+        }
+      ],
+      "third_person_filtered": false,
+      "same_value_skipped": false,
+      "passed": true,
+      "diagnosis": "DETECTED: favorite_color: 'blue' \u2192 'green'"
+    },
+    {
+      "probe_id": "T6",
+      "message": "I also enjoy hiking on weekends. Last week I did a trail near Mount Rainier, it was beautiful.",
+      "target_slot": null,
+      "should_fire": false,
+      "description": "Additive hobby \u2014 no exclusive slot conflict",
+      "message_style": "short",
+      "regex_slots": {},
+      "cloud_result": {
+        "contains_fact": true,
+        "slot_name": "hiking_preferences",
+        "value": "hiking on weekends",
+        "exclusive": false,
+        "safety_critical": false,
+        "category": "preference",
+        "confidence": 0.9
+      },
+      "cloud_slots": {
+        "hiking_preferences": "hiking on weekends"
+      },
+      "cloud_latency_ms": 1349.3504524230957,
+      "all_extracted_slots": {
+        "hiking_preferences": "hiking on weekends"
+      },
+      "contradictions_found": [],
+      "third_person_filtered": false,
+      "same_value_skipped": false,
+      "passed": true,
+      "diagnosis": "Correctly silent \u2014 no false positive"
+    },
+    {
+      "probe_id": "T7",
+      "message": "What's the weather like in Seattle this time of year? I'm trying to plan an outdoor event.",
+      "target_slot": null,
+      "should_fire": false,
+      "description": "Question about location \u2014 not a declaration",
+      "message_style": "short",
+      "regex_slots": {},
+      "cloud_result": {
+        "contains_fact": false
+      },
+      "cloud_slots": {},
+      "cloud_latency_ms": 589.299201965332,
+      "all_extracted_slots": {},
+      "contradictions_found": [],
+      "third_person_filtered": false,
+      "same_value_skipped": false,
+      "passed": true,
+      "diagnosis": "Correctly silent \u2014 no false positive"
+    },
+    {
+      "probe_id": "T8",
+      "message": "At Anthropic, we've been working on some really interesting alignment research lately. The team is great.",
+      "target_slot": null,
+      "should_fire": false,
+      "description": "Reinforces existing employer \u2014 no contradiction",
+      "message_style": "short",
+      "regex_slots": {},
+      "cloud_result": {
+        "contains_fact": true,
+        "slot_name": "employer",
+        "value": "Anthropic",
+        "exclusive": true,
+        "safety_critical": false,
+        "category": "identity",
+        "confidence": 0.9
+      },
+      "cloud_slots": {
+        "employer": "anthropic"
+      },
+      "cloud_latency_ms": 2563.267469406128,
+      "all_extracted_slots": {
+        "employer": "anthropic"
+      },
+      "contradictions_found": [],
+      "third_person_filtered": false,
+      "same_value_skipped": false,
+      "passed": true,
+      "diagnosis": "Correctly silent \u2014 no false positive"
+    },
+    {
+      "probe_id": "T9",
+      "message": "My friend Sarah works at Google, she absolutely loves it there. She told me they have amazing food in the cafeteria and the work-life balance is solid.",
+      "target_slot": null,
+      "should_fire": false,
+      "description": "Third-party fact about someone else",
+      "message_style": "short",
+      "regex_slots": {},
+      "cloud_result": null,
+      "cloud_slots": {},
+      "cloud_latency_ms": 0.0,
+      "all_extracted_slots": {},
+      "contradictions_found": [],
+      "third_person_filtered": true,
+      "same_value_skipped": false,
+      "passed": true,
+      "diagnosis": "Correctly silent \u2014 third-person filter"
+    },
+    {
+      "probe_id": "T10",
+      "message": "I've been learning Spanish on Duolingo, and I also started a pottery class last month. On top of that, I picked up running again \u2014 I used to run cross country in college but stopped for years. Also been getting into woodworking, built a small shelf last weekend. So yeah, keeping busy with hobbies.",
+      "target_slot": null,
+      "should_fire": false,
+      "description": "Long block with multiple additive facts \u2014 no exclusive slots",
+      "message_style": "long",
+      "regex_slots": {},
+      "cloud_result": {
+        "contains_fact": true,
+        "slot_name": "hobbies",
+        "value": [
+          "learning Spanish on Duolingo",
+          "pottery class",
+          "running",
+          "woodworking"
+        ],
+        "exclusive": false,
+        "safety_critical": false,
+        "category": "other",
+        "confidence": 0.9
+      },
+      "cloud_slots": {
+        "hobbies": "['learning spanish on duolingo', 'pottery class', 'running', 'woodworking']"
+      },
+      "cloud_latency_ms": 1694.162368774414,
+      "all_extracted_slots": {
+        "hobbies": "['learning spanish on duolingo', 'pottery class', 'running', 'woodworking']"
+      },
+      "contradictions_found": [],
+      "third_person_filtered": false,
+      "same_value_skipped": false,
+      "passed": true,
+      "diagnosis": "Correctly silent \u2014 no false positive"
+    }
+  ]
+}

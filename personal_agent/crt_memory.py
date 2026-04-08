@@ -531,6 +531,62 @@ class CRTMemorySystem:
     def set_contradiction_ledger(self, ledger) -> None:
         """Attach a ContradictionLedger so the write path can record slot contradictions."""
         self._contradiction_ledger = ledger
+
+    def _cloud_extract_facts(self, text: str) -> Dict:
+        """Extract facts via cloud (gpt-4o-mini) when regex finds nothing.
+        Returns dict compatible with store_memory_facts (slot -> ExtractedFact-like object)."""
+        try:
+            from tests.cloud_providers.prompts import slot_classification_prompt
+            from personal_agent.cloud_features import get_cloud_feature_service
+            svc = get_cloud_feature_service()
+            if svc is None or not svc._openai_available():
+                return {}
+
+            existing_slots = []
+            try:
+                conn = self._get_connection()
+                cur = conn.cursor()
+                cur.execute("SELECT DISTINCT slot FROM memory_facts LIMIT 50")
+                existing_slots = [r[0] for r in cur.fetchall()]
+                conn.close()
+            except Exception:
+                pass
+
+            system, prompt = slot_classification_prompt(text, existing_slots)
+            raw = svc.openai.generate(
+                prompt=prompt, system=system,
+                max_tokens=300, temperature=0.1,
+                model="gpt-4o-mini",
+            )
+            if not raw or raw.startswith("[Cloud LLM") or raw.startswith("[Ollama"):
+                return {}
+
+            import json as _json
+            clean = raw.strip()
+            if clean.startswith("```"):
+                clean = clean.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+            brace = clean.find("{")
+            if brace > 0:
+                clean = clean[brace:]
+            result = _json.loads(clean)
+
+            if not result.get("contains_fact"):
+                return {}
+
+            slot_name = result.get("slot_name", "")
+            value = str(result.get("value", "")).strip()
+            if not slot_name or not value:
+                return {}
+
+            # Return a simple object that store_memory_facts can handle
+            class _CloudFact:
+                def __init__(self, v, n):
+                    self.value = v
+                    self.normalized = n
+            return {slot_name: _CloudFact(value, value.lower())}
+        except Exception as e:
+            logger.debug(f"[CLOUD_EXTRACT] Failed: {e}")
+            return {}
     
     def _get_connection(self, timeout: float = 30.0) -> sqlite3.Connection:
         """
@@ -2007,14 +2063,28 @@ class CRTMemorySystem:
         # Skip fact extraction for narrative/system kinds to prevent pollution —
         # these contain LLM-generated summaries that re-extract user facts with
         # wrong source attribution.
-        if extraction_method in ('regex', 'hybrid') and kind not in _NON_USER_FACT_KINDS:
+        if kind not in _NON_USER_FACT_KINDS:
+            hard_facts = {}
+            # Step 1: Regex extraction (fast, free)
             try:
                 from .fact_slots import extract_fact_slots
-                hard_facts = extract_fact_slots(text)
+                hard_facts = extract_fact_slots(text) or {}
                 if hard_facts:
-                    self.store_memory_facts(memory.memory_id, hard_facts)
+                    logger.debug(f"[MEMORY_FACTS] Regex extracted: {list(hard_facts.keys())}")
             except Exception as e:
-                logger.debug(f"[MEMORY_FACTS] Failed to cache facts for {memory.memory_id}: {e}")
+                logger.debug(f"[MEMORY_FACTS] Regex extraction failed: {e}")
+
+            # Step 2: Cloud extraction fallback (if regex found nothing and text is user-sourced)
+            if not hard_facts and source == MemorySource.USER and not _skip_slot_extraction:
+                try:
+                    hard_facts = self._cloud_extract_facts(text)
+                    if hard_facts:
+                        logger.info(f"[MEMORY_FACTS] Cloud extracted: {list(hard_facts.keys())}")
+                except Exception as e:
+                    logger.debug(f"[MEMORY_FACTS] Cloud extraction failed (non-fatal): {e}")
+
+            if hard_facts:
+                self.store_memory_facts(memory.memory_id, hard_facts)
 
         # --- Write-path contradiction ledger: record any slot conflicts found earlier ---
         if _write_path_contradictions and self._contradiction_ledger is not None:
