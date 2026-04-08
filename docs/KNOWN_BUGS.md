@@ -1,6 +1,8 @@
 # Known Bugs
 
-Active bugs tracked for future sessions. Not blocking production use unless noted.
+Active bugs tracked for future sessions. Updated 2026-04-08 afternoon.
+
+**Priority order: #6 → #7 → #8 → #1 → #3 → #4 → #5**
 
 ## Pipeline
 
@@ -58,6 +60,24 @@ Active bugs tracked for future sessions. Not blocking production use unless note
 - Are the heartbeat trust adjustments aware of the slot exclusivity demotions that already happened?
 - Should background loops have a startup delay or rate limit to prevent batch-demoting?
 **Fix estimate:** Medium. Needs tracing of which loop produces which demotions, then either rate-limiting startup processing or adding a "cold start" grace period.
+
+### 8. Local model (Ollama) hallucinates user facts on broad recall
+**Severity:** High (correctness — delivers fabricated facts as truth)
+**Discovered:** 2026-04-08
+**Symptom:** When broad_recall routes through the local model path, Ollama fabricates user facts. In validation testing, it said "I know your name is Alex" and "you enjoy hiking" — neither is true. The user's name is Nick (trust 1.00). The local model generates plausible-sounding but completely wrong personal details.
+**Root cause:** The local model (gemma3/qwen3) doesn't have access to the memory DB during broad recall generation. It fills in gaps with hallucinated details that sound confident.
+**What needs investigation:**
+- Which generation path produces this? (Check if `generation_mode=local` or fallback)
+- Does the NLI critic catch it? (Logs show `soft_fail` on some responses but delivery continues)
+- Should broad_recall ALWAYS route to Claude instead of local?
+**Fix estimate:** Low-medium. Either force broad_recall to cloud generation, or inject retrieved memories into the local model's prompt so it can't hallucinate facts.
+
+### 9. NLI critic detects bad answers but doesn't prevent delivery
+**Severity:** Medium (governance gap — detection without enforcement)
+**Discovered:** 2026-04-08
+**Symptom:** The NLI critic returns `soft_fail` on responses that contradict stored memories (e.g., "your favorite color is orange" when green memory exists at 0.82). The response is delivered to the user anyway. The critic detects the problem but has no enforcement mechanism.
+**Root cause:** `soft_fail` is logged but not acted on. The pipeline continues to deliver the response. There's no gate that blocks or modifies a response based on NLI critic verdict.
+**Fix estimate:** Medium. Either block delivery on `soft_fail` and regenerate, or append a caveat to the response, or demote confidence visually.
 
 ### 5. Cloud governance demotion uses flat 0.4x multiplier
 **Severity:** Low (partially mitigated)
