@@ -257,6 +257,88 @@ class LabClient:
             return False
 
 
+# ── Direct DB Seeding ────────────────────────────────────────────────────────
+
+def _seed_db_directly(thread_id: str, seed_results: List["SeedResult"]):
+    """Write seed facts directly into the memory DB, bypassing the full pipeline."""
+    import sqlite3
+    from pathlib import Path as _P
+
+    # The isolated backend uses per-thread DBs at personal_agent/crt_memory_{thread_id}.db
+    db_path = _P(__file__).resolve().parent.parent / "personal_agent" / f"crt_memory_{thread_id}.db"
+    if not db_path.exists():
+        # Create the DB with minimal schema
+        conn = sqlite3.connect(str(db_path))
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("""CREATE TABLE IF NOT EXISTS memories (
+            memory_id TEXT PRIMARY KEY, vector_json TEXT, text TEXT, timestamp REAL,
+            confidence REAL, trust REAL, source TEXT, sse_mode TEXT, context_json TEXT,
+            fact_tuples TEXT, extraction_method TEXT, temporal_status TEXT, domain_tags TEXT,
+            thread_id TEXT, authority TEXT, channel TEXT, origin TEXT, kind TEXT,
+            review_after REAL, source_kind TEXT, model_id TEXT, run_id TEXT, user_id TEXT,
+            sigma BLOB, belnap_state TEXT, memory_type TEXT, deprecated INTEGER DEFAULT 0,
+            deprecation_reason TEXT, access_count INTEGER DEFAULT 0, last_accessed REAL,
+            contradiction_count INTEGER DEFAULT 0
+        )""")
+        conn.execute("""CREATE TABLE IF NOT EXISTS memory_facts (
+            memory_id TEXT, slot TEXT, value TEXT, normalized TEXT,
+            UNIQUE(memory_id, slot)
+        )""")
+        conn.execute("""CREATE TABLE IF NOT EXISTS trust_log (
+            log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            memory_id TEXT, timestamp REAL, old_trust REAL, new_trust REAL,
+            reason TEXT, drift REAL
+        )""")
+        conn.commit()
+        conn.close()
+
+    conn = sqlite3.connect(str(db_path))
+    now = time.time()
+
+    # Slot mappings for each seed
+    slot_map = {
+        "name": [("name", "Marcus", "marcus")],
+        "employer,job_title": [("employer", "Anthropic", "anthropic"), ("job_title", "research engineer", "research engineer")],
+        "location": [("location", "Seattle", "seattle")],
+        "favorite_color": [("favorite_color", "blue", "blue")],
+        "age": [("age", "34", "34")],
+    }
+
+    for seed in SEED_MESSAGES:
+        mem_id = f"mem_{int(now * 1000)}_{hash(seed['message']) % 10000}"
+        trust = 0.70
+        # Minimal vector (384-dim zeros — enough for the schema, not used in lab)
+        import json as _json
+        vec = _json.dumps([0.0] * 384)
+
+        conn.execute(
+            """INSERT OR IGNORE INTO memories
+            (memory_id, vector_json, text, timestamp, confidence, trust, source, sse_mode,
+             thread_id, authority, kind, source_kind, deprecated, memory_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)""",
+            (mem_id, vec, seed["message"], now, 0.70, trust, "user", "standard",
+             thread_id, "confirmed", "user_fact", "principal", "user_fact"),
+        )
+
+        # Store facts
+        slots = slot_map.get(seed["slot"], [])
+        for slot_name, value, normalized in slots:
+            conn.execute(
+                "INSERT OR REPLACE INTO memory_facts (memory_id, slot, value, normalized) VALUES (?, ?, ?, ?)",
+                (mem_id, slot_name, value, normalized),
+            )
+
+        sr = SeedResult(slot=seed["slot"], message=seed["message"],
+                        memory_id=mem_id, initial_trust=trust, response_preview="[direct DB write]")
+        seed_results.append(sr)
+        print(f"  {seed['slot']}: {seed['message'][:40]}... → {mem_id[:20]} (trust={trust})")
+        now += 0.001  # Tiny offset so each has unique timestamp
+
+    conn.commit()
+    conn.close()
+    print(f"  Seeded {len(SEED_MESSAGES)} facts directly into {db_path.name}")
+
+
 # ── Lab Runner ───────────────────────────────────────────────────────────────
 
 def run_lab(base_url: str, thread_id: str, skip_seed: bool = False, start_from: str = None) -> Dict[str, Any]:
@@ -280,30 +362,31 @@ def run_lab(base_url: str, thread_id: str, skip_seed: bool = False, start_from: 
             seed_results.append(SeedResult(slot=seed["slot"], message=seed["message"], response_preview="[skipped]"))
         print()
     else:
-        print("=== PHASE 1: SEEDING FACTS ===")
-        for i, seed in enumerate(SEED_MESSAGES):
-            print(f"  Seed {i+1}/5: {seed['slot']} — {seed['message'][:50]}...")
-            t0 = time.time()
-            resp = client.send_message(seed["message"], thread_id)
-            elapsed = (time.time() - t0) * 1000
-
-            sr = SeedResult(
-                slot=seed["slot"],
-                message=seed["message"],
-                response_preview=resp.get("answer", "")[:150],
-            )
-            meta = resp.get("metadata", {})
-            sr.memory_id = meta.get("memory_id", "")
-            sr.initial_trust = meta.get("trust", 0.0)
-            seed_results.append(sr)
-            print(f"    OK ({elapsed:.0f}ms)")
-            time.sleep(1)
-
+        print("=== PHASE 1: SEEDING FACTS (direct DB write) ===")
+        # Seed directly into the memory DB — no pipeline, no Ollama, no Claude.
+        # The lab tests detection, not storage.
+        try:
+            _seed_db_directly(thread_id, seed_results)
+        except Exception as e:
+            print(f"  Direct seeding failed ({e}), falling back to API...")
+            seed_results.clear()
+            for i, seed in enumerate(SEED_MESSAGES):
+                print(f"  Seed {i+1}/5: {seed['slot']} — {seed['message'][:50]}...")
+                t0 = time.time()
+                resp = client.send_message(seed["message"], thread_id)
+                elapsed = (time.time() - t0) * 1000
+                sr = SeedResult(slot=seed["slot"], message=seed["message"],
+                                response_preview=resp.get("answer", "")[:150])
+                meta = resp.get("metadata", {})
+                sr.memory_id = meta.get("memory_id", "")
+                sr.initial_trust = meta.get("trust", 0.0)
+                seed_results.append(sr)
+                print(f"    OK ({elapsed:.0f}ms)")
+                time.sleep(1)
         print()
 
-    # Snapshot ledger state after seeding
-    baseline_ledger = client.get_ledger_open(thread_id)
-    baseline_ledger_ids = {e.get("ledger_id") for e in baseline_ledger}
+    # Baseline: fresh thread, no existing ledger entries
+    baseline_ledger_ids = set()
     baseline_ts = time.time()
 
     # ── Phase 2: Test ────────────────────────────────────────────────────

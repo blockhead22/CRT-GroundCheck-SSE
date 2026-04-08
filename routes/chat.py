@@ -4962,21 +4962,11 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                             if _is_exclusive and not _skip_demotion:
                                 try:
                                     _new_val_norm = str(_cloud_value).strip().lower()
-                                    # memory_facts may be empty — also search memories table directly
-                                    # for text containing this slot's known pattern
+                                    # Use ONLY memory_facts table — no text search.
+                                    # Text search (LIKE '%name%') caused the 81-memory cascade
+                                    # incident on 2026-04-08. Structured slot comparison only.
                                     _conn_ex = engine.memory._get_connection()
                                     _cur_ex = _conn_ex.cursor()
-                                    # Strategy: search memories text for "favorite color" pattern
-                                    _slot_search = _cloud_slot.replace("_", " ")  # favorite_color -> favorite color
-                                    _cur_ex.execute("""
-                                        SELECT memory_id, text, trust
-                                        FROM memories
-                                        WHERE LOWER(text) LIKE ?
-                                        AND deprecated = 0
-                                        AND LOWER(text) NOT LIKE ?
-                                    """, (f"%{_slot_search}%", f"%{_slot_search}%{_new_val_norm}%"))
-                                    _text_rows = _cur_ex.fetchall()
-                                    # Also check memory_facts table
                                     _cur_ex.execute("""
                                         SELECT mf.memory_id, mf.normalized, m.trust
                                         FROM memory_facts mf
@@ -4985,62 +4975,40 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                                     """, (_cloud_slot,))
                                     _fact_rows = _cur_ex.fetchall()
                                     _conn_ex.close()
-                                    _safe_print(f"[GOVERNANCE] slot_exclusivity: text_search={len(_text_rows)} rows, facts_table={len(_fact_rows)} rows")
-                                    # Only demote user-sourced memories, not Aether's narrative
-                                    _SKIP_DEMOTION_SOURCES = {'model_output', 'system', 'tool_receipt'}
-                                    def _should_skip_demotion(mem_id: str) -> bool:
+                                    _safe_print(f"[GOVERNANCE] slot_exclusivity: facts_table={len(_fact_rows)} rows (text search removed)")
+                                    _demoted_ids = set()
+                                    for _ex_mem_id, _ex_norm, _ex_trust in _fact_rows:
+                                        _ex_val = str(_ex_norm).strip().lower()
+                                        # Same-value skip (substring containment)
+                                        if (_ex_val == _new_val_norm
+                                                or _new_val_norm in _ex_val
+                                                or _ex_val in _new_val_norm):
+                                            continue
+                                        # Skip non-user sources
                                         try:
                                             _conn_sk = engine.memory._get_connection()
                                             _cur_sk = _conn_sk.cursor()
-                                            _cur_sk.execute("SELECT source_kind FROM memories WHERE memory_id = ?", (mem_id,))
+                                            _cur_sk.execute("SELECT source_kind FROM memories WHERE memory_id = ?", (_ex_mem_id,))
                                             _row_sk = _cur_sk.fetchone()
                                             _conn_sk.close()
-                                            return (_row_sk[0] or 'principal') in _SKIP_DEMOTION_SOURCES if _row_sk else False
+                                            if _row_sk and (_row_sk[0] or 'principal') in {'model_output', 'system', 'tool_receipt'}:
+                                                _safe_print(f"[GOVERNANCE] slot_exclusivity: SKIPPED {_ex_mem_id} (non-user source)")
+                                                continue
                                         except Exception:
-                                            return False
-                                    # Demote from text search (catches entries not in memory_facts)
-                                    _demoted_ids = set()
-                                    for _ex_mem_id, _ex_text, _ex_trust in _text_rows:
-                                        if _new_val_norm in str(_ex_text).lower():
-                                            continue  # Contains the new value — same side
-                                        if _should_skip_demotion(_ex_mem_id):
-                                            _safe_print(f"[GOVERNANCE] slot_exclusivity: SKIPPED {_ex_mem_id} (non-user source)")
-                                            continue
+                                            pass
                                         _demoted = float(_ex_trust) * 0.4
                                         engine.memory._update_memory_trust(_ex_mem_id, _demoted)
                                         _demoted_ids.add(_ex_mem_id)
-                                        print(
+                                        _safe_print(
                                             f"[GOVERNANCE] slot_exclusivity: DEMOTED {_ex_mem_id} "
                                             f"(trust {float(_ex_trust):.3f} -> {_demoted:.3f}) "
-                                            f"text: {str(_ex_text)[:60]}"
+                                            f"slot: {_cloud_slot}, old={_ex_val}, new={_new_val_norm}"
                                         )
-                                    # Demote from facts table (if populated)
-                                    for _ex_mem_id, _ex_norm, _ex_trust in _fact_rows:
-                                        if _ex_mem_id in _demoted_ids:
-                                            continue
-                                        if str(_ex_norm).strip().lower() == _new_val_norm:
-                                            continue
-                                        if _should_skip_demotion(_ex_mem_id):
-                                            _safe_print(f"[GOVERNANCE] slot_exclusivity: SKIPPED {_ex_mem_id} (non-user source)")
-                                            continue
-                                        _demoted = float(_ex_trust) * 0.4
-                                        engine.memory._update_memory_trust(_ex_mem_id, _demoted)
-                                        print(
-                                            f"[GOVERNANCE] slot_exclusivity: DEMOTED {_ex_mem_id} "
-                                            f"(trust {float(_ex_trust):.3f} -> {_demoted:.3f}) "
-                                            f"norm: {_ex_norm}"
-                                        )
-                                    # Clean up stale memory_facts and record demotion events
+                                    # Record demotion events (no DELETE of old memory_facts —
+                                    # the write-path in store_memory handles fact lifecycle)
                                     try:
                                         _conn_store = engine.memory._get_connection()
                                         _cur_store = _conn_store.cursor()
-                                        # Delete old fact entries for this slot that don't match new value
-                                        _cur_store.execute(
-                                            "DELETE FROM memory_facts WHERE slot = ? AND LOWER(normalized) != ?",
-                                            (_cloud_slot, _new_val_norm),
-                                        )
-                                        _deleted_facts = _cur_store.rowcount
-                                        # Record demotion events so reinforce_memory() skips these
                                         for _dem_id in _demoted_ids:
                                             try:
                                                 engine.memory.record_memory_event(
