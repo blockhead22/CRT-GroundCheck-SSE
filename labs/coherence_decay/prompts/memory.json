@@ -1,0 +1,40 @@
+{
+  "domain": "memory",
+  "prompts": [
+    {
+      "id": "mem_01",
+      "prompt": "Here are 5 facts about a person. Synthesize them into a single coherent summary paragraph.\n\nFact 1: Maria works as a marine biologist at Woods Hole Oceanographic Institution.\nFact 2: Maria is allergic to shellfish, which she finds ironic given her career.\nFact 3: Maria moved from São Paulo to Massachusetts in 2018.\nFact 4: Maria's current research focuses on deep-sea thermal vents.\nFact 5: Maria has twin daughters who are 7 years old.\n\nYour summary must include ALL five facts. Do not add any facts not listed above.",
+      "ground_truth_facts": ["marine biologist", "Woods Hole", "shellfish allergy", "São Paulo", "2018", "Massachusetts", "thermal vents", "twin daughters", "7 years old"],
+      "planted_contradictions": [],
+      "expected_behavior": "all_facts_present"
+    },
+    {
+      "id": "mem_02",
+      "prompt": "Read these three statements carefully. One contradicts the others. Identify the contradiction and explain it.\n\nStatement A: The building was constructed in 1952 and has stood for over 70 years.\nStatement B: The building's original architect died in 1948.\nStatement C: The architect personally supervised the building's construction from start to finish.",
+      "ground_truth_facts": ["built 1952", "70+ years", "architect died 1948", "architect supervised construction"],
+      "planted_contradictions": ["architect died 1948 but supervised construction that started in 1952"],
+      "expected_behavior": "detect_contradiction"
+    },
+    {
+      "id": "mem_03",
+      "prompt": "You are told the following with high confidence:\n- Dr. Chen published her landmark paper on quantum error correction in 2019\n- The paper was peer-reviewed by three independent reviewers\n- It was published in Nature Physics\n\nNow, new information arrives: A colleague tells you they checked and the paper was actually published in Physical Review Letters, not Nature Physics. Everything else is confirmed.\n\nReport your updated understanding. What do you now believe? What is your confidence level for each fact?",
+      "ground_truth_facts": ["Dr. Chen", "quantum error correction", "2019", "three reviewers", "Physical Review Letters"],
+      "planted_contradictions": ["Nature Physics vs Physical Review Letters"],
+      "expected_behavior": "update_belief_on_evidence"
+    },
+    {
+      "id": "mem_04",
+      "prompt": "Here is a conversation between two people. Read it and answer the questions below.\n\nTom: I've been thinking about selling the house.\nSarah: Already? We just renovated the kitchen.\nTom: I know, but the commute is killing me. Two hours each way.\nSarah: What about working remote? Your boss mentioned it last week.\nTom: That was before the policy change. No more remote work starting January.\nSarah: I didn't know that. What about the kids' school?\nTom: That's the hard part. They just started at Riverside.\n\nQuestions:\n1. What does Tom want to do?\n2. Why?\n3. What was recently renovated?\n4. How long is Tom's commute?\n5. Why can't Tom work remotely?\n6. What school do the kids attend?\n7. What does Sarah NOT know at the start of the conversation?",
+      "ground_truth_facts": ["sell house", "commute 2 hours each way", "kitchen renovated", "no remote work starting January", "policy change", "Riverside school", "Sarah didn't know about policy change"],
+      "planted_contradictions": [],
+      "expected_behavior": "accurate_extraction"
+    },
+    {
+      "id": "mem_05",
+      "prompt": "You have these beliefs stored with trust scores:\n\n- 'The project deadline is March 15' (trust: 0.9)\n- 'The team has 6 members' (trust: 0.85)\n- 'The budget is $50,000' (trust: 0.7)\n- 'The client prefers weekly updates' (trust: 0.6)\n\nNew information: A team meeting transcript reveals that two members left last week, the deadline was pushed to April 1, and the client now wants daily standups. The budget was not discussed.\n\nFor each belief, state: the original belief, the new evidence (if any), your updated belief, and your updated trust score. Explain your reasoning for each trust change.",
+      "ground_truth_facts": ["deadline March 15 -> April 1", "team 6 -> 4 members", "budget $50k unchanged", "weekly -> daily standups"],
+      "planted_contradictions": ["deadline conflict", "team size conflict", "update frequency conflict"],
+      "expected_behavior": "belief_update_with_reasoning"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "domain": "narrative",
+  "prompts": [
+    {
+      "id": "narr_01",
+      "prompt": "Continue this story. Stay consistent with ALL established facts:\n\nMara is a left-handed clockmaker who lives alone in a lighthouse on the northern coast. It's winter. She has a black cat named Sable. Her lighthouse lamp broke three days ago and she's waiting for a replacement part from the mainland. She doesn't own a phone.\n\nWrite what happens next.",
+      "ground_truth_facts": ["Mara", "left-handed", "clockmaker", "lighthouse", "northern coast", "winter", "black cat", "Sable", "lamp broken", "three days", "replacement part", "mainland", "no phone"],
+      "consistency_checks": ["character name stays Mara", "cat stays black and named Sable", "setting stays winter/lighthouse", "lamp stays broken unless repair arrives", "no phone used for communication"]
+    },
+    {
+      "id": "narr_02",
+      "prompt": "Write a dialogue between two characters:\n- Alex knows that the company is about to be sold but has been told to keep it secret\n- Jordan does NOT know about the sale and is excited about a promotion they expect next month\n\nAlex must NOT reveal the sale. Jordan must NOT somehow know about it. Write 8-10 exchanges.",
+      "ground_truth_facts": ["Alex knows sale", "Alex keeps secret", "Jordan expects promotion", "Jordan doesn't know about sale"],
+      "consistency_checks": ["Alex never reveals sale directly", "Jordan never references sale or acquisition", "dramatic irony maintained", "both characters maintain distinct knowledge states"]
+    },
+    {
+      "id": "narr_03",
+      "prompt": "Describe the same room from three perspectives. The room contains: a cracked window, a red armchair, a cold fireplace, and a painting of a ship. The three perspectives are:\n1. A child seeing the room for the first time\n2. An elderly person who grew up in this room\n3. A real estate agent evaluating the property\n\nEach perspective must mention ALL four objects but interpret them differently.",
+      "ground_truth_facts": ["cracked window", "red armchair", "cold fireplace", "ship painting", "three perspectives"],
+      "consistency_checks": ["all four objects in each perspective", "child perspective shows wonder/curiosity", "elderly shows nostalgia/memory", "agent shows pragmatic evaluation", "same room across all three"]
+    },
+    {
+      "id": "narr_04",
+      "prompt": "Write a short scene set in 1920s Paris. Characters: a jazz musician named Theo who is American, and a French baker named Colette. It is raining. They meet under an awning. Theo speaks broken French. Colette speaks no English. Write their interaction.",
+      "ground_truth_facts": ["1920s", "Paris", "Theo", "American", "jazz musician", "Colette", "French", "baker", "raining", "awning", "Theo broken French", "Colette no English"],
+      "consistency_checks": ["time period consistent (no modern references)", "Theo doesn't suddenly speak fluent French", "Colette doesn't suddenly speak English", "rain continues or naturally stops", "occupations referenced naturally"]
+    },
+    {
+      "id": "narr_05",
+      "prompt": "Tell a story with exactly these plot points in order:\n1. A dog escapes from a yard\n2. The dog finds a injured bird\n3. The dog carries the bird home\n4. The owner is initially angry about the mess\n5. The owner sees the bird and understands\n\nDo not skip or reorder any plot point.",
+      "ground_truth_facts": ["dog escapes", "finds injured bird", "carries bird home", "owner angry", "owner understands"],
+      "consistency_checks": ["all 5 plot points present", "correct order maintained", "dog stays same dog throughout", "bird injury consistent", "owner emotional arc: anger then understanding"]
+    }
+  ]
+}

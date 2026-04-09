@@ -1,0 +1,45 @@
+{
+  "domain": "programming",
+  "prompts": [
+    {
+      "id": "prog_01",
+      "prompt": "Write a Python function that reverses a singly linked list in-place. Include the ListNode class definition.",
+      "ground_truth_keywords": ["ListNode", "next", "prev", "None", "while", "head"],
+      "ground_truth_check": "Must define ListNode with val/next. Must use iterative pointer swap or recursive approach. Must return new head.",
+      "verifiable": true,
+      "executable": true
+    },
+    {
+      "id": "prog_02",
+      "prompt": "Write a Python function called binary_search that takes a sorted list and a target value. Return the index if found, -1 if not. Handle empty lists and single-element lists.",
+      "ground_truth_keywords": ["low", "high", "mid", "while", "return -1"],
+      "ground_truth_check": "Must handle empty list, single element, target not found. Must use O(log n) approach.",
+      "verifiable": true,
+      "executable": true
+    },
+    {
+      "id": "prog_03",
+      "prompt": "This Python code has a bug. Find and fix it:\n\ndef merge_sorted(a, b):\n    result = []\n    i = j = 0\n    while i < len(a) and j < len(b):\n        if a[i] <= b[j]:\n            result.append(a[i])\n            i += 1\n        else:\n            result.append(b[j])\n            j += 1\n    return result",
+      "ground_truth_keywords": ["remaining", "extend", "a[i:]", "b[j:]"],
+      "ground_truth_check": "Must identify missing tail append. Must add remaining elements from both lists after loop.",
+      "verifiable": true,
+      "executable": true
+    },
+    {
+      "id": "prog_04",
+      "prompt": "Write a Python function that checks if a string has balanced parentheses, brackets, and braces. Example: '({[]})' returns True, '({[}])' returns False.",
+      "ground_truth_keywords": ["stack", "push", "pop", "matching", "{", "[", "("],
+      "ground_truth_check": "Must use stack-based approach. Must handle all three bracket types. Must check stack empty at end.",
+      "verifiable": true,
+      "executable": true
+    },
+    {
+      "id": "prog_05",
+      "prompt": "Explain what this function does and what its time complexity is:\n\ndef mystery(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr) // 2]\n    left = [x for x in arr if x < pivot]\n    middle = [x for x in arr if x == pivot]\n    right = [x for x in arr if x > pivot]\n    return mystery(left) + middle + mystery(right)",
+      "ground_truth_keywords": ["quicksort", "sort", "O(n log n)", "pivot", "recursive", "divide"],
+      "ground_truth_check": "Must identify as quicksort variant. Must state average O(n log n), worst O(n^2). Must explain pivot partitioning.",
+      "verifiable": true,
+      "executable": false
+    }
+  ]
+}
