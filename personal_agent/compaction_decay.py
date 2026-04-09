@@ -77,10 +77,14 @@ def _decay_factor_for_representation(representation: str) -> float:
     return 0.0
 
 
-def _effective_decay(base_decay: float, compaction_count: int, compaction_generation: int) -> float:
+def _effective_decay(base_decay: float, compaction_count: int, compaction_generation: int,
+                     access_count: int = 0) -> float:
     """Compute effective decay with repeated-compaction amplification.
 
     Each additional compaction without re-verification amplifies the penalty.
+    High-access memories get decay resistance — a memory accessed 50+ times
+    has been actively used and confirmed through retrieval. Decaying it
+    aggressively destroys earned knowledge.
     """
     if base_decay <= 0:
         return 0.0
@@ -91,7 +95,21 @@ def _effective_decay(base_decay: float, compaction_count: int, compaction_genera
     # Count-based amplification (total lifetime compactions)
     count_factor = REPEATED_COMPACTION_MULTIPLIER ** max(0, compaction_count - 1)
 
-    return base_decay * gen_factor * min(count_factor, 3.0)  # cap at 3x
+    raw_decay = base_decay * gen_factor * min(count_factor, 3.0)  # cap at 3x
+
+    # Access-count protection: frequently retrieved memories resist decay.
+    # A memory accessed 10+ times has been actively used — reduce decay.
+    # A memory accessed 50+ times is clearly load-bearing — minimal decay.
+    if access_count >= 50:
+        raw_decay *= 0.1   # 90% protection
+    elif access_count >= 20:
+        raw_decay *= 0.25  # 75% protection
+    elif access_count >= 10:
+        raw_decay *= 0.5   # 50% protection
+    elif access_count >= 5:
+        raw_decay *= 0.75  # 25% protection
+
+    return raw_decay
 
 
 def apply_compaction_decay(
@@ -125,10 +143,23 @@ def apply_compaction_decay(
     try:
         for belief in snapshot.beliefs:
             base_decay = _decay_factor_for_representation(belief.representation)
+
+            # Fetch access_count for decay resistance
+            _acc = 0
+            try:
+                _acc_row = cursor.execute(
+                    "SELECT access_count FROM memories WHERE memory_id = ?",
+                    (belief.memory_id,)
+                ).fetchone()
+                _acc = (_acc_row[0] or 0) if _acc_row else 0
+            except Exception:
+                pass
+
             effective = _effective_decay(
                 base_decay,
                 belief.compaction_generation,
                 belief.compaction_generation,
+                access_count=_acc,
             )
 
             old_trust = belief.trust

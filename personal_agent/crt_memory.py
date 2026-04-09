@@ -2820,11 +2820,31 @@ class CRTMemorySystem:
             import time as _ret_time
             _now_ts = _ret_time.time()
             conn = self._get_connection()
-            for m, _ in top_k:
+            for m, score in top_k:
+                # Increment access count and update last_accessed
                 conn.execute(
                     "UPDATE memories SET access_count = COALESCE(access_count, 0) + 1, last_accessed = ? WHERE memory_id = ?",
                     (_now_ts, m.memory_id),
                 )
+                # Retrieval reinforcement: retrieval IS evidence of relevance.
+                # A memory that keeps getting retrieved is load-bearing.
+                # Small trust boost per retrieval, scaled by retrieval score.
+                # Capped at TRUST_CEILING (0.95).
+                _current_trust = m.trust or 0.2
+                _boost = min(0.02, score * 0.03)  # max +0.02 per retrieval
+                _new_trust = min(0.95, _current_trust + _boost)
+                if _new_trust > _current_trust:
+                    conn.execute(
+                        "UPDATE memories SET trust = ? WHERE memory_id = ?",
+                        (_new_trust, m.memory_id),
+                    )
+                    try:
+                        conn.execute(
+                            "INSERT INTO trust_log (memory_id, timestamp, old_trust, new_trust, reason, drift) VALUES (?, ?, ?, ?, ?, ?)",
+                            (m.memory_id, _now_ts, _current_trust, _new_trust, "retrieval_reinforcement", score),
+                        )
+                    except Exception:
+                        pass
             conn.commit()
             conn.close()
         except Exception:
