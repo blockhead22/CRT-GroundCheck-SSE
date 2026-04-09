@@ -100,9 +100,12 @@ chat_logs_save.md
 temp_*
 debug_*
 test_*.py
-!tests/test_*.py
-!groundcheck/tests/test_*.py
-!experiments/test_*.py
+!tests/**/test_*.py
+!groundcheck/**/test_*.py
+!experiments/**/test_*.py
+!packages/**/test_*.py
+!personal_agent/**/test_*.py
+!compression_lab/test_*.py
 
 # Belief revision generated data
 belief_revision/data/synthetic_belief_updates.json
@@ -123,9 +126,11 @@ models/*/checkpoint_final.pt
 # VILT/LoRA model checkpoints (large, reproducible)
 models/vilt_*/
 models/dnnt_*/
+models/phi3-crt-adapter-v2/
 
 /electron/node_modules
-/data/chatgpt_export
-/.claude/worktrees/wonderful-ride/models
-/.claude/worktrees/wonderful-ride/frontend/node_modules
+# ChatGPT export — bulk data shared via Drive, only stub tracked
+/data/chatgpt_export/*
+!/data/chatgpt_export/README.md
+/.claude/worktrees/
 /tools/tts_lab_output
