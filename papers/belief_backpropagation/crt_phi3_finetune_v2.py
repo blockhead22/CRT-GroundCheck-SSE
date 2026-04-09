@@ -197,7 +197,7 @@ def train():
     print(f"  {len(memories)} memories loaded")
 
     print("\nLoading conversation pairs...")
-    conv_pairs = load_conversation_pairs(max_pairs=20000)
+    conv_pairs = load_conversation_pairs(max_pairs=3000)
     print(f"  {len(conv_pairs)} conversation pairs loaded")
 
     print("\nBuilding belief-grounded dataset...")
@@ -243,16 +243,28 @@ def train():
     total = sum(p.numel() for p in model.parameters())
     print(f"  Trainable: {trainable:,} / {total:,} ({trainable/total:.2%})")
 
-    # Train
-    print("\nTraining...")
+    # Train with checkpoint resume support
+    # Saves every 500 steps AND every epoch. If interrupted, resumes from last checkpoint.
+    import glob
+    resume_from = None
+    existing_checkpoints = sorted(glob.glob(os.path.join(OUTPUT_PATH, "checkpoint-*")))
+    if existing_checkpoints:
+        resume_from = existing_checkpoints[-1]
+        print(f"\n  Resuming from checkpoint: {resume_from}")
+    else:
+        print("\n  Starting fresh (no checkpoint found)")
+
+    print("Training...")
     training_args = SFTConfig(
         output_dir=OUTPUT_PATH,
-        num_train_epochs=3,
+        num_train_epochs=2,
         per_device_train_batch_size=1,
-        gradient_accumulation_steps=8,
+        gradient_accumulation_steps=4,
         learning_rate=2e-4,
         logging_steps=50,
-        save_strategy="epoch",
+        save_strategy="steps",
+        save_steps=500,
+        save_total_limit=3,
         bf16=True,
         max_length=384,
         warmup_steps=100,
@@ -268,7 +280,7 @@ def train():
     )
 
     t0 = time.time()
-    trainer.train()
+    trainer.train(resume_from_checkpoint=resume_from)
     elapsed = time.time() - t0
     print(f"\nTraining complete in {elapsed/60:.1f} minutes")
 

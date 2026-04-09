@@ -23,7 +23,7 @@
     { href: 'immune-agents.html',          label: 'Immune Agents',          group: 'Architecture' },
     // Theory (formal foundations)
     { href: 'cascade-complexity.html',     label: 'Cascade Complexity',     group: 'Theory' },
-    { href: 'belief-backprop.html',        label: 'Belief Backpropagation', group: 'Theory' },
+    { href: 'belief-backprop.html',        label: 'Reverse Cascade',        group: 'Theory' },
     { href: 'epistemic-compression.html',  label: 'Epistemic Compression',  group: 'Theory' },
     { href: 'geometric-memory.html',       label: 'Geometric Memory',       group: 'Theory' },
     { href: 'emotion-governance.html',     label: 'Emotion Governance',     group: 'Theory' },

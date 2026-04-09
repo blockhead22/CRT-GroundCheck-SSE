@@ -351,12 +351,12 @@
     <h3>Then we made it learn from its mistakes</h3>
     <p>The cascade paper answered "what happens when a belief changes?" The next question was harder: "what happens when the output was wrong?" The forward cascade adjusts downstream beliefs, but the upstream causes &mdash; the retrieval scores, slot classifications, and supporting beliefs that produced the bad answer &mdash; remained untouched.</p>
     <p>We formalized <strong>belief backpropagation</strong>: contradiction resolution generates an epistemic loss signal that flows backward through the BDG, adjusting every belief that contributed to the incorrect output. Three behaviors emerge naturally: wrong beliefs self-prune from accumulated gradient, domain volatility becomes measurable, and the system's beliefs about itself participate in the same trust dynamics. Six validation experiments pass (30/30). Deep literature search found no direct precedent.</p>
-    <a class="paper-link" href="belief-backprop.html">Read: Belief Backpropagation: Error-Driven Trust Evolution &rarr;</a>
+    <a class="paper-link" href="belief-backprop.html">Read: Reverse Cascade: Error-Driven Trust Evolution &rarr;</a>
   </div>
 
   <div class="paper-card">
     <h3>Then we proved belief structure survives compression</h3>
-    <p>Geometric compression is well-studied: cosine similarity after quantization, top-k recall after encoding. But does the <em>belief structure</em> survive? Do dependency edges still hold? Does backpropagation still produce correct gradients? Do anchor basins &mdash; the gravitational centers that organize 77% of memories &mdash; maintain their topology?</p>
+    <p>Geometric compression is well-studied: cosine similarity after quantization, top-k recall after encoding. But does the <em>belief structure</em> survive? Do dependency edges still hold? Does the reverse cascade still produce correct trust adjustments? Do anchor basins &mdash; the gravitational centers that organize 77% of memories &mdash; maintain their topology?</p>
     <p>We tested at three compression levels and found a cliff. 3-bit quantization preserves the full epistemic structure: identical gradients, 92.9% anchor basin stability, identical convergence. 2-bit breaks it: basins merge, edges drift, anchor assignments flip. The metric for compression success is not cosine similarity. It's anchor basin assignment stability.</p>
     <a class="paper-link" href="epistemic-compression.html">Read: Epistemic Compression: Does Belief Structure Survive Quantization? &rarr;</a>
   </div>
@@ -441,7 +441,7 @@
     <li><strong>Drift steering:</strong> when alignment drops below threshold, the system forces memory re-retrieval. After 3 consecutive drifts, it halts and asks the user</li>
     <li><strong>3D belief space:</strong> Three.js visualization of memory embeddings with PCA projection, contradiction edges, topic clustering</li>
     <li><strong>Self-awareness loop:</strong> heartbeat reflection that updates the system's model of its own capabilities and limitations</li>
-    <li><strong>Belief backpropagation:</strong> when corrections resolve contradictions, error signals flow backward through the BDG, adjusting upstream trust scores. Self-pruning, domain volatility, and reflexive self-model calibration emerge from the mechanism &mdash; no rules required</li>
+    <li><strong>Reverse cascade:</strong> when corrections resolve contradictions, error signals flow backward through the BDG, adjusting upstream trust scores. Self-pruning, domain volatility, and reflexive self-model calibration follow from the mechanism</li>
     <li><strong>Query resonance (wobble):</strong> queries propagate through BDG edges, surfacing cross-domain facts that cosine retrieval misses &mdash; a health query brings forward work context and preference context because the graph knows they're causally connected. Originated as the Semantic String Engine (2025)</li>
     <li><strong>Fidelity mirror:</strong> post-generation breathing loop that checks whether the response faithfully represents the belief state. Uses wobble-expanded memory for cross-domain grounding. Flags drift without blocking</li>
   </ul>
@@ -528,7 +528,7 @@
   <p style="color:var(--text-dim);font-size:0.85em;margin-bottom:16px;">Formal foundations. Cascade complexity, geometric memory, emotion governance, variance landscapes.</p>
   <div class="nav-grid">
     <a href="cascade-complexity.html">Cascade Complexity</a>
-    <a href="belief-backprop.html">Belief Backpropagation</a>
+    <a href="belief-backprop.html">Reverse Cascade</a>
     <a href="epistemic-compression.html">Epistemic Compression</a>
     <a href="geometric-memory.html">Belief Loci</a>
     <a href="emotion-governance.html">Emotion Governance</a>

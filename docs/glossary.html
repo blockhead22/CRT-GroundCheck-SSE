@@ -235,7 +235,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
         <a href="#damping">Damping</a>
         <a href="#instability">Instability</a>
         <a href="#firewall">Firewall</a>
-        <a href="#belief-backprop">Belief Backpropagation</a>
+        <a href="#belief-backprop">Reverse Cascade</a>
         <a href="#query-resonance">Query Resonance (Wobble)</a>
         <a href="#semantic-string">Semantic String</a>
         <a href="#epistemic-loss">Epistemic Loss</a>
@@ -673,8 +673,8 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="belief-backprop">
-    <div class="term-name">Belief Backpropagation <span class="badge badge-original">CORE-Original</span></div>
-    <div class="term-origin">CORE-original (April 2026). No direct precedent found in the literature. Draws a structural parallel to neural network backpropagation but operates on earned epistemic state rather than trained weights.</div>
+    <div class="term-name">Reverse Cascade (Backward Influence Propagation) <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original (April 2026). Also referred to as "belief backpropagation" in early drafts. The term "reverse cascade" is preferred to avoid conflation with neural network backpropagation (gradient descent via chain rule). This mechanism is damped influence propagation on a weighted directed graph, not calculus-based gradient computation. No direct precedent identified in literature searches to date.</div>
     <div class="term-def">
       When a correction event resolves a contradiction, the resolution generates an <a href="#epistemic-loss">epistemic loss</a> signal that flows <em>backward</em> through the <a href="#bdg">BDG</a>'s dependency edges, adjusting trust scores on every upstream belief that contributed to the incorrect output. The inverse of a forward <a href="#cascade">cascade</a>: cascades answer "if I change X, what else changes?" while backpropagation answers "the output was wrong &mdash; what beliefs caused it?" Three behaviors emerge naturally: <a href="#self-pruning">self-pruning</a>, <a href="#domain-volatility">domain volatility</a> measurement, and <a href="#reflexive-self-model">reflexive self-model</a> calibration. Validated with 30/30 lab checks; bidirectional convergence confirmed with contraction ratio 0.13.
     </div>

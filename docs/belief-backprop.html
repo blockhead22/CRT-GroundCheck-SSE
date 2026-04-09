@@ -438,7 +438,7 @@ MathJax = {
 </div>
 
 <nav class="sidebar" id="docSidebar">
-  <div class="sidebar-title">Belief Backprop</div>
+  <div class="sidebar-title">Reverse Cascade</div>
   <a href="#problem">1 Forward-Only</a>
   <a href="#mechanism">2 The Mechanism</a>
   <a href="#emergent">3 Emergent Behaviors</a>
@@ -530,7 +530,7 @@ MathJax = {
     </div>
   </div>
 
-  <p>The weights (trust scores, retrieval rankings, slot classifications) that produced the wrong output were never adjusted by the error signal. The system detected its mistakes but didn't learn from them structurally. <strong>Belief backpropagation is that missing backward pass.</strong></p>
+  <p>The weights (trust scores, retrieval rankings, slot classifications) that produced the wrong output were never adjusted by the error signal. The system detected its mistakes but didn't revise from them structurally. <strong>The reverse cascade is that missing backward pass.</strong></p>
 </section>
 
 <!-- ============================================================ -->
@@ -619,7 +619,7 @@ MathJax = {
 
   <div class="law-card">
     <div class="law-number">Core Principle</div>
-    <div class="law-text">Detection without enforcement is observation without governance.<br>Backpropagation is the enforcement.</div>
+    <div class="law-text">Detection without enforcement is observation without governance.<br>The reverse cascade is the enforcement.</div>
   </div>
 </section>
 
@@ -799,7 +799,7 @@ MathJax = {
   <h2>Query Resonance: The Forward Complement</h2>
   <div class="accent-line"></div>
 
-  <p>Backpropagation flows backward from corrections. <strong>Query resonance</strong> (wobble) flows forward from queries. Together they form a complete bidirectional system: the query activates the graph, the response is generated, and if corrected, the error flows back through the same edges.</p>
+  <p>The reverse cascade flows backward from corrections. <strong>Query resonance</strong> (wobble) flows forward from queries. Together they form a complete bidirectional system: the query activates the graph, the response is generated, and if corrected, the error flows back through the same edges.</p>
 
   <h3>The Mechanism</h3>
 
@@ -869,7 +869,7 @@ MathJax = {
 
   <div class="table-wrap">
     <table>
-      <thead><tr><th>CORE Concept</th><th>Backprop Connection</th></tr></thead>
+      <thead><tr><th>CORE Concept</th><th>Reverse Cascade Connection</th></tr></thead>
       <tbody>
         <tr><td>Forward cascade (Theorems 4.1&ndash;4.2)</td><td>Belief changes propagate to dependents</td></tr>
         <tr><td>Damping convergence (Theorem 4.3)</td><td>Bounds both forward and backward passes</td></tr>

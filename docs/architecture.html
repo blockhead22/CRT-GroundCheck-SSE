@@ -512,7 +512,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
       <p>Batch NLI sweep: k-nearest + similarity filtering avoids O(n&sup2;). Disposition classified (resolvable/held/evolving/contextual). Auto-resolve only on overwhelming evidence.</p>
     </div>
     <div class="method-card">
-      <h4>Backward Pass (Belief Backpropagation)</h4>
+      <h4>Backward Pass (Reverse Cascade)</h4>
       <p>When a correction resolves a contradiction, the error signal flows <em>backward</em> through the BDG, adjusting trust on every upstream belief that contributed to the wrong output. Produces self-pruning (wrong beliefs die from accumulated error signals), domain volatility (correction frequency drives adaptive adjustment rates), and reflexive self-model calibration. <a href="belief-backprop.html">Full paper &rarr;</a></p>
     </div>
   </div>
