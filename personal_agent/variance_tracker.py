@@ -633,4 +633,74 @@ class VarianceTracker:
                         "centroid_x": 0.0, "centroid_y": 0.0,
                     })
 
-        return {"points": points, "contradictions": [], "topics": topics}
+        # --- Contradiction edges from ledger ---
+        contradictions = []
+        try:
+            from personal_agent.crt_ledger import ContradictionLedger
+            from pathlib import Path as _Path_vt
+            # Derive ledger DB path from memory DB path
+            _mem_db = str(getattr(self, 'db_path', '') or '')
+            _ledger_candidates = [
+                _mem_db.replace("_memory_", "_ledger_").replace("crt_memory_", "crt_ledger_"),
+                str(_Path_vt(_mem_db).parent / "crt_ledger_shared.db"),
+            ]
+            _ledger_path = None
+            for _lc in _ledger_candidates:
+                if _lc and _Path_vt(_lc).exists():
+                    _ledger_path = _lc
+                    break
+
+            if _ledger_path:
+                _ledger = ContradictionLedger(db_path=_ledger_path)
+                _open = _ledger.get_open_contradictions(limit=50)
+                _resolved = []
+                try:
+                    _resolved = _ledger.get_resolved_contradictions(limit=50)
+                except Exception:
+                    pass
+
+                # Map memory IDs to belief_speech entry IDs
+                # The belief_speech table stores queries, not memory_ids directly.
+                # But we can include memory_id pairs for the frontend to match.
+                _entry_id_set = set(entry_ids)
+                for c in (_open + _resolved):
+                    contradictions.append({
+                        "entry_id_a": c.old_memory_id,
+                        "entry_id_b": c.new_memory_id,
+                        "ledger_id": c.ledger_id,
+                        "status": c.status,
+                        "type": getattr(c, 'contradiction_type', 'unknown'),
+                        "disposition": getattr(c, 'disposition', 'unknown'),
+                        "slots": getattr(c, 'affects_slots', ''),
+                        "summary": (getattr(c, 'summary', '') or '')[:150],
+                    })
+        except Exception as _ledger_err:
+            import logging
+            logging.getLogger(__name__).debug("[BELIEF_MAP] Ledger query failed: %s", _ledger_err)
+
+        # --- BDG dependency edges ---
+        bdg_edges = []
+        try:
+            from personal_agent.memory_graph import get_live_bdg
+            _bdg = get_live_bdg()
+            if _bdg:
+                _bdg.ensure_built()
+                _graph = _bdg.bdg.graph if hasattr(_bdg, 'bdg') and _bdg.bdg else None
+                if _graph and _graph.number_of_edges() > 0:
+                    for src, tgt, edata in _graph.edges(data=True):
+                        bdg_edges.append({
+                            "source": src,
+                            "target": tgt,
+                            "edge_type": edata.get("edge_type", "SUPPORTS"),
+                            "weight": round(float(edata.get("weight", 0.5)), 3),
+                        })
+        except Exception as _bdg_err:
+            import logging
+            logging.getLogger(__name__).debug("[BELIEF_MAP] BDG edge query failed: %s", _bdg_err)
+
+        return {
+            "points": points,
+            "contradictions": contradictions,
+            "topics": topics,
+            "bdg_edges": bdg_edges,
+        }

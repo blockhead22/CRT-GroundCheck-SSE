@@ -372,6 +372,100 @@ class StepRecord:
     latency_ms: float = 0.0
 
 
+# ---------------------------------------------------------------------------
+# Belief state injection — CRT-aware context for the orchestrator brain
+# ---------------------------------------------------------------------------
+
+def build_belief_context(objective: str, memory_system, ledger=None, *, tier: int = 1) -> str:
+    """Build CRT belief state injection for the orchestrator brain.
+
+    Tier 1: User corpus only (identity facts, always present).
+    Tier 2: Tier 1 + query-relevant memories + open contradictions.
+
+    Each tier is a checkpoint — callers choose how much to inject.
+    """
+    sections = []
+
+    # --- Tier 1: User corpus — high-trust identity facts ---
+    try:
+        corpus = memory_system.retrieve_memories(
+            "user identity name job health location preferences",
+            k=15,
+            kinds={"user_fact", "identity_constant"},
+        )
+    except TypeError:
+        # Fallback if retrieve_memories doesn't support `kinds`
+        corpus = memory_system.retrieve_memories(
+            "user identity name job health location preferences",
+            k=15,
+        )
+        corpus = [(m, s) for m, s in corpus if getattr(m, 'kind', '') in ('user_fact', 'identity_constant')]
+
+    if corpus:
+        lines = []
+        for mem, score in corpus:
+            contra_tag = ""
+            if getattr(mem, 'contradiction_count', 0) > 0:
+                contra_tag = f", {mem.contradiction_count}x contradicted"
+            authority = getattr(mem, 'authority', 'unknown')
+            lines.append(
+                f'- "{mem.text[:200]}" '
+                f'[trust={mem.trust:.2f}, {mem.kind}, {authority}{contra_tag}]'
+            )
+        sections.append("[User Identity — established facts]:\n" + "\n".join(lines))
+
+    if tier < 2:
+        if not sections:
+            return ""
+        return "BELIEF STATE (grounded from CRT memory):\n\n" + "\n\n".join(sections)
+
+    # --- Tier 2: Query-relevant memories ---
+    try:
+        relevant = memory_system.retrieve_memories(objective[:500], k=8)
+    except Exception:
+        relevant = []
+
+    if relevant:
+        corpus_ids = {m.memory_id for m, _ in corpus} if corpus else set()
+        lines = []
+        for mem, score in relevant:
+            if mem.memory_id in corpus_ids:
+                continue
+            contra_tag = ""
+            if getattr(mem, 'contradiction_count', 0) > 0:
+                contra_tag = f", CONTRADICTED {mem.contradiction_count}x"
+            authority = getattr(mem, 'authority', 'unknown')
+            lines.append(
+                f'- "{mem.text[:200]}" '
+                f'[trust={mem.trust:.2f}, {mem.kind}, {authority}, score={score:.3f}{contra_tag}]'
+            )
+        if lines:
+            sections.append("[Relevant to this query]:\n" + "\n".join(lines))
+
+    # --- Tier 2b: Open contradictions from ledger ---
+    if ledger:
+        try:
+            open_contras = ledger.get_open_contradictions(limit=5)
+            if open_contras:
+                lines = []
+                for c in open_contras:
+                    slots = getattr(c, 'affects_slots', None) or "unknown"
+                    summary = getattr(c, 'summary', None) or "no summary"
+                    disposition = getattr(c, 'disposition', 'unknown')
+                    ctype = getattr(c, 'contradiction_type', 'CONFLICT')
+                    lines.append(
+                        f'- {ctype}: "{summary[:150]}" '
+                        f'[slots={slots}, disposition={disposition}]'
+                    )
+                sections.append("[Open Contradictions — unresolved belief conflicts]:\n" + "\n".join(lines))
+        except Exception:
+            pass
+
+    if not sections:
+        return ""
+    return "BELIEF STATE (grounded from CRT memory):\n\n" + "\n\n".join(sections)
+
+
 @dataclass
 class OrchestratorState:
     """Full state of an orchestration run."""
@@ -711,8 +805,10 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
                 memories = memory_system.retrieve_memories(query, k=10)
                 lines = []
                 for mem, score in memories:
+                    contra = f" CONTRADICTED({mem.contradiction_count}x)" if getattr(mem, 'contradiction_count', 0) > 0 else ""
+                    authority = getattr(mem, 'authority', 'unknown')
                     lines.append(
-                        f"[T:{mem.trust:.2f} score:{score:.3f}] {mem.text[:200]}"
+                        f"[T:{mem.trust:.2f} K:{mem.kind} A:{authority} score:{score:.3f}{contra}] {mem.text[:200]}"
                     )
                 result["content"] = "\n".join(lines) if lines else "No memories found."
 
@@ -1398,9 +1494,9 @@ class Orchestrator:
         import re
         text = raw.strip()
 
-        # Strip markdown code fences (```json ... ```)
-        if text.startswith("```"):
-            match = re.search(r'^```(?:json)?\s*\n?(.*?)\n?```\s*$', text, re.DOTALL)
+        # Strip markdown code fences (```json ... ```) — match anywhere in text
+        if "```" in text:
+            match = re.search(r'```(?:json)?\s*\n(.*?)\n\s*```', text, re.DOTALL)
             if match:
                 text = match.group(1).strip()
 
@@ -1540,6 +1636,20 @@ class Orchestrator:
                 print(f"[SELF_MODEL] Injected {len(_self_injection)} chars of self-awareness")
         except Exception as _sm_err:
             print(f"[SELF_MODEL] Failed (non-fatal): {_sm_err}")
+
+        # Layer: CRT Belief State Injection
+        # Tier 1 = user corpus only, Tier 2 = + query-relevant + contradictions
+        _belief_tier = 2  # Start with full injection; dial back to 1 if too noisy
+        try:
+            _ledger = getattr(self.memory_system, '_contradiction_ledger', None)
+            _belief_ctx = build_belief_context(objective, self.memory_system, _ledger, tier=_belief_tier)
+            if _belief_ctx:
+                _system_prompt = _system_prompt + "\n\n" + _belief_ctx
+                print(f"[BELIEF_STATE] Injected tier={_belief_tier} belief context ({len(_belief_ctx)} chars)")
+            else:
+                print("[BELIEF_STATE] No belief context available (empty memory)")
+        except Exception as _bs_err:
+            print(f"[BELIEF_STATE] Skipped: {_bs_err}")
 
         # Inject conversation history into context if provided.
         # Labelled as PRIOR CONTEXT (not current task) to prevent the brain from

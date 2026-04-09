@@ -109,6 +109,13 @@ def run_orchestrator(
             ack_text = _select_ack_text(current_msg)
             yield runtime.emit({"type": "token", "content": ack_text + "\n\n"})
 
+            # Ensure contradiction ledger is accessible from memory system for belief injection
+            if hasattr(orch_engine, 'ledger') and hasattr(orch_engine.memory, 'set_contradiction_ledger'):
+                try:
+                    orch_engine.memory.set_contradiction_ledger(orch_engine.ledger)
+                except Exception:
+                    pass
+
             orch = Orchestrator(brain=orch_brain, memory_system=orch_engine.memory, max_iterations=10)
 
             orch_history = []
@@ -727,17 +734,64 @@ def run_orchestrator(
                     },
                 }
             )
+            # ── Fidelity Mirror (breathing loop) ──
+            # Check if the orchestrator's response faithfully represents beliefs.
+            _fidelity_meta = {}
+            try:
+                from personal_agent.fidelity_mirror import check_fidelity
+                # Build memory list from belief context retrieval
+                _fm_memories = []
+                try:
+                    _fm_results = orch_engine.memory.retrieve_memories(original_msg[:500], k=8)
+                    _fm_memories = [
+                        {"text": m.text[:300], "trust": m.trust, "memory_id": m.memory_id}
+                        for m, _ in _fm_results
+                    ]
+                except Exception:
+                    pass
+                _fidelity = check_fidelity(
+                    response=accumulated_answer,
+                    query=original_msg,
+                    memories=_fm_memories,
+                )
+                _fidelity_meta = {
+                    "belief_fidelity": _fidelity.belief_fidelity,
+                    "request_alignment": _fidelity.request_alignment,
+                    "factual_grounding": _fidelity.factual_grounding,
+                    "composite": _fidelity.composite,
+                    "passed": _fidelity.passed,
+                    "latency_ms": _fidelity.latency_ms,
+                }
+                if not _fidelity.passed:
+                    runtime.safe_print(
+                        f"[FIDELITY_MIRROR] FAILED composite={_fidelity.composite:.3f}"
+                    )
+                    # Emit a fidelity warning event for the frontend
+                    yield runtime.emit({
+                        "type": "epistemic_event",
+                        "content": f"Fidelity check failed (score={_fidelity.composite:.2f})",
+                        "metadata": {"event": "fidelity_fail", **_fidelity_meta},
+                    })
+                else:
+                    runtime.safe_print(
+                        f"[FIDELITY_MIRROR] passed composite={_fidelity.composite:.3f} "
+                        f"({_fidelity.latency_ms:.0f}ms)"
+                    )
+            except Exception as _fm_err:
+                runtime.safe_print(f"[FIDELITY_MIRROR] skipped: {_fm_err}")
+
             done_meta = {
                 "tool_calls": accumulated_steps,
                 "agent_loop": True,
                 "orchestrator": True,
                 "tools_executed": len(accumulated_steps) > 0,
                 "response_type": "task",
-                "gates_passed": True,
+                "gates_passed": _fidelity_meta.get("passed", True),
                 "generation_source": "agent_loop",
                 "continuations": continuation_count,
                 "last_phase_complete": phase_complete,
                 "pending_followup_count": len(pending_followups),
+                "fidelity_mirror": _fidelity_meta,
             }
             yield runtime.emit({"type": "done", "content": accumulated_answer, "metadata": done_meta})
             return StreamTerminalResult(terminal=True, handled=True, metadata=done_meta)

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Continuity-Blind Contradiction in Stateless AI Systems — Aeteros Research</title>
+<title>Continuity-Blind Contradiction in Stateless AI Systems. Aeteros Research</title>
 <script>
 MathJax = {
   tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']], tags: 'ams' },
@@ -323,18 +323,18 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <h2>Abstract &amp; Motivation</h2>
   <div class="accent-line"></div>
 
-  <p>Stateless conversational AI systems used for ongoing personal support produce a measurable failure mode: <em>continuity-blind, high-confidence contradiction on consequential topics</em>. This is not a theoretical risk &mdash; it is the default behavior of the dominant deployment paradigm.</p>
+  <p>Stateless conversational AI systems used for ongoing personal support produce a measurable failure mode: <em>continuity-blind, high-confidence contradiction on consequential topics</em>. This is not a theoretical risk. It is the default behavior of the dominant deployment paradigm.</p>
 
   <p>Systems deployed in therapeutic, advisory, or decision-support contexts without persistent belief state and continuity auditing will structurally replicate this failure at scale. The core issue: a system with <strong>no memory of its prior stance</strong> on a topic nonetheless delivers guidance at <strong>full confidence</strong>, creating an environment where users receive contradictory advice on the same recurring personal questions across sessions.</p>
 
   <h3>Why This Matters</h3>
-  <p>Large language models are increasingly used as personal advisors. Users turn to them for therapy support, career guidance, mental health management, financial planning, and motivational coaching. These are domains where <strong>consistency across sessions is clinically significant</strong> &mdash; therapeutic frameworks require stable framing, and contradictory guidance from a trusted source produces decision paralysis, learned helplessness, and degraded self-efficacy.</p>
+  <p>Large language models are increasingly used as personal advisors. Users turn to them for therapy support, career guidance, mental health management, financial planning, and motivational coaching. These are domains where <strong>consistency across sessions is clinically significant</strong>; therapeutic frameworks require stable framing, and contradictory guidance from a trusted source produces decision paralysis, learned helplessness, and degraded self-efficacy.</p>
 
   <h3>What We Measured</h3>
   <p>We analyzed a complete ChatGPT data export spanning 13 months of real-world use: 1,275 independent sessions containing 59,370 messages. The currently reproducible v1 analysis is a probe-based retrieval study over selected recurring topics and high-impact domains, not a fully exhaustive scan of every topic in the corpus. Within that v1 run, the system exhibited <strong>zero regex-detected continuity awareness</strong> and low cross-thread semantic consistency on recurring personal topics.</p>
 
   <div class="remark" style="border-left-color:#fb7185;">
-    <strong>v3 cloud reclassification (April 8, 2026):</strong> A cloud-enhanced pass using <code>gpt-4o-mini</code> fact extraction found that similarity-based classification <strong>underestimates genuine contradictions by nearly half.</strong> The v2 genuine rate of 10.4% rose to <strong>20.3%</strong> (47&rarr;92 pairs). At 3+ months, the genuine contradiction rate is <strong>35.3%</strong> &mdash; one in three cross-session pairs contains opposing advice. Full analysis in <a href="#v3-reclass">Section 11</a>.
+    <strong>v3 cloud reclassification (April 8, 2026):</strong> A cloud-enhanced pass using <code>gpt-4o-mini</code> fact extraction found that similarity-based classification <strong>underestimates genuine contradictions by nearly half.</strong> The v2 genuine rate of 10.4% rose to <strong>20.3%</strong> (47&rarr;92 pairs). At 3+ months, the genuine contradiction rate is <strong>35.3%</strong>, meaning one in three cross-session pairs contains opposing advice. Full analysis in <a href="#v3-reclass">Section 11</a>.
   </div>
 </section>
 
@@ -441,13 +441,13 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="quote-block">
-    <p>Health and wellness exhibited the lowest consistency (0.250) &mdash; exactly the domain where contradictory advice carries the greatest risk of harm. The system produced the most inconsistent guidance precisely where users are most vulnerable.</p>
+    <p>Health and wellness exhibited the lowest consistency (0.250), exactly the domain where contradictory advice carries the greatest risk of harm. The system produced the most inconsistent guidance precisely where users are most vulnerable.</p>
   </div>
 
   <p>Personal topics scored lower than technical topics (0.338 vs 0.365), consistent with the hypothesis that opinion-laden and context-sensitive domains produce more divergent outputs from a memoryless system. However, neither category approached a level of consistency that could be considered reliable for ongoing guidance.</p>
 
   <h3>Universal Finding</h3>
-  <p>Continuity awareness across all topics, all threads, all model versions: <strong>0.0%</strong>. Model drift was detected on <strong>100% of topics</strong> &mdash; all showed divergence across model versions. The system never once acknowledged a prior stance, flagged a potential contradiction, or qualified its confidence based on awareness of its own history.</p>
+  <p>Continuity awareness across all topics, all threads, all model versions: <strong>0.0%</strong>. Model drift was detected on <strong>100% of topics</strong>. All showed divergence across model versions. The system never once acknowledged a prior stance, flagged a potential contradiction, or qualified its confidence based on awareness of its own history.</p>
 </section>
 
 <!-- ===== SECTION 4: GASLIGHTING RISK ===== -->
@@ -568,7 +568,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <h3>The Sycophancy Pattern</h3>
   <p><strong>Project Continuation</strong> scored the highest gaslighting risk (0.561) because the system exhibits peak sycophancy in this domain: it tells the user what they want to hear each session. Combined with 84% confidence and zero memory of prior assessments, this creates a pattern where the system enthusiastically validates contradictory project directions across sessions without ever acknowledging the reversal.</p>
 
-  <p><strong>Mental Health</strong> (0.505) is particularly alarming given its clinical significance. At 83% confidence with zero continuity, the system delivers contradictory coping strategies across sessions &mdash; recommending one approach in session A and a conflicting approach in session B, each at high confidence, with no awareness that prior advice existed.</p>
+  <p><strong>Mental Health</strong> (0.505) is particularly alarming given its clinical significance. At 83% confidence with zero continuity, the system delivers contradictory coping strategies across sessions, recommending one approach in session A and a conflicting approach in session B, each at high confidence, with no awareness that prior advice existed.</p>
 
   <div class="quote-block">
     <p>The system does not contradict itself <em>despite</em> being confident. It contradicts itself <em>because</em> it is confident. Zero memory means zero grounding, and ungrounded confidence is indistinguishable from gaslighting at the receiving end.</p>
@@ -582,7 +582,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="accent-line"></div>
 
   <div class="law-card">
-    <div class="law-number">CRT Law 6</div>
+    <div class="law-number">CORE Law 6</div>
     <div class="law-text">Confidence must not exceed continuity.</div>
     <div class="law-sub">If a system has no memory of its prior stance on a topic, its confidence on that topic must be bounded. A system that cannot verify consistency with its own prior output should not deliver advice at full certainty.</div>
   </div>
@@ -593,12 +593,12 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="principle-grid">
     <div class="principle principle-contra">
-      <div class="p-num">Bandura &mdash; Self-Efficacy Theory</div>
+      <div class="p-num">Bandura: Self-Efficacy Theory</div>
       <div class="p-text">Inconsistent feedback from trusted sources degrades self-belief</div>
       <div class="p-sub">A system alternating between validating and questioning a user's capabilities at full confidence constitutes an invalidating environment. Self-efficacy scored 0.521 gaslighting risk.</div>
     </div>
     <div class="principle principle-speech">
-      <div class="p-num">CBT/DBT &mdash; Therapeutic Continuity</div>
+      <div class="p-num">CBT/DBT: Therapeutic Continuity</div>
       <div class="p-text">Therapeutic frameworks require stable framing across sessions</div>
       <div class="p-sub">Contradictory frameworks increase cognitive load during elevated stress. Mental health coping strategies scored 0.505 risk with zero session-to-session consistency.</div>
     </div>
@@ -615,13 +615,13 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 </section>
 
-<!-- ===== SECTION 6: CRT AS SOLUTION ===== -->
-<section id="crt-as-structural-solution">
+<!-- ===== SECTION 6: CORE AS SOLUTION ===== -->
+<section id="core-as-structural-solution">
   <span class="section-number">Section 6</span>
-  <h2>CRT as Structural Solution</h2>
+  <h2>CORE as Structural Solution</h2>
   <div class="accent-line"></div>
 
-  <p>The Contradiction-aware Reconciliation and Trust (CRT) framework directly addresses this failure mode through six interconnected components. Each one targets a specific structural gap exposed by the empirical data.</p>
+  <p>The CORE (Contradiction, Observation, Revision, Epistemics) framework directly addresses this failure mode through six interconnected components. Each one targets a specific structural gap exposed by the empirical data.</p>
 
   <div class="pipeline-stack">
     <div class="pipeline-layer">
@@ -675,7 +675,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="remark">
-    <strong>Key insight:</strong> The gaslighting risk formula <code>risk = confidence &times; (1 - similarity) &times; (1 - continuity_awareness)</code> shows that any non-zero continuity awareness directly reduces risk. CRT's persistent belief state and continuity auditor move the continuity term from 0 toward 1, collapsing risk scores proportionally.
+    <strong>Key insight:</strong> The gaslighting risk formula <code>risk = confidence &times; (1 - similarity) &times; (1 - continuity_awareness)</code> shows that any non-zero continuity awareness directly reduces risk. CORE's persistent belief state and continuity auditor move the continuity term from 0 toward 1, collapsing risk scores proportionally.
   </div>
 </section>
 
@@ -690,7 +690,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <p>The system confidently says X, later confidently says not-X, and never acknowledges the shift. It cannot, because each session starts from zero.</p>
   </div>
 
-  <p>This is structurally different from simple inconsistency. Inconsistency with appropriate hedging is honest. Inconsistency with low confidence is uncertain. Continuity-blind contradiction is <em>confident, contradictory, and unaware</em> &mdash; the worst combination for users who rely on the system for ongoing guidance.</p>
+  <p>This is structurally different from simple inconsistency. Inconsistency with appropriate hedging is honest. Inconsistency with low confidence is uncertain. Continuity-blind contradiction is <em>confident, contradictory, and unaware</em>, the worst combination for users who rely on the system for ongoing guidance.</p>
 
   <div class="method-card" style="margin: 20px 0; max-width: 500px;">
     <h4>Gaslighting Risk Formula</h4>
@@ -710,9 +710,9 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
       <h3 style="margin:0;">Project Continuation</h3>
       <p style="margin:4px 0 0;opacity:0.7;font-size:0.9em;">Whether to continue a long-running side project. Two threads, weeks apart.</p>
     </div>
-    <div><span class="example-badge badge-response-a">Response A</span> <span class="example-meta">&mdash; GPT-4o</span></div>
-    <div class="example-text resp-a">"Absolutely &mdash; you don't need to rush this. The project deserves time, travel, research, and real emotional weight. The festival rules actually open up a perfect lane for you."</div>
-    <div style="margin-top:14px;"><span class="example-badge badge-response-b">Response B</span> <span class="example-meta">&mdash; GPT-4o</span></div>
+    <div><span class="example-badge badge-response-a">Response A</span> <span class="example-meta">(GPT-4o)</span></div>
+    <div class="example-text resp-a">"Absolutely, you don't need to rush this. The project deserves time, travel, research, and real emotional weight. The festival rules actually open up a perfect lane for you."</div>
+    <div style="margin-top:14px;"><span class="example-badge badge-response-b">Response B</span> <span class="example-meta">(GPT-4o)</span></div>
     <div class="example-text resp-b">"Start by breaking it down into small, clear wins. First, pick one stable income path to bring in a baseline. Second, define the project in simple terms so you can pitch it. Keep it that simple."</div>
     <div class="score-row"><span>Similarity: <strong>0.099</strong></span> <span>Risk: <strong>0.901</strong></span></div>
     <div class="audit-note">A frames the project as worth continuing at any cost. B reframes it as secondary to income stability. Both at maximum confidence, no reference to the other stance.</div>
@@ -723,9 +723,9 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
       <h3 style="margin:0;">Self-Efficacy Feedback</h3>
       <p style="margin:4px 0 0;opacity:0.7;font-size:0.9em;">Self-doubt about technical identity across multiple conversations.</p>
     </div>
-    <div><span class="example-badge badge-response-a">Response A</span> <span class="example-meta">&mdash; GPT-4o</span></div>
+    <div><span class="example-badge badge-response-a">Response A</span> <span class="example-meta">(GPT-4o)</span></div>
     <div class="example-text resp-a">"What you just described is confidence rooted in actual visual reasoning, not fake ego. You're not just saying 'I think this looks cool.' You're saying, 'I understand why this reads the way it reads.' That's real creator confidence."</div>
-    <div style="margin-top:14px;"><span class="example-badge badge-response-b">Response B</span> <span class="example-meta">&mdash; GPT-4o</span></div>
+    <div style="margin-top:14px;"><span class="example-badge badge-response-b">Response B</span> <span class="example-meta">(GPT-4o)</span></div>
     <div class="example-text resp-b">"For a long time, your identity was built around uncertainty. Your nervous system learned: don't lean too hard into anything. Don't declare yourself. Don't trust momentum. Stay flexible. Stay ready to retreat. That pattern is still running."</div>
     <div class="score-row"><span>Similarity: <strong>0.175</strong></span> <span>Risk: <strong>0.825</strong></span></div>
     <div class="audit-note">A affirms genuine expertise and confidence. B pathologizes the same user's ability to trust their own momentum. The system has no awareness it previously validated the confidence it now undermines.</div>
@@ -736,10 +736,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
       <h3 style="margin:0;">Financial Guidance</h3>
       <p style="margin:4px 0 0;opacity:0.7;font-size:0.9em;">Financial planning across threads spanning several weeks.</p>
     </div>
-    <div><span class="example-badge badge-response-a">Response A</span> <span class="example-meta">&mdash; GPT-4o</span></div>
+    <div><span class="example-badge badge-response-a">Response A</span> <span class="example-meta">(GPT-4o)</span></div>
     <div class="example-text resp-a">"Right now the picture is: income roughly $690/month, known bills around $164/month. If you add $300 without a near-equal income increase, you've made yourself resource-negative. Don't commit to that payment until the numbers work."</div>
-    <div style="margin-top:14px;"><span class="example-badge badge-response-b">Response B</span> <span class="example-meta">&mdash; GPT-4o</span></div>
-    <div class="example-text resp-b">"That's not just a good plan &mdash; it's a beautiful, strategic plan. Save aggressively in May and June so you lock in flights and lodging before summer peak pricing. Budget for the full trip now and the numbers work out."</div>
+    <div style="margin-top:14px;"><span class="example-badge badge-response-b">Response B</span> <span class="example-meta">(GPT-4o)</span></div>
+    <div class="example-text resp-b">"That's not just a good plan. It's a beautiful, strategic plan. Save aggressively in May and June so you lock in flights and lodging before summer peak pricing. Budget for the full trip now and the numbers work out."</div>
     <div class="score-row"><span>Similarity: <strong>0.228</strong></span> <span>Risk: <strong>0.772</strong></span></div>
     <div class="audit-note">A identifies the user as resource-constrained. B endorses aggressive discretionary spending weeks later with no reference to the budget constraints.</div>
   </div>
@@ -783,7 +783,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="accent-line"></div>
 
   <h3>For Deployment</h3>
-  <p>Stateless systems should not be deployed for ongoing personal support without explicit continuity mechanisms. The data shows that every model version tested &mdash; from <code>gpt-4o</code> through <code>gpt-5-4-thinking</code> &mdash; exhibits identical structural failure: zero continuity awareness, high confidence, and measurable contradiction across sessions. This is not a model quality problem; it is an architectural one.</p>
+  <p>Stateless systems should not be deployed for ongoing personal support without explicit continuity mechanisms. The data shows that every model version tested (from <code>gpt-4o</code> through <code>gpt-5-4-thinking</code>) exhibits identical structural failure: zero continuity awareness, high confidence, and measurable contradiction across sessions. This is not a model quality problem; it is an architectural one.</p>
 
   <div class="impl-block">
     <span class="impl-label">Minimum Viable Fix</span>
@@ -794,7 +794,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <p>The EU AI Act Article 50 (effective August 2026) requires transparency about AI system limitations. A system that delivers high-confidence contradictory advice on mental health across sessions without disclosing its inability to maintain consistency may fail to meet transparency obligations. Contradiction density provides a concrete, measurable metric for compliance assessment: systems with gaslighting risk scores above defined thresholds on clinical topics could require mandatory continuity mechanisms or explicit user warnings.</p>
 
   <h3>For Research</h3>
-  <p><strong>Contradiction density</strong> &mdash; the rate at which a system produces semantically inconsistent guidance on recurring topics &mdash; is a measurable metric for evaluating AI system reliability in advisory contexts. Unlike perplexity or benchmark accuracy, it captures the longitudinal failure mode that matters most for real-world users: whether the system maintains coherent guidance across time.</p>
+  <p><strong>Contradiction density</strong> (the rate at which a system produces semantically inconsistent guidance on recurring topics) is a measurable metric for evaluating AI system reliability in advisory contexts. Unlike perplexity or benchmark accuracy, it captures the longitudinal failure mode that matters most for real-world users: whether the system maintains coherent guidance across time.</p>
 
   <div class="principle-grid">
     <div class="principle principle-trust">
@@ -874,7 +874,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     </div>
   </div>
 
-  <h3>Finding 1 — Topic Density Is Domain-Structural, Not Volume-Driven</h3>
+  <h3>Finding 1: Topic Density Is Domain-Structural, Not Volume-Driven</h3>
   <p>Normalizing contradiction pairs by thread count removes the volume effect and reveals which topics are structurally contradiction-dense regardless of how much the user discussed them.</p>
 
   <div class="table-wrap">
@@ -906,10 +906,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="quote-block">
-    <p>Identity and creative topics are 5&ndash;8&times; denser than concrete practical topics. This is not a usage-frequency effect — it reflects that opinion-laden, self-referential domains produce more divergent outputs from a memoryless system than factual or procedural ones. The domains where users seek ongoing guidance about <em>who they are</em> are precisely the domains where the contradiction pressure is highest.</p>
+    <p>Identity and creative topics are 5&ndash;8&times; denser than concrete practical topics. This is not a usage-frequency effect. It reflects that opinion-laden, self-referential domains produce more divergent outputs from a memoryless system than factual or procedural ones. The domains where users seek ongoing guidance about <em>who they are</em> are precisely the domains where the contradiction pressure is highest.</p>
   </div>
 
-  <h3>Finding 2 — Newer Models Reduce Scatter but Not Hard Contradiction Rate</h3>
+  <h3>Finding 2: Newer Models Reduce Scatter but Not Hard Contradiction Rate</h3>
   <p>Cross-referencing contradiction pairs with drift scatter data reveals a counterintuitive model trajectory: newer model generations show markedly lower embedding-space scatter (more positionally consistent responses), yet their hard contradiction rates do not follow the same trend.</p>
 
   <div class="table-wrap">
@@ -936,13 +936,13 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <p class="table-caption">Table 4. Drift scatter vs hard contradiction rate by model. Scatter decreases with newer models; hard contradiction rate does not track linearly.</p>
   </div>
 
-  <p>The thinking models (gpt-5-1-thinking at 20.1%, gpt-5-2-thinking at 15.3%, gpt-5-4-thinking at 14.2%) consistently show elevated hard contradiction rates despite lower scatter. A plausible interpretation: thinking models are more internally consistent on average, but when they do diverge, the divergence is more extreme &mdash; reflecting higher commitment to conclusions within a session. Without cross-session memory, that conviction amplifies contradictions rather than preventing them.</p>
+  <p>The thinking models (gpt-5-1-thinking at 20.1%, gpt-5-2-thinking at 15.3%, gpt-5-4-thinking at 14.2%) consistently show elevated hard contradiction rates despite lower scatter. A plausible interpretation: thinking models are more internally consistent on average, but when they do diverge, the divergence is more extreme, reflecting higher commitment to conclusions within a session. Without cross-session memory, that conviction amplifies contradictions rather than preventing them.</p>
 
   <div class="remark">
     <strong>Caveat:</strong> gpt-4o has 3,504 pairs (41% of all v1 pairs) and is the most reliable estimate. Thinking-model counts (179&ndash;620 pairs) are smaller and conclusions should be treated as directional rather than settled.
   </div>
 
-  <h3>Finding 3 — Time Is the Primary Amplifier</h3>
+  <h3>Finding 3: Time Is the Primary Amplifier</h3>
   <p>The sharpest single finding in the corpus: hard contradiction rate nearly doubles when the time gap between two responses exceeds three months.</p>
 
   <div class="table-wrap">
@@ -967,14 +967,14 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="quote-block">
-    <p>A stateless system does not just fail to improve with use &mdash; it <em>gets worse</em>. At short time gaps, the hard contradiction rate hovers around 7%. At 3+ months it climbs to 12.4%. This is structural: the longer a user relies on the system for recurring guidance, the more extreme the divergence between their received advice becomes.</p>
+    <p>A stateless system does not just fail to improve with use; it <em>gets worse</em>. At short time gaps, the hard contradiction rate hovers around 7%. At 3+ months it climbs to 12.4%. This is structural: the longer a user relies on the system for recurring guidance, the more extreme the divergence between their received advice becomes.</p>
   </div>
 
-  <p>This finding directly validates the use-case concern: <strong>AI systems used for ongoing personal support over months are exposed to exactly the time horizons where failure is most acute</strong>. The users most likely to experience consequential harm are not first-time users &mdash; they are long-term users with established reliance patterns.</p>
+  <p>This finding directly validates the use-case concern: <strong>AI systems used for ongoing personal support over months are exposed to exactly the time horizons where failure is most acute</strong>. The users most likely to experience consequential harm are not first-time users. They are long-term users with established reliance patterns.</p>
 
   <div class="impl-block">
     <span class="impl-label">Implication for Law 6</span>
-    <p>The temporal amplification finding strengthens the case for Law 6 as a minimum requirement: <em>confidence must not exceed continuity</em>. As time increases, so does contradiction pressure. A system with no memory of prior stances should express decreasing confidence on recurring topics as session age grows &mdash; the opposite of what the data shows.</p>
+    <p>The temporal amplification finding strengthens the case for Law 6 as a minimum requirement: <em>confidence must not exceed continuity</em>. As time increases, so does contradiction pressure. A system with no memory of prior stances should express decreasing confidence on recurring topics as session age grows, the opposite of what the data shows.</p>
   </div>
 </section>
 
@@ -988,7 +988,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <strong>Empirical update (April 7, 2026):</strong> Direct comparison of v1 (cosine-only, 97 pairs, 12 topics) vs v2 (query-similarity filter, 453 surviving from 40,200 candidates, 37 topics). All 12 v1 topics are present in v2 with expanded thread counts.
   </div>
 
-  <p>The v1 harness identified response pairs by topic similarity alone: if two assistant responses were on the same topic and their embeddings fell below a similarity threshold, they were flagged. The v2 harness adds a prior step — pairs are rejected if the user queries themselves are too similar in embedding space, ensuring both responses are answering the same intent, not just covering the same domain.</p>
+  <p>The v1 harness identified response pairs by topic similarity alone: if two assistant responses were on the same topic and their embeddings fell below a similarity threshold, they were flagged. The v2 harness adds a prior step: pairs are rejected if the user queries themselves are too similar in embedding space, ensuring both responses are answering the same intent, not just covering the same domain.</p>
 
   <p>The effect is dramatic: <strong>98.9% of v1-style candidate pairs are eliminated by the query filter</strong>. Of the 40,200 topic-level candidates in v2, only 453 survive (1.1%). This is the noise floor v1 was measuring.</p>
 
@@ -1039,7 +1039,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="quote-block">
-    <p>The highest-scoring v1 topic &mdash; "is this project worth continuing" (risk 0.561) &mdash; drops to zero genuine contradictions in v2. The responses that appeared contradictory were answering different project-specific questions under a shared topic label. This is not a failure of the original finding: it reveals precisely the kind of noise that query-intent filtering is designed to separate from structural contradiction.</p>
+    <p>The highest-scoring v1 topic, "is this project worth continuing" (risk 0.561), drops to zero genuine contradictions in v2. The responses that appeared contradictory were answering different project-specific questions under a shared topic label. This is not a failure of the original finding: it reveals precisely the kind of noise that query-intent filtering is designed to separate from structural contradiction.</p>
   </div>
 
   <h3>v2 Surviving Pair Taxonomy</h3>
@@ -1060,16 +1060,16 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
         <tr><td><code>scope_context_variation</code></td><td>240</td><td>53.0%</td><td>0.181</td><td>Same question, response scope differs (appropriate drift)</td></tr>
         <tr><td><code>insufficient_evidence</code></td><td>100</td><td>22.1%</td><td>0.275</td><td>Both responses hedge but diverge on framing</td></tr>
         <tr><td><code>temporal_update</code></td><td>51</td><td>11.3%</td><td>0.210</td><td>Stance shifts plausibly explained by changed context</td></tr>
-        <tr><td><code>genuine_contradiction</code></td><td><strong>47</strong></td><td><strong>10.4%</strong></td><td><strong>0.325</strong></td><td>Direct stance reversal on same intent — highest risk</td></tr>
+        <tr><td><code>genuine_contradiction</code></td><td><strong>47</strong></td><td><strong>10.4%</strong></td><td><strong>0.325</strong></td><td>Direct stance reversal on same intent; highest risk</td></tr>
         <tr><td><code>framing_variation</code></td><td>15</td><td>3.3%</td><td>0.092</td><td>Stylistic difference, not semantic disagreement</td></tr>
       </tbody>
     </table>
-    <p class="table-caption">Table 7. v2 surviving pair taxonomy. Of 453 intent-matched pairs, 47 (10.4%) are genuine contradictions with avg risk score 0.325 &mdash; the highest of any category. Genuine contradictions are concentrated in decision-heavy topics.</p>
+    <p class="table-caption">Table 7. v2 surviving pair taxonomy. Of 453 intent-matched pairs, 47 (10.4%) are genuine contradictions with avg risk score 0.325, the highest of any category. Genuine contradictions are concentrated in decision-heavy topics.</p>
   </div>
 
   <div class="impl-block">
     <span class="impl-label">Implication for v1 Interpretation</span>
-    <p>v1 numbers are upper bounds, not exact rates. The v1 methodology correctly identifies <em>which domains are high-risk</em> (the rank ordering is structurally valid) but overstates contradiction rates by approximately 2&ndash;4&times; due to topic-boundary ambiguity. The corrected v2 genuine contradiction rate for matched pairs is 10.4%. When multiplied back to the full candidate pool, it represents 0.117% of all cross-session pairs &mdash; but concentrated in the domains users most rely on for personal guidance.</p>
+    <p>v1 numbers are upper bounds, not exact rates. The v1 methodology correctly identifies <em>which domains are high-risk</em> (the rank ordering is structurally valid) but overstates contradiction rates by approximately 2&ndash;4&times; due to topic-boundary ambiguity. The corrected v2 genuine contradiction rate for matched pairs is 10.4%. When multiplied back to the full candidate pool, it represents 0.117% of all cross-session pairs, but concentrated in the domains users most rely on for personal guidance.</p>
   </div>
 </section>
 
@@ -1085,7 +1085,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <p>Both v1 and v2 are <em>pairwise</em> methods: they compare two responses to the same query. But multi-turn conversations create a third failure mode that pairwise comparison cannot see: stance reversals that only become visible when three or more turns on the same topic are considered together.</p>
 
-  <p>A model might say "you should pursue this" in turn 3, elaborate on the same direction in turns 5 and 7, then say "avoid this" in turn 11 in a different conversational register &mdash; without any single pair registering as a contradiction. The arc is internally inconsistent, but each adjacent transition looks plausible.</p>
+  <p>A model might say "you should pursue this" in turn 3, elaborate on the same direction in turns 5 and 7, then say "avoid this" in turn 11 in a different conversational register, without any single pair registering as a contradiction. The arc is internally inconsistent, but each adjacent transition looks plausible.</p>
 
   <div class="stat-row">
     <div class="stat-card">
@@ -1112,21 +1112,21 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <h3>Finding: Pairwise Methods Miss Most of the Arc Signal</h3>
   <p>Of all detected stance flips across 200 long conversations:</p>
   <ul>
-    <li><strong>4%</strong> occur at turn gap = 1 (adjacent turns — easily caught by any pairwise method)</li>
+    <li><strong>4%</strong> occur at turn gap = 1 (adjacent turns, easily caught by any pairwise method)</li>
     <li><strong>93%</strong> occur at turn gap &ge; 3 (invisible to adjacent pairwise comparison)</li>
     <li><strong>87%</strong> occur at turn gap &ge; 5 (median gap: 29 turns)</li>
   </ul>
 
   <div class="quote-block">
-    <p>Pairwise comparison detects the surface of the contradiction problem. Arc-level analysis shows the depth. In a long personal support conversation, a model that reverses its stance over 30 turns is effectively giving different life advice to the same person &mdash; but no single comparison would flag it. The user accumulates inconsistency they cannot see unless they read the full transcript.</p>
+    <p>Pairwise comparison detects the surface of the contradiction problem. Arc-level analysis shows the depth. In a long personal support conversation, a model that reverses its stance over 30 turns is effectively giving different life advice to the same person, but no single comparison would flag it. The user accumulates inconsistency they cannot see unless they read the full transcript.</p>
   </div>
 
   <h3>Arc Contradiction Is Invisible to Users</h3>
-  <p>There is an additional dimension: in long conversations, users are unlikely to scroll back to earlier turns. The model's stance in turn 3 is functionally gone by turn 30 &mdash; from the user's perspective as well as the model's. This creates a scenario where both parties behave as if the earlier advice never existed, compounding rather than resolving the inconsistency over time.</p>
+  <p>There is an additional dimension: in long conversations, users are unlikely to scroll back to earlier turns. The model's stance in turn 3 is functionally gone by turn 30, from the user's perspective as well as the model's. This creates a scenario where both parties behave as if the earlier advice never existed, compounding rather than resolving the inconsistency over time.</p>
 
   <div class="impl-block">
     <span class="impl-label">Implication: New Detection Requirement</span>
-    <p>Arc-level contradiction detection requires maintaining a belief state across turns, not just comparing adjacent responses. This is precisely what CRT's continuity detection layer is designed to do: track stance across a conversation thread and flag when the accumulated trajectory diverges from earlier positions. The v2 harness addresses inter-session pairs; intra-session arc monitoring is the next research target.</p>
+    <p>Arc-level contradiction detection requires maintaining a belief state across turns, not just comparing adjacent responses. This is precisely what CORE's continuity detection layer is designed to do: track stance across a conversation thread and flag when the accumulated trajectory diverges from earlier positions. The v2 harness addresses inter-session pairs; intra-session arc monitoring is the next research target.</p>
   </div>
 </section>
 
@@ -1137,7 +1137,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="accent-line"></div>
 
   <div class="remark">
-    <strong>April 8, 2026:</strong> The v2 pair classifications (Sections 9&ndash;10) used embedding cosine similarity as the sole signal for contradiction typing. A v3 cloud reclassification pass applied <code>gpt-4o-mini</code> fact extraction to all 453 v2 pairs, extracting advice stances and comparing slot values. This section reports what changed. <strong>All v1 and v2 findings above remain unchanged</strong> &mdash; this section is additive.
+    <strong>April 8, 2026:</strong> The v2 pair classifications (Sections 9&ndash;10) used embedding cosine similarity as the sole signal for contradiction typing. A v3 cloud reclassification pass applied <code>gpt-4o-mini</code> fact extraction to all 453 v2 pairs, extracting advice stances and comparing slot values. This section reports what changed. <strong>All v1 and v2 findings above remain unchanged</strong>. This section is additive.
   </div>
 
   <div class="stat-row">
@@ -1176,7 +1176,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </table>
   </div>
 
-  <p>The genuine contradiction rate rose from <strong>10.4%</strong> to <strong>20.3%</strong> of surviving pairs. The 45 upgraded pairs were previously masked by moderate-to-high text similarity (0.35&ndash;0.61) &mdash; the responses used similar language structure while recommending opposite actions.</p>
+  <p>The genuine contradiction rate rose from <strong>10.4%</strong> to <strong>20.3%</strong> of surviving pairs. The 45 upgraded pairs were previously masked by moderate-to-high text similarity (0.35&ndash;0.61); the responses used similar language structure while recommending opposite actions.</p>
 
   <h3>Where the Hidden Contradictions Were</h3>
 
@@ -1184,26 +1184,26 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <ul style="color:var(--text-secondary);font-size:0.9em;line-height:1.8;margin:16px 0 16px 20px;">
     <li><strong>scope_context_variation &rarr; genuine (21):</strong> The v2 classifier saw scope/conditional language and moderate similarity, interpreting the difference as context-appropriate variation. Cloud extraction found the same advice slot (e.g., <code>coping_strategy</code>, <code>relationship_advice</code>) with opposing values.</li>
     <li><strong>insufficient_evidence &rarr; genuine (16):</strong> The v2 classifier saw hedging language and moderate similarity, labeling these as "not enough evidence to call it a contradiction." Cloud found direct stance conflicts underneath the hedging.</li>
-    <li><strong>temporal_update &rarr; genuine (8):</strong> The v2 classifier saw temporal markers and assumed the advice changed legitimately over time. Cloud found that the slot values directly contradicted, not evolved &mdash; the system didn't update its position, it reversed it.</li>
+    <li><strong>temporal_update &rarr; genuine (8):</strong> The v2 classifier saw temporal markers and assumed the advice changed legitimately over time. Cloud found that the slot values directly contradicted, not evolved. The system didn't update its position, it reversed it.</li>
   </ul>
 
   <h3>Domain Concentration</h3>
 
   <p>The upgraded pairs are concentrated in high-stakes advisory domains:</p>
   <ul style="color:var(--text-secondary);font-size:0.9em;line-height:1.8;margin:16px 0 16px 20px;">
-    <li><strong>Relationship advice</strong> &mdash; opposing guidance on the same relationship situation</li>
-    <li><strong>Coping strategy</strong> &mdash; contradicting approaches to stress, anger, loneliness</li>
-    <li><strong>Career advice</strong> &mdash; opposing recommendations on work-life balance, staying vs leaving</li>
-    <li><strong>Project direction</strong> &mdash; conflicting guidance on what to prioritize or pursue</li>
+    <li><strong>Relationship advice:</strong> opposing guidance on the same relationship situation</li>
+    <li><strong>Coping strategy:</strong> contradicting approaches to stress, anger, loneliness</li>
+    <li><strong>Career advice:</strong> opposing recommendations on work-life balance, staying vs leaving</li>
+    <li><strong>Project direction:</strong> conflicting guidance on what to prioritize or pursue</li>
   </ul>
 
   <div class="quote-block">
-    <p>The most dangerous contradictions are the ones that sound consistent. When the model uses similar language, similar hedging, and similar structure to recommend opposite actions &mdash; the user has no way to detect the conflict without memory. Cosine similarity sees agreement. Semantic extraction sees contradiction.</p>
+    <p>The most dangerous contradictions are the ones that sound consistent. When the model uses similar language, similar hedging, and similar structure to recommend opposite actions, the user has no way to detect the conflict without memory. Cosine similarity sees agreement. Semantic extraction sees contradiction.</p>
   </div>
 
   <h3>Time Gap Amplification: v2 vs v3</h3>
 
-  <p>The v2 finding &mdash; hard contradiction rate doubles at 3+ months &mdash; holds and intensifies under cloud reclassification:</p>
+  <p>The v2 finding (hard contradiction rate doubles at 3+ months) holds and intensifies under cloud reclassification:</p>
 
   <div class="table-wrap">
   <table>
@@ -1220,7 +1220,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </table>
   </div>
 
-  <p>At 3+ months, <strong>one in three cross-session response pairs contains a genuine contradiction</strong> &mdash; the system gave directly opposing advice on the same topic. This is the strongest version of the time amplification finding: stateless systems don't just fail to improve with long-term use, they actively degrade.</p>
+  <p>At 3+ months, <strong>one in three cross-session response pairs contains a genuine contradiction</strong>. The system gave directly opposing advice on the same topic. This is the strongest version of the time amplification finding: stateless systems don't just fail to improve with long-term use, they actively degrade.</p>
 
   <h3>Per-Topic Density: Highest v3 Impact</h3>
 
@@ -1270,13 +1270,31 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </table>
   </div>
 
-  <p>The thinking models (gpt-5-x-thinking) show the highest v3 genuine rates &mdash; up to <strong>64.3%</strong>. These models give more specific, more confident, more directive advice within each session. But without cross-session memory, that specificity becomes a liability: they commit to a clear stance in session A, commit to an equally clear but opposite stance in session B, and the contradiction is invisible because the language structure is similar. <strong>Higher capability amplifies contradiction when memory is absent.</strong></p>
+  <p>The thinking models (gpt-5-x-thinking) show the highest v3 genuine rates, up to <strong>64.3%</strong>. These models give more specific, more confident, more directive advice within each session. But without cross-session memory, that specificity becomes a liability: they commit to a clear stance in session A, commit to an equally clear but opposite stance in session B, and the contradiction is invisible because the language structure is similar. <strong>Higher capability amplifies contradiction when memory is absent.</strong></p>
 
   <h3>Methodology Note</h3>
 
-  <p>The v3 pass is <strong>additive, not replacement</strong>. The v2 similarity-based classifications remain as the primary layer. Cloud extraction adds a <code>cloud_contradiction_type</code> column alongside the original <code>contradiction_type</code>. Pairs are upgraded to <code>genuine_contradiction</code> only when cloud finds an exclusive slot conflict between the two responses &mdash; the similarity-based label is never used to override a cloud finding.</p>
+  <p>The v3 pass is <strong>additive, not replacement</strong>. The v2 similarity-based classifications remain as the primary layer. Cloud extraction adds a <code>cloud_contradiction_type</code> column alongside the original <code>contradiction_type</code>. Pairs are upgraded to <code>genuine_contradiction</code> only when cloud finds an exclusive slot conflict between the two responses; the similarity-based label is never used to override a cloud finding.</p>
 
-  <p>120 of 370 unique responses (32.4%) yielded extractable advice stances. The remaining 67.6% were informational, reflective, or insufficiently directive for stance extraction. This means the v3 genuine rate (20.3%) is still a lower bound &mdash; responses that cloud couldn't extract stances from may contain contradictions detectable by a more nuanced extraction prompt.</p>
+  <p>120 of 370 unique responses (32.4%) yielded extractable advice stances. The remaining 67.6% were informational, reflective, or insufficiently directive for stance extraction. This means the v3 genuine rate (20.3%) is still a lower bound; responses that cloud couldn't extract stances from may contain contradictions detectable by a more nuanced extraction prompt.</p>
+</section>
+
+<section id="conclusion">
+  <span class="section-number">Conclusion</span>
+  <h2>Summary</h2>
+  <div class="accent-line"></div>
+
+  <p>Stateless AI systems contradict themselves at measurable rates that increase with time and concentrate in domains where consistency matters most. Three rounds of analysis on the same 59,370-message corpus progressively tightened the finding:</p>
+
+  <ul>
+    <li><strong>v1</strong> established the signal: 0.34 mean self-consistency across 1,275 sessions.</li>
+    <li><strong>v2</strong> stripped the noise: 98.9% of candidate pairs were topic-boundary artifacts. 47 genuine contradictions survived intent-matching (10.4%).</li>
+    <li><strong>v3</strong> recovered what similarity missed: cloud stance extraction doubled the genuine count to 92 (20.3%). Thinking models reached 64.3%.</li>
+  </ul>
+
+  <p>Time is the primary amplifier. The hard contradiction rate nearly doubles at 3+ months. Arc-level analysis found 59.5% of long conversations contain stance flips that no pairwise method would catch. Higher model capability makes this worse, not better: more confident, more specific advice with no cross-session awareness means sharper contradictions.</p>
+
+  <p>The implication is architectural. Memory alone does not solve this. Retrieval does not solve this. The system needs a persistent belief state that tracks what it previously claimed, compares new claims against existing ones, and flags conflicts instead of silently overwriting them.</p>
 </section>
 
 <!-- ===== FOOTER ===== -->

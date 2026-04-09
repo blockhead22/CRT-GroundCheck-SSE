@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>On the Complexity of Belief Revision Cascades — Aeteros Research</title>
+<title>On the Complexity of Belief Revision Cascades | Aeteros Research</title>
 <script>
 MathJax = {
   tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']], tags: 'ams' },
@@ -151,13 +151,14 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <p class="sub">Formal theory of transitive belief propagation in single-agent epistemic systems</p>
     <p class="byline">Nick Block &bull; Aeteros Research &bull; 2026</p>
     <div class="finding-box">
-      <p>We introduce <strong>belief revision cascades</strong> — the transitive propagation of belief changes through a dependency graph within a single agent's epistemic state. We formalize this gap through <strong>Belief Dependency Graphs (BDGs)</strong>, prove bounds on cascade depth and width, and establish two convergence results. A key result: <strong>held contradictions</strong> — beliefs the system deliberately does not resolve — act as cascade firewalls, bounding propagation and preventing catastrophic revision storms. Validated on a production BDG (599 beliefs).</p>
+      <p>We introduce <strong>belief revision cascades</strong>, the transitive propagation of belief changes through a dependency graph within a single agent's epistemic state. We formalize this gap through <strong>Belief Dependency Graphs (BDGs)</strong>, prove bounds on cascade depth and width, and establish two convergence results. A key result: <strong>held contradictions</strong> (beliefs the system deliberately does not resolve) act as cascade firewalls, bounding propagation and preventing catastrophic revision storms. Validated on a production BDG (599 beliefs).</p>
     </div>
 
     <!-- Mini Cascade Visualization -->
     <div class="hero-viz">
       <div class="hero-viz-ctrl">
         <span class="hv-damping">L=0.90</span>
+        <button id="hvModeBtn" style="background:rgba(52,211,153,0.2);color:#34d399;border:1px solid rgba(52,211,153,0.3);border-radius:4px;padding:2px 10px;font-family:var(--mono);font-size:0.8em;cursor:pointer;">forward</button>
         <button id="hvReplay">&#8635; replay</button>
       </div>
       <svg id="hvSvg" viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg">
@@ -211,9 +212,12 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     {f:'blue', s:'cool',  w:0.70},{f:'site', s:'gifts', w:0.50},
     {f:'outfit',s:'gifts',w:0.45},{f:'design',s:'cool', w:0.30}
   ];
-  var nm={},adj={},svg=document.getElementById('hvSvg');
+  var nm={},adj={},radj={},svg=document.getElementById('hvSvg');
   N.forEach(function(n){nm[n.id]=n;});
-  E.forEach(function(e){if(!adj[e.f])adj[e.f]=[];adj[e.f].push({to:e.s,w:e.w});});
+  E.forEach(function(e){
+    if(!adj[e.f])adj[e.f]=[];adj[e.f].push({to:e.s,w:e.w});
+    if(!radj[e.s])radj[e.s]=[];radj[e.s].push({to:e.f,w:e.w});
+  });
 
   var damp=0.90,running=false,timers=[];
 
@@ -329,8 +333,88 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     timers.push(setTimeout(function(){running=false;},steps.length*300+100));
   }
 
+  function backprop(srcId){
+    if(running)resetViz();running=true;
+    var L=damp,steps=[],impacts={},affected=new Set([srcId]);
+    impacts[srcId]=1.0;
+    steps.push({id:srcId,imp:1.0,d:0,from:null,src:true});
+    var q=[{id:srcId,imp:1.0,d:0}],maxD=0;
+    while(q.length){
+      var cur=q.shift(),nb=radj[cur.id]||[];
+      for(var i=0;i<nb.length;i++){
+        var to=nb[i].to,w=nb[i].w,prop=cur.imp*w*L;
+        if(prop<0.01)continue;
+        if(!impacts[to]||prop>impacts[to]){
+          impacts[to]=prop;var dd=cur.d+1;if(dd>maxD)maxD=dd;
+          affected.add(to);steps.push({id:to,imp:prop,d:dd,from:cur.id});
+          q.push({id:to,imp:prop,d:dd});
+        }
+      }
+    }
+
+    steps.forEach(function(st,idx){
+      timers.push(setTimeout(function(){
+        var col=st.src?'#fb7185':'#c084fc';
+        var sh=document.getElementById('hvs-'+st.id);
+        if(sh){
+          sh.setAttribute('fill',hRgba(col,0.25));sh.setAttribute('stroke',col);
+          sh.setAttribute('filter','url(#hvGlow)');
+        }
+        if(st.from){
+          // Light the edge in reverse direction (child->parent edge drawn as parent->child)
+          var ln=document.getElementById('hve-'+st.id+'-'+st.from);
+          if(ln){ln.setAttribute('stroke',hRgba(col,0.6));ln.setAttribute('filter','url(#hvGlow)');}
+        }
+        if(st.src){
+          var rr=document.createElementNS('http://www.w3.org/2000/svg','circle');
+          rr.setAttribute('cx',nm[st.id].x);rr.setAttribute('cy',nm[st.id].y);rr.setAttribute('r','8');
+          rr.setAttribute('fill','none');rr.setAttribute('stroke',col);rr.setAttribute('stroke-width','1.5');
+          rr.setAttribute('opacity','0');rr.id='hvr-'+st.id;
+          rr.style.animation='hv-pulse-ring 0.8s ease-out forwards';
+          svg.appendChild(rr);
+        }
+        document.getElementById('hvDepth').textContent=maxD;
+        document.getElementById('hvWidth').textContent='-';
+        document.getElementById('hvAffected').textContent=affected.size;
+      },idx*300));
+    });
+    timers.push(setTimeout(function(){running=false;},steps.length*300+100));
+  }
+
+  var hvMode='forward';
+
   draw();
-  document.getElementById('hvReplay').addEventListener('click',function(){resetViz();setTimeout(function(){cascade('color');},200);});
+
+  document.getElementById('hvReplay').addEventListener('click',function(){
+    resetViz();
+    setTimeout(function(){
+      if(hvMode==='backward') backprop('gifts');
+      else cascade('color');
+    },200);
+  });
+
+  var modeBtn = document.getElementById('hvModeBtn');
+  if(modeBtn){
+    modeBtn.addEventListener('click',function(){
+      resetViz();
+      if(hvMode==='forward'){
+        hvMode='backward';
+        modeBtn.textContent='backward';
+        modeBtn.style.background='rgba(192,132,252,0.2)';
+        modeBtn.style.color='#c084fc';
+        modeBtn.style.borderColor='rgba(192,132,252,0.3)';
+        setTimeout(function(){backprop('gifts');},200);
+      } else {
+        hvMode='forward';
+        modeBtn.textContent='forward';
+        modeBtn.style.background='rgba(52,211,153,0.2)';
+        modeBtn.style.color='#34d399';
+        modeBtn.style.borderColor='rgba(52,211,153,0.3)';
+        setTimeout(function(){cascade('color');},200);
+      }
+    });
+  }
+
   setTimeout(function(){cascade('color');},2000);
 })();
 </script>
@@ -376,9 +460,9 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <span class="section-number">Section 1</span>
   <h2>Introduction</h2>
 
-  <p>Consider an AI assistant that learns "the user moved from Portland to Austin." This single fact triggers a cascade of downstream revisions: the user's commute time is now invalid, their neighborhood preferences need updating, their weather-related preferences shift, and their local social circle has changed. Meanwhile, "the user's favorite team is the Lakers" is unaffected — it has no dependency on location.</p>
+  <p>Consider an AI assistant that learns "the user moved from Portland to Austin." This single fact triggers a cascade of downstream revisions: the user's commute time is now invalid, their neighborhood preferences need updating, their weather-related preferences shift, and their local social circle has changed. Meanwhile, "the user's favorite team is the Lakers" is unaffected; it has no dependency on location.</p>
 
-  <p>This example illustrates a gap in the formal epistemology literature. The AGM framework handles individual belief revision. The Darwiche-Pearl postulates extend AGM to iterated revision — sequences of external inputs. But neither framework addresses <em>internal propagation</em>: when revising one belief forces re-evaluation of others through dependency relationships.</p>
+  <p>This example illustrates a gap in the formal epistemology literature. The AGM framework handles individual belief revision. The Darwiche-Pearl postulates extend AGM to iterated revision (sequences of external inputs). But neither framework addresses <em>internal propagation</em>: when revising one belief forces re-evaluation of others through dependency relationships.</p>
 
   <p>Three adjacent communities study related problems without occupying this intersection:</p>
 
@@ -403,7 +487,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <p><strong>Our contribution.</strong> We introduce <em>Belief Dependency Graphs</em> (BDGs) as a formal structure for studying intra-agent belief revision cascades. We provide formal definitions, complexity bounds, two convergence results, an instability characterization, a conjecture on NP-hardness, and a philosophical result connecting held contradictions to structural stability.</p>
 
   <div class="quote-block">
-    <p>All definitions map to modules in a running system. This is not a paper about that system — the contribution is the mathematics — but the implementation demonstrates that the formalism captures real mechanics.</p>
+    <p>All definitions map to modules in a running system. This is not a paper about that system; the contribution is the mathematics. But the implementation demonstrates that the formalism captures real mechanics.</p>
   </div>
 </section>
 
@@ -420,7 +504,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <p>Darwiche &amp; Pearl (1997) extend AGM to sequences of revisions. Given a conditional belief state \(\Psi\) and input \(\varphi\), the revised state \(\Psi * \varphi\) must satisfy four additional postulates constraining how \(\Psi * \varphi\) responds to further revision by \(\psi\). The key insight: a single belief state \(\Psi\) encodes not just current beliefs but <em>dispositions toward future revision</em>.</p>
 
   <h3>2.3 Opinion Dynamics</h3>
-  <p>DeGroot's model (1974): agents \(1, \ldots, n\) hold opinions \(x_i(t) \in [0,1]\). At each step, \(x_i(t+1) = \sum_j w_{ij} x_j(t)\) where \(W = [w_{ij}]\) is a row-stochastic weight matrix. Convergence to consensus is guaranteed when \(W\) is connected and aperiodic — when the spectral radius of \(W - \mathbf{1}\pi^T\) is less than 1.</p>
+  <p>DeGroot's model (1974): agents \(1, \ldots, n\) hold opinions \(x_i(t) \in [0,1]\). At each step, \(x_i(t+1) = \sum_j w_{ij} x_j(t)\) where \(W = [w_{ij}]\) is a row-stochastic weight matrix. Convergence to consensus is guaranteed when \(W\) is connected and aperiodic, i.e., when the spectral radius of \(W - \mathbf{1}\pi^T\) is less than 1.</p>
 
   <h3>2.4 Notation</h3>
   <div class="table-wrap">
@@ -459,7 +543,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     </div>
   </div>
   <div class="quote-block">
-    <p>A belief state is a Gaussian splat in semantic space — a soft probabilistic region rather than a hard point. A tight splat (\(\sigma_i\) small) represents a settled belief; a wide splat represents an uncertain or contested belief.</p>
+    <p>A belief state is a Gaussian splat in semantic space: a soft probabilistic region rather than a hard point. A tight splat (\(\sigma_i\) small) represents a settled belief; a wide splat represents an uncertain or contested belief.</p>
   </div>
   <div class="impl-block">
     <span class="impl-label">Implementation</span>
@@ -523,10 +607,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="p-text">Cascade Disposition</div>
     <div class="p-sub">
       Each triggered re-evaluation at node \(v\) inherits a disposition \(\mathcal{D}(v)\):
-      <strong>TEMPORAL (T)</strong> — time-indexed belief, propagation continues with reduced impact.
-      <strong>CONFLICT (C)</strong> — genuine contradiction, full cascade impact applies.
-      <strong>REFINEMENT (R)</strong> — specialization needing adjustment, moderate impact.
-      <strong>HELD (H)</strong> — genuine tension that should not be auto-resolved. <strong>Cascade propagation stops at held nodes.</strong>
+      <strong>TEMPORAL (T)</strong>: time-indexed belief, propagation continues with reduced impact.
+      <strong>CONFLICT (C)</strong>: genuine contradiction, full cascade impact applies.
+      <strong>REFINEMENT (R)</strong>: specialization needing adjustment, moderate impact.
+      <strong>HELD (H)</strong>: genuine tension that should not be auto-resolved. <strong>Cascade propagation stops at held nodes.</strong>
     </div>
   </div>
   <div class="impl-block">
@@ -595,11 +679,11 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
       Let \(W_j\) denote nodes at depth \(j\) from the source. Total impact across all affected nodes:
       \[\sum_{v \in C(r)} \delta(v) \leq \delta_0 \sum_{j=0}^{k^*} \min(d^j, n) \cdot \rho^j\]
       If \(d \cdot \rho &lt; 1\), graph-wide total converges to \(\leq \delta_0 / (1 - d\rho)\), independent of graph size.
-      If \(d \cdot \rho \geq 1\), total can grow as \(O(n \cdot \delta_0)\) — a single revision can produce aggregate impact proportional to graph size.
+      If \(d \cdot \rho \geq 1\), total can grow as \(O(n \cdot \delta_0)\), meaning a single revision can produce aggregate impact proportional to graph size.
     </div>
   </div>
   <div class="quote-block">
-    <p>The condition \(\rho &lt; 1\) guarantees per-node impacts decay geometrically. The stronger condition \(d \cdot \rho &lt; 1\) guarantees aggregate disruption is bounded. When \(\rho &lt; 1\) but \(d \cdot \rho \geq 1\) — the typical case in real BDGs — individual nodes are safe but the cascade reaches most of the graph. This is the single-agent analog of DeGroot's spectral condition.</p>
+    <p>The condition \(\rho &lt; 1\) guarantees per-node impacts decay geometrically. The stronger condition \(d \cdot \rho &lt; 1\) guarantees aggregate disruption is bounded. When \(\rho &lt; 1\) but \(d \cdot \rho \geq 1\) (the typical case in real BDGs), individual nodes are safe but the cascade reaches most of the graph. This is the single-agent analog of DeGroot's spectral condition.</p>
   </div>
 
   <!-- Theorem 4.4 -->
@@ -631,7 +715,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
   <p>The most promising reduction is from <strong>Minimum Linear Arrangement</strong> (MLA, known NP-hard). Each vertex in MLA becomes a revision event; each edge becomes a shared downstream node in the BDG. The cascade interaction cost is monotone in \(|\pi(i) - \pi(j)|\): revisions far apart interact more destructively because intermediate revisions have modified the shared state.</p>
   <div class="remark">
-    <strong>Status: open.</strong> The reduction has the right structure — permutation to permutation, interaction cost depending on ordering distance — but a formal proof that BDG cascade cost faithfully encodes the MLA objective has not been completed. Reductions from Minimum Weighted Vertex Cover and MAX-SAT have also been investigated (Appendix B); neither maps cleanly. If this conjecture is <em>false</em> — optimal ordering is polynomial — that is equally publishable.
+    <strong>Status: open.</strong> The reduction has the right structure (permutation to permutation, interaction cost depending on ordering distance), but a formal proof that BDG cascade cost faithfully encodes the MLA objective has not been completed. Reductions from Minimum Weighted Vertex Cover and MAX-SAT have also been investigated (Appendix B); neither maps cleanly. If this conjecture is <em>false</em> (optimal ordering is polynomial), that is equally publishable.
   </div>
 </section>
 
@@ -652,12 +736,12 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="principle principle-variance">
     <div class="p-num">Proposition 5.2 <span class="badge badge-prop">Proposition</span></div>
     <div class="p-text">Tree-Structured BDGs</div>
-    <div class="p-sub">For tree-structured BDGs (each node has at most one parent), cascade computation is linear in the number of affected nodes: \(O(|C(r)|)\). No ordering ambiguity exists — there is exactly one propagation path to each affected node. In a tree, the subgraph reachable from any node is itself a tree. Cascade propagation visits each node at most once in topological order.</div>
+    <div class="p-sub">For tree-structured BDGs (each node has at most one parent), cascade computation is linear in the number of affected nodes: \(O(|C(r)|)\). No ordering ambiguity exists; there is exactly one propagation path to each affected node. In a tree, the subgraph reachable from any node is itself a tree. Cascade propagation visits each node at most once in topological order.</div>
   </div>
 
   <!-- Prop 5.3 - KEY RESULT -->
   <div class="law-card">
-    <div class="law-number">Proposition 5.3 — Key Result</div>
+    <div class="law-number">Proposition 5.3: Key Result</div>
     <div class="law-text">Held Contradictions as Cascade Firewalls</div>
     <div class="law-sub">If nodes with disposition \(\mathcal{D}(v) = H\) (HELD) block cascade propagation, then cascade width is bounded by the number of non-held nodes reachable from the revision point. Let \(V_H = \{v \in V : \mathcal{D}(v) = H\}\). The effective reachable set from \(v_0\) is \(R_H(v_0) = \{v \in V : \exists\) directed path \(v_0 \to v\) passing through no node in \(V_H\}\). Then \(|C(r)| \leq |R_H(v_0)|\).</div>
   </div>
@@ -667,7 +751,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
   <div class="quote-block">
     <p>The system's ability to <em>hold</em> a contradiction without resolving it is also a <em>stability mechanism</em>. A held contradiction says "I acknowledge the tension but will not propagate a resolution." This prevents local tension from cascading into global belief system disruption.</p>
-    <p style="margin-top: 12px;">This connects to value pluralism: an agent that insists on resolving every contradiction is vulnerable to cascade storms. An agent that can tolerate genuine tension — "I love my job" and "my job is killing me" coexisting — is structurally more stable.</p>
+    <p style="margin-top: 12px;">This connects to value pluralism: an agent that insists on resolving every contradiction is vulnerable to cascade storms. An agent that can tolerate genuine tension ("I love my job" and "my job is killing me" coexisting) is structurally more stable.</p>
   </div>
   <div class="remark">
     <strong>Corollary 5.3.1 (Firewall Placement).</strong> If held nodes form a vertex cut in \(G\) separating the revision source from a subgraph \(G'\), then no node in \(G'\) is affected by the cascade. Strategic placement of held contradictions can isolate subsystems.
@@ -677,7 +761,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="principle principle-contra">
     <div class="p-num">Conjecture 5.4 <span class="badge badge-conjecture">Conjecture</span></div>
     <div class="p-text">Fisher-Weighted Cascade Priority</div>
-    <div class="p-sub">If cascade re-evaluations at each depth level are ordered by Fisher-Rao distance from the revised predecessor (highest information distance first), the expected total contradiction after cascade completion is minimized among greedy orderings. <strong>Status: unproven.</strong> A natural proof strategy would show contradiction reduction under greedy ordering is submodular, then apply the greedy approximation bound — but submodularity of contradiction reduction has not been established, and the standard bound applies to maximization not minimization. Empirically, Fisher-distance ordering outperforms random ordering in cascade simulations.</div>
+    <div class="p-sub">If cascade re-evaluations at each depth level are ordered by Fisher-Rao distance from the revised predecessor (highest information distance first), the expected total contradiction after cascade completion is minimized among greedy orderings. <strong>Status: unproven.</strong> A natural proof strategy would show contradiction reduction under greedy ordering is submodular, then apply the greedy approximation bound, but submodularity of contradiction reduction has not been established, and the standard bound applies to maximization not minimization. Empirically, Fisher-distance ordering outperforms random ordering in cascade simulations.</div>
   </div>
 </section>
 
@@ -705,7 +789,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <p><strong>Belief Propagation distinction.</strong> Pearl's BP messages are <em>conservative</em> (compute what follows from a fixed model) while cascade messages are <em>destructive</em> (modify the model as they propagate). BP has a unique fixed point on trees; cascade propagation has a unique result on DAGs but may diverge on cyclic structures.</p>
 
-  <p><strong>Kumiho (Baek et al., 2026).</strong> The closest recent work provides an AGM-compliant belief revision framework for LLMs using entrenchment orderings derived from token surprisal. However, Kumiho explicitly does not model cascades — each revision is treated independently. Our framework extends this: Kumiho's local revision mechanics could serve as the node-level revision function within a BDG.</p>
+  <p><strong>Kumiho (Baek et al., 2026).</strong> The closest recent work provides an AGM-compliant belief revision framework for LLMs using entrenchment orderings derived from token surprisal. However, Kumiho explicitly does not model cascades; each revision is treated independently. Our framework extends this: Kumiho's local revision mechanics could serve as the node-level revision function within a BDG.</p>
 </section>
 
 <!-- ===== 7. EMPIRICAL ===== -->
@@ -733,7 +817,7 @@ favorite_team("Lakers")  [no dependencies]</pre>
   </ul>
 
   <h3>7.3 Damping Curve</h3>
-  <p>Chain of 10 nodes, \(w = 0.8\), \(L = 0.9\). Damping factor \(\rho = 0.72\). Initial impact \(\delta_0 = 1.0\), threshold \(\tau = 0.01\). Cascade terminates at depth 14 — matching \(\lceil \log(1.0/0.01) / \log(1/0.72) \rceil = 14\).</p>
+  <p>Chain of 10 nodes, \(w = 0.8\), \(L = 0.9\). Damping factor \(\rho = 0.72\). Initial impact \(\delta_0 = 1.0\), threshold \(\tau = 0.01\). Cascade terminates at depth 14, matching \(\lceil \log(1.0/0.01) / \log(1/0.72) \rceil = 14\).</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>Depth</th><th>Impact</th><th>Triggered?</th></tr></thead>
@@ -822,7 +906,7 @@ favorite_team("Lakers")  [no dependencies]</pre>
     <div class="principle principle-contra">
       <div class="p-num">Finding 4</div>
       <div class="p-text">Graph-wide convergence condition not satisfied</div>
-      <div class="p-sub">For real BDGs with mean out-degree ~8, graph-wide convergence requires ρ &lt; 0.12 — much stricter than per-node ρ &lt; 1. Cascade <em>reach</em> is inherently broad in typical belief graphs even when per-node impact is well-controlled.</div>
+      <div class="p-sub">For real BDGs with mean out-degree ~8, graph-wide convergence requires ρ &lt; 0.12, much stricter than per-node ρ &lt; 1. Cascade <em>reach</em> is inherently broad in typical belief graphs even when per-node impact is well-controlled.</div>
     </div>
   </div>
 
@@ -832,7 +916,7 @@ favorite_team("Lakers")  [no dependencies]</pre>
   <table>
     <thead><tr><th>Strategy</th><th>Nodes Affected</th><th>Reduction</th><th>Impact</th><th>Reduction</th></tr></thead>
     <tbody>
-      <tr><td>Block top 10 out-degree (spreaders)</td><td>—</td><td>—</td><td>—</td><td>18.5%</td></tr>
+      <tr><td>Block top 10 out-degree (spreaders)</td><td>n/a</td><td>n/a</td><td>n/a</td><td>18.5%</td></tr>
       <tr><td>5 of 53 depth-1 firewalls</td><td>383</td><td>0.5%</td><td>90.6</td><td>18.2%</td></tr>
       <tr><td>10 of 53 depth-1 firewalls</td><td>382</td><td>0.8%</td><td>88.1</td><td>20.4%</td></tr>
       <tr><td>20 of 53 depth-1 firewalls</td><td>361</td><td>6.2%</td><td>77.5</td><td>30.0%</td></tr>
@@ -841,7 +925,7 @@ favorite_team("Lakers")  [no dependencies]</pre>
   </table>
   </div>
   <div class="remark">
-    <strong>Key finding for Prop 5.3.</strong> Firewalls are ineffective individually on dense graphs — no single node blocks more than 0.5% of cascade reach. Firewall <em>placement</em> matters more than firewall count. <strong>Complete vertex cuts are dramatically effective</strong>: blocking all depth-1 successors eliminates 86% of cascade reach, confirming Corollary 5.3.1 on real data. The effectiveness curve is nonlinear — a sharp phase transition between "barely helps" and "nearly total containment."
+    <strong>Key finding for Prop 5.3.</strong> Firewalls are ineffective individually on dense graphs; no single node blocks more than 0.5% of cascade reach. Firewall <em>placement</em> matters more than firewall count. <strong>Complete vertex cuts are dramatically effective</strong>: blocking all depth-1 successors eliminates 86% of cascade reach, confirming Corollary 5.3.1 on real data. The effectiveness curve is nonlinear, showing a sharp phase transition between "barely helps" and "nearly total containment."
   </div>
 </section>
 
@@ -855,7 +939,7 @@ favorite_team("Lakers")  [no dependencies]</pre>
   <p>Uncontrolled belief revision cascades are a formal model of <em>catastrophic forgetting</em> in a structured setting. Theorem 4.3 gives precise conditions under which cascades are safe (bounded, convergent). Theorem 4.4 identifies dangerous configurations (cyclic dependencies with \(\lambda &gt; 1\)). These results provide actionable design constraints: AI systems that maintain dependency metadata can diagnose cascade vulnerability before it manifests.</p>
 
   <h3>8.2 Implications for Alignment</h3>
-  <p>Proposition 5.3 connects epistemic pluralism to system stability: an agent that can hold contradictions without resolving them is structurally more stable than one that insists on consistency. This has implications for value alignment — a system that maintains multiple, potentially conflicting values as <em>held</em> beliefs rather than forcing resolution may be both more robust and more aligned with the genuine complexity of human values.</p>
+  <p>Proposition 5.3 connects epistemic pluralism to system stability: an agent that can hold contradictions without resolving them is structurally more stable than one that insists on consistency. This has implications for value alignment. A system that maintains multiple, potentially conflicting values as <em>held</em> beliefs rather than forcing resolution may be both more robust and more aligned with the genuine complexity of human values.</p>
 
   <h3>8.3 Open Problems</h3>
   <div class="principle-grid">
@@ -877,13 +961,19 @@ favorite_team("Lakers")  [no dependencies]</pre>
     <div class="principle principle-belief">
       <div class="p-num">Open 4</div>
       <div class="p-text">Multi-agent cascade interaction</div>
-      <div class="p-sub">When two agents with overlapping belief systems communicate, their cascades can interact — bridging this single-agent framework back to opinion dynamics.</div>
+      <div class="p-sub">When two agents with overlapping belief systems communicate, their cascades can interact, bridging this single-agent framework back to opinion dynamics.</div>
     </div>
     <div class="principle principle-belief">
       <div class="p-num">Open 5</div>
       <div class="p-text">Learning the BDG</div>
-      <div class="p-sub">Current BDG is constructed from contradiction detection and temporal ordering. Learning the dependency structure from observation — which beliefs actually influence which — is an open learning problem.</div>
+      <div class="p-sub">Current BDG is constructed from contradiction detection and temporal ordering. Learning the dependency structure from observation (which beliefs actually influence which) is an open learning problem.</div>
     </div>
+  </div>
+
+  <div class="law-card">
+    <div class="law-number">The Inverse Problem</div>
+    <div class="law-text">The forward cascade tells us how changes propagate.<br>Belief backpropagation tells us which beliefs need to change when the output is wrong.</div>
+    <div class="law-sub">The companion paper formalizes this as error-driven trust evolution through the same BDG. Corrections generate an epistemic loss signal that flows backward through dependency edges, adjusting every upstream belief that contributed to the incorrect output. Three emergent behaviors: self-pruning, domain volatility measurement, and reflexive self-model calibration. 30/30 lab checks passed. <a href="belief-backprop.html" style="color:#818cf8;">Read: Belief Backpropagation &rarr;</a></div>
   </div>
 </section>
 
@@ -897,7 +987,7 @@ favorite_team("Lakers")  [no dependencies]</pre>
     <div class="pipeline-layer">
       <div class="pipeline-layer-accent"></div>
       <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">Definition 3.1 — Belief State</div>
+        <div class="pipeline-layer-name">Definition 3.1: Belief State</div>
         <div class="pipeline-layer-desc"><code>memory_splats.py</code> → <code>MemorySplat(mu, sigma, alpha, ...)</code></div>
       </div>
       <div class="pipeline-layer-annotation">Gaussian splat</div>
@@ -905,7 +995,7 @@ favorite_team("Lakers")  [no dependencies]</pre>
     <div class="pipeline-layer">
       <div class="pipeline-layer-accent"></div>
       <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">Definition 3.2 — Belief Dependency Graph</div>
+        <div class="pipeline-layer-name">Definition 3.2: Belief Dependency Graph</div>
         <div class="pipeline-layer-desc"><code>memory_graph.py</code> → <code>BeliefDependencyGraph</code> (NetworkX digraph)</div>
       </div>
       <div class="pipeline-layer-annotation">Typed edges</div>
@@ -913,7 +1003,7 @@ favorite_team("Lakers")  [no dependencies]</pre>
     <div class="pipeline-layer">
       <div class="pipeline-layer-accent"></div>
       <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">Definition 3.3 — Revision Event / Impact</div>
+        <div class="pipeline-layer-name">Definition 3.3: Revision Event / Impact</div>
         <div class="pipeline-layer-desc"><code>info_geometry.py</code> → <code>fisher_rao_distance(a, b)</code></div>
       </div>
       <div class="pipeline-layer-annotation">Fisher-Rao metric</div>
@@ -921,7 +1011,7 @@ favorite_team("Lakers")  [no dependencies]</pre>
     <div class="pipeline-layer">
       <div class="pipeline-layer-accent"></div>
       <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">Definition 3.4 — Cascade Trigger</div>
+        <div class="pipeline-layer-name">Definition 3.4: Cascade Trigger</div>
         <div class="pipeline-layer-desc"><code>memory_graph.py</code> → <code>should_cascade(node, impact, threshold)</code></div>
       </div>
       <div class="pipeline-layer-annotation">Threshold gate</div>
@@ -929,7 +1019,7 @@ favorite_team("Lakers")  [no dependencies]</pre>
     <div class="pipeline-layer">
       <div class="pipeline-layer-accent"></div>
       <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">Definition 3.5 — Revision Cascade</div>
+        <div class="pipeline-layer-name">Definition 3.5: Revision Cascade</div>
         <div class="pipeline-layer-desc"><code>memory_graph.py</code> → <code>propagate_cascade(event, graph)</code></div>
       </div>
       <div class="pipeline-layer-annotation">MAX aggregation</div>
@@ -937,7 +1027,7 @@ favorite_team("Lakers")  [no dependencies]</pre>
     <div class="pipeline-layer">
       <div class="pipeline-layer-accent"></div>
       <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">Definition 3.6 — Cascade Disposition</div>
+        <div class="pipeline-layer-name">Definition 3.6: Cascade Disposition</div>
         <div class="pipeline-layer-desc"><code>disposition_classifier.py</code> → <code>classify_contradiction(text_a, text_b, ...)</code></div>
       </div>
       <div class="pipeline-layer-annotation">TEMPORAL/CONFLICT/REFINEMENT/HELD</div>
@@ -987,7 +1077,7 @@ favorite_team("Lakers")  [no dependencies]</pre>
   <div class="law-card">
     <div class="law-number">Key Insight</div>
     <div class="law-text">The ability to hold a contradiction is also the ability to stop a storm.</div>
-    <div class="law-sub">Proposition 5.3 makes this precise: held contradictions are cascade firewalls. Epistemic pluralism is not weakness — it is structural stability.</div>
+    <div class="law-sub">Proposition 5.3 makes this precise: held contradictions are cascade firewalls. Epistemic pluralism is not weakness; it is structural stability.</div>
   </div>
 </section>
 

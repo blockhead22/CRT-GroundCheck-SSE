@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Labs — Aeteros Research</title>
+<title>Labs - Aeteros Research</title>
 <link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="theme.css">
 <style>
@@ -64,13 +64,15 @@
   </div>
 </div>
 
-<nav class="sidebar" id="docSidebar">
+<nav class="sidebar" id="docSidebar" data-manual-sidebar>
   <div class="sidebar-title">Labs</div>
   <a href="#why">Why Labs</a>
   <a href="#pipeline-lab">Contradiction Pipeline</a>
   <a href="#escalation">Extraction Escalation</a>
   <a href="#findings">Key Findings</a>
   <a href="#incident">Incident: Shared Memory</a>
+  <a href="#backprop-lab">Belief Backpropagation</a>
+  <a href="#wobble-lab">Query Resonance (Wobble)</a>
   <a href="#next">What's Next</a>
   <a href="#runs">Run Index</a>
   <div class="sidebar-footer">2026 Aeteros Research</div>
@@ -99,7 +101,7 @@
   <p>The result is a single run that produces a complete picture. No relaunching. No context bleed. No ambiguity about what passed and what didn't.</p>
 
   <div class="quote-block">
-    <p>Labs are not unit tests. They test the full production pipeline end-to-end &mdash; intent routing, memory storage, slot extraction, contradiction detection, ledger creation, trust demotion, and response metadata. A lab failure means the production system would fail on the same input.</p>
+    <p>Labs are not unit tests. They test the full production pipeline end-to-end: intent routing, memory storage, slot extraction, contradiction detection, ledger creation, trust demotion, and response metadata. A lab failure means the production system would fail on the same input.</p>
   </div>
 </section>
 
@@ -110,7 +112,7 @@
   <div class="accent-line"></div>
 
   <h3>The Problem Being Tested</h3>
-  <p>The CORE architecture claims to detect when a user contradicts a previously stored fact &mdash; for example, changing their favorite color, their employer, or their name. Live testing on April 7, 2026 revealed that <strong>contradiction detection never formally fired</strong> despite the system recognizing conflicts in its generated responses. Three root causes were identified:</p>
+  <p>The CORE architecture claims to detect when a user contradicts a previously stored fact, for example, changing their favorite color, their employer, or their name. Live testing on April 7, 2026 revealed that <strong>contradiction detection never formally fired</strong> despite the system recognizing conflicts in its generated responses. Three root causes were identified:</p>
 
   <ol class="issue-list">
     <li><strong>Intent routing bypass:</strong> The regex intent classifier misclassified declarations ("My favorite drink is water") as <code>broad_recall</code> queries, routing them through the agent loop which has no contradiction pipeline.</li>
@@ -126,7 +128,7 @@
     <li>Uses <code>memory_facts</code> table for structured slot comparison (not text search)</li>
     <li>Creates ledger entries with <code>contradiction_type=slot_reversal</code></li>
     <li>Deduplicates against existing entries to prevent double-recording</li>
-    <li>Does not change the existing trust demotion behavior &mdash; additive only</li>
+    <li>Does not change the existing trust demotion behavior; additive only</li>
   </ul>
 
   <h3>What the Lab Tests</h3>
@@ -134,8 +136,8 @@
 
   <p>10 probes total:</p>
   <ul class="issue-list">
-    <li><strong>5 should-fire probes</strong> &mdash; exclusive slot reversals (name, location, age, employer, favorite color). Includes short corrective statements, long narrative blocks with contradictions buried mid-paragraph, and contextual declarations that never use the explicit "my X is Y" pattern.</li>
-    <li><strong>5 should-NOT-fire probes</strong> &mdash; additive slots (hobbies), questions, reinforcements of existing facts, third-party facts about other people, and long multi-hobby text blocks. These test for false positives.</li>
+    <li><strong>5 should-fire probes</strong>: exclusive slot reversals (name, location, age, employer, favorite color). Includes short corrective statements, long narrative blocks with contradictions buried mid-paragraph, and contextual declarations that never use the explicit "my X is Y" pattern.</li>
+    <li><strong>5 should-NOT-fire probes</strong>: additive slots (hobbies), questions, reinforcements of existing facts, third-party facts about other people, and long multi-hobby text blocks. These test for false positives.</li>
   </ul>
 </section>
 
@@ -194,7 +196,7 @@
   </table>
   </div>
 
-  <p>The escalation establishes an empirical progression: regex is fast but narrow, local LLM is too slow, cloud has the capability but needs architectural safeguards. This is not a preference &mdash; it's a measured necessity.</p>
+  <p>The escalation establishes an empirical progression: regex is fast but narrow, local LLM is too slow, cloud has the capability but needs architectural safeguards. This is not a preference; it is a measured necessity.</p>
 </section>
 
 <!-- ===== KEY FINDINGS ===== -->
@@ -212,13 +214,13 @@
   <h3>3. Extraction is the bottleneck, not detection</h3>
   <p>Three of five should-fire probes failed because regex extraction couldn't parse the input:</p>
   <ul class="issue-list">
-    <li><strong>T1 (name):</strong> "Actually, my name is Adrian now" &mdash; corrective phrasing with "now" confused the extractor</li>
-    <li><strong>T4 (employer):</strong> "I actually left Anthropic about a month ago and joined OpenAI" &mdash; buried in a 70-word daily narration paragraph</li>
-    <li><strong>T5 (favorite_color):</strong> "It's definitely my favorite color now, green" &mdash; contextual declaration without the "my favorite X is Y" pattern</li>
+    <li><strong>T1 (name):</strong> "Actually, my name is Adrian now." Corrective phrasing with "now" confused the extractor.</li>
+    <li><strong>T4 (employer):</strong> "I actually left Anthropic about a month ago and joined OpenAI." Buried in a 70-word daily narration paragraph</li>
+    <li><strong>T5 (favorite_color):</strong> "It's definitely my favorite color now, green." Contextual declaration without the "my favorite X is Y" pattern</li>
   </ul>
 
   <h3>4. The LLM already knows</h3>
-  <p>In every failed should-fire case, Claude's generated response correctly identified the contradiction. T4's response began: <em>"Six in a row. You just embedded 'left Anthropic, now at OpenAI' inside a paragraph of mundane daily detail."</em> T5's response noted: <em>"I have FACT: User.favorite_color = blue stored at trust 1.00. You just told me it's green."</em> The model extracts the facts perfectly &mdash; it just doesn't write them to the slot system.</p>
+  <p>In every failed should-fire case, Claude's generated response correctly identified the contradiction. T4's response began: <em>"Six in a row. You just embedded 'left Anthropic, now at OpenAI' inside a paragraph of mundane daily detail."</em> T5's response noted: <em>"I have FACT: User.favorite_color = blue stored at trust 1.00. You just told me it's green."</em> The model extracts the facts perfectly, but it doesn't write them to the slot system.</p>
 
   <h3>5. Cloud demotion is destructive without isolation</h3>
   <p>The first cloud extraction test (before DB isolation) triggered a cascade that demoted 81 real memories. See <a href="#incident">Incident Report</a> below. This exposed a critical architectural flaw: the cloud governance code in <code>routes/chat.py</code> uses <code>LIKE '%name%'</code> text search instead of <code>memory_facts</code> table lookups, and applies a flat 0.4&times; trust multiplier with no damping or depth bounds. The BDG cascade system (which has damping, depth bounds, and proportional impact) was never consulted.</p>
@@ -231,7 +233,7 @@
   <div class="accent-line"></div>
 
   <div class="remark" style="border-left-color: #fb7185;">
-    <strong>April 8, 2026 &mdash; Production memory damaged by lab test.</strong> Cloud slot classification enabled for lab v3 run. Seed message "My name is Marcus" triggered <code>gpt-4o-mini</code> extraction &rarr; <code>name=Marcus, exclusive=true</code> &rarr; cloud governance demotion searched ALL memories for text containing "name" &rarr; <strong>81 memories demoted</strong> (trust &times; 0.4), including core identity memories ("My name is Nick" dropped from 1.00 to 0.40). Damage was reversed by manual trust restoration and lab artifact deprecation. Root cause: lab used shared production database, and cloud demotion used text search instead of structured slot comparison.
+    <strong>April 8, 2026. Production memory damaged by lab test.</strong> Cloud slot classification enabled for lab v3 run. Seed message "My name is Marcus" triggered <code>gpt-4o-mini</code> extraction &rarr; <code>name=Marcus, exclusive=true</code> &rarr; cloud governance demotion searched ALL memories for text containing "name" &rarr; <strong>81 memories demoted</strong> (trust &times; 0.4), including core identity memories ("My name is Nick" dropped from 1.00 to 0.40). Damage was reversed by manual trust restoration and lab artifact deprecation. Root cause: lab used shared production database, and cloud demotion used text search instead of structured slot comparison.
   </div>
 
   <h3>What Went Wrong</h3>
@@ -259,8 +261,108 @@
 </section>
 
 <!-- ===== WHAT'S NEXT ===== -->
-<section id="next">
+<!-- ===== BELIEF BACKPROPAGATION LAB ===== -->
+<section id="backprop-lab">
   <span class="section-number">Section 6</span>
+  <h2>Belief Backpropagation Lab</h2>
+  <div class="accent-line"></div>
+
+  <h3>The Problem Being Tested</h3>
+  <p>The CORE forward cascade adjusts downstream beliefs when a belief changes, but upstream causes of wrong outputs remain untouched. The &ldquo;design studio&rdquo; memory persisted at trust 0.507 despite two corrections because the retrieval score, slot classifier, and supporting beliefs that boosted it were never adjusted. <strong>Belief backpropagation</strong> adds a backward pass: correction events generate an epistemic loss signal that flows backward through the BDG.</p>
+
+  <h3>What the Lab Tests</h3>
+  <p>Six standalone experiments (no backend, no Ollama, no LLM calls &mdash; pure graph math) testing the backward pass mechanism, production bug reproduction, self-pruning emergence, domain volatility, bidirectional convergence, and reflexive self-model integration.</p>
+
+  <h3>Results: 30/30 Passed</h3>
+
+  <div class="run-card" style="border-color: rgba(192,132,252,0.3);">
+    <h3>Lab 1: Backward Pass Mechanics</h3>
+    <div class="run-meta">5 nodes, 5 edges &middot; A &rarr; B &rarr; C &rarr; D (corrected), E &rarr; C</div>
+    <p><span class="run-score score-green">8/8</span> Gradient decays with depth: C(1.04) &gt; B(0.66) &gt; E(0.58) &gt; A(0.47). CONTRADICTS edges correctly skipped. Damping matches Theorem 4.3.</p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(251,113,133,0.3);">
+    <h3>Lab 2: Design Studio Problem</h3>
+    <div class="run-meta">Production bug reproduction &middot; 4 nodes with 3 upstream supporters</div>
+    <p><span class="run-score score-green">5/5</span> Both flat demotion and backprop kill the leaf in 2 corrections, but backprop erodes <strong>1.173 total upstream trust</strong>. Flat demotion: 0. The retrieval system that boosted the wrong memory learned.</p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(244,114,182,0.3);">
+    <h3>Lab 3: Self-Pruning Emergence</h3>
+    <div class="run-meta">20 beliefs (5 wrong, 15 correct) &middot; 3 correction cycles</div>
+    <p><span class="run-score score-green">3/3</span> All 5 wrong beliefs self-pruned (0.70 &rarr; 0.09). Unconnected correct beliefs: 0.0 delta. No rules. Gradient accumulation only.</p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(251,191,36,0.3);">
+    <h3>Lab 4: Domain Volatility</h3>
+    <div class="run-meta">3 domains: name (stable), employer (moderate), color (volatile)</div>
+    <p><span class="run-score score-green">5/5</span> Volatility ranks correctly (0.00 &lt; 0.24 &lt; 0.31). Same correction produces <strong>2.25x larger trust impact</strong> in volatile domains. Earned hedging, not configured.</p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(129,140,248,0.3);">
+    <h3>Lab 5: Bidirectional Convergence</h3>
+    <div class="run-meta">30 nodes, 50 edges &middot; 15 corrections &middot; order-independence test</div>
+    <p><span class="run-score score-green">3/3</span> Contraction ratio <strong>0.13</strong>. Reversed correction order: 0.014 mean difference. System converges to near-unique fixed point.</p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(52,211,153,0.3);">
+    <h3>Lab 6: Reflexive Self-Model</h3>
+    <div class="run-meta">3 self-model beliefs + 3 world beliefs &middot; 3 employment corrections</div>
+    <p><span class="run-score score-green">6/6</span> Employment self-model: 0.80 &rarr; 0.35. Identity self-model: unchanged. Self-model adjustments are data-driven, not manually configured.</p>
+  </div>
+
+  <p>Full theory and results: <a href="belief-backprop.html">Belief Backpropagation paper &rarr;</a></p>
+</section>
+
+<!-- ===== WOBBLE LAB ===== -->
+<section id="wobble-lab">
+  <span class="section-number">Section 7</span>
+  <h2>Query Resonance (Wobble) Lab</h2>
+  <div class="accent-line"></div>
+
+  <h3>The Problem Being Tested</h3>
+  <p>Standard retrieval uses cosine similarity &mdash; flat vector proximity. A health query returns health memories. But the BDG knows that health connects to work (cGVHD &rarr; overnight shifts &rarr; left Walmart) and to preferences (leukemia &rarr; orange awareness &rarr; favorite color). Can the graph bring forward cross-domain facts without separate retrieval calls?</p>
+
+  <h3>Origin</h3>
+  <p>The concept traces to the <strong>Semantic String Engine (SSE)</strong> and <strong>QuantumMemoryBreather</strong> from Nick's 2025 Mirus/Holden architecture. The SSE treated memories as connected by &ldquo;strings&rdquo; &mdash; semantic threads linking distant beliefs. A query would &ldquo;wobble&rdquo; the graph and connected facts would resonate. Limited by 10D PCA vectors and flat cosine, the mechanism couldn't resolve cross-domain connections. The BDG provides the graph structure the SSE was reaching for.</p>
+
+  <h3>Results: Synthetic (10/10) + Production (867 memories)</h3>
+
+  <div class="run-card" style="border-color: rgba(192,132,252,0.3);">
+    <h3>Lab 13: Wobble vs Pure Cosine</h3>
+    <div class="run-meta">17 nodes &middot; Known topology &middot; Work query</div>
+    <p><span class="run-score score-green">2/2</span> Wobble surfaced <code>year_of_work</code> (propagated=0.208) that cosine missed entirely. Overnight shifts boosted from -0.086 to +0.036 via edge propagation.</p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(251,191,36,0.3);">
+    <h3>Lab 14: Wobble Pattern Classification</h3>
+    <div class="run-meta">Identity query (tight) vs Multi-domain (scattered) vs Random (silent)</div>
+    <p><span class="run-score score-green">3/3</span> Multi-domain: 8 resonant nodes, spread 0.20. Identity: 4 nodes, spread 0.14. Random: 0 nodes above threshold (0.11 max). Three distinct patterns from the same mechanism.</p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(52,211,153,0.3);">
+    <h3>Lab 15: Fact Propagation Without Retrieval</h3>
+    <div class="run-meta">Health query &rarr; work + preference facts via edges</div>
+    <p><span class="run-score score-green">3/3</span> <strong>5 work facts</strong> surfaced from a health query: left_walmart (0.161), self_employed (0.090), freelance (0.038), need_money (0.032), year_of_work (0.068). <strong>2 preference facts</strong>: orange_awareness (0.069), color_orange (0.029). Causal chain resonance decreasing: confirmed damping works.</p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(129,140,248,0.3);">
+    <h3>Lab 16: Wobble Under 3-bit Compression</h3>
+    <div class="run-meta">Same graph, compressed vectors</div>
+    <p><span class="run-score score-green">2/2</span> 7/8 top wobble memories preserved. 89% of edge-propagated facts maintained. Wobble is topology-dependent &mdash; survives the same compression that preserves the BDG.</p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(52,211,153,0.3);">
+    <h3>Labs 17&ndash;20: SSE Production Validation</h3>
+    <div class="run-meta">867 real memories &middot; 2,298 edges &middot; 50 anchors</div>
+    <p><span class="run-score score-green">Production</span> Cross-domain strings confirmed: health queries surface work facts through edges. <strong>26 extra memories</strong> surfaced across 5 test queries that flat retrieval missed. 60 tension pairs identified (high similarity + trust divergence). Wobble wired into the production fidelity mirror.</p>
+  </div>
+
+  <p>Full theory: <a href="belief-backprop.html#wobble">Belief Backpropagation &mdash; Section 7: Query Resonance &rarr;</a></p>
+</section>
+
+<section id="next">
+  <span class="section-number">Section 8</span>
   <h2>Where This Goes</h2>
   <div class="accent-line"></div>
 
@@ -268,73 +370,73 @@
   <p>The write-path contradiction fix is validated (8/9, zero false positives) and stays in production. Three of four should-fire probes pass with regex-only extraction plus two guards. The remaining gap (T5: contextual declarations) requires cloud extraction. Before cloud can be enabled in production, the cloud governance demotion code must be rewritten to use <code>memory_facts</code> (not text search) and flow through the BDG cascade with damping.</p>
 
   <h3>For the Research</h3>
-  <p>The escalation chain (regex &rarr; local LLM &rarr; cloud) is itself a research finding. It demonstrates that <strong>contradiction detection is not a single capability &mdash; it's a stack</strong>: extraction quality determines detection quality. The bottleneck is always the weakest extraction layer, not the detection logic.</p>
-  <p>A deeper finding emerged during testing: <strong>not every message needs the same governance treatment.</strong> Code questions carry zero identity facts. Casual conversation about a friend carries third-party facts that shouldn't be attributed to the user. Reinforcing an existing fact shouldn't trigger contradiction detection. The system needs epistemic classification of the input before detection logic runs &mdash; and one-size-fits-all extraction is itself a governance failure. This maps directly to the paper's argument: governance requires structured understanding of what the memory contains, who it's about, and whether it warrants comparison at all.</p>
+  <p>The escalation chain (regex &rarr; local LLM &rarr; cloud) is itself a research finding. It demonstrates that <strong>contradiction detection is not a single capability; it is a stack</strong>: extraction quality determines detection quality. The bottleneck is always the weakest extraction layer, not the detection logic.</p>
+  <p>A deeper finding emerged during testing: <strong>not every message needs the same governance treatment.</strong> Code questions carry zero identity facts. Casual conversation about a friend carries third-party facts that shouldn't be attributed to the user. Reinforcing an existing fact shouldn't trigger contradiction detection. The system needs epistemic classification of the input before detection logic runs, and one-size-fits-all extraction is itself a governance failure. This maps directly to the paper's argument: governance requires structured understanding of what the memory contains, who it's about, and whether it warrants comparison at all.</p>
 
   <h3>For Governance Validation</h3>
   <p><strong>Test 1.1 (Contradiction Detection) upgraded to score 2.</strong> Combined with the existing Tier 1 scores, all 6 Tier 1 tests are now at score 2+. <strong>Minimum draft threshold met.</strong></p>
 
   <h3>For the System</h3>
   <p>The incident exposed that the cloud governance layer operates outside the BDG cascade system. This is a structural gap: two independent demotion mechanisms (write-path slot exclusivity and cloud governance text search) that don't coordinate. The architectural target is a single demotion pathway that always flows through the BDG with damping, regardless of source.</p>
-  <p>Name changes were reclassified as identity-level operations &mdash; they belong to a user profile correction path, not the belief contradiction pipeline. This distinction (identity vs belief) needs to be formalized in the slot type system.</p>
+  <p>Name changes were reclassified as identity-level operations; they belong to a user profile correction path, not the belief contradiction pipeline. This distinction (identity vs belief) needs to be formalized in the slot type system.</p>
 
   <h3>Open Gaps</h3>
   <ul class="issue-list">
     <li><strong>T5 (contextual declarations):</strong> <strong style="color:#34d399;">CLOSED.</strong> Cloud extraction (gpt-4o-mini) detects contextual declarations. Standalone lab v5: 10/10.</li>
     <li><strong>Cloud governance demotion:</strong> Uses <code>LIKE '%name%'</code> text search instead of <code>memory_facts</code>. Must be rewritten before cloud extraction can be enabled in production.</li>
     <li><strong>Proportional governance:</strong> Not every message needs full extraction + comparison. Earned governance (signal-gated, deferred, proportional) is the architectural target but not yet implemented.</li>
-    <li><strong>T5/T9 pipeline hangs:</strong> Specific probes consistently stall regardless of network state. Root cause not yet diagnosed &mdash; likely a pipeline interaction with longer or contextually complex messages.</li>
+    <li><strong>T5/T9 pipeline hangs:</strong> Specific probes consistently stall regardless of network state. Root cause not yet diagnosed, likely a pipeline interaction with longer or contextually complex messages.</li>
   </ul>
 </section>
 
 <!-- ===== RUN INDEX ===== -->
 <section id="runs">
-  <span class="section-number">Section 7</span>
+  <span class="section-number">Section 9</span>
   <h2>Run Index</h2>
   <div class="accent-line"></div>
 
   <div class="run-card">
-    <h3>Contradiction Pipeline Lab v1 &mdash; Regex Only</h3>
+    <h3>Contradiction Pipeline Lab v1: Regex Only</h3>
     <div class="run-meta">2026-04-08 01:02 &middot; thread: lab_contradiction_1775627258 &middot; shared DB (unsafe)</div>
     <p><span class="run-score score-amber">7/10</span> Should-fire: <span class="run-score score-red">2/5</span> Should-NOT-fire: <span class="run-score score-green">5/5</span></p>
     <p>First controlled lab run. Write-path fix validated on T3 (age). Extraction bottleneck identified. <a href="labs/contradiction-pipeline-lab-20260408-010203.html">Full report &rarr;</a></p>
   </div>
 
   <div class="run-card">
-    <h3>Contradiction Pipeline Lab v2 &mdash; Local LLM</h3>
+    <h3>Contradiction Pipeline Lab v2: Local LLM</h3>
     <div class="run-meta">2026-04-08 ~01:30 &middot; llama3.2 via Ollama &middot; aborted</div>
     <p><span class="status-badge badge-fail">Timeout</span> Local LLM extraction added 30&ndash;250s per write. Seed 5 exceeded 300s timeout. Untestable in production.</p>
   </div>
 
   <div class="run-card">
-    <h3>Contradiction Pipeline Lab v3 &mdash; Cloud (gpt-4o-mini)</h3>
+    <h3>Contradiction Pipeline Lab v3: Cloud (gpt-4o-mini)</h3>
     <div class="run-meta">2026-04-08 ~02:00 &middot; shared DB (unsafe) &middot; aborted</div>
     <p><span class="status-badge badge-fail">Incident</span> Cloud slot classification triggered 81-memory cascade demotion through shared production database. Run aborted. Memories manually restored. <strong>Requires isolated DB before retry.</strong></p>
   </div>
 
   <div class="run-card" style="border-color: rgba(52,211,153,0.3);">
-    <h3>Contradiction Pipeline Lab v4 &mdash; Regex + Guards (isolated)</h3>
+    <h3>Contradiction Pipeline Lab v4: Regex + Guards (isolated)</h3>
     <div class="run-meta">2026-04-08 03:26 &middot; thread: lab_contradiction_1775634498 &middot; isolated DB</div>
     <p><span class="run-score score-green">8/9</span> Should-fire: <span class="run-score score-amber">3/4</span> Should-NOT-fire: <span class="run-score score-green">5/5</span></p>
     <p>Isolated DB + two write-path guards (same-value skip, third-person filter). T1 (name) reclassified as identity-level, removed from scoring. T4 (employer in long paragraph) now passes with clean DB. T8 (reinforcement) and T9 (third-party) false positives eliminated. Zero false positives across all should-NOT-fire probes. One remaining gap: T5 (contextual color declaration). <a href="labs/contradiction-pipeline-lab-20260408-032639.html">Full report &rarr;</a></p>
   </div>
 
   <div class="run-card" style="border-color: rgba(52,211,153,0.3);">
-    <h3>Standalone Lab v5 &mdash; Regex + Cloud + Guards (no pipeline)</h3>
+    <h3>Standalone Lab v5: Regex + Cloud + Guards (no pipeline)</h3>
     <div class="run-meta">2026-04-08 04:35 &middot; standalone (no backend, no Ollama) &middot; ~17 seconds total</div>
     <p><span class="run-score score-green">10/10</span> Should-fire: <span class="run-score score-green">5/5</span> Should-NOT-fire: <span class="run-score score-green">5/5</span></p>
-    <p>Lab rewritten as fully standalone &mdash; no backend, no pipeline, no Ollama. Regex extraction + cloud (gpt-4o-mini, ~1.5s/call) + slot comparison against seeded facts. All probes pass including T5 (contextual color declaration) and T9 (third-party filter). <a href="labs/contradiction-pipeline-lab-20260408-043524.html">Full report &rarr;</a></p>
+    <p>Lab rewritten as fully standalone: no backend, no pipeline, no Ollama. Regex extraction + cloud (gpt-4o-mini, ~1.5s/call) + slot comparison against seeded facts. All probes pass including T5 (contextual color declaration) and T9 (third-party filter). <a href="labs/contradiction-pipeline-lab-20260408-043524.html">Full report &rarr;</a></p>
   </div>
 
   <div class="run-card" style="border-color: rgba(52,211,153,0.3);">
-    <h3>v3 Cloud Reclassification Pass &mdash; Continuity-Blind Corpus</h3>
+    <h3>v3 Cloud Reclassification Pass: Continuity-Blind Corpus</h3>
     <div class="run-meta">2026-04-08 04:53 &middot; 370 unique responses &middot; 332.5s extraction</div>
     <p><span class="run-score score-green">92</span> genuine contradictions (was <span class="run-score score-amber">47</span>)</p>
     <p>Cloud fact extraction (gpt-4o-mini) applied to all 453 v2 pairs. 120/370 responses yielded extractable advice stances. 45 pairs upgraded from scope_context_variation (21), insufficient_evidence (16), and temporal_update (8) to genuine_contradiction. Genuine rate: 10.4% &rarr; 20.3%. Contradictions concentrated in relationship advice, coping strategy, career advice, and project direction. Key finding: similarity-based classification systematically underestimates contradiction rates when the model uses similar language to give opposite advice.</p>
   </div>
 
   <div class="run-card" style="border-color: rgba(129,140,248,0.3);">
-    <h3>Next &mdash; Contradiction Density Reanalysis</h3>
+    <h3>Next: Contradiction Density Reanalysis</h3>
     <div class="run-meta">Planned</div>
     <p><span class="status-badge badge-next">Next</span> Recalculate per-topic density, time amplification, and model trajectory using cloud-enhanced classifications. Determine if the 7%&rarr;12.4% time gap finding widens with the corrected genuine rate.</p>
   </div>

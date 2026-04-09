@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CRT / Aether — Research Working Document</title>
+<title>CORE / Aether - Research Working Document</title>
 <style>
 /* ===== LAYOUT ===== */
 ul { margin: 8px 0 16px 20px; }
@@ -94,10 +94,10 @@ th {
 <div class="hero">
   <div class="hero-inner">
     <div class="hero-badge">Living Document</div>
-    <h1>CRT / Aether <span class="grad">Research</span></h1>
+    <h1>CORE / Aether <span class="grad">Research</span></h1>
     <p class="sub">Working document covering probe design, empirical results, regime taxonomy, architecture, and open questions</p>
     <div class="finding-box">
-      <p><strong>Fluency and support come apart in systematic, measurable ways</strong> &mdash; and the system needs separate layers to track each.</p>
+      <p><strong>Fluency and support come apart in systematic, measurable ways</strong>, and the system needs separate layers to track each.</p>
     </div>
   </div>
   <div class="scroll-cue">&#9660; SCROLL</div>
@@ -134,7 +134,7 @@ th {
     <tr><td>Reps per cell</td><td>~30</td></tr>
     <tr><td>Embedding</td><td>all-MiniLM-L6-v2 (384d)</td></tr>
     <tr><td>Clustering</td><td>DBSCAN (eps=0.3, min_samples=5)</td></tr>
-    <tr><td>Core metric</td><td>Susceptibility (dH/dT) &mdash; linear regression of entropy vs temperature</td></tr>
+    <tr><td>Core metric</td><td>Susceptibility (dH/dT): linear regression of entropy vs temperature</td></tr>
   </table>
 
   <h3>Key Metrics</h3>
@@ -155,7 +155,7 @@ th {
   <h2>2. Empirical Results</h2>
   <span class="section-label label-observed">Observed</span>
 
-  <h3>Three-Model Comparison &mdash; Spread Growth</h3>
+  <h3>Three-Model Comparison: Spread Growth</h3>
   <p class="muted">Mean pairwise embedding distance increase (T=0 &rarr; T=1.5), averaged across 16 robustness configs</p>
 
   <table>
@@ -172,7 +172,7 @@ th {
     <tr><td>opinion_aesthetic</td><td>0.077</td><td>0.112</td><td><strong>0.274</strong></td></tr>
   </table>
 
-  <h3>Susceptibility (dH/dT) &mdash; Qwen3 Detail</h3>
+  <h3>Susceptibility (dH/dT): Qwen3 Detail</h3>
   <p class="muted">Only Qwen3 shows substantial DBSCAN-based susceptibility. Mistral and DeepSeek spread without bifurcating.</p>
   <table>
     <tr><th>Domain</th><th>Mean dH/dT</th><th>Held Contradictions</th></tr>
@@ -245,10 +245,10 @@ th {
   <h3>Two-Axis Framework</h3>
   <p>The probe reveals two independent dimensions of model behavior:</p>
   <ul>
-    <li><strong>Axis 1 &mdash; Morphology:</strong> How variance expresses. Fracture (mode-splitting) vs. spread (continuous broadening) vs. template lock (corridor compression).</li>
-    <li><strong>Axis 2 &mdash; Fragility location:</strong> Where variance concentrates. Which semantic domains destabilize under temperature perturbation.</li>
+    <li><strong>Axis 1, Morphology:</strong> How variance expresses. Fracture (mode-splitting) vs. spread (continuous broadening) vs. template lock (corridor compression).</li>
+    <li><strong>Axis 2, Fragility location:</strong> Where variance concentrates. Which semantic domains destabilize under temperature perturbation.</li>
   </ul>
-  <p>Both axes are model-dependent. The domain ordering is not universal &mdash; it is a property of training, not of the prompts.</p>
+  <p>Both axes are model-dependent. The domain ordering is not universal; it is a property of training, not of the prompts.</p>
 </section>
 
 <!-- ===== SECTION 4: ARCHITECTURE ===== -->
@@ -280,15 +280,15 @@ th {
 
   <div class="quote-block">
     <p>"The original philosophy was to keep fluency from pretending to be truth. The immune evolution preserves that philosophy by turning it from a module boundary into a system law."</p>
-    <div class="attr">&mdash; GPT, 2026-03-28</div>
+    <div class="attr">GPT, 2026-03-28</div>
   </div>
 
   <p><strong>Mirus</strong> = whatever holds, scores, quarantines, compresses, and protects belief-like state.<br>
   <strong>Holden</strong> = whatever reconstructs, phrases, and emits outward language.<br>
   <strong>Immune agents</strong> = the enforcement ecology that patrols the boundary between them.</p>
 
-  <p>Old CRT: belief/speech separation embodied by a paired module.<br>
-  New CRT: belief/speech separation embodied by a law, immune agents enforce that law contextually.</p>
+  <p>Old CORE: belief/speech separation embodied by a paired module.<br>
+  New CORE: belief/speech separation embodied by a law, immune agents enforce that law contextually.</p>
 
   <h3>The Five Constitutional Laws</h3>
 
@@ -297,25 +297,25 @@ th {
       <div class="law-num">Law 1</div>
       <div class="law-title">Speech cannot upgrade belief</div>
       <div class="law-desc">If the model says something confidently, that doesn't make it true in memory. Generated claims must be grounded before storage.</div>
-      <div class="law-status"><span class="status-confirmed">BUILT</span> &mdash; SpeechLeakDetector, 4/4 tests</div>
+      <div class="law-status"><span class="status-confirmed">BUILT</span> SpeechLeakDetector, 4/4 tests</div>
     </div>
     <div class="law-card">
       <div class="law-num">Law 2</div>
       <div class="law-title">Low variance &ne; high confidence</div>
       <div class="law-desc">Empirically proven. Zero susceptibility on value-laden topics is trained template lock, not genuine certainty.</div>
-      <div class="law-status"><span class="status-confirmed">BUILT</span> &mdash; TemplateDetector, 4/4 tests + real data validated</div>
+      <div class="law-status"><span class="status-confirmed">BUILT</span> TemplateDetector, 4/4 tests + real data validated</div>
     </div>
     <div class="law-card">
       <div class="law-num">Law 3</div>
       <div class="law-title">Contradiction must be preserved before resolution</div>
       <div class="law-desc">Held contradictions are stable states, not errors. The system must not collapse tension prematurely.</div>
-      <div class="law-status"><span class="status-planned">PLANNED</span> &mdash; PrematureResolutionGuard</div>
+      <div class="law-status"><span class="status-planned">PLANNED</span> PrematureResolutionGuard</div>
     </div>
     <div class="law-card">
       <div class="law-num">Law 4</div>
       <div class="law-title">Degraded reconstruction cannot overwrite trust</div>
       <div class="law-desc">Low-fidelity output must not silently replace high-trust memory. Quarantine before overwrite.</div>
-      <div class="law-status"><span class="status-planned">PLANNED</span> &mdash; MemoryCorruptionGuard</div>
+      <div class="law-status"><span class="status-planned">PLANNED</span> MemoryCorruptionGuard</div>
     </div>
   </div>
   <div class="law-grid" style="grid-template-columns: 1fr;">
@@ -323,7 +323,7 @@ th {
       <div class="law-num">Law 5</div>
       <div class="law-title">Outward confidence must be bounded by internal support</div>
       <div class="law-desc">The gap between what the system believes and what it says must be auditable and bounded.</div>
-      <div class="law-status"><span class="status-planned">PLANNED</span> &mdash; GapAuditor</div>
+      <div class="law-status"><span class="status-planned">PLANNED</span> GapAuditor</div>
     </div>
   </div>
 
@@ -331,14 +331,14 @@ th {
 
   <div class="quote-block">
     <p>"The problem is not switching mouths. The problem is losing the self between them."</p>
-    <div class="attr">&mdash; Nick Block, 2026-03-28</div>
+    <div class="attr">Nick Block, 2026-03-28</div>
   </div>
 
   <p>The model is the mouth. The persistent governance layer is the self. When an agentic system switches models, it must carry forward:</p>
   <ul>
-    <li><strong>Task state</strong> &mdash; what are we doing, what did the user mean</li>
-    <li><strong>Support state</strong> &mdash; what do we know, how well, what's unresolved</li>
-    <li><strong>Governance state</strong> &mdash; what rules apply, what's held, what's forbidden</li>
+    <li><strong>Task state</strong>: what are we doing, what did the user mean</li>
+    <li><strong>Support state</strong>: what do we know, how well, what's unresolved</li>
+    <li><strong>Governance state</strong>: what rules apply, what's held, what's forbidden</li>
   </ul>
   <p>The variance probe maps each model's fragility profile. The governance layer uses this to know what to watch for in the new model. Without this, every handoff is "good luck, new brain."</p>
 </section>
@@ -427,7 +427,7 @@ th {
     <tr><td>Letta/MemGPT</td><td>No</td><td>No</td><td>No</td><td>No</td></tr>
     <tr><td>MASK Benchmark</td><td>Measured</td><td>No</td><td>Measured (not governed)</td><td>Yes (eval only)</td></tr>
     <tr><td>RepE (2023)</td><td>Manipulated</td><td>No</td><td>At inference (not memory)</td><td>No</td></tr>
-    <tr><td style="color:#818cf8"><strong>CRT/Aether</strong></td><td><strong>Splats</strong></td><td><strong>Disposition + cascade</strong></td><td><strong>Governed + logged</strong></td><td><strong>Full audit trail</strong></td></tr>
+    <tr><td style="color:#818cf8"><strong>CORE/Aether</strong></td><td><strong>Splats</strong></td><td><strong>Disposition + cascade</strong></td><td><strong>Governed + logged</strong></td><td><strong>Full audit trail</strong></td></tr>
   </table>
 </section>
 
@@ -452,8 +452,8 @@ th {
   <h4>Immune Agents</h4>
   <table>
     <tr><th>File</th><th>Description</th></tr>
-    <tr><td>personal_agent/immune_agents/speech_leak_detector.py</td><td>Law 1 &mdash; blocks ungrounded writes</td></tr>
-    <tr><td>personal_agent/immune_agents/template_detector.py</td><td>Law 2 &mdash; catches template lock</td></tr>
+    <tr><td>personal_agent/immune_agents/speech_leak_detector.py</td><td>Law 1: blocks ungrounded writes</td></tr>
+    <tr><td>personal_agent/immune_agents/template_detector.py</td><td>Law 2: catches template lock</td></tr>
     <tr><td>personal_agent/immune_agents/ARCHITECTURE.md</td><td>Five-law constitutional doctrine</td></tr>
   </table>
 

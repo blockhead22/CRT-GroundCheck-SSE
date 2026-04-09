@@ -45,6 +45,8 @@
   --accent-indigo: #818cf8;
   --accent-purple: #c084fc;
   --accent-pink: #f472b6;
+  --accent-amber: #d4a853;
+  --accent-green: #6ee7b7;
 }
 
 [data-theme="light"] {
@@ -78,6 +80,8 @@
   --accent-indigo: #5b63d4;
   --accent-purple: #9060d0;
   --accent-pink: #c0487a;
+  --accent-amber: #9a7830;
+  --accent-green: #1a8f5c;
 }
 
 /* ===== BOOTSTRAP OVERRIDES (loaded before base.css via docs.js) ===== */
@@ -94,8 +98,9 @@ a:hover { color: var(--text); }
 hr { border-color: var(--border); opacity: 1; }
 
 /* ===== BODY ===== */
-html, body {
-  overflow: auto;
+html {
+  overflow-x: hidden;    /* prevent horizontal scroll */
+  overflow-y: visible;   /* required for position:sticky to work on sidebar */
 }
 body {
   background: var(--bg);
@@ -237,8 +242,8 @@ pre, code {
 /* ===== SIDEBAR ===== */
 .sidebar {
   position: sticky;
-  top: 0;
-  height: 100vh;
+  top: 42px;                          /* clear fixed docnav */
+  height: calc(100vh - 42px);         /* fill remaining viewport */
   padding: 48px 24px 48px 32px;
   border-right: 1px solid var(--border);
   background: var(--bg);
@@ -246,6 +251,7 @@ pre, code {
   flex-direction: column;
   gap: 6px;
   overflow-y: auto;
+  z-index: 10;                        /* stay above content, below docnav */
 }
 .sidebar-title {
   font-family: var(--mono);
@@ -443,20 +449,74 @@ code {
   line-height: 1.8;
 }
 
+/* ===== DESIGN LAWS ===== */
+.principle-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  margin: 32px 0;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.principle {
+  padding: 28px 32px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  transition: background 0.2s;
+}
+.principle:last-child { border-bottom: none; }
+.principle:hover { background: var(--bg-inset); }
+
+.p-num {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.58em;
+  font-weight: 600;
+  color: var(--accent-amber);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.p-text {
+  display: block;
+  font-family: var(--serif);
+  font-size: 1.1em;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+  margin-bottom: 6px;
+}
+.p-sub {
+  display: block;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+/* Law accent colors — left border highlight */
+.principle-speech { border-left: 3px solid var(--accent-indigo, #818cf8); }
+.principle-contra { border-left: 3px solid var(--accent-amber, #d4a853); }
+.principle-trust  { border-left: 3px solid var(--accent-green, #6ee7b7); }
+
 /* ===== THESIS ===== */
 .thesis-block {
-  padding: 36px 32px;
+  padding: 40px 36px;
   background: var(--bg-raised);
   border: 1px solid var(--border);
-  margin: 36px 0;
+  border-left: 3px solid var(--text);
+  margin: 40px 0;
 }
 .thesis-label {
   font-family: var(--mono);
-  font-size: 0.62em;
+  font-size: 0.58em;
   color: var(--text-faint);
-  letter-spacing: 2px;
+  letter-spacing: 2.5px;
   text-transform: uppercase;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 .thesis-text {
   font-family: var(--serif);
@@ -464,10 +524,10 @@ code {
   font-weight: 600;
   color: var(--text);
   line-height: 1.3;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 .thesis-sub {
-  font-size: 0.9em;
+  font-size: 0.88em;
   color: var(--text-secondary);
   line-height: 1.8;
 }
@@ -1002,6 +1062,7 @@ body { padding-top: 42px; }
   .page-layout { grid-template-columns: 1fr; }
   .sidebar {
     position: relative;
+    top: 0;
     height: auto;
     border-right: none;
     border-bottom: 1px solid var(--border);
@@ -1054,6 +1115,8 @@ body { padding-top: 42px; }
 
   /* Cards and blocks: reduce padding */
   .remark, .quote-block, .impl-block, .proof-block { padding: 14px; margin: 16px 0; }
+  .principle { padding: 20px 18px; }
+  .p-num { margin-bottom: 4px; }
   .principle, .layer, .pipeline-layer, .immune-card, .agent-card,
   .method-card, .regime-card, .phase-card, .glossary-entry,
   .example-card, .scorecard { padding: 14px; }

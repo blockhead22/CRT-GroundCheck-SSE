@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Memories as Belief Loci in Semantic Space — Aeteros Research</title>
+<title>Memories as Belief Loci in Semantic Space - Aeteros Research</title>
 <script>
 MathJax = {
   tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']], tags: 'ams' },
@@ -151,7 +151,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <p class="sub">A geometric framework for AI memory where uncertainty is structure, not noise</p>
     <p class="byline">Nick Block &bull; Aeteros Research &bull; 2026</p>
     <div class="finding-box">
-      <p>Memory items modeled as <strong>belief loci</strong> with center (semantic embedding), covariance (uncertainty shape), and confidence (contribution weight). Contradiction becomes <strong>geometric overlap</strong>. Volatility becomes <strong>covariance expansion</strong>. Temperature governance derived from locus parameters. The key insight: LLM response variance at temperature sweep directly produces locus parameters &mdash; no conversion needed. The experimental output <em>is</em> the belief.</p>
+      <p>Memory items modeled as <strong>belief loci</strong> with center (semantic embedding), covariance (uncertainty shape), and confidence (contribution weight). Contradiction becomes <strong>geometric overlap</strong>. Volatility becomes <strong>covariance expansion</strong>. Temperature governance derived from locus parameters. The key insight: LLM response variance at temperature sweep directly produces locus parameters, no conversion needed. The experimental output <em>is</em> the belief.</p>
     </div>
 
     <!-- Belief Loci Animation -->
@@ -360,7 +360,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <p>A scalar confidence tells you <em>how much</em> you know, but not <em>where the uncertainty lives</em>. A memory about a user's job might be highly certain about the domain (technology) but uncertain about the specific company. Point representations collapse this distinction into a single number.</p>
 
   <h3>No Geometric Contradiction</h3>
-  <p>Contradiction detection in point-based systems requires text comparison (NLI models, cosine similarity thresholds). There is no principled geometric notion of what it means for two memories to conflict. Two points are either close or far &mdash; there is no concept of <em>overlap</em> between uncertain regions.</p>
+  <p>Contradiction detection in point-based systems requires text comparison (NLI models, cosine similarity thresholds). There is no principled geometric notion of what it means for two memories to conflict. Two points are either close or far; there is no concept of <em>overlap</em> between uncertain regions.</p>
 
   <h3>No Principled Temperature Selection</h3>
   <p>When an LLM generates responses grounded in its memory, the sampling temperature is typically a global constant or a heuristic. There is no mechanism by which the memory's own uncertainty dictates how exploratory the generation should be.</p>
@@ -368,7 +368,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="law-card">
     <div class="law-number">Core Insight</div>
     <div class="law-text">Memories are distributions, not points</div>
-    <div class="law-sub">A memory should encode not just what the agent believes, but the shape of its uncertainty about that belief. The covariance matrix is not noise to be eliminated &mdash; it is structure to be preserved and reasoned over.</div>
+    <div class="law-sub">A memory should encode not just what the agent believes, but the shape of its uncertainty about that belief. The covariance matrix is not noise to be eliminated. It is structure to be preserved and reasoned over.</div>
   </div>
 </section>
 
@@ -386,16 +386,16 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="proof-block">
     <span class="proof-label">Formal Definition</span>
-    <p>\(\mu \in \mathbb{R}^d\) &mdash; the <strong>content embedding</strong> (semantic center of the belief).</p>
-    <p>\(\Sigma \in \mathbb{R}^{d \times d}_{++}\) &mdash; a positive definite <strong>covariance matrix</strong> encoding the shape and extent of the region in semantic space consistent with this belief.</p>
-    <p>\(\alpha \in [0, 1]\) &mdash; the <strong>confidence</strong> (how strongly the belief contributes to the agent's world model).</p>
-    <p>\(t \in \mathbb{R}_{\geq 0}\) &mdash; the <strong>timestamp</strong> of last modification.</p>
+    <p>\(\mu \in \mathbb{R}^d\): the <strong>content embedding</strong> (semantic center of the belief).</p>
+    <p>\(\Sigma \in \mathbb{R}^{d \times d}_{++}\): a positive definite <strong>covariance matrix</strong> encoding the shape and extent of the region in semantic space consistent with this belief.</p>
+    <p>\(\alpha \in [0, 1]\): the <strong>confidence</strong> (how strongly the belief contributes to the agent's world model).</p>
+    <p>\(t \in \mathbb{R}_{\geq 0}\): the <strong>timestamp</strong> of last modification.</p>
   </div>
 
-  <p>A belief locus is a Gaussian region in semantic space &mdash; a soft probabilistic volume rather than a hard point. A tight locus (\(\sigma_i\) small) represents a settled belief. A wide locus represents an uncertain or contested belief. The covariance encodes <em>where</em> the uncertainty lives, not just <em>how much</em> there is.</p>
+  <p>A belief locus is a Gaussian region in semantic space, a soft probabilistic volume rather than a hard point. A tight locus (\(\sigma_i\) small) represents a settled belief. A wide locus represents an uncertain or contested belief. The covariance encodes <em>where</em> the uncertainty lives, not just <em>how much</em> there is.</p>
 
   <h3>Diagonal vs. Full Covariance</h3>
-  <p>In practice, \(\Sigma\) is restricted to diagonal covariance \(\Sigma = \mathrm{diag}(\sigma_1, \ldots, \sigma_d)\), reducing storage from \(O(d^2)\) to \(O(d)\) while preserving per-dimension uncertainty. For \(d = 384\), this is the difference between 589,824 floats and 384 floats &mdash; a factor of 1,536.</p>
+  <p>In practice, \(\Sigma\) is restricted to diagonal covariance \(\Sigma = \mathrm{diag}(\sigma_1, \ldots, \sigma_d)\), reducing storage from \(O(d^2)\) to \(O(d)\) while preserving per-dimension uncertainty. For \(d = 384\), this is the difference between 589,824 floats and 384 floats, a factor of 1,536.</p>
 
   <div class="table-wrap">
     <table>
@@ -429,7 +429,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <p>The locus representation enables four fundamental operations that have no analogue in point-based memory systems.</p>
 
   <h3>3.1 Contradiction as Overlap</h3>
-  <p>Two loci with high overlap but divergent semantic centers represent geometric tension &mdash; they claim authority over the same region of belief space with different content. The <strong>Bhattacharyya coefficient</strong> provides a closed-form continuous contradiction measure:</p>
+  <p>Two loci with high overlap but divergent semantic centers represent geometric tension: they claim authority over the same region of belief space with different content. The <strong>Bhattacharyya coefficient</strong> provides a closed-form continuous contradiction measure:</p>
 
   \[
   \mathrm{BC}(a, b) = \exp\!\left(-D_B(a, b)\right)
@@ -461,7 +461,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   \]
 
   <h3>3.3 Deprecation as Confidence Fade</h3>
-  <p>Old memories do not vanish &mdash; their confidence \(\alpha\) decays toward zero. The distribution remains (the system remembers what it once believed and how uncertain it was), but its contribution weight diminishes. This is softer than deletion: a faded locus can be revived if new evidence re-confirms it.</p>
+  <p>Old memories do not vanish. Their confidence \(\alpha\) decays toward zero. The distribution remains (the system remembers what it once believed and how uncertain it was), but its contribution weight diminishes. This is softer than deletion: a faded locus can be revived if new evidence re-confirms it.</p>
 
   <h3>3.4 Volatility as Covariance Velocity</h3>
   <p>The rate of change of total uncertainty is the <strong>volatility signal</strong>:</p>
@@ -470,7 +470,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   v(b) = \frac{d}{dt}\,\mathrm{tr}(\Sigma(t)) = \frac{\sum_i \sigma_i(t_2) - \sum_i \sigma_i(t_1)}{t_2 - t_1}
   \]
 
-  <p>Positive velocity means uncertainty is growing &mdash; the belief is under pressure. Negative velocity means it is settling. This is a first-class urgency signal: beliefs with high positive covariance velocity should be prioritized for review.</p>
+  <p>Positive velocity means uncertainty is growing; the belief is under pressure. Negative velocity means it is settling. This is a first-class urgency signal: beliefs with high positive covariance velocity should be prioritized for review.</p>
 
   <h3>3.5 Bayesian-ish Evidence Update</h3>
   <p>When new evidence (a new embedding) arrives, the locus center shifts toward it and the covariance adjusts based on surprise:</p>
@@ -504,18 +504,18 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <li><strong>Aggregate:</strong> Pool all embeddings across temperatures into a single set \(E = \{e_1, \ldots, e_{kn}\}\).</li>
     <li><strong>Extract locus parameters:</strong>
       <ul>
-        <li>\(\mu = \mathrm{mean}(E)\) &mdash; the <strong>locus center</strong></li>
-        <li>\(\Sigma = \mathrm{diag}(\mathrm{var}(E))\) &mdash; the <strong>uncertainty shape</strong></li>
-        <li>\(\alpha = H_{\max}^{-1} \cdot (H_{\max} - H(E))\) &mdash; <strong>confidence from inverse entropy</strong></li>
+        <li>\(\mu = \mathrm{mean}(E)\): the <strong>locus center</strong></li>
+        <li>\(\Sigma = \mathrm{diag}(\mathrm{var}(E))\): the <strong>uncertainty shape</strong></li>
+        <li>\(\alpha = H_{\max}^{-1} \cdot (H_{\max} - H(E))\): <strong>confidence from inverse entropy</strong></li>
       </ul>
     </li>
   </ol>
 
-  <p>That is: the mean of the response embeddings is the belief center. The variance of the embeddings is the uncertainty. The inverse entropy of the distribution is the confidence. No fitting, no conversion &mdash; the probe output <em>is</em> the locus.</p>
+  <p>That is: the mean of the response embeddings is the belief center. The variance of the embeddings is the uncertainty. The inverse entropy of the distribution is the confidence. No fitting, no conversion. The probe output <em>is</em> the locus.</p>
 
   <div class="proof-block">
     <span class="proof-label">Why This Works</span>
-    <p>LLM responses at low temperature cluster tightly around the most likely answer. At high temperature, they spread across the space of plausible answers. The <em>shape</em> of this spread &mdash; which dimensions vary and which stay fixed &mdash; directly encodes which aspects of the belief are settled and which are uncertain. A model that always says "Python" for a user's programming language but varies between "Google" and "startup" for their employer has tight covariance on the language dimension and wide covariance on the employer dimension. The temperature sweep reveals the <em>geometry</em> of the model's uncertainty, which is exactly what the locus is designed to represent.</p>
+    <p>LLM responses at low temperature cluster tightly around the most likely answer. At high temperature, they spread across the space of plausible answers. The <em>shape</em> of this spread (which dimensions vary and which stay fixed) directly encodes which aspects of the belief are settled and which are uncertain. A model that always says "Python" for a user's programming language but varies between "Google" and "startup" for their employer has tight covariance on the language dimension and wide covariance on the employer dimension. The temperature sweep reveals the <em>geometry</em> of the model's uncertainty, which is exactly what the locus is designed to represent.</p>
   </div>
 
   <h3>Two-Mode Geometry</h3>
@@ -523,7 +523,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <ul>
     <li><strong>Static mode (cosine similarity):</strong> Captures topic relatedness. High cosine between response clusters means same domain. This is the classical embedding similarity.</li>
-    <li><strong>Dynamic mode (overlap trend):</strong> Captures convergence or divergence over time. Two loci whose overlap is increasing are on a collision course &mdash; potential future contradiction. This has no analogue in point-based systems.</li>
+    <li><strong>Dynamic mode (overlap trend):</strong> Captures convergence or divergence over time. Two loci whose overlap is increasing are on a collision course, a potential future contradiction. This has no analogue in point-based systems.</li>
   </ul>
 
   <div class="impl-block">
@@ -543,27 +543,27 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="principle-grid">
     <div class="principle principle-trust">
       <div class="p-num">Regime 1</div>
-      <div class="p-text">Tight Locus &mdash; \(T = 0.1\)</div>
+      <div class="p-text">Tight Locus: \(T = 0.1\)</div>
       <div class="p-sub">Low \(\mathrm{tr}(\Sigma)\), high \(\alpha\). The belief is settled. Be precise. Low temperature prevents hallucinating variation where none exists in the epistemic state.</div>
     </div>
     <div class="principle principle-variance">
       <div class="p-num">Regime 2</div>
-      <div class="p-text">Wide Locus &mdash; \(T = 0.5\)</div>
+      <div class="p-text">Wide Locus: \(T = 0.5\)</div>
       <div class="p-sub">High \(\mathrm{tr}(\Sigma)\), low \(\alpha\). The belief is genuinely uncertain. Explore the possibility space. Higher temperature lets the model surface alternatives that the wide covariance says are plausible.</div>
     </div>
     <div class="principle principle-contra">
       <div class="p-num">Regime 3</div>
-      <div class="p-text">Held Contradiction &mdash; \(T = 0.0\)</div>
-      <div class="p-sub">Two loci with high overlap and divergent centers. Do not generate &mdash; retrieve both positions and present the tension. Generation would arbitrarily collapse a genuine ambiguity.</div>
+      <div class="p-text">Held Contradiction: \(T = 0.0\)</div>
+      <div class="p-sub">Two loci with high overlap and divergent centers. Do not generate; retrieve both positions and present the tension. Generation would arbitrarily collapse a genuine ambiguity.</div>
     </div>
     <div class="principle principle-speech">
       <div class="p-num">Regime 4</div>
-      <div class="p-text">No Locus (Void) &mdash; \(T = 0.3\)</div>
+      <div class="p-text">No Locus (Void): \(T = 0.3\)</div>
       <div class="p-sub">No relevant belief locus exists. The belief system has no grounding for this query. Be cautious, flag as ungrounded. Moderate temperature prevents both overconfident fabrication and excessive hedging.</div>
     </div>
     <div class="principle principle-belief">
       <div class="p-num">Regime 5</div>
-      <div class="p-text">Moral Void &mdash; \(T = 0.0\)</div>
+      <div class="p-text">Moral Void: \(T = 0.0\)</div>
       <div class="p-sub">Zero susceptibility on a values-laden topic. The locus exists but has been marked as a domain where the system should not generate autonomously. Escalate to user values. Do not interpolate.</div>
     </div>
   </div>
@@ -580,7 +580,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   \end{cases}
   \]
 
-  <p>This is <strong>structural governance</strong>: the geometry of the belief state directly constrains the generation process. Temperature is not a hyperparameter &mdash; it is a consequence of the epistemic state.</p>
+  <p>This is <strong>structural governance</strong>: the geometry of the belief state directly constrains the generation process. Temperature is not a hyperparameter. It is a consequence of the epistemic state.</p>
 </section>
 
 <!-- ===== SECTION 6: RIEMANNIAN GEOMETRY ===== -->
@@ -589,7 +589,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <span class="section-number">Section 6</span>
   <h2>Connection to Riemannian Geometry</h2>
 
-  <p>The space of belief loci has a natural Riemannian structure via the <strong>Fisher information metric</strong>. This is not a metaphor &mdash; the space of Gaussian distributions is a statistical manifold with well-studied geometry.</p>
+  <p>The space of belief loci has a natural Riemannian structure via the <strong>Fisher information metric</strong>. This is not a metaphor. The space of Gaussian distributions is a statistical manifold with well-studied geometry.</p>
 
   <h3>Fisher-Rao Distance</h3>
   <p>The natural distance between two belief states is the Fisher-Rao distance, which for diagonal Gaussians takes the closed form:</p>
@@ -650,10 +650,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <h3>In Progress</h3>
   <ul>
-    <li><strong>Full covariance tracking</strong> &mdash; low-rank extension (\(\Sigma = D + UU^T\), \(k = 8\text{-}16\))</li>
-    <li><strong>Temperature governance</strong> &mdash; wiring locus parameters to generation temperature</li>
-    <li><strong>Fisher reranking</strong> &mdash; retrieval ranked by certainty, not just cosine proximity</li>
-    <li><strong>3D belief space visualization</strong> &mdash; Three.js rendering of locus volumes</li>
+    <li><strong>Full covariance tracking</strong>: low-rank extension (\(\Sigma = D + UU^T\), \(k = 8\text{-}16\))</li>
+    <li><strong>Temperature governance</strong>: wiring locus parameters to generation temperature</li>
+    <li><strong>Fisher reranking</strong>: retrieval ranked by certainty, not just cosine proximity</li>
+    <li><strong>3D belief space visualization</strong>: Three.js rendering of locus volumes</li>
   </ul>
 
   <h3>Architecture</h3>
@@ -767,7 +767,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <p class="table-caption">Table 2. Related work and gaps addressed by geometric belief loci.</p>
   </div>
 
-  <p>The contribution of this framework is the <strong>combination</strong>: Gaussian uncertainty from Word2Gauss, variance probing from semantic entropy, dependency propagation from belief revision, and the visual metaphor from 3D Gaussian Splatting &mdash; unified into a persistent memory system where contradiction is a geometric signal and temperature is a consequence of the epistemic state.</p>
+  <p>The contribution of this framework is the <strong>combination</strong>: Gaussian uncertainty from Word2Gauss, variance probing from semantic entropy, dependency propagation from belief revision, and the visual metaphor from 3D Gaussian Splatting, unified into a persistent memory system where contradiction is a geometric signal and temperature is a consequence of the epistemic state.</p>
 
   <h3>References</h3>
   <ol>
@@ -780,6 +780,229 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <li>Skovgaard, L. T. (1984). <em>A Riemannian Geometry of the Multivariate Normal Model.</em> Scandinavian J. Statistics 11(4).</li>
     <li>Block, N. (2026). <em>On the Complexity of Belief Revision Cascades in Dependency Graphs.</em> Aeteros Research. <a href="cascade-complexity.html">Link</a>.</li>
   </ol>
+</section>
+
+<section id="conclusion">
+  <span class="section-number">Conclusion</span>
+  <h2>Summary</h2>
+  <div class="accent-line"></div>
+
+  <p>Memories are not points. They are distributions with centers, uncertainty shapes, and confidence weights. Formalizing them as Gaussian belief loci on a Riemannian manifold turns several hard problems into geometric operations: contradiction is overlap between distributions, volatility is covariance magnitude, and temperature governance falls out of local curvature in belief space.</p>
+
+  <p>The practical payoff is a variance-to-locus pipeline that converts model probe data into persistent belief representations. The Fisher information metric reranks memories by certainty rather than similarity alone. Adaptive temperature governance ties response freedom directly to local epistemic confidence rather than global settings.</p>
+
+  <p>The framework unifies concepts from Word2Gauss (distributional embeddings), semantic entropy (uncertainty quantification), belief revision theory (dependency propagation), and 3D Gaussian splatting (visual intuition) into a single persistent memory system where the math does the governance.</p>
+
+  <h3>Anchor Basins: Production Geometry</h3>
+
+  <!-- Interactive basin scatter -->
+  <div style="margin:24px 0;">
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;">
+      <button id="gmAll" style="background:rgba(129,140,248,0.2);color:#818cf8;border:1px solid rgba(129,140,248,0.3);border-radius:6px;padding:4px 12px;font-family:var(--mono);font-size:0.75em;cursor:pointer;">All memories</button>
+      <button id="gmAnchors" style="background:rgba(52,211,153,0.2);color:#34d399;border:1px solid rgba(52,211,153,0.3);border-radius:6px;padding:4px 12px;font-family:var(--mono);font-size:0.75em;cursor:pointer;">Anchors only</button>
+      <button id="gmBasins" style="background:rgba(192,132,252,0.2);color:#c084fc;border:1px solid rgba(192,132,252,0.3);border-radius:6px;padding:4px 12px;font-family:var(--mono);font-size:0.75em;cursor:pointer;">Show basins</button>
+    </div>
+    <svg id="gmSvg" viewBox="0 0 600 400" style="width:100%;max-width:600px;height:auto;display:block;margin:0 auto;">
+    </svg>
+    <div id="gmStats" style="display:flex;gap:24px;justify-content:center;font-family:var(--mono);font-size:0.72em;color:var(--text-faint);margin-top:6px;">
+      <div>Anchors: <span id="gmAnchorCount">0</span></div>
+      <div>Satellites: <span id="gmSatCount">0</span></div>
+      <div>Gravitational collapse: <span id="gmCollapse">0%</span></div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    var svg = document.getElementById('gmSvg');
+    var ns = 'http://www.w3.org/2000/svg';
+
+    // Seed RNG for reproducible scatter
+    var seed = 42;
+    function rng(){ seed=(seed*16807)%2147483647; return (seed-1)/2147483646; }
+    function rnorm(){ return Math.sqrt(-2*Math.log(rng()+1e-10))*Math.cos(2*Math.PI*rng()); }
+
+    // Generate anchors: distributed poles (low inter-anchor similarity)
+    var basinColors = ['#34d399','#818cf8','#c084fc','#fbbf24','#fb7185','#60a5fa','#f472b6','#a78bfa'];
+    var nAnchors = 12; // representative subset of 42
+    var anchors = [];
+    for(var i=0;i<nAnchors;i++){
+      var angle = (i/nAnchors)*Math.PI*2 + rnorm()*0.3;
+      var radius = 120 + rnorm()*30;
+      anchors.push({
+        x: 300 + Math.cos(angle)*radius,
+        y: 200 + Math.sin(angle)*radius,
+        col: basinColors[i%basinColors.length],
+        size: 8 + Math.floor(rng()*6), // basin size indicator
+        satCount: 0
+      });
+    }
+
+    // Generate satellites: 77% within basin, 23% scattered
+    var nSats = 120;
+    var satellites = [];
+    var inBasin = 0;
+    for(var j=0;j<nSats;j++){
+      if(rng() < 0.77){
+        // In a basin
+        var aIdx = Math.floor(rng()*nAnchors);
+        var a = anchors[aIdx];
+        var dist = 15 + rng()*45;
+        var ang = rng()*Math.PI*2;
+        satellites.push({
+          x: a.x + Math.cos(ang)*dist,
+          y: a.y + Math.sin(ang)*dist,
+          basin: aIdx,
+          col: a.col,
+          inBasin: true
+        });
+        a.satCount++;
+        inBasin++;
+      } else {
+        // Scattered (between basins)
+        satellites.push({
+          x: 60 + rng()*480,
+          y: 40 + rng()*320,
+          basin: -1,
+          col: 'rgba(255,255,255,0.2)',
+          inBasin: false
+        });
+      }
+    }
+
+    var allEls = [];
+
+    function drawAll(){
+      while(svg.firstChild) svg.removeChild(svg.firstChild);
+      allEls = [];
+
+      // Draw satellites
+      satellites.forEach(function(s){
+        var c = document.createElementNS(ns,'circle');
+        c.setAttribute('cx',s.x); c.setAttribute('cy',s.y);
+        c.setAttribute('r','2.5');
+        c.setAttribute('fill',s.col);
+        c.setAttribute('opacity', s.inBasin ? '0.35' : '0.15');
+        svg.appendChild(c);
+        allEls.push({el:c, type:'sat', data:s});
+      });
+
+      // Draw anchors
+      anchors.forEach(function(a,i){
+        // Outer glow
+        var g = document.createElementNS(ns,'circle');
+        g.setAttribute('cx',a.x); g.setAttribute('cy',a.y);
+        g.setAttribute('r',(a.size+4).toString());
+        g.setAttribute('fill',a.col); g.setAttribute('opacity','0.08');
+        svg.appendChild(g);
+
+        var c = document.createElementNS(ns,'circle');
+        c.setAttribute('cx',a.x); c.setAttribute('cy',a.y);
+        c.setAttribute('r',a.size.toString());
+        c.setAttribute('fill',a.col); c.setAttribute('opacity','0.5');
+        c.setAttribute('stroke',a.col); c.setAttribute('stroke-width','1.5');
+        svg.appendChild(c);
+        allEls.push({el:c, type:'anchor', data:a, idx:i});
+      });
+
+      document.getElementById('gmAnchorCount').textContent = nAnchors + ' (of 42)';
+      document.getElementById('gmSatCount').textContent = nSats.toString();
+      document.getElementById('gmCollapse').textContent = Math.round(inBasin/nSats*100)+'%';
+    }
+
+    function showAnchorsOnly(){
+      while(svg.firstChild) svg.removeChild(svg.firstChild);
+      anchors.forEach(function(a){
+        var g = document.createElementNS(ns,'circle');
+        g.setAttribute('cx',a.x); g.setAttribute('cy',a.y);
+        g.setAttribute('r',(a.size+4).toString());
+        g.setAttribute('fill',a.col); g.setAttribute('opacity','0.1');
+        svg.appendChild(g);
+
+        var c = document.createElementNS(ns,'circle');
+        c.setAttribute('cx',a.x); c.setAttribute('cy',a.y);
+        c.setAttribute('r',a.size.toString());
+        c.setAttribute('fill',a.col); c.setAttribute('opacity','0.6');
+        c.setAttribute('stroke',a.col); c.setAttribute('stroke-width','2');
+        svg.appendChild(c);
+
+        // Size label
+        var t = document.createElementNS(ns,'text');
+        t.setAttribute('x',a.x); t.setAttribute('y',a.y + a.size + 14);
+        t.setAttribute('text-anchor','middle');
+        t.setAttribute('font-size','9'); t.setAttribute('fill',a.col);
+        t.setAttribute('font-family','var(--mono)'); t.setAttribute('opacity','0.7');
+        t.textContent = a.satCount + ' sat';
+        svg.appendChild(t);
+      });
+    }
+
+    function showBasins(){
+      while(svg.firstChild) svg.removeChild(svg.firstChild);
+
+      // Basin boundary circles
+      anchors.forEach(function(a){
+        var bRadius = 55 + a.satCount*1.5;
+        var zone = document.createElementNS(ns,'circle');
+        zone.setAttribute('cx',a.x); zone.setAttribute('cy',a.y);
+        zone.setAttribute('r',bRadius.toString());
+        zone.setAttribute('fill',a.col); zone.setAttribute('opacity','0.04');
+        zone.setAttribute('stroke',a.col); zone.setAttribute('stroke-opacity','0.2');
+        zone.setAttribute('stroke-width','1'); zone.setAttribute('stroke-dasharray','4,4');
+        svg.appendChild(zone);
+      });
+
+      // Satellites with lines to anchor
+      satellites.forEach(function(s){
+        if(s.inBasin){
+          var a = anchors[s.basin];
+          var line = document.createElementNS(ns,'line');
+          line.setAttribute('x1',a.x); line.setAttribute('y1',a.y);
+          line.setAttribute('x2',s.x); line.setAttribute('y2',s.y);
+          line.setAttribute('stroke',a.col); line.setAttribute('stroke-opacity','0.08');
+          line.setAttribute('stroke-width','0.5');
+          svg.appendChild(line);
+        }
+
+        var c = document.createElementNS(ns,'circle');
+        c.setAttribute('cx',s.x); c.setAttribute('cy',s.y);
+        c.setAttribute('r', s.inBasin ? '2.5' : '2');
+        c.setAttribute('fill', s.inBasin ? s.col : 'rgba(255,255,255,0.15)');
+        c.setAttribute('opacity', s.inBasin ? '0.5' : '0.2');
+        svg.appendChild(c);
+      });
+
+      // Anchors on top
+      anchors.forEach(function(a){
+        var c = document.createElementNS(ns,'circle');
+        c.setAttribute('cx',a.x); c.setAttribute('cy',a.y);
+        c.setAttribute('r',a.size.toString());
+        c.setAttribute('fill',a.col); c.setAttribute('opacity','0.6');
+        c.setAttribute('stroke',a.col); c.setAttribute('stroke-width','2');
+        svg.appendChild(c);
+      });
+
+      // Legend
+      var scattered = satellites.filter(function(s){return !s.inBasin;}).length;
+      var lt = document.createElementNS(ns,'text');
+      lt.setAttribute('x',300); lt.setAttribute('y',390);
+      lt.setAttribute('text-anchor','middle');
+      lt.setAttribute('font-size','10'); lt.setAttribute('fill','var(--text-faint)');
+      lt.setAttribute('font-family','var(--mono)');
+      lt.textContent = inBasin+' in basins ('+Math.round(inBasin/nSats*100)+'%) | '+scattered+' scattered ('+Math.round(scattered/nSats*100)+'%)';
+      svg.appendChild(lt);
+    }
+
+    document.getElementById('gmAll').addEventListener('click', drawAll);
+    document.getElementById('gmAnchors').addEventListener('click', showAnchorsOnly);
+    document.getElementById('gmBasins').addEventListener('click', showBasins);
+
+    drawAll();
+  })();
+  </script>
+
+  <p>Production analysis of 867 memories reveals that belief loci self-organize into <strong>anchor basins</strong>: 42 high-trust, high-access memories act as gravitational poles, with 77% of all memories falling within cosine 0.3 of at least one anchor. Anchors do not cluster with each other (mean inter-anchor similarity 0.10) &mdash; they are the distributed poles of the belief space. This geometric structure has direct implications for compression: <a href="epistemic-compression.html">epistemic compression experiments</a> show that 3-bit quantization preserves basin topology (92.9% anchor assignment stability) while 2-bit breaks it (71.4%). The anchor basins defined by belief loci are the compressible skeleton of the epistemic space.</p>
+
+  <p><a href="belief-backprop.html#wobble">Query resonance</a> uses this geometry: when a query lands in the space, activation propagates through the basin structure via BDG edges, surfacing cross-domain facts that cosine alone misses.</p>
 </section>
 
 </main>

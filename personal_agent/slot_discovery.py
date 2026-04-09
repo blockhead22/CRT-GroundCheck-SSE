@@ -55,13 +55,20 @@ class SlotProfile:
 # ---------------------------------------------------------------------------
 
 _SEED_EXCLUSIVE = {
+    # Hard identity facts — only one value true at a time
+    "name", "first_name", "last_name", "birthday",
+    "birth_date", "legal_name", "age", "email", "phone",
+    "relationship_status", "zodiac_sign", "mbti", "nickname",
+}
+
+_SEED_TEMPORAL = {
+    # Preferences and life facts — value changes over time, history matters.
+    # Previously these were EXCLUSIVE which caused false contradiction
+    # detection when preferences naturally evolved (Bug #4).
     "favorite_color", "favorite_drink", "favorite_food", "favorite_book",
     "favorite_movie", "favorite_music", "favorite_artist", "favorite_game",
     "favorite_sport", "favorite_team", "favorite_animal",
-    "name", "first_name", "last_name", "birthday",
-    "birth_date", "legal_name", "primary_city", "city", "employer",
-    "job_title", "nickname", "age", "email", "phone",
-    "relationship_status", "zodiac_sign", "mbti",
+    "primary_city", "city", "employer", "job_title",
 }
 
 _SEED_ADDITIVE = {
@@ -408,10 +415,11 @@ def get_slot_type(slot_name: str, db_path: Optional[str] = None) -> SlotType:
     """
     norm = slot_name.strip().lower().replace(" ", "_")
 
-    # 1. Check learned profiles (highest priority)
+    # 1. Check learned profiles (highest priority — but only if they've
+    #    actually learned something, not just defaulted to UNKNOWN)
     try:
         profile = load_slot_profile(norm, db_path=db_path)
-        if profile and profile.confidence >= 0.5:
+        if profile and profile.confidence >= 0.5 and profile.discovered_type != SlotType.UNKNOWN:
             return profile.discovered_type
     except Exception:
         pass
@@ -419,6 +427,8 @@ def get_slot_type(slot_name: str, db_path: Optional[str] = None) -> SlotType:
     # 2. Fall back to seed lists
     if norm in _SEED_EXCLUSIVE:
         return SlotType.EXCLUSIVE
+    if norm in _SEED_TEMPORAL:
+        return SlotType.TEMPORAL
     if norm in _SEED_ADDITIVE:
         return SlotType.ADDITIVE
 

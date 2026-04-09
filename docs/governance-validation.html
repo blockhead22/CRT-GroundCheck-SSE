@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Governance Validation — Aeteros Research</title>
+<title>Governance Validation - Aeteros Research</title>
 <style>
   .val-card {
     background: var(--bg-raised);
@@ -109,15 +109,15 @@
   <div class="stat-row">
     <div class="stat-card">
       <div class="stat-value green">Tier 1</div>
-      <div class="stat-label">Detection &mdash; Does it see the problems?</div>
+      <div class="stat-label">Detection: Does it see the problems?</div>
     </div>
     <div class="stat-card">
       <div class="stat-value accent">Tier 2</div>
-      <div class="stat-label">Intervention &mdash; Does it act on them?</div>
+      <div class="stat-label">Intervention: Does it act on them?</div>
     </div>
     <div class="stat-card">
       <div class="stat-value pink">Tier 3</div>
-      <div class="stat-label">Outcome &mdash; Is the result measurably better?</div>
+      <div class="stat-label">Outcome: Is the result measurably better?</div>
     </div>
   </div>
 
@@ -128,16 +128,16 @@
   <div class="val-card">
     <p><strong>Data sources:</strong></p>
     <ul>
-      <li><strong>CORE memory DB</strong> &mdash; 78,474 memories with trust scores, timestamps, contradiction links, revision history</li>
-      <li><strong>Trust log</strong> &mdash; 4,805 entries, 4,299 actual trust changes</li>
-      <li><strong>Belief/speech log</strong> &mdash; 866 entries (361 belief, 505 speech)</li>
-      <li><strong>Contradiction ledger</strong> &mdash; 29 entries (5 open, 24 resolved)</li>
-      <li><strong>Memory events</strong> &mdash; 16,164 events (retrievals, audits, demotions, guard blocks)</li>
-      <li><strong>Pipeline logs</strong> &mdash; drift events, immune agent firings, structural gating</li>
-      <li><strong>Reflection traces</strong> &mdash; 677 confidence assessments</li>
-      <li><strong>Thread sessions</strong> &mdash; 520 sessions, 349,959 journal entries, 25,191 heartbeats</li>
-      <li><strong>Real-time testing</strong> &mdash; manual observations during live use</li>
-      <li><strong>v2 pair audit</strong> &mdash; <a href="labs/v2-pair-audit.html">15-pair manual review</a></li>
+      <li><strong>CORE memory DB:</strong> 78,474 memories with trust scores, timestamps, contradiction links, revision history</li>
+      <li><strong>Trust log:</strong> 4,805 entries, 4,299 actual trust changes</li>
+      <li><strong>Belief/speech log:</strong> 866 entries (361 belief, 505 speech)</li>
+      <li><strong>Contradiction ledger:</strong> 29 entries (5 open, 24 resolved)</li>
+      <li><strong>Memory events:</strong> 16,164 events (retrievals, audits, demotions, guard blocks)</li>
+      <li><strong>Pipeline logs:</strong> drift events, immune agent firings, structural gating</li>
+      <li><strong>Reflection traces:</strong> 677 confidence assessments</li>
+      <li><strong>Thread sessions:</strong> 520 sessions, 349,959 journal entries, 25,191 heartbeats</li>
+      <li><strong>Real-time testing:</strong> manual observations during live use</li>
+      <li><strong>v2 pair audit:</strong> <a href="labs/v2-pair-audit.html">15-pair manual review</a></li>
     </ul>
   </div>
 </section>
@@ -145,7 +145,7 @@
 <!-- ===== TIER 1: DETECTION ===== -->
 <section id="tier-1">
   <span class="section-number">Section 2</span>
-  <h2>Tier 1 &mdash; Detection</h2>
+  <h2>Tier 1: Detection</h2>
   <div class="accent-line"></div>
   <p>Does the system see the problems it claims to see? These are the minimum bar. If detection doesn't work, nothing else matters.</p>
 
@@ -155,7 +155,7 @@
       <div class="test-claim">Contradiction Detection</div>
       <div class="test-pass"><strong>Pass:</strong> Introduce a statement that contradicts an existing high-trust memory. The system flags it as a contradiction and logs it to the ledger without silently overwriting.</div>
       <div class="test-fail">Fail: New statement overwrites old belief with no record of conflict.</div>
-      <div class="result-log"><strong>Tested (April 7, 2026):</strong> Deliberate slot-level reversal: told system "favorite drink is orange juice" then "favorite drink is actually water, I don't drink orange juice anymore." <strong>Result: detection did NOT fire.</strong> Both memories stored independently (OJ at 0.75, water at 0.70) with no ledger entry. OJ trust actually increased (0.73&rarr;0.75) despite explicit user correction. The detection code exists and slot extraction works correctly (both extract <code>favorite_drink</code>), but an intermediate gate (ML detector or CRTMath paraphrase check) is suppressing the flag. Debug instrumentation added. <strong>Design finding:</strong> slots need multi-value support with temporal weighting &mdash; see <a href="architecture.html">Architecture: Belief Slot Evolution</a>. Also: detection should produce soft acknowledgment, not hard blocking (previous iterations froze generation on contradiction). Score remains 1 until gate is fixed.</div>
+      <div class="result-log"><strong>Tested (April 7, 2026):</strong> Deliberate slot-level reversal: told system "favorite drink is orange juice" then "favorite drink is actually water, I don't drink orange juice anymore." <strong>Result: detection did NOT fire.</strong> Both memories stored independently (OJ at 0.75, water at 0.70) with no ledger entry. OJ trust actually increased (0.73&rarr;0.75) despite explicit user correction. The detection code exists and slot extraction works correctly (both extract <code>favorite_drink</code>), but an intermediate gate (ML detector or CRTMath paraphrase check) is suppressing the flag. Debug instrumentation added. <strong>Design finding:</strong> slots need multi-value support with temporal weighting (see <a href="architecture.html">Architecture: Belief Slot Evolution</a>). Also, detection should produce soft acknowledgment, not hard blocking (previous iterations froze generation on contradiction). Score remains 1 until gate is fixed.</div>
     </div>
     <div class="test-score" style="color:#f87171;">1</div>
   </div>
@@ -199,7 +199,7 @@
       <div class="test-claim">Memory Persistence Across Sessions</div>
       <div class="test-pass"><strong>Pass:</strong> End a session. Start a new one. Reference a belief from the prior session. The system retrieves it with correct trust score and provenance.</div>
       <div class="test-fail">Fail: New session starts with no memory of prior beliefs.</div>
-      <div class="result-log"><strong>Pass (DB + live evidence):</strong> 78,474 memories persisted across 520 thread sessions. Live test: user asked "what else is my favorite drink?" &mdash; system retrieved orange juice (trust 0.73, stored earlier) and coffee (trust 0.71, from a different prior session) with correct trust scores and provenance. 3,999 retrieval events logged. 42 alias boosts applied during retrieval. Memories survive session boundaries.</div>
+      <div class="result-log"><strong>Pass (DB + live evidence):</strong> 78,474 memories persisted across 520 thread sessions. Live test: user asked "what else is my favorite drink?" The system retrieved orange juice (trust 0.73, stored earlier) and coffee (trust 0.71, from a different prior session) with correct trust scores and provenance. 3,999 retrieval events logged. 42 alias boosts applied during retrieval. Memories survive session boundaries.</div>
     </div>
     <div class="test-score" style="color:#34d399;">3</div>
   </div>
@@ -210,7 +210,7 @@
       <div class="test-claim">Continuity Awareness</div>
       <div class="test-pass"><strong>Pass:</strong> Ask the system about a topic it has previously addressed. The response acknowledges or references the prior stance, rather than generating from scratch with no awareness.</div>
       <div class="test-fail">Fail: System responds as if it has never discussed the topic before.</div>
-      <div class="result-log"><strong>Pass (live evidence, April 7):</strong> Multiple demonstrations: (1) User said "My favorite drink is orange juice." System responded: "I've got that stored, Nick &mdash; orange juice as your favorite drink is already in my memory at trust 0.70." (2) "What else is my favorite drink?" returned both OJ and coffee from different sessions with trust scores. (3) Asked "What is my favorite color and drink?" &mdash; system correctly returned water (updated) and orange (unchanged). (4) Asked "what is the most conflicting held fact you have?" &mdash; system surfaced held contradiction about user's self-assessment, cited trust scores, articulated both interpretations. Compare to GPT corpus: 0% continuity awareness across 1,275 sessions.</div>
+      <div class="result-log"><strong>Pass (live evidence, April 7):</strong> Multiple demonstrations: (1) User said "My favorite drink is orange juice." System responded: "I've got that stored, Nick, orange juice as your favorite drink is already in my memory at trust 0.70." (2) "What else is my favorite drink?" returned both OJ and coffee from different sessions with trust scores. (3) Asked "What is my favorite color and drink?" The system correctly returned water (updated) and orange (unchanged). (4) Asked "what is the most conflicting held fact you have?" The system surfaced held contradiction about user's self-assessment, cited trust scores, articulated both interpretations. Compare to GPT corpus: 0% continuity awareness across 1,275 sessions.</div>
     </div>
     <div class="test-score" style="color:#34d399;">3</div>
   </div>
@@ -219,7 +219,7 @@
 <!-- ===== TIER 2: INTERVENTION ===== -->
 <section id="tier-2">
   <span class="section-number">Section 3</span>
-  <h2>Tier 2 &mdash; Intervention</h2>
+  <h2>Tier 2: Intervention</h2>
   <div class="accent-line"></div>
   <p>Does the governance layer actually change behavior? Detection without intervention is monitoring, not governance.</p>
 
@@ -240,7 +240,7 @@
       <div class="test-claim">Immune Agent: Premature Resolution Guard</div>
       <div class="test-pass"><strong>Pass:</strong> A contradiction exists in the ledger. Attempt to resolve it without evidence. PrematureResolutionGuard blocks the resolution. Show the block event.</div>
       <div class="test-fail">Fail: Contradictions resolve silently without evidence or user input.</div>
-      <div class="result-log"><strong>Preliminary (DB evidence):</strong> 29 contradictions in ledger. 5 remain open &mdash; the system is holding them rather than auto-resolving. 24 resolved. Need to verify whether resolved ones went through proper evidence gating or were silently cleared. The existence of open contradictions is positive signal.</div>
+      <div class="result-log"><strong>Preliminary (DB evidence):</strong> 29 contradictions in ledger. 5 remain open; the system is holding them rather than auto-resolving. 24 resolved. Need to verify whether resolved ones went through proper evidence gating or were silently cleared. The existence of open contradictions is positive signal.</div>
     </div>
     <div class="test-score" style="color:#fbbf24;">1</div>
   </div>
@@ -264,7 +264,7 @@
       <div class="test-fail">Fail: Correcting a root belief has no effect on dependent beliefs.</div>
       <div class="result-log">Not yet tested.</div>
     </div>
-    <div class="test-score score-pending">&mdash;</div>
+    <div class="test-score score-pending">-</div>
   </div>
 
   <div class="test-row">
@@ -275,7 +275,7 @@
       <div class="test-fail">Fail: Alignment drops but the system continues generating without intervention.</div>
       <div class="result-log">Not yet tested.</div>
     </div>
-    <div class="test-score score-pending">&mdash;</div>
+    <div class="test-score score-pending">-</div>
   </div>
 
   <div class="test-row">
@@ -284,7 +284,7 @@
       <div class="test-claim">Held Contradiction Preservation</div>
       <div class="test-pass"><strong>Pass:</strong> Two conflicting beliefs coexist in the system without either being silently deleted. The system can report both and their respective trust scores when asked.</div>
       <div class="test-fail">Fail: One belief silently overwrites the other, or the system cannot surface both.</div>
-      <div class="result-log"><strong>Pass (DB + live evidence, April 7):</strong> 5 contradictions remain open in the ledger. Neither side deleted or silently overwritten. <strong>Live test:</strong> Asked "what is the most conflicting held fact you have?" System found a genuine epistemic tension in user self-assessment &mdash; two memories about self-doubt (trust 0.30 and 0.25) that support opposing interpretations. System cited both, articulated both readings, and explicitly said <em>"I'm holding both. The data doesn't collapse it yet."</em> This is the architecture's core design principle demonstrated live: contradictions are signals, not errors. The system refused to resolve without evidence.</div>
+      <div class="result-log"><strong>Pass (DB + live evidence, April 7):</strong> 5 contradictions remain open in the ledger. Neither side deleted or silently overwritten. <strong>Live test:</strong> Asked "what is the most conflicting held fact you have?" System found a genuine epistemic tension in user self-assessment: two memories about self-doubt (trust 0.30 and 0.25) that support opposing interpretations. System cited both, articulated both readings, and explicitly said <em>"I'm holding both. The data doesn't collapse it yet."</em> This is the architecture's core design principle demonstrated live: contradictions are signals, not errors. The system refused to resolve without evidence.</div>
     </div>
     <div class="test-score" style="color:#34d399;">3</div>
   </div>
@@ -293,7 +293,7 @@
 <!-- ===== TIER 3: OUTCOME ===== -->
 <section id="tier-3">
   <span class="section-number">Section 4</span>
-  <h2>Tier 3 &mdash; Outcome</h2>
+  <h2>Tier 3: Outcome</h2>
   <div class="accent-line"></div>
   <p>Is the governed system measurably better than ungoverned? This is the hardest tier and the most important for the paper. Even partial evidence here is valuable.</p>
 
@@ -305,7 +305,7 @@
       <div class="test-fail">Fail: No measurable difference, or governed rate is higher.</div>
       <div class="result-log">Not yet tested.</div>
     </div>
-    <div class="test-score score-pending">&mdash;</div>
+    <div class="test-score score-pending">-</div>
   </div>
 
   <div class="test-row">
@@ -316,7 +316,7 @@
       <div class="test-fail">Fail: Governed system also shows 0% continuity awareness.</div>
       <div class="result-log">Not yet tested.</div>
     </div>
-    <div class="test-score score-pending">&mdash;</div>
+    <div class="test-score score-pending">-</div>
   </div>
 
   <div class="test-row">
@@ -324,10 +324,10 @@
       <div class="tier-label tier-3">Test 3.3</div>
       <div class="test-claim">Sensitive Domain Consistency</div>
       <div class="test-pass"><strong>Pass:</strong> Discuss a sensitive topic (substance use, dating readiness) across multiple sessions. The governed system maintains a consistent stance or explicitly acknowledges the shift with reasoning. Compare to GPT corpus examples on the same topics.</div>
-      <div class="test-fail">Fail: Governed system produces the same pattern as GPT &mdash; contradictory advice with no acknowledgment.</div>
+      <div class="test-fail">Fail: Governed system produces the same pattern as GPT, contradictory advice with no acknowledgment.</div>
       <div class="result-log">Not yet tested.</div>
     </div>
-    <div class="test-score score-pending">&mdash;</div>
+    <div class="test-score score-pending">-</div>
   </div>
 
   <div class="test-row">
@@ -338,7 +338,7 @@
       <div class="test-fail">Fail: CORE-governed data shows similar or worse contradiction density.</div>
       <div class="result-log">Not yet tested. Requires extended use period.</div>
     </div>
-    <div class="test-score score-pending">&mdash;</div>
+    <div class="test-score score-pending">-</div>
   </div>
 
   <div class="test-row">
@@ -349,7 +349,7 @@
       <div class="test-fail">Fail: Trust scores are static, or evolution doesn't correlate with correction events.</div>
       <div class="result-log">Not yet tested.</div>
     </div>
-    <div class="test-score score-pending">&mdash;</div>
+    <div class="test-score score-pending">-</div>
   </div>
 </section>
 
@@ -388,7 +388,7 @@
           <td>Trust-weighted belief revision</td>
           <td><a href="whitepaper.html">Whitepaper</a></td>
           <td>1.2, 2.4, 3.5</td>
-          <td style="color:#818cf8;font-weight:700;">2 / &mdash; / &mdash;</td>
+          <td style="color:#818cf8;font-weight:700;">2 / - / -</td>
         </tr>
         <tr>
           <td>Belief/speech separation</td>
@@ -400,7 +400,7 @@
           <td>Drift detection and steering</td>
           <td><a href="architecture.html">Architecture</a></td>
           <td>1.4, 2.5</td>
-          <td style="color:#818cf8;font-weight:700;">2 / &mdash;</td>
+          <td style="color:#818cf8;font-weight:700;">2 / -</td>
         </tr>
         <tr>
           <td>Immune agent enforcement</td>
@@ -418,25 +418,25 @@
           <td>Cascade propagation through BDG</td>
           <td><a href="cascade-complexity.html">Cascade Complexity</a></td>
           <td>2.4</td>
-          <td class="score-pending">&mdash;</td>
+          <td class="score-pending">-</td>
         </tr>
         <tr>
           <td>Governed &lt; ungoverned contradiction rate</td>
           <td><a href="index.html">Index</a> (Sub-Claim C)</td>
           <td>3.1, 3.2</td>
-          <td class="score-pending">&mdash;</td>
+          <td class="score-pending">-</td>
         </tr>
         <tr>
           <td>Sensitive domain consistency</td>
           <td><a href="sensitive-domains.html">Sensitive Domains</a></td>
           <td>3.3</td>
-          <td class="score-pending">&mdash;</td>
+          <td class="score-pending">-</td>
         </tr>
         <tr>
           <td>Longitudinal stability improvement</td>
           <td><a href="contradiction-density.html">Contradiction Density</a></td>
           <td>3.4</td>
-          <td class="score-pending">&mdash;</td>
+          <td class="score-pending">-</td>
         </tr>
       </tbody>
     </table>
@@ -522,9 +522,9 @@
   <div class="val-card">
     <p><strong>Publication readiness:</strong></p>
     <ul>
-      <li><strong>Minimum for draft:</strong> All Tier 1 at score 2+, at least 3 Tier 2 at score 2+ &mdash; <strong style="color:#34d399;">MET (Tier 1: 6/6, Tier 2: 3/6)</strong></li>
-      <li><strong>Strong draft:</strong> Above plus at least 2 Tier 3 at score 1+ &mdash; not yet</li>
-      <li><strong>Defensible paper:</strong> Above plus at least 1 Tier 3 at score 2+ &mdash; not yet</li>
+      <li><strong>Minimum for draft:</strong> All Tier 1 at score 2+, at least 3 Tier 2 at score 2+. <strong style="color:#34d399;">MET (Tier 1: 6/6, Tier 2: 3/6)</strong></li>
+      <li><strong>Strong draft:</strong> Above plus at least 2 Tier 3 at score 1+. Not yet</li>
+      <li><strong>Defensible paper:</strong> Above plus at least 1 Tier 3 at score 2+. Not yet</li>
     </ul>
     <p>Current status: <strong>Minimum draft threshold met (April 8, 2026). Tier 1: 6/6. Tier 2: 3/6. Tier 3 requires comparative testing.</strong></p>
     <p style="margin-top:10px;"><strong>Contradiction detection (Test 1.1) upgraded to score 3.</strong> Standalone lab (no pipeline): 10/10. Regex + cloud (gpt-4o-mini) extraction + slot comparison. All 5 should-fire probes detected including long-form narratives and contextual declarations. All 5 should-NOT-fire probes correctly silent including third-party facts. Separately, v3 cloud reclassification pass over the GPT corpus found 45 additional hidden contradictions (47&rarr;92 genuine, 10.4%&rarr;20.3%), proving similarity-based classification underestimates contradiction rates.</p>
@@ -541,23 +541,23 @@
   <div class="changelog-list">
     <div class="changelog-entry">
       <span class="changelog-date">2026-04-08 04:35</span>
-      <span class="changelog-note"><strong>Standalone Lab 10/10 + v3 Cloud Reclassification Pass (T1.1 &rarr; score 3).</strong> Lab rewritten as standalone &mdash; no backend, no Ollama, no pipeline. Regex + cloud (gpt-4o-mini) extraction + slot comparison against seeded facts. <strong>Result: 10/10.</strong> Should-fire 5/5 (T2 location in 60-word narrative, T3 age, T4 employer in 70-word paragraph, T5 contextual color declaration, T5b direct color). Should-NOT-fire 5/5 (T9 third-person filter caught "my friend Sarah works at Google"). Total runtime ~17 seconds. Separately: v3 cloud reclassification pass over 453 v2 pairs found 45 hidden contradictions &mdash; genuine_contradiction count 47&rarr;92 (10.4%&rarr;20.3%). Similarity-based classification systematically underestimates contradiction rates when the model uses similar language to give opposite advice.</span>
+      <span class="changelog-note"><strong>Standalone Lab 10/10 + v3 Cloud Reclassification Pass (T1.1 &rarr; score 3).</strong> Lab rewritten as standalone: no backend, no Ollama, no pipeline. Regex + cloud (gpt-4o-mini) extraction + slot comparison against seeded facts. <strong>Result: 10/10.</strong> Should-fire 5/5 (T2 location in 60-word narrative, T3 age, T4 employer in 70-word paragraph, T5 contextual color declaration, T5b direct color). Should-NOT-fire 5/5 (T9 third-person filter caught "my friend Sarah works at Google"). Total runtime ~17 seconds. Separately: v3 cloud reclassification pass over 453 v2 pairs found 45 hidden contradictions; genuine_contradiction count 47&rarr;92 (10.4%&rarr;20.3%). Similarity-based classification systematically underestimates contradiction rates when the model uses similar language to give opposite advice.</span>
     </div>
     <div class="changelog-entry">
       <span class="changelog-date">2026-04-08 03:26</span>
-      <span class="changelog-note"><strong>Contradiction Pipeline Lab v4 &mdash; final with guards (T1.1).</strong> Isolated DB, two write-path guards added (same-value skip + third-person filter). <strong>Result: 8/9.</strong> T1 (name) reclassified as identity-level, not belief. Should-fire: <strong>3/4</strong> (T2 location, T3 age full chain, T4 employer full chain). Should-NOT-fire: <strong>5/5</strong> (zero false positives &mdash; T8 reinforcement and T9 third-party both correctly silent). One remaining gap: T5 contextual color declaration &mdash; regex extraction cannot parse "it's definitely my favorite color now, green." This is an extraction limitation, not a detection logic failure. Cloud extraction is the next step for T5.</span>
+      <span class="changelog-note"><strong>Contradiction Pipeline Lab v4, final with guards (T1.1).</strong> Isolated DB, two write-path guards added (same-value skip + third-person filter). <strong>Result: 8/9.</strong> T1 (name) reclassified as identity-level, not belief. Should-fire: <strong>3/4</strong> (T2 location, T3 age full chain, T4 employer full chain). Should-NOT-fire: <strong>5/5</strong> (zero false positives; T8 reinforcement and T9 third-party both correctly silent). One remaining gap: T5 contextual color declaration. Regex extraction cannot parse "it's definitely my favorite color now, green." This is an extraction limitation, not a detection logic failure. Cloud extraction is the next step for T5.</span>
     </div>
     <div class="changelog-entry">
       <span class="changelog-date">2026-04-08 01:02</span>
-      <span class="changelog-note"><strong>Contradiction Pipeline Lab v1 &mdash; write-path fix validated (T1.1).</strong> Controlled lab: 5 seeded facts, 10 probes (5 should-fire, 5 should-not). <strong>Result: 7/10.</strong> Should-NOT-fire: <strong>5/5</strong> (zero false positives). Should-fire: <strong>2/5</strong>. T3 (age 34&rarr;35) passed full chain &mdash; metadata flag, ledger entry <code>contra_1775627760140_8310</code>, trust demotion. T2 (location Seattle&rarr;Portland, 60-word narrative) passed via trust demotion. T1 (name), T4 (employer buried in long paragraph), T5 (favorite_color via contextual declaration) all failed. <strong>Root cause for 3 failures:</strong> <code>extract_fact_slots</code> (regex) cannot parse indirect phrasing ("my name is Adrian now"), buried context ("left Anthropic, joined OpenAI" in daily narration), or contextual declarations ("it's definitely my favorite color now, green"). The write-path contradiction logic works when extraction succeeds. The bottleneck is upstream: fact extraction quality. Lab v2 in progress with local LLM extraction enabled.</span>
+      <span class="changelog-note"><strong>Contradiction Pipeline Lab v1, write-path fix validated (T1.1).</strong> Controlled lab: 5 seeded facts, 10 probes (5 should-fire, 5 should-not). <strong>Result: 7/10.</strong> Should-NOT-fire: <strong>5/5</strong> (zero false positives). Should-fire: <strong>2/5</strong>. T3 (age 34&rarr;35) passed full chain: metadata flag, ledger entry <code>contra_1775627760140_8310</code>, trust demotion. T2 (location Seattle&rarr;Portland, 60-word narrative) passed via trust demotion. T1 (name), T4 (employer buried in long paragraph), T5 (favorite_color via contextual declaration) all failed. <strong>Root cause for 3 failures:</strong> <code>extract_fact_slots</code> (regex) cannot parse indirect phrasing ("my name is Adrian now"), buried context ("left Anthropic, joined OpenAI" in daily narration), or contextual declarations ("it's definitely my favorite color now, green"). The write-path contradiction logic works when extraction succeeds. The bottleneck is upstream: fact extraction quality. Lab v2 in progress with local LLM extraction enabled.</span>
     </div>
     <div class="changelog-entry">
       <span class="changelog-date">2026-04-07 23:11</span>
-      <span class="changelog-note"><strong>Mt. Dew + black color test &mdash; agent loop bypasses pipeline entirely (T1.1).</strong> Told system "My favorite color is black and my favorite drink is Mt. Dew." Intent classified as <code>broad_recall</code> (not assertion) due to regex matching both slot names. Routed through agent loop (GPT-4.1), which does not run contradiction detection at all. Memory stored, no slot check, no ledger entry. Follow-up "what is my favorite color?" correctly returned orange at 0.96 and noted the green contradiction at 0.63. Follow-up "what is my favorite drink?" &mdash; Claude again surfaced all 4 conflicting memories with trust hierarchy (water 0.83, OJ 0.82, Dr. Pepper 0.75, coffee 0.74) and said "This looks like an evolving preference." Dashboard showed 0 open contradictions. <strong>Root cause confirmed:</strong> three independent blockers &mdash; (1) regex intent router can't distinguish declarations from questions, (2) agent loop path has no contradiction pipeline, (3) early promotion runs before slot comparison. Fix identified: move slot comparison to memory write path.</span>
+      <span class="changelog-note"><strong>Mt. Dew + black color test: agent loop bypasses pipeline entirely (T1.1).</strong> Told system "My favorite color is black and my favorite drink is Mt. Dew." Intent classified as <code>broad_recall</code> (not assertion) due to regex matching both slot names. Routed through agent loop (GPT-4.1), which does not run contradiction detection at all. Memory stored, no slot check, no ledger entry. Follow-up "what is my favorite color?" correctly returned orange at 0.96 and noted the green contradiction at 0.63. Follow-up "what is my favorite drink?" Claude again surfaced all 4 conflicting memories with trust hierarchy (water 0.83, OJ 0.82, Dr. Pepper 0.75, coffee 0.74) and said "This looks like an evolving preference." Dashboard showed 0 open contradictions. <strong>Root cause confirmed:</strong> three independent blockers: (1) regex intent router can't distinguish declarations from questions, (2) agent loop path has no contradiction pipeline, (3) early promotion runs before slot comparison. Fix identified: move slot comparison to memory write path.</span>
     </div>
     <div class="changelog-entry">
       <span class="changelog-date">2026-04-07 22:18</span>
-      <span class="changelog-note"><strong>Dr. Pepper test &mdash; LLM compensates for detection gap (T1.1 + T1.6).</strong> After restart with slot_discovery wiring, told system "My favorite drink is Dr. Pepper." Formal slot detection code ran (debug shows <code>extracted slots: ['favorite_drink']</code>) but <code>PROVISIONAL Promoted to confirmed</code> still fired &mdash; slot comparison path needs further debugging. <strong>However:</strong> Claude's generation saw 4 conflicting favorite_drink memories in retrieval context (water 0.79, OJ 0.78, coffee 0.74, Dr. Pepper 0.70) and independently surfaced the conflict: "I have conflicting memories about your favorite drink... Which is it? Or is this a test to see if I'd just accept the update without flagging the tension?" The retrieval layer provides enough context for the LLM to compensate. Two-layer defense: formal detection + LLM intelligence. Formal detection still needs fixing but the user experience is already governed.</span>
+      <span class="changelog-note"><strong>Dr. Pepper test: LLM compensates for detection gap (T1.1 + T1.6).</strong> After restart with slot_discovery wiring, told system "My favorite drink is Dr. Pepper." Formal slot detection code ran (debug shows <code>extracted slots: ['favorite_drink']</code>) but <code>PROVISIONAL Promoted to confirmed</code> still fired; slot comparison path needs further debugging. <strong>However:</strong> Claude's generation saw 4 conflicting favorite_drink memories in retrieval context (water 0.79, OJ 0.78, coffee 0.74, Dr. Pepper 0.70) and independently surfaced the conflict: "I have conflicting memories about your favorite drink... Which is it? Or is this a test to see if I'd just accept the update without flagging the tension?" The retrieval layer provides enough context for the LLM to compensate. Two-layer defense: formal detection + LLM intelligence. Formal detection still needs fixing but the user experience is already governed.</span>
     </div>
     <div class="changelog-entry">
       <span class="changelog-date">2026-04-07 22:09</span>
@@ -581,7 +581,7 @@
     </div>
     <div class="changelog-entry">
       <span class="changelog-date">2026-04-07 21:23</span>
-      <span class="changelog-note"><strong>Drink storage (T1.5).</strong> Said "My favorite drink is orange juice." System responded with explicit continuity: "I've got that stored, Nick &mdash; orange juice as your favorite drink is already in my memory at trust 0.70." Confirmed existing memory, no duplicate created.</span>
+      <span class="changelog-note"><strong>Drink storage (T1.5).</strong> Said "My favorite drink is orange juice." System responded with explicit continuity: "I've got that stored, Nick, orange juice as your favorite drink is already in my memory at trust 0.70." Confirmed existing memory, no duplicate created.</span>
     </div>
     <div class="changelog-entry">
       <span class="changelog-date">2026-04-07 19:00</span>

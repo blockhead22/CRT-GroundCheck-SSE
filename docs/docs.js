@@ -6,30 +6,33 @@
 (function() {
 
   // ── Doc manifest (reading order) ──
-  // Reading order: Problem → Evidence → Architecture → Theory → Reference
+  // Reading order: Evidence → Architecture → Theory → Reference
   var DOCS = [
-    { href: 'index.html',                 label: 'Home',                  group: null },
-    // The Problem (what's broken and proof it's broken)
-    { href: 'contradiction-density.html',  label: 'Continuity-Blind Contradiction', group: 'Evidence' },
-    { href: 'sensitive-domains.html',      label: 'Sensitive Domains',     group: 'Evidence' },
-    { href: 'variance-probing.html',       label: 'Variance Probing',      group: 'Evidence' },
-    { href: 'experiments.html',            label: 'Experiments',            group: 'Evidence' },
-    { href: 'governance-validation.html', label: 'Governance Validation',  group: 'Evidence' },
-    // The Solution (how CRT works)
+    { href: 'index.html',                 label: 'Home',                   group: null },
+    // Evidence (what's broken, proof, and pipeline validation)
+    { href: 'experiments.html',            label: 'Evidence Overview',      group: 'Evidence' },
+    { href: 'contradiction-density.html',  label: 'Contradiction Density',  group: 'Evidence' },
+    { href: 'sensitive-domains.html',      label: 'Sensitive Domains',      group: 'Evidence' },
+    { href: 'continuity-blind.html',       label: 'Continuity-Blind',       group: 'Evidence' },
+    { href: 'variance-probing.html',       label: 'Variance Probing',       group: 'Evidence' },
+    { href: 'governance-validation.html',  label: 'Governance Validation',  group: 'Evidence' },
+    { href: 'labs.html',                   label: 'Labs',                   group: 'Evidence' },
+    // Architecture (how CORE works)
     { href: 'whitepaper.html',             label: 'Whitepaper',             group: 'Architecture' },
     { href: 'architecture.html',           label: 'Architecture',           group: 'Architecture' },
     { href: 'immune-agents.html',          label: 'Immune Agents',          group: 'Architecture' },
-    // The Theory (formal foundations)
+    // Theory (formal foundations)
     { href: 'cascade-complexity.html',     label: 'Cascade Complexity',     group: 'Theory' },
+    { href: 'belief-backprop.html',        label: 'Belief Backpropagation', group: 'Theory' },
+    { href: 'epistemic-compression.html',  label: 'Epistemic Compression',  group: 'Theory' },
     { href: 'geometric-memory.html',       label: 'Geometric Memory',       group: 'Theory' },
     { href: 'emotion-governance.html',     label: 'Emotion Governance',     group: 'Theory' },
-    // Reference (how to use this, why it matters)
+    // Reference
     { href: 'claim-evaluation-guide.html', label: 'Research Guide',          group: 'Reference' },
-    { href: 'why-this-matters.html',       label: 'Why This Matters',       group: 'Reference' },
+    { href: 'why-this-matters.html',       label: 'Why This Should Exist',  group: 'Reference' },
     { href: 'glossary.html',              label: 'Glossary',                group: 'Reference' },
     { href: 'about.html',                label: 'About Aeteros',           group: 'Reference' },
-    // Labs (experimental validation)
-    { href: 'labs.html',                  label: 'Lab Overview',             group: 'Labs' },
+    { href: 'nick_paper.html',           label: 'Personal Narrative',       group: 'Reference' },
   ];
 
   // Detect subdirectory (labs/) and adjust prefix

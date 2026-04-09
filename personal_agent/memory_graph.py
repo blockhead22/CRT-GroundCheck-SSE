@@ -607,6 +607,93 @@ class BeliefDependencyGraph:
             avg_pressure=avg_pressure,
         )
 
+    # --- Backward Propagation (Belief Backpropagation) ---
+
+    def propagate_backward(self, corrected_id: str, loss: float,
+                           damping_factor: float = 0.9,
+                           max_depth: int = 50) -> CascadeResult:
+        """BFS backward cascade: gradient flows from corrected node to supporters.
+
+        Mirrors propagate_cascade() but traverses in_edges (predecessors).
+        Only follows SUPPORTS / DERIVED_FROM / RELATED_TO edges backward.
+
+        Args:
+            corrected_id: Node where the error was detected.
+            loss: Epistemic loss (initial gradient magnitude).
+            damping_factor: Decay per hop (same role as lipschitz_constant).
+            max_depth: Safety limit.
+
+        Returns:
+            CascadeResult with affected upstream nodes and gradient impacts.
+        """
+        from collections import deque
+
+        affected = {corrected_id: loss}
+        depth_map = {corrected_id: 0}
+        width_per_level: Dict[int, int] = {0: 1}
+        queue = deque([(corrected_id, loss, 0)])
+        total_impact = loss
+        max_depth_reached = 0
+        incoming_pressure: Dict[str, List[float]] = {}
+
+        skip_edge_types = {EdgeType.CONTRADICTS.value, "CONTRADICTS"}
+
+        while queue:
+            node, gradient, depth = queue.popleft()
+            if depth >= max_depth:
+                continue
+
+            for pred, _, edata in self.graph.in_edges(node, data=True):
+                if pred == corrected_id:
+                    continue
+
+                edge_type = edata.get("edge_type", "SUPPORTS")
+                if edge_type in skip_edge_types:
+                    continue
+
+                w = edata.get("weight", 0.5)
+                propagated = w * damping_factor * gradient
+
+                if propagated <= self.cascade_threshold:
+                    continue
+
+                if pred not in incoming_pressure:
+                    incoming_pressure[pred] = []
+                incoming_pressure[pred].append(propagated)
+
+                # MAX aggregation
+                if pred in affected and propagated <= affected[pred]:
+                    continue
+
+                affected[pred] = propagated
+                new_depth = depth + 1
+                depth_map[pred] = new_depth
+                width_per_level[new_depth] = width_per_level.get(new_depth, 0) + 1
+                max_depth_reached = max(max_depth_reached, new_depth)
+                total_impact += propagated
+                queue.append((pred, propagated, new_depth))
+
+        max_width = max(width_per_level.values()) if width_per_level else 0
+        pressure_sums = {n: sum(ps) for n, ps in incoming_pressure.items()}
+        pressure_vals = list(pressure_sums.values())
+
+        return CascadeResult(
+            source=corrected_id,
+            affected_nodes=set(affected.keys()),
+            impacts=affected,
+            depth=max_depth_reached,
+            width=max_width,
+            total_nodes=len(affected),
+            total_impact=total_impact,
+            converged=(damping_factor < 1),
+            depth_map=depth_map,
+            width_per_level=dict(width_per_level),
+            blocked_by_firewall=set(),
+            incoming_pressure=pressure_sums,
+            max_pressure=max(pressure_vals) if pressure_vals else 0.0,
+            avg_pressure=(sum(pressure_vals) / len(pressure_vals)) if pressure_vals else 0.0,
+        )
+
     # --- Reachability (Proposition 5.3) ---
 
     def effective_reachable_set(self, source: str,

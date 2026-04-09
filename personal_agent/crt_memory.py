@@ -2261,20 +2261,97 @@ class CRTMemorySystem:
                         "[WRITE_PATH_CONTRADICTION] Ledger write failed (non-fatal): %s", _wpc_err,
                     )
 
-        # SPRINT 1: After storing, if correction was detected, decay contradicted memories.
-        # Narrative notes are non-authoritative — they cannot trigger contradiction decay.
+        # SPRINT 1 + Backprop Phase 1: After storing correction, decay contradicted
+        # memories. Tries belief backpropagation through BDG first; falls back to
+        # flat 0.4x demotion if no BDG edges exist for the node.
         if is_correction and memory.authority != "provisional" and kind != "narrative_note":
             contradicting = self._find_contradicting_memories(text)
 
             for old_mem in contradicting:
-                # Narrative notes must never be decayed by other memories either.
                 if getattr(old_mem, "kind", "observation") == "narrative_note":
                     continue
-                # Significantly reduce trust of contradicted memory
+
                 old_trust = old_mem.trust
-                new_trust = old_trust * 0.4
-                self._update_memory_trust(old_mem.memory_id, new_trust)
-                # Increment contradiction_count for compression volatility tracking
+                _backprop_applied = False
+
+                # --- Try belief backpropagation first ---
+                try:
+                    from papers.belief_backpropagation.backprop_engine import (
+                        EpistemicLoss, CorrectionEvent, compute_backward_gradients,
+                        DomainVolatility,
+                    )
+                    from personal_agent.memory_graph import get_live_bdg
+
+                    bdg = get_live_bdg()
+                    if bdg and bdg.graph.has_node(old_mem.memory_id):
+                        # Compute loss
+                        _slot = ""
+                        try:
+                            ctx = getattr(old_mem, "context_json", None)
+                            if isinstance(ctx, str):
+                                import json as _json_bp
+                                ctx = _json_bp.loads(ctx)
+                            _slot = (ctx or {}).get("detected_slot", "general")
+                        except Exception:
+                            _slot = "general"
+
+                        event = CorrectionEvent(
+                            corrected_node_id=old_mem.memory_id,
+                            trust_at_assertion=old_trust,
+                            times_corrected=getattr(old_mem, "contradiction_count", 0),
+                            correction_source="user",
+                            time_since_assertion=max(0, time.time() - getattr(old_mem, "timestamp", time.time())),
+                            domain=_slot,
+                        )
+                        loss = EpistemicLoss().compute(event)
+
+                        # Compute gradients
+                        lr = {old_mem.memory_id: 0.15}  # base learning rate
+                        result_bp = compute_backward_gradients(
+                            graph=bdg.graph,
+                            corrected_node=old_mem.memory_id,
+                            loss=loss,
+                            learning_rates=lr,
+                            damping_factor=0.9,
+                        )
+
+                        # Apply trust adjustments
+                        for node_id, delta in result_bp.trust_adjustments.items():
+                            try:
+                                _node_mem = self._get_memory_by_id(node_id)
+                                if _node_mem:
+                                    _nt = max(0.05, _node_mem.trust + delta)
+                                    self._update_memory_trust(node_id, _nt)
+                                    logger.info(
+                                        "[BACKPROP] %s: trust %.3f -> %.3f (delta=%.3f, loss=%.3f)",
+                                        node_id[:20], _node_mem.trust, _nt, delta, loss,
+                                    )
+                            except Exception:
+                                pass
+
+                        # Also demote the corrected node itself
+                        new_trust = max(0.05, old_trust - loss * 0.15)
+                        self._update_memory_trust(old_mem.memory_id, new_trust)
+                        _backprop_applied = True
+                        logger.info(
+                            "[BACKPROP] Corrected node %s: trust %.3f -> %.3f "
+                            "(loss=%.3f, upstream=%d affected)",
+                            old_mem.memory_id[:20], old_trust, new_trust,
+                            loss, len(result_bp.affected_nodes),
+                        )
+                except Exception as _bp_err:
+                    logger.debug("[BACKPROP] Skipped (falling back to flat demotion): %s", _bp_err)
+
+                # --- Fallback: flat 0.4x demotion ---
+                if not _backprop_applied:
+                    new_trust = old_trust * 0.4
+                    self._update_memory_trust(old_mem.memory_id, new_trust)
+                    logger.info(
+                        "[TRUST_DECAY] Flat demotion for %s: trust %.2f -> %.2f",
+                        old_mem.text[:60], old_trust, new_trust,
+                    )
+
+                # Increment contradiction_count
                 try:
                     c = self._get_connection()
                     c.execute(
@@ -2290,7 +2367,34 @@ class CRTMemorySystem:
                     self._widen_sigma(old_mem.memory_id)
                 except Exception:
                     pass
-                logger.info(f"[TRUST_DECAY] Reduced trust for contradicted memory: {old_mem.text[:60]} (trust: {old_trust:.2f} -> {new_trust:.2f})")
+
+        # Write-path slot contradiction demotion:
+        # When a slot contradiction is detected (e.g., new "I do not work at studio"
+        # contradicts old "I work at studio"), demote the OLD memory's trust even if
+        # this isn't flagged as a correction. The slot comparison already identified
+        # the conflict — enforce it.
+        if _write_path_contradictions and not is_correction:
+            for _wpc in _write_path_contradictions:
+                _old_mid = _wpc.get("old_memory_id")
+                _old_trust = _wpc.get("old_trust", 0.5)
+                if _old_mid and _old_trust > 0.15:
+                    _new_trust = _old_trust * 0.4
+                    self._update_memory_trust(_old_mid, _new_trust)
+                    try:
+                        c = self._get_connection()
+                        c.execute(
+                            "UPDATE memories SET contradiction_count = COALESCE(contradiction_count, 0) + 1 WHERE memory_id = ?",
+                            (_old_mid,),
+                        )
+                        c.commit()
+                        c.close()
+                    except Exception:
+                        pass
+                    logger.info(
+                        "[SLOT_DEMOTION] Demoted contradicted memory via write-path slot: "
+                        "%s (trust %.2f -> %.2f, slot=%s)",
+                        _old_mid[:20], _old_trust, _new_trust, _wpc.get("slot", "?"),
+                    )
 
         # B: Model disagreement detection — when model_output writes slot values that
         # conflict with existing confirmed user_facts, log a disagreement event.

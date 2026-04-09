@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Belief Backpropagation: Error-Driven Trust Evolution | Aeteros Research</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']], tags: 'ams' },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  /* ===== TABLES ===== */
+  .table-wrap { overflow-x: auto; margin: 20px 0; }
+  .table-wrap table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+  .table-wrap th { text-align: left; font-weight: 600; color: var(--text-dim); font-size: 0.75em; letter-spacing: 1px; text-transform: uppercase; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .table-wrap td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-secondary); }
+  tbody tr:hover td { background: rgba(129,140,248,0.03); }
+  .table-caption { font-size: 0.78em; color: var(--text-faint); font-style: italic; margin-top: 8px; text-align: center; }
+
+  /* ===== RESULT CARDS ===== */
+  .result-card {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin: 20px 0;
+  }
+  .result-card h3 { font-size: 1em; margin-bottom: 6px; }
+  .result-card .result-meta { font-family: var(--mono); font-size: 0.72em; color: var(--text-faint); margin-bottom: 12px; }
+  .result-card p { color: var(--text-secondary); font-size: 0.9em; line-height: 1.7; }
+
+  .score-badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 1.1em;
+    padding: 2px 10px;
+    border-radius: 6px;
+    margin-right: 8px;
+  }
+  .score-green { background: rgba(52,211,153,0.15); color: #34d399; }
+  .score-amber { background: rgba(251,191,36,0.15); color: #fbbf24; }
+
+  /* ===== PRINCIPLE CARDS ===== */
+  .principle-grid { display: grid; gap: 16px; margin: 24px 0; }
+  .principle {
+    background: rgba(255,255,255,0.02); border-left: 3px solid rgba(255,255,255,0.08);
+    padding: 24px 28px; border-radius: 0 10px 10px 0;
+  }
+  .principle .p-num { display: block; color: var(--text-faint); font-size: 0.65em; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+  .principle .p-text { display: block; color: var(--text-primary); font-size: 1.05em; margin-top: 0; font-weight: 600; }
+  .principle .p-sub { display: block; color: var(--text-secondary); font-size: 0.86em; margin-top: 10px; line-height: 1.7; }
+  .principle-backward { border-left-color: #c084fc; }
+  .principle-prune { border-left-color: #f472b6; }
+  .principle-volatility { border-left-color: #fbbf24; }
+  .principle-self { border-left-color: #34d399; }
+
+  /* ===== LAW CARD ===== */
+  .law-card {
+    background: linear-gradient(135deg, rgba(129,140,248,0.08), rgba(192,132,252,0.06));
+    border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 32px; margin: 40px 0;
+    text-align: center;
+  }
+  .law-card .law-number { font-size: 0.7em; color: #818cf8; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+  .law-card .law-text { font-size: 1.4em; color: var(--text-primary); font-weight: 700; letter-spacing: -0.5px; }
+  .law-card .law-sub { font-size: 0.88em; color: var(--text-secondary); margin-top: 12px; max-width: 620px; margin-left: auto; margin-right: auto; }
+
+  /* ===== PROOF BLOCKS ===== */
+  .proof-block {
+    background: rgba(255,255,255,0.015); border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 10px; padding: 20px 24px; margin: 16px 0; font-size: 0.88em;
+  }
+  .proof-block .proof-label { color: var(--text-faint); font-size: 0.72em; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; display: block; }
+
+  /* ===== IMPL BLOCK ===== */
+  .impl-block {
+    background: rgba(52,211,153,0.04); border-left: 3px solid rgba(52,211,153,0.3);
+    border-radius: 0 8px 8px 0; padding: 14px 20px; margin: 16px 0; font-size: 0.84em;
+  }
+  .impl-block .impl-label { color: #34d399; font-size: 0.68em; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; display: block; }
+
+  /* ===== PIPELINE STACK ===== */
+  .pipeline-stack { max-width: 620px; margin: 24px auto; display: flex; flex-direction: column; gap: 0; }
+  .pipeline-layer {
+    display: flex; align-items: stretch;
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-bottom: none; transition: background 0.3s;
+  }
+  .pipeline-layer:first-child { border-radius: 10px 10px 0 0; }
+  .pipeline-layer:last-child { border-bottom: 1px solid rgba(255,255,255,0.06); border-radius: 0 0 10px 10px; }
+  .pipeline-layer:hover { background: rgba(255,255,255,0.03); }
+  .pipeline-layer-accent { width: 4px; flex-shrink: 0; }
+  .pipeline-layer:nth-child(1) .pipeline-layer-accent { background: #fb7185; }
+  .pipeline-layer:nth-child(2) .pipeline-layer-accent { background: #c084fc; }
+  .pipeline-layer:nth-child(3) .pipeline-layer-accent { background: #818cf8; }
+  .pipeline-layer:nth-child(4) .pipeline-layer-accent { background: #34d399; }
+  .pipeline-layer:nth-child(5) .pipeline-layer-accent { background: #fbbf24; }
+  .pipeline-layer-content { flex: 1; padding: 14px 20px; }
+  .pipeline-layer-name { color: var(--text-primary); font-weight: 600; font-size: 0.9em; margin-bottom: 3px; }
+  .pipeline-layer-desc { color: var(--text-secondary); font-size: 0.8em; line-height: 1.5; }
+  .pipeline-layer-annotation {
+    display: flex; align-items: center; padding: 0 16px;
+    font-size: 0.7em; color: var(--text-faint); font-style: italic; white-space: nowrap;
+    border-left: 1px solid rgba(255,255,255,0.04); min-width: 160px;
+  }
+
+  /* ===== CODE BLOCK ===== */
+  pre {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 8px; padding: 20px; margin: 20px 0; overflow-x: auto;
+    font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.82em;
+    color: var(--text-secondary); line-height: 1.6;
+  }
+
+  .remark {
+    background: rgba(129,140,248,0.04); border: 1px solid rgba(129,140,248,0.1);
+    border-radius: 8px; padding: 14px 18px; margin: 16px 0; font-size: 0.86em;
+    color: var(--text-secondary);
+  }
+
+  .novelty-badge {
+    display: inline-block; font-family: var(--mono); font-size: 0.7em; font-weight: 600;
+    letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border-radius: 4px;
+  }
+  .novelty-high { background: rgba(251,113,133,0.15); color: #fb7185; }
+  .novelty-very { background: rgba(192,132,252,0.15); color: #c084fc; }
+
+  /* MathJax sizing */
+  .MathJax { font-size: 1em !important; }
+
+  @media (max-width: 700px) {
+    .pipeline-layer { flex-direction: column; }
+    .pipeline-layer-accent { width: 100%; height: 3px; }
+    .pipeline-layer-annotation { border-left: none; border-top: 1px solid rgba(255,255,255,0.04); padding: 10px 20px; min-width: auto; }
+  }
+</style>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<div class="page-layout">
+
+<!-- ===== HERO ===== -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">Research Paper &middot; Belief Backpropagation</div>
+    <h1>Belief Backpropagation:<br><span class="grad">Error-Driven Trust Evolution</span><br>in Epistemic Memory Systems</h1>
+    <p class="sub">When the output is wrong, which beliefs caused it? Backward error propagation through the Belief Dependency Graph.</p>
+    <p class="byline">Nick Block &bull; Aeteros Research &bull; April 2026</p>
+    <div class="finding-box">
+      <p>We introduce <strong>belief backpropagation</strong> &mdash; a framework where contradiction resolution generates an error signal that flows backward through the Belief Dependency Graph (BDG), adjusting trust scores on every belief that contributed to the incorrect output. The mechanism is damped influence propagation on a weighted directed graph (the directional analogy to neural backprop, not the calculus). Three behaviors follow: <strong>self-pruning</strong> of persistently wrong beliefs, <strong>domain-specific volatility measurement</strong>, and <strong>reflexive self-model calibration</strong>. All six validation experiments pass (30/30). No direct precedent identified in literature searches to date.</p>
+    </div>
+
+    <!-- Interactive BDG Visualizer -->
+    <div class="hero-viz" style="margin-top:24px;">
+      <div class="hero-viz-ctrl">
+        <button id="bpCorrect" style="background:rgba(251,113,133,0.2);color:#fb7185;border:1px solid rgba(251,113,133,0.3);border-radius:6px;padding:4px 12px;font-family:var(--mono);font-size:0.75em;cursor:pointer;">Correct wrong job claim</button>
+        <button id="bpWobble" style="background:rgba(129,140,248,0.2);color:#818cf8;border:1px solid rgba(129,140,248,0.3);border-radius:6px;padding:4px 12px;font-family:var(--mono);font-size:0.75em;cursor:pointer;">Wobble: health query</button>
+        <button id="bpReset" style="background:rgba(255,255,255,0.05);color:var(--text-faint);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:4px 12px;font-family:var(--mono);font-size:0.75em;cursor:pointer;">Reset</button>
+      </div>
+      <svg id="bpSvg" viewBox="0 0 640 300" style="width:100%;max-width:640px;height:auto;display:block;margin:0 auto;">
+        <defs>
+          <filter id="bpGlow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <filter id="bpGlowBlue"><feGaussianBlur stdDeviation="4" result="b"/><feFlood flood-color="#818cf8" flood-opacity="0.5" result="c"/><feComposite in="c" in2="b" operator="in" result="d"/><feMerge><feMergeNode in="d"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+      </svg>
+      <div class="hero-viz-stats" style="display:flex;gap:24px;justify-content:center;font-family:var(--mono);font-size:0.75em;color:var(--text-faint);margin-top:8px;">
+        <div>Mode: <span id="bpMode">idle</span></div>
+        <div>Affected: <span id="bpAffected">0</span></div>
+        <div>Max gradient: <span id="bpMaxGrad">-</span></div>
+      </div>
+    </div>
+
+    <script>
+    (function(){
+      var svg = document.getElementById('bpSvg');
+      var ns = 'http://www.w3.org/2000/svg';
+
+      // Node definitions: the design studio problem + health chain + self-model
+      var nodes = [
+        {id:'retrieval',  l:'retrieval\nboost',    t:0.70, x:80,  y:50,  col:'#818cf8', domain:'work'},
+        {id:'slot',       l:'slot\nclassifier',    t:0.75, x:220, y:40,  col:'#818cf8', domain:'work'},
+        {id:'old_convo',  l:'old convo',           t:0.50, x:80,  y:150, col:'#818cf8', domain:'work'},
+        {id:'wrong_job',  l:'wrong\njob claim',    t:0.45, x:220, y:140, col:'#fb7185', domain:'work'},
+        {id:'self_work',  l:'self-model\nwork',       t:0.80, x:370, y:50, col:'#34d399', domain:'self'},
+        {id:'self_ident', l:'self-model\nidentity',   t:0.80, x:530, y:50, col:'#34d399', domain:'self'},
+        {id:'health',     l:'health\ncondition',   t:0.85, x:370, y:150, col:'#c084fc', domain:'health'},
+        {id:'schedule',   l:'schedule\nimpact',    t:0.70, x:370, y:240, col:'#c084fc', domain:'health'},
+        {id:'left_job',   l:'left\njob',           t:0.70, x:220, y:240, col:'#fbbf24', domain:'work'},
+        {id:'freelance',  l:'freelance',           t:0.65, x:530, y:240, col:'#fbbf24', domain:'work'},
+        {id:'username',   l:'user\nname',          t:0.95, x:530, y:150, col:'#34d399', domain:'identity'},
+      ];
+
+      // Edges: source -> target (for forward/wobble), target <- source (for backprop)
+      var edges = [
+        {s:'retrieval', t:'wrong_job', w:0.8, type:'supports'},
+        {s:'slot',      t:'wrong_job', w:0.7, type:'supports'},
+        {s:'old_convo', t:'wrong_job', w:0.6, type:'supports'},
+        {s:'self_work', t:'wrong_job', w:0.7, type:'supports'},
+        {s:'health',    t:'schedule',  w:0.8, type:'supports'},
+        {s:'schedule',  t:'left_job',  w:0.7, type:'supports'},
+        {s:'left_job',  t:'freelance', w:0.8, type:'supports'},
+        {s:'self_ident',t:'username',  w:0.7, type:'supports'},
+        {s:'self_work', t:'left_job',  w:0.5, type:'supports'},
+      ];
+
+      var nodeMap = {};
+      var circEls = {};
+      var labelEls = {};
+      var trustEls = {};
+      var edgeEls = [];
+      var origTrust = {};
+
+      // Draw edges
+      edges.forEach(function(e){
+        var sn = nodes.find(function(n){return n.id===e.s;});
+        var tn = nodes.find(function(n){return n.id===e.t;});
+        var line = document.createElementNS(ns,'line');
+        line.setAttribute('x1',sn.x); line.setAttribute('y1',sn.y);
+        line.setAttribute('x2',tn.x); line.setAttribute('y2',tn.y);
+        line.setAttribute('stroke','rgba(255,255,255,0.08)');
+        line.setAttribute('stroke-width','1.5');
+        line.dataset.source = e.s; line.dataset.target = e.t;
+        svg.appendChild(line);
+        edgeEls.push({el:line, edge:e});
+      });
+
+      // Draw nodes
+      nodes.forEach(function(n){
+        nodeMap[n.id] = n;
+        origTrust[n.id] = n.t;
+
+        var g = document.createElementNS(ns,'g');
+
+        var c = document.createElementNS(ns,'circle');
+        c.setAttribute('cx',n.x); c.setAttribute('cy',n.y);
+        c.setAttribute('r', 16);
+        c.setAttribute('fill',n.col); c.setAttribute('opacity','0.25');
+        c.setAttribute('stroke',n.col); c.setAttribute('stroke-width','1.5');
+        g.appendChild(c);
+        circEls[n.id] = c;
+
+        // Label
+        var lines = n.l.split('\n');
+        lines.forEach(function(txt,i){
+          var t = document.createElementNS(ns,'text');
+          t.setAttribute('x',n.x); t.setAttribute('y',n.y + 30 + i*13);
+          t.setAttribute('text-anchor','middle');
+          t.setAttribute('font-size','9'); t.setAttribute('fill','rgba(255,255,255,0.5)');
+          t.setAttribute('font-family','var(--mono)');
+          t.textContent = txt;
+          g.appendChild(t);
+        });
+
+        // Trust badge
+        var tb = document.createElementNS(ns,'text');
+        tb.setAttribute('x',n.x); tb.setAttribute('y',n.y+4);
+        tb.setAttribute('text-anchor','middle');
+        tb.setAttribute('font-size','10'); tb.setAttribute('font-weight','700');
+        tb.setAttribute('fill',n.col);
+        tb.textContent = n.t.toFixed(2);
+        g.appendChild(tb);
+        trustEls[n.id] = tb;
+
+        svg.appendChild(g);
+      });
+
+      function resetAll(){
+        nodes.forEach(function(n){ n.t = origTrust[n.id]; });
+        Object.keys(circEls).forEach(function(id){
+          circEls[id].setAttribute('opacity','0.25');
+          circEls[id].removeAttribute('filter');
+          trustEls[id].textContent = origTrust[id].toFixed(2);
+        });
+        edgeEls.forEach(function(ee){ ee.el.setAttribute('stroke','rgba(255,255,255,0.08)'); ee.el.setAttribute('stroke-width','1.5'); });
+        document.getElementById('bpMode').textContent = 'idle';
+        document.getElementById('bpAffected').textContent = '0';
+        document.getElementById('bpMaxGrad').textContent = '-';
+      }
+
+      function animateBackprop(){
+        resetAll();
+        document.getElementById('bpMode').textContent = 'backward pass';
+        var corrected = 'wrong_job';
+        var damping = 0.85;
+        var loss = 1.2;
+
+        // Light up corrected node
+        circEls[corrected].setAttribute('opacity','0.9');
+        circEls[corrected].setAttribute('filter','url(#bpGlow)');
+
+        // BFS backward
+        var queue = [{id:corrected, grad:loss, depth:0}];
+        var visited = {}; visited[corrected] = loss;
+        var steps = [{ids:[corrected], grads:{}}]; steps[0].grads[corrected] = loss;
+
+        while(queue.length){
+          var cur = queue.shift();
+          edges.forEach(function(e){
+            if(e.t === cur.id && !visited[e.s]){
+              var g = cur.grad * e.w * damping;
+              if(g > 0.05){
+                visited[e.s] = g;
+                queue.push({id:e.s, grad:g, depth:cur.depth+1});
+                if(!steps[cur.depth+1]) steps[cur.depth+1] = {ids:[], grads:{}};
+                steps[cur.depth+1].ids.push(e.s);
+                steps[cur.depth+1].grads[e.s] = g;
+              }
+            }
+          });
+        }
+
+        var maxGrad = 0;
+        var affected = 0;
+
+        // Animate step by step
+        steps.forEach(function(step, i){
+          setTimeout(function(){
+            step.ids.forEach(function(id){
+              var g = step.grads[id];
+              if(g > maxGrad) maxGrad = g;
+              affected++;
+
+              // Glow node
+              var intensity = Math.min(0.9, 0.3 + g * 0.5);
+              circEls[id].setAttribute('opacity', intensity.toString());
+              circEls[id].setAttribute('filter','url(#bpGlow)');
+
+              // Update trust
+              var newT = Math.max(0, nodeMap[id].t - 0.1 * g);
+              nodeMap[id].t = newT;
+              trustEls[id].textContent = newT.toFixed(2);
+
+              // Light edge
+              edgeEls.forEach(function(ee){
+                if(ee.edge.t === id || ee.edge.s === id){
+                  if(visited[ee.edge.s] && visited[ee.edge.t]){
+                    ee.el.setAttribute('stroke','rgba(251,113,133,0.5)');
+                    ee.el.setAttribute('stroke-width','2.5');
+                  }
+                }
+              });
+
+              document.getElementById('bpAffected').textContent = affected.toString();
+              document.getElementById('bpMaxGrad').textContent = maxGrad.toFixed(3);
+            });
+          }, i * 600);
+        });
+      }
+
+      function animateWobble(){
+        resetAll();
+        document.getElementById('bpMode').textContent = 'query resonance';
+        var source = 'health';
+        var damping = 0.7;
+
+        circEls[source].setAttribute('opacity','0.9');
+        circEls[source].setAttribute('filter','url(#bpGlowBlue)');
+
+        // BFS forward through edges
+        var queue = [{id:source, res:0.85, depth:0}];
+        var visited = {}; visited[source] = 0.85;
+        var steps = [{ids:[source], res:{}}]; steps[0].res[source] = 0.85;
+
+        while(queue.length){
+          var cur = queue.shift();
+          edges.forEach(function(e){
+            if(e.s === cur.id && !visited[e.t]){
+              var r = cur.res * e.w * damping;
+              if(r > 0.03){
+                visited[e.t] = r;
+                queue.push({id:e.t, res:r, depth:cur.depth+1});
+                if(!steps[cur.depth+1]) steps[cur.depth+1] = {ids:[], res:{}};
+                steps[cur.depth+1].ids.push(e.t);
+                steps[cur.depth+1].res[e.t] = r;
+              }
+            }
+          });
+        }
+
+        var affected = 0;
+        var maxRes = 0;
+
+        steps.forEach(function(step, i){
+          setTimeout(function(){
+            step.ids.forEach(function(id){
+              var r = step.res[id];
+              if(r > maxRes) maxRes = r;
+              affected++;
+
+              var intensity = Math.min(0.9, 0.2 + r * 0.8);
+              circEls[id].setAttribute('opacity', intensity.toString());
+              circEls[id].setAttribute('filter','url(#bpGlowBlue)');
+
+              edgeEls.forEach(function(ee){
+                if((ee.edge.s === id || ee.edge.t === id) && visited[ee.edge.s] && visited[ee.edge.t]){
+                  ee.el.setAttribute('stroke','rgba(129,140,248,0.5)');
+                  ee.el.setAttribute('stroke-width','2.5');
+                }
+              });
+
+              document.getElementById('bpAffected').textContent = affected.toString();
+              document.getElementById('bpMaxGrad').textContent = maxRes.toFixed(3);
+            });
+          }, i * 600);
+        });
+      }
+
+      document.getElementById('bpCorrect').addEventListener('click', animateBackprop);
+      document.getElementById('bpWobble').addEventListener('click', animateWobble);
+      document.getElementById('bpReset').addEventListener('click', resetAll);
+    })();
+    </script>
+
+    <div class="stat-row" style="margin-top:24px;">
+      <div class="stat-cell">
+        <div class="stat-value" style="color:#34d399;">30/30</div>
+        <div class="stat-label">Lab Checks Passed</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-value" style="color:#c084fc;">0.13</div>
+        <div class="stat-label">Contraction Ratio</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-value" style="color:#fbbf24;">2.25x</div>
+        <div class="stat-label">Volatile Domain Impact</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-value" style="color:#fb7185;">6</div>
+        <div class="stat-label">Labs Validated</div>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-cue">&#9660; SCROLL</div>
+</div>
+
+<nav class="sidebar" id="docSidebar">
+  <div class="sidebar-title">Belief Backprop</div>
+  <a href="#problem">1 Forward-Only</a>
+  <a href="#mechanism">2 The Mechanism</a>
+  <a href="#emergent">3 Emergent Behaviors</a>
+  <a href="#results">4 Experimental Results</a>
+  <a href="#novelty">5 Novelty Assessment</a>
+  <a href="#formalization">6 Formalization</a>
+  <a href="#wobble">7 Query Resonance</a>
+  <a href="#connection">8 CRT Connection</a>
+  <div class="sidebar-spacer"></div>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme">
+    <span class="theme-toggle-icon" id="themeIcon">&#9790;</span>
+    <span id="themeLabel">Light</span>
+  </button>
+  <div class="sidebar-footer">2026 Aeteros Research</div>
+</nav>
+
+<main class="main">
+
+<!-- ============================================================ -->
+<!-- SECTION 1: THE PROBLEM                                         -->
+<!-- ============================================================ -->
+<section id="problem">
+  <span class="section-number">Section 1</span>
+  <h2>The Problem: Forward-Only Cascades</h2>
+  <div class="accent-line"></div>
+
+  <p>The CORE Belief Dependency Graph supports <strong>forward cascades</strong>: when a belief changes, downstream dependents update via damped propagation (Theorem 4.3, <a href="cascade-complexity.html">Cascade Complexity</a>). This answers: <em>if I change my mind about X, what else should change?</em></p>
+
+  <p>But it cannot answer the inverse: <strong>my output was wrong &mdash; what beliefs caused that, and how should they adjust?</strong></p>
+
+  <h3>The Design Studio Problem</h3>
+
+  <p>Concrete production failure:</p>
+
+  <ol>
+    <li>Memory stored: &ldquo;Nick works at a design studio downtown&rdquo; (trust = 0.73)</li>
+    <li>User corrects: &ldquo;I do not work at a design studio&rdquo; (trust = 0.70)</li>
+    <li>System stores the correction but the original memory persists at 0.507</li>
+    <li>Next query: system retrieves the wrong memory and repeats the error</li>
+    <li>User corrects again. Original memory barely moves.</li>
+  </ol>
+
+  <p>The forward cascade updates dependents of the corrected belief, but it never asks: <em>why did the system trust this memory in the first place? What retrieval score boosted it? What upstream beliefs supported it? What slot comparison failed to catch it?</em></p>
+
+  <div class="remark"><strong>Those upstream causes remain untouched.</strong> The error is absorbed at the leaf, never propagated to the root.</div>
+
+  <h3>The Analogy to Neural Networks</h3>
+
+  <div class="pipeline-stack">
+    <div class="pipeline-layer">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">Loss Function</div>
+        <div class="pipeline-layer-desc">Compare output to ground truth</div>
+      </div>
+      <div class="pipeline-layer-annotation">User correction, NLI contradiction, drift</div>
+    </div>
+    <div class="pipeline-layer">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">Backward Pass</div>
+        <div class="pipeline-layer-desc">Error gradient flows through every contributing weight</div>
+      </div>
+      <div class="pipeline-layer-annotation" style="color:#fb7185;font-weight:600;">Did not exist in CORE</div>
+    </div>
+    <div class="pipeline-layer">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">Weight Adjustment</div>
+        <div class="pipeline-layer-desc">Each weight adjusted proportionally to its contribution</div>
+      </div>
+      <div class="pipeline-layer-annotation">Trust scores, retrieval weights, slot accuracy</div>
+    </div>
+    <div class="pipeline-layer">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">Forward Pass</div>
+        <div class="pipeline-layer-desc">Input flows through layers to produce output</div>
+      </div>
+      <div class="pipeline-layer-annotation">Query &rarr; retrieval &rarr; generation</div>
+    </div>
+    <div class="pipeline-layer">
+      <div class="pipeline-layer-accent"></div>
+      <div class="pipeline-layer-content">
+        <div class="pipeline-layer-name">Convergence</div>
+        <div class="pipeline-layer-desc">System becomes more accurate over time</div>
+      </div>
+      <div class="pipeline-layer-annotation">Contraction ratio: 0.13</div>
+    </div>
+  </div>
+
+  <p>The weights (trust scores, retrieval rankings, slot classifications) that produced the wrong output were never adjusted by the error signal. The system detected its mistakes but didn't learn from them structurally. <strong>Belief backpropagation is that missing backward pass.</strong></p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 2: THE MECHANISM                                       -->
+<!-- ============================================================ -->
+<section id="mechanism">
+  <span class="section-number">Section 2</span>
+  <h2>The Mechanism</h2>
+  <div class="accent-line"></div>
+
+  <h3>The Epistemic Loss Function</h3>
+
+  <p>When a contradiction resolves &mdash; through user correction, accumulated evidence, or explicit resolution &mdash; the resolution event generates an <strong>epistemic loss</strong>:</p>
+
+  <div class="proof-block">
+    <span class="proof-label">Definition: Epistemic Loss</span>
+    \[ L(\text{assertion}, \text{correction}) = \tau_{\text{wrong}} \cdot \left(1 + \ln(1 + n_{\text{corrections}})\right) \cdot w_{\text{source}} \cdot f_{\text{time}} \]
+    <p>where \(\tau_{\text{wrong}}\) is trust at assertion time, \(n_{\text{corrections}}\) is the number of prior corrections, \(w_{\text{source}}\) is source authority (user=1.0, system=0.6, inference=0.3), and \(f_{\text{time}} \in [1, 2]\) scales with error persistence duration.</p>
+  </div>
+
+  <p>Higher loss when: the system was very confident AND the user corrected it AND this has happened before. This is the epistemic equivalent of a high-confidence misclassification.</p>
+
+  <h3>Gradient Computation Per Edge</h3>
+
+  <p>For each dependency edge \(A \to B\) in the BDG, the backward gradient is:</p>
+
+  <div class="proof-block">
+    <span class="proof-label">Definition: Backward Gradient</span>
+    \[ \nabla(A) = L(B) \cdot w_{A \to B} \cdot \alpha^{d(A)} \]
+    <p>where \(L(B)\) is the loss at the corrected node, \(w_{A \to B}\) is the edge weight, and \(\alpha^{d(A)}\) is the damping factor at depth \(d\). The trust adjustment:</p>
+    \[ \tau'(A) = \tau(A) - \eta_{\text{domain}} \cdot \nabla(A) \]
+    <p>where \(\eta_{\text{domain}}\) is the per-domain adjustment rate, a volatility-modulated scaling factor earned from correction history (not an optimized parameter).</p>
+  </div>
+
+  <h3>What Gets Adjusted</h3>
+
+  <div class="principle-grid">
+    <div class="principle principle-backward">
+      <div class="p-num">Layer 1</div>
+      <div class="p-text">Trust Scores</div>
+      <div class="p-sub">Upstream beliefs that supported the wrong belief have their trust reduced proportionally to their contribution.</div>
+    </div>
+    <div class="principle principle-backward">
+      <div class="p-num">Layer 2</div>
+      <div class="p-text">Retrieval Scoring</div>
+      <div class="p-sub">If a memory was retrieved because of a high kind_boost or alias_boost that shouldn't have applied, those parameters adjust.</div>
+    </div>
+    <div class="principle principle-backward">
+      <div class="p-num">Layer 3</div>
+      <div class="p-text">Slot Classification</div>
+      <div class="p-sub">If the slot classifier tagged &ldquo;employer&rdquo; when it shouldn't have, its accuracy metric tracks the error.</div>
+    </div>
+    <div class="principle principle-backward">
+      <div class="p-num">Layer 4</div>
+      <div class="p-text">Self-Model Confidence</div>
+      <div class="p-sub">If the system was confident about a domain where it keeps being wrong, the self-model adjusts.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 3: EMERGENT BEHAVIORS                                  -->
+<!-- ============================================================ -->
+<section id="emergent">
+  <span class="section-number">Section 3</span>
+  <h2>Three Emergent Behaviors</h2>
+  <div class="accent-line"></div>
+
+  <div class="principle-grid">
+    <div class="principle principle-prune">
+      <div class="p-num">Consequent Behavior 1</div>
+      <div class="p-text">Self-Pruning via Cumulative Erosion</div>
+      <div class="p-sub">A belief that repeatedly appears on the wrong side of resolved contradictions accumulates negative adjustment from multiple backward passes until trust crosses the deprecation threshold. The key advantage over flat 0.4x demotion: the backward pass also erodes <em>upstream</em> trust, so the retrieval and classification systems that boosted the wrong memory also adjust. Flat demotion is context-blind and depth-blind. Backward influence propagation is proportional, depth-aware, and cumulative.</div>
+    </div>
+    <div class="principle principle-volatility">
+      <div class="p-num">Emergent Behavior 2</div>
+      <div class="p-text">Domain Volatility</div>
+      <div class="p-sub">If a node or cluster keeps getting corrected, that fluctuation has a measurable frequency. High-volatility domains get lower assertion confidence, more frequent verification, higher adjustment rates (corrections take effect faster), and self-model awareness. The system doesn't need a rule saying &ldquo;be careful about employment.&rdquo; It measures that employment has been corrected 3 times in 48 hours while name has been stable for weeks. The caution emerges from the data.</div>
+    </div>
+    <div class="principle principle-self">
+      <div class="p-num">Emergent Behavior 3</div>
+      <div class="p-text">Reflexive Self-Model</div>
+      <div class="p-sub">The system's beliefs about itself &mdash; &ldquo;I am reliable on employment facts,&rdquo; &ldquo;my confidence tracks my accuracy&rdquo; &mdash; are nodes in the BDG like any other belief. When the backward pass adjusts beliefs, it adjusts self-model beliefs too. The system becomes cautious about employment specifically because employment has been wrong, not because a rule told it to hedge. This is personality as a consequence of epistemic history.</div>
+    </div>
+  </div>
+
+  <div class="law-card">
+    <div class="law-number">Core Principle</div>
+    <div class="law-text">Detection without enforcement is observation without governance.<br>Backpropagation is the enforcement.</div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 4: EXPERIMENTAL RESULTS                                -->
+<!-- ============================================================ -->
+<section id="results">
+  <span class="section-number">Section 4</span>
+  <h2>Experimental Results</h2>
+  <div class="accent-line"></div>
+
+  <p>All experiments run standalone against constructed BDGs. No backend, no LLM calls. Pure graph math. <strong>30/30 checks passed.</strong></p>
+
+  <div class="result-card" style="border-color: rgba(192,132,252,0.3);">
+    <h3>Lab 1: Backward Pass Mechanics</h3>
+    <div class="result-meta">5 nodes, 5 edges &middot; Graph: A &rarr; B &rarr; C &rarr; D (corrected), E &rarr; C</div>
+    <p><span class="score-badge score-green">8/8</span> Gradient decays with depth: C(1.04) &gt; B(0.66) &gt; E(0.58) &gt; A(0.47). CONTRADICTS edges correctly skipped. Damping matches Theorem 4.3.</p>
+  </div>
+
+  <div class="result-card" style="border-color: rgba(251,113,133,0.3);">
+    <h3>Lab 2: Design Studio Problem</h3>
+    <div class="result-meta">Production bug reproduction &middot; 4 nodes with 3 upstream supporters</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Method</th><th>Corrections</th><th>Upstream Erosion</th></tr></thead>
+        <tbody>
+          <tr><td>Flat demotion (0.4x)</td><td>2</td><td><strong>0.0</strong> (nothing learned)</td></tr>
+          <tr><td>Backprop</td><td>2</td><td><strong>1.173</strong> (all three upstream adjusted)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><span class="score-badge score-green">5/5</span> Both kill the leaf in 2 corrections, but backprop also erodes upstream: retrieval_boost 0.70&rarr;0.25, slot_classifier 0.75&rarr;0.36, old_conversation 0.50&rarr;0.17. The retrieval system that boosted the wrong memory <strong>learned</strong>.</p>
+  </div>
+
+  <div class="result-card" style="border-color: rgba(244,114,182,0.3);">
+    <h3>Lab 3: Self-Pruning Emergence</h3>
+    <div class="result-meta">20 beliefs (5 wrong, 15 correct) &middot; 3 correction cycles</div>
+    <p><span class="score-badge score-green">3/3</span> All 5 wrong beliefs self-pruned (0.70 &rarr; 0.30 &rarr; 0.09). Unconnected correct beliefs: <strong>0.0 delta</strong>. Connected supporters received expected gradient (they vouched for wrong beliefs; their credibility should adjust).</p>
+  </div>
+
+  <div class="result-card" style="border-color: rgba(251,191,36,0.3);">
+    <h3>Lab 4: Domain Volatility</h3>
+    <div class="result-meta">3 domains: name (0 corrections), employer (3/10), color (5/8)</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Domain</th><th>Volatility</th><th>Learning Rate</th><th>Impact Ratio</th></tr></thead>
+        <tbody>
+          <tr><td>name</td><td>0.000</td><td>0.100</td><td>1.0x (baseline)</td></tr>
+          <tr><td>employer</td><td>0.237</td><td>0.195</td><td>1.58x</td></tr>
+          <tr><td>color</td><td>0.312</td><td>0.225</td><td><strong>2.25x</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><span class="score-badge score-green">5/5</span> Volatility ranks correctly. Same correction produces 2.25x larger trust impact in volatile domains. The system hedges where it's been wrong, not where a rule says to hedge.</p>
+  </div>
+
+  <div class="result-card" style="border-color: rgba(129,140,248,0.3);">
+    <h3>Lab 5: Bidirectional Convergence</h3>
+    <div class="result-meta">30 nodes, 50 edges &middot; 15 corrections applied</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Mean delta (first 5 rounds)</td><td>0.034</td></tr>
+          <tr><td>Mean delta (last 5 rounds)</td><td>0.007</td></tr>
+          <tr><td>Contraction ratio (late/early)</td><td><strong>0.13</strong></td></tr>
+          <tr><td>Order independence (reversed)</td><td>0.014 mean difference</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><span class="score-badge score-green">3/3</span> System converges. Same corrections in reversed order produce nearly identical final state. Contraction ratio 0.13 &mdash; well below 1.0.</p>
+  </div>
+
+  <div class="result-card" style="border-color: rgba(52,211,153,0.3);">
+    <h3>Lab 6: Reflexive Self-Model</h3>
+    <div class="result-meta">3 self-model beliefs + 3 world beliefs &middot; 3 employment corrections</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Self-Model Belief</th><th>Before</th><th>After</th><th>Delta</th></tr></thead>
+        <tbody>
+          <tr><td>&ldquo;I am reliable on employment facts&rdquo;</td><td>0.800</td><td>0.347</td><td><strong>&minus;0.453</strong></td></tr>
+          <tr><td>&ldquo;My confidence tracks my accuracy&rdquo;</td><td>0.700</td><td>0.376</td><td><strong>&minus;0.324</strong></td></tr>
+          <tr><td>&ldquo;I am reliable on identity facts&rdquo;</td><td>0.800</td><td>0.800</td><td><strong>0.000</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><span class="score-badge score-green">6/6</span> Employment errors erode employment self-confidence but leave identity self-confidence intact. Name and color world-beliefs completely untouched. Self-model adjustments are data-driven: correction history determines per-domain confidence, not manual configuration.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 5: NOVELTY ASSESSMENT                                  -->
+<!-- ============================================================ -->
+<section id="novelty">
+  <span class="section-number">Section 5</span>
+  <h2>Novelty Assessment</h2>
+  <div class="accent-line"></div>
+
+  <p>Deep literature search (April 2026) across AGM belief revision, opinion dynamics, trust networks, active inference, and GNN attribution.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Area</th><th>Prior Art</th><th>Novelty</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Backward error propagation through belief graphs</td>
+          <td>Forward trust propagation exists (Nikooroo 2025). Trust-influenced revision exists (AGM tradition). Backward error flow through dependency edges does not.</td>
+          <td><span class="novelty-badge novelty-high">High</span></td>
+        </tr>
+        <tr>
+          <td>Self-model as nodes in same graph</td>
+          <td>Self-knowledge studied as latent activations (RepBelief 2025) or external metrics (AISAI). Never as first-class nodes in the same trust graph.</td>
+          <td><span class="novelty-badge novelty-very">Very High</span></td>
+        </tr>
+        <tr>
+          <td>AGM + graph-based error backprop</td>
+          <td>Two 2025 papers bridge AGM and neural backprop, but in the opposite direction (neural nets reinterpreted as AGM).</td>
+          <td><span class="novelty-badge novelty-high">High</span></td>
+        </tr>
+        <tr>
+          <td>Domain volatility from correction history</td>
+          <td>Domain-specific calibration validated empirically (Le 2026, prediction markets). But not earned from belief-graph correction history.</td>
+          <td><span class="novelty-badge novelty-high">High</span></td>
+        </tr>
+        <tr>
+          <td>Connection to free energy minimization</td>
+          <td>Active inference well-developed but never applied to discrete belief graphs with correction-driven updates.</td>
+          <td><span class="novelty-badge novelty-high">High</span></td>
+        </tr>
+        <tr>
+          <td>Direct precedent (epistemic loss + gradient through belief edges)</td>
+          <td>No results found.</td>
+          <td><span class="novelty-badge novelty-very">Very High</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 6: FORMALIZATION                                       -->
+<!-- ============================================================ -->
+<section id="formalization">
+  <span class="section-number">Section 6</span>
+  <h2>Formalization Targets</h2>
+  <div class="accent-line"></div>
+
+  <div class="principle-grid">
+    <div class="principle" style="border-left-color:#818cf8;">
+      <div class="p-num">Theorem Target 1</div>
+      <div class="p-text">Bidirectional Convergence</div>
+      <div class="p-sub">Empirically stable: contraction ratio 0.13, order-independent within 0.014 (Lab 5). A formal proof via Banach contraction is the target but has obstacles: MAX aggregation is non-linear, domain-specific adjustment rates are non-uniform, and clamping to [0,1] is a projection. Strongest path: constrain to uniform LR and SUM aggregation, prove contraction, then extend.</div>
+    </div>
+    <div class="principle" style="border-left-color:#c084fc;">
+      <div class="p-num">Theorem Target 2</div>
+      <div class="p-text">Self-Referential Belief Nodes</div>
+      <div class="p-sub">Self-model beliefs converging under the same dynamics as world-beliefs. Highest novelty &mdash; no direct precedent identified in literature searches to date. Current limitation: self-model edges are manually configured. Full claim requires automatic edge discovery from correction patterns and wobble co-activation history.</div>
+    </div>
+    <div class="principle" style="border-left-color:#34d399;">
+      <div class="p-num">Theorem Target 3</div>
+      <div class="p-text">AGM Unification</div>
+      <div class="p-sub">Recent work proved backprop can be viewed as AGM revision (ML &rarr; epistemics). CORE proves the inverse: AGM revision can use backpropagation (epistemics &rarr; ML). Combined result: they're the same thing.</div>
+    </div>
+    <div class="principle" style="border-left-color:#fbbf24;">
+      <div class="p-num">Theorem Target 4</div>
+      <div class="p-text">Discrete Active Inference</div>
+      <div class="p-sub">CORE's backward pass is structurally equivalent to the belief-update step in variational free energy minimization. Domain volatility maps to epistemic value. If provable, CORE inherits the entire Friston theoretical apparatus.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 7: QUERY RESONANCE (WOBBLE)                            -->
+<!-- ============================================================ -->
+<section id="wobble">
+  <span class="section-number">Section 7</span>
+  <h2>Query Resonance: The Forward Complement</h2>
+  <div class="accent-line"></div>
+
+  <p>Backpropagation flows backward from corrections. <strong>Query resonance</strong> (wobble) flows forward from queries. Together they form a complete bidirectional system: the query activates the graph, the response is generated, and if corrected, the error flows back through the same edges.</p>
+
+  <h3>The Mechanism</h3>
+
+  <p>A query vector \(q\) lands in the BDG. Every node receives direct activation from cosine similarity. Then resonance propagates through SUPPORTS edges:</p>
+
+  <div class="proof-block">
+    <span class="proof-label">Definition: Query Resonance</span>
+    <p>Direct: \(r_0(v) = \cos(q, \mu_v)\)</p>
+    <p>Forward propagation: \(r_{k+1}(v) = \max\left(r_k(v), \max_{u \to v} r_k(u) \cdot w_{uv} \cdot \alpha\right)\)</p>
+    <p>Backward wobble: \(r_{\text{back}}(u) = r(v) \cdot w_{uv} \cdot \alpha \cdot \beta\) where \(\beta &lt; 1\)</p>
+    <p>Total resonance: \(R(v) = r_0(v) + r_{\text{fwd}}(v) + r_{\text{back}}(v)\)</p>
+  </div>
+
+  <p>Convergence is guaranteed by the same damping bound from Theorem 4.3. The resonance pattern is topology-dependent: it survives 3-bit compression because the edges carry the signal, not the vectors.</p>
+
+  <h3>What Wobble Finds That Cosine Misses</h3>
+
+  <p>Tested on 867 production memories. A health query (&ldquo;How is your cGVHD?&rdquo;) directly resonates with health memories (cosine). But the wobble also surfaces:</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Memory</th><th>Direct Cosine</th><th>Edge-Propagated</th><th>Path</th></tr></thead>
+      <tbody>
+        <tr><td>&ldquo;I left Walmart a year ago&rdquo;</td><td>~0</td><td>0.161</td><td>cGVHD &rarr; overnight hard &rarr; left Walmart</td></tr>
+        <tr><td>&ldquo;I'm self-employed&rdquo;</td><td>~0</td><td>0.090</td><td>&hellip; &rarr; left Walmart &rarr; self-employed</td></tr>
+        <tr><td>&ldquo;Orange is leukemia awareness&rdquo;</td><td>~0</td><td>0.069</td><td>leukemia &rarr; awareness &rarr; orange</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>A health query pulls forward work facts and preference facts because the BDG knows they're causally connected. The system doesn't need separate retrieval calls per domain. One query, one resonance pattern, full cross-domain context.</p>
+
+  <h3>Three Resonance Patterns</h3>
+
+  <div class="principle-grid">
+    <div class="principle" style="border-left-color:#34d399;">
+      <div class="p-num">Pattern 1: Tight</div>
+      <div class="p-text">Confident Single-Basin</div>
+      <div class="p-sub">Identity query: 4 resonant nodes, low spread. The system knows this domain well. Assert directly.</div>
+    </div>
+    <div class="principle" style="border-left-color:#fbbf24;">
+      <div class="p-num">Pattern 2: Scattered</div>
+      <div class="p-text">Multi-Domain</div>
+      <div class="p-sub">Cross-domain query: 8 resonant nodes across basins, high spread. The system needs to synthesize from multiple domains. Pull the full constellation.</div>
+    </div>
+    <div class="principle" style="border-left-color:#fb7185;">
+      <div class="p-num">Pattern 3: Silent</div>
+      <div class="p-text">Unknown Territory</div>
+      <div class="p-sub">Random query: 0 nodes above threshold. The system genuinely doesn't know. Refuse rather than hallucinate.</div>
+    </div>
+  </div>
+
+  <h3>Origin: Semantic String Engine (2025)</h3>
+
+  <p>This mechanism was first attempted as the <strong>Semantic String Engine (SSE)</strong> in Nick Block's original Mirus/Holden architecture (2025). The SSE treated memories as connected by &ldquo;strings&rdquo; &mdash; not text strings, but semantic threads linking distant beliefs into meaning. A <code>QuantumMemoryBreather</code> class implemented probabilistic retrieval with three states: confident collapse (random from high pool), weak breathing (best guess, flagged), and refusal (silence below 0.5). The architecture was sound but limited by 10D PCA vectors and flat cosine similarity. The BDG provides the graph structure the SSE was reaching for.</p>
+
+  <div class="remark"><strong>Lab results:</strong> 10/10 wobble checks passed. Wobble surfaces memories cosine misses (Lab 13). Pattern classification distinguishes confident/scattered/unknown (Lab 14). Health query brings forward work and preference facts through edges (Lab 15). Wobble survives 3-bit compression &mdash; 7/8 top memories preserved, 89% edge-propagated facts maintained (Lab 16). Production validation on 867 memories confirms cross-domain strings exist (Labs 17&ndash;20).</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 8: CRT CONNECTION                                      -->
+<!-- ============================================================ -->
+<section id="connection">
+  <span class="section-number">Section 8</span>
+  <h2>Connection to CORE Theory</h2>
+  <div class="accent-line"></div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>CORE Concept</th><th>Backprop Connection</th></tr></thead>
+      <tbody>
+        <tr><td>Forward cascade (Theorems 4.1&ndash;4.2)</td><td>Belief changes propagate to dependents</td></tr>
+        <tr><td>Damping convergence (Theorem 4.3)</td><td>Bounds both forward and backward passes</td></tr>
+        <tr><td>Contradiction-as-signal</td><td>Contradictions are the loss function</td></tr>
+        <tr><td>Belief/speech gap</td><td>Measurable through self-model nodes</td></tr>
+        <tr><td>Three regimes (fracture/gradient/fog)</td><td>Model volatility is orthogonal to memory volatility</td></tr>
+        <tr><td>Earned trust</td><td>Trust is adjusted by error signal, not by rule</td></tr>
+        <tr><td>Held contradiction</td><td>Some contradictions have low loss &mdash; the gradient is small, so they persist naturally</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="law-card">
+    <div class="law-number">The Thesis</div>
+    <div class="law-text">The model doesn't know what's true. The persistence layer does.</div>
+    <div class="law-sub">The model is the mouth. The memory is the self. The backward pass is how the self revises from its mistakes.</div>
+  </div>
+
+  <div class="impl-block">
+    <span class="impl-label">Implementation</span>
+    <p>Engine: <code>papers/belief_backpropagation/backprop_engine.py</code><br>
+    BDG backward pass: <code>personal_agent/memory_graph.py:propagate_backward()</code><br>
+    Experiments: <code>papers/belief_backpropagation/experiments.py</code><br>
+    Theory paper: <code>papers/belief_backpropagation/belief_backprop.md</code></p>
+  </div>
+</section>
+
+</main>
+</div>
+<script src="docs.js"></script>
+</body>
+</html>

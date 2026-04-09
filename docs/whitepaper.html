@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CRT / Aether / SSE — Whitepaper</title>
+<title>CORE / Aether - Whitepaper</title>
 <style>
 /* ===== LAYOUT ===== */
 /* ===== STAT CARDS ===== */
@@ -163,10 +163,10 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
 <div class="hero">
   <div class="hero-inner">
     <div class="hero-badge">Whitepaper</div>
-    <h1><span class="grad">CRT</span> / Aether</h1>
+    <h1><span class="grad">CORE</span> / Aether</h1>
     <p class="sub">Contradiction-preserving, trust-evolving governance for AI memory and response verification</p>
     <div class="finding-box">
-      <p>A system where memory is not just storage, but <strong>governed semantic history</strong>. Where contradiction is signal, not failure. Where the model speaks, but does not decide what is believed.</p>
+      <p>A system where memory is auditable and trust-weighted, not just storage. Where contradiction is signal, not failure. Where the model generates, but does not decide what is believed.</p>
     </div>
   </div>
   <div class="scroll-cue">&#9660; SCROLL</div>
@@ -223,15 +223,15 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
   <div class="accent-line"></div>
   <h2>Overview</h2>
 
-  <p>CRT is a contradiction-preserving, trust-evolving framework for governed AI memory and response verification. Rather than treating contradiction as something to overwrite or hide, CRT treats contradiction as a first-class signal. Memories are not flattened into a single mutable truth state. They are tracked, weighted, resolved, and preserved through an append-only logic that favors auditability over convenience.</p>
+  <p>CORE is a contradiction-preserving, trust-evolving framework for governed AI memory and response verification. Rather than treating contradiction as something to overwrite or hide, CORE treats contradiction as a first-class signal. Memories are not flattened into a single mutable truth state. They are tracked, weighted, resolved, and preserved through an append-only logic that favors auditability over convenience.</p>
 
-  <p>The system sits closer to a <strong>control plane</strong> than a generator. It is designed to wrap language models, not replace them. The model speaks, but CRT governs what is trusted, what is contradictory, what remains unresolved, and what should be shown back to a user as stable, unstable, or under review.</p>
+  <p>The system sits closer to a <strong>control plane</strong> than a generator. It is designed to wrap language models, not replace them. The model speaks, but CORE governs what is trusted, what is contradictory, what remains unresolved, and what should be shown back to a user as stable, unstable, or under review.</p>
 
   <p>Over time, the stack has matured into several aligned layers:</p>
 
   <div class="method-grid">
     <div class="method-card">
-      <h4>CRT <span class="badge badge-proven">proven</span></h4>
+      <h4>CORE <span class="badge badge-proven">proven</span></h4>
       <p>The core engine. Manages memory states, disagreement persistence, drift detection, and resolution tracking.</p>
     </div>
     <div class="method-card">
@@ -239,12 +239,12 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
       <p>Local grounding checks fast enough for live usage. Trust-weighted verification against memory and retrieval.</p>
     </div>
     <div class="method-card">
-      <h4>SSE <span class="badge badge-proven">proven</span></h4>
+      <h4>Semantic String Engine <span class="badge badge-proven">proven</span></h4>
       <p>Extracts semantic units, claims, and provenance from model output. The bridge between raw text and governable memory objects.</p>
     </div>
     <div class="method-card">
       <h4>Aether <span class="badge badge-active">active</span></h4>
-      <p>The layer users encounter. CRT governs memory integrity underneath. Aether is the face; CRT is the spine.</p>
+      <p>The layer users encounter. CORE governs memory integrity underneath. Aether is the face; CORE is the spine.</p>
     </div>
   </div>
 </section>
@@ -254,7 +254,7 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
   <div class="accent-line"></div>
   <h2>Core Thesis</h2>
 
-  <p>Most AI systems treat memory as overwriteable cache, contradiction as bug, and verification as optional cleanup. CRT rejects that framing.</p>
+  <p>Most AI systems treat memory as overwriteable cache, contradiction as bug, and verification as optional cleanup. CORE rejects that framing.</p>
 
   <div class="principle-grid">
     <div class="principle principle-contra">
@@ -288,7 +288,7 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
 <!-- ===== WHY THIS MATTERS ===== -->
 <section>
   <div class="quote-block">
-    <p>Every AI system that flattens contradiction is silently destroying information. CRT preserves the tension so the system can learn from it rather than pretend it never existed.</p>
+    <p>Every AI system that flattens contradiction is silently destroying information. CORE preserves the tension so the system can learn from it rather than pretend it never existed.</p>
     <div class="attr">-- Why this matters</div>
   </div>
 </section>
@@ -310,7 +310,7 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
     <li>Systems that appear coherent only because conflict has been flattened</li>
   </ul>
 
-  <p>CRT is designed as a response to those gaps. Not by making models smarter, but by wrapping them in a governance layer that tracks what is known, what is contested, and what remains unresolved.</p>
+  <p>CORE is designed as a response to those gaps. Not by making models smarter, but by wrapping them in a governance layer that tracks what is known, what is contested, and what remains unresolved.</p>
 </section>
 
 <!-- ===== PULL QUOTE ===== -->
@@ -330,10 +330,10 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
   <p>Contradiction is not automatically failure. Sometimes it marks ambiguity. Sometimes it marks growth. Sometimes it marks a real unresolved conflict in evidence. The system preserves that distinction rather than collapsing it.</p>
 
   <h3>Belief vs speech separation</h3>
-  <p>A model may generate language that is plausible, hedged, or mistaken. That does not mean the system should adopt it as belief. The model is the mouth. The persistence layer is the self.</p>
+  <p>A model may generate language that is plausible, hedged, or mistaken. That does not mean the system should adopt it as belief. The generation layer produces language; the persistence layer holds beliefs.</p>
 
   <h3>Memory-first governance</h3>
-  <p>The system does not let fluent generation overwrite memory-backed structure without accountability. Memory is governed semantic history, not a cache to be silently updated.</p>
+  <p>The system does not let fluent generation overwrite memory-backed structure without accountability. Memory is auditable, trust-weighted history &mdash; not a cache to be silently updated.</p>
 
   <h3>Trust as continuous state</h3>
   <p>Trust exists on a range, not as yes/no. Negative evidence reduces trust faster than positive evidence increases it. Trust participates in retrieval scoring and verification decisions.</p>
@@ -347,20 +347,20 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
   <div class="accent-line"></div>
   <h2>System Components</h2>
 
-  <h3>CRT <span class="badge badge-proven">implemented</span></h3>
+  <h3>CORE <span class="badge badge-proven">implemented</span></h3>
   <p>The trust and contradiction layer. Manages memory states, disagreement persistence, drift detection, and resolution tracking. Key features: append-only contradiction ledger, asymmetric trust update logic, lifecycle state machine for contradictions, and memory records that retain competing claims.</p>
 
   <h3>GroundCheck <span class="badge badge-proven">implemented</span></h3>
   <p>The fast verification layer. Performs local grounding checks quickly enough to be used in practical loops. Trust-weighted grounding, semantic contradiction checks against memory, and lightweight retrieval and claim verification.</p>
 
-  <h3>SSE <span class="badge badge-proven">implemented</span></h3>
-  <p>Semantic String Engine. Extracts semantic units, claims, and provenance-bearing structures from model output. The bridge between raw text and governable memory objects. Supports contradiction detection and structured response analysis for later governance.</p>
+  <h3>Semantic String Engine <span class="badge badge-proven">implemented</span></h3>
+  <p>Semantic String Engine. Originally designed (2025) as the mechanism for connecting distant beliefs through semantic threads ("strings" as in connections, not text). The SSE envisioned memories linked by cross-domain relationships where a query would "wobble" the graph and connected facts would resonate. In its current form, SSE operates as <a href="belief-backprop.html#wobble">query resonance</a> on the Belief Dependency Graph: activation propagates through typed edges, surfacing facts that cosine retrieval alone misses. A health query surfaces work context and preference context because the graph knows they are causally connected. Also supports contradiction detection, structured response analysis, and post-generation fidelity checking via the <strong>fidelity mirror</strong> (breathing loop).</p>
 
   <h3>Aether <span class="badge badge-active">active</span></h3>
-  <p>The assistant-facing identity and interaction surface. Users encounter Aether; CRT governs memory integrity underneath. The face of the system, not the spine.</p>
+  <p>The assistant-facing identity and interaction surface. Users encounter Aether; CORE governs memory integrity underneath. The face of the system, not the spine.</p>
 
   <h3><span class="badge badge-concept">early project</span></h3>
-  <p>An earlier AI project exploring memory continuity and reflective identity. Many of the architectural instincts from Lumi informed what became CRT. The ideas survived; the implementation is being rebuilt from evidence.</p>
+  <p>An earlier AI project exploring memory continuity and reflective identity. Many of the architectural instincts from Lumi informed what became CORE. The ideas survived; the implementation is being rebuilt from evidence.</p>
 </section>
 
 <!-- ===== 06. CONTRADICTION LEDGER ===== -->
@@ -387,7 +387,7 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
   <div class="accent-line"></div>
   <h2>Trust Model</h2>
 
-  <p>CRT uses a continuous trust model rather than binary truth flags. Memories gain or lose trust over time depending on confirmation, contradiction, user correction, provenance quality, and resolution outcomes.</p>
+  <p>CORE uses a continuous trust model rather than binary truth flags. Memories gain or lose trust over time depending on confirmation, contradiction, user correction, provenance quality, and resolution outcomes.</p>
 
   <ul>
     <li>Trust exists on a range, not as yes/no</li>
@@ -405,10 +405,10 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
   <div class="accent-line"></div>
   <h2>Grounding and Verification</h2>
 
-  <p>GroundCheck and SSE work together to verify claims against stored evidence and current retrieval. This matters because language models often sound most confident exactly when governance is weakest.</p>
+  <p>GroundCheck and the Semantic String Engine work together to verify claims against stored evidence and current retrieval. This matters because language models often sound most confident exactly when governance is weakest.</p>
 
   <ul>
-    <li>Extract claims from model output via SSE</li>
+    <li>Extract claims from model output via Semantic String Engine</li>
     <li>Retrieve supporting or conflicting evidence from memory</li>
     <li>Run lightweight grounding checks (sub-2ms target)</li>
     <li>Expose pass/fail or confidence behavior in the UI</li>
@@ -520,7 +520,7 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
 <!-- ===== 11. WHY VARIANCE = GOVERNANCE ===== -->
 <section id="governance">
   <div class="accent-line"></div>
-  <h2>Why Variance Matters to CRT</h2>
+  <h2>Why Variance Matters to CORE</h2>
 
   <p>Variance is not only an analysis artifact. It serves as a <strong>governance signal</strong>.</p>
 
@@ -728,7 +728,7 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
     <tr><td>Contradiction ledger</td><td><span class="badge badge-proven">proven</span></td><td>Implemented, append-only, lifecycle state machine</td></tr>
     <tr><td>Trust-evolving memory</td><td><span class="badge badge-proven">proven</span></td><td>Continuous trust, asymmetric update logic</td></tr>
     <tr><td>GroundCheck verification</td><td><span class="badge badge-proven">proven</span></td><td>Sub-2ms local grounding, trust-weighted</td></tr>
-    <tr><td>SSE claim extraction</td><td><span class="badge badge-proven">proven</span></td><td>Semantic unit extraction, provenance mapping</td></tr>
+    <tr><td>Semantic String Engine</td><td><span class="badge badge-proven">proven</span></td><td>Semantic unit extraction, provenance mapping, cross-domain retrieval via query resonance</td></tr>
     <tr><td>Variance probing (3 models)</td><td><span class="badge badge-proven">proven</span></td><td>22,702 responses, 16/16 robustness configs each</td></tr>
     <tr><td>SpeechLeakDetector</td><td><span class="badge badge-proven">built</span></td><td>All unit tests passing, tested on experiment data</td></tr>
     <tr><td>TemplateDetector</td><td><span class="badge badge-proven">built</span></td><td>All unit tests passing, tested on real Qwen3 + Mistral data</td></tr>
@@ -762,8 +762,8 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
 <section>
   <div class="law-card">
     <div class="law-number">Closing</div>
-    <div class="law-text">The model is the mouth. The persistence layer is the self.</div>
-    <div class="law-sub">CRT is the governance that keeps the self honest.</div>
+    <div class="law-text">Generation is replaceable. Governance persists.</div>
+    <div class="law-sub">CORE is the persistence layer that keeps the system honest across model switches, session boundaries, and provider changes.</div>
   </div>
 </section>
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CRT Glossary — Aeteros Research</title>
+<title>CORE Glossary - Aeteros Research</title>
 <script>
 MathJax = {
   tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']], tags: 'ams' },
@@ -153,7 +153,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 <div class="hero">
   <div class="hero-inner">
     <div class="hero-badge">Reference</div>
-    <h1>CRT<br><span class="grad">Glossary</span></h1>
+    <h1>CORE<br><span class="grad">Glossary</span></h1>
     <p class="sub">Every term, where it comes from, what it means, and why it matters</p>
     <p class="byline">Aeteros Research &bull; 2026</p>
   </div>
@@ -200,7 +200,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="toc-section">
       <div class="toc-section-title">1. Core Concepts</div>
       <div class="toc-links">
-        <a href="#crt">CRT</a>
+        <a href="#crt">CORE</a>
         <a href="#belief">Belief</a>
         <a href="#speech">Speech</a>
         <a href="#belief-speech-separation">Belief/Speech Separation</a>
@@ -235,6 +235,13 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
         <a href="#damping">Damping</a>
         <a href="#instability">Instability</a>
         <a href="#firewall">Firewall</a>
+        <a href="#belief-backprop">Belief Backpropagation</a>
+        <a href="#query-resonance">Query Resonance (Wobble)</a>
+        <a href="#semantic-string">Semantic String</a>
+        <a href="#epistemic-loss">Epistemic Loss</a>
+        <a href="#self-pruning">Self-Pruning</a>
+        <a href="#domain-volatility">Domain Volatility</a>
+        <a href="#reflexive-self-model">Reflexive Self-Model</a>
       </div>
     </div>
 
@@ -304,23 +311,23 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="accent-line"></div>
 
   <div class="term-entry" id="crt">
-    <div class="term-name">CRT <span class="badge badge-original">CRT-Original</span></div>
+    <div class="term-name">CORE <span class="badge badge-original">CORE-Original</span></div>
     <div class="term-origin">Contradiction-aware Reconciliation and Trust. The full framework name.</div>
     <div class="term-def">
-      A memory governance framework for AI systems built on three design laws: belief/speech separation, earned contradiction resolution, and emergent structure over hardcoded logic. CRT treats memory as the source of identity and LLM generation as downstream expression. Every response is grounded in trust-scored memories rather than raw model output.
+      A memory governance framework for AI systems built on three design laws: belief/speech separation, earned contradiction resolution, and emergent structure over hardcoded logic. CORE treats memory as the source of identity and LLM generation as downstream expression. Every response is grounded in trust-scored memories rather than raw model output.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      A user says "I moved to Austin." CRT doesn't just store the text &mdash; it revises the trust on "lives in Portland," triggers a cascade to dependent memories (commute, weather preferences, local restaurants), and marks the old location as superseded rather than deleted.
+      A user says "I moved to Austin." CORE doesn't just store the text. It revises the trust on "lives in Portland," triggers a cascade to dependent memories (commute, weather preferences, local restaurants), and marks the old location as superseded rather than deleted.
     </div>
     <div class="term-related">Related: <a href="#belief">Belief</a>, <a href="#speech">Speech</a>, <a href="#trust">Trust</a>, <a href="#cascade">Cascade</a></div>
   </div>
 
   <div class="term-entry" id="belief">
-    <div class="term-name">Belief <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-specific meaning, distinct from standard epistemology. Opposite of <a href="#speech">Speech</a>.</div>
+    <div class="term-name">Belief <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-specific meaning, distinct from standard epistemology. Opposite of <a href="#speech">Speech</a>.</div>
     <div class="term-def">
-      A memory-grounded response backed by trust evidence from the memory store. When CRT classifies a response as "belief," it means the system found supporting memories with sufficient trust scores. Belief is the system's earned knowledge &mdash; what it can justify, not just what it can generate.
+      A memory-grounded response backed by trust evidence from the memory store. When CORE classifies a response as "belief," it means the system found supporting memories with sufficient trust scores. Belief is the system's earned knowledge: what it can justify, not just what it can generate.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -330,23 +337,23 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="speech">
-    <div class="term-name">Speech <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-specific meaning. The opposite of <a href="#belief">Belief</a>.</div>
+    <div class="term-name">Speech <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-specific meaning. The opposite of <a href="#belief">Belief</a>.</div>
     <div class="term-def">
-      A model-generated response without memory support. Speech comes from the LLM's weights &mdash; its training data, not the system's lived experience. Speech is useful (the model knows things the memory store doesn't), but it cannot upgrade itself to belief status. The system must mark speech as provisional and never let it silently overwrite trusted memories.
+      A model-generated response without memory support. Speech comes from the LLM's weights (its training data, not the system's lived experience). Speech is useful (the model knows things the memory store doesn't), but it cannot upgrade itself to belief status. The system must mark speech as provisional and never let it silently overwrite trusted memories.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      User asks "What's the capital of France?" No memory exists for this. The LLM generates "Paris" from its weights. The response is classified as speech (mode S) &mdash; correct, but not memory-backed.
+      User asks "What's the capital of France?" No memory exists for this. The LLM generates "Paris" from its weights. The response is classified as speech (mode S), correct but not memory-backed.
     </div>
     <div class="term-related">Related: <a href="#belief">Belief</a>, <a href="#belief-speech-separation">Belief/Speech Separation</a>, <a href="#law-1">Law 1</a></div>
   </div>
 
   <div class="term-entry" id="belief-speech-separation">
     <div class="term-name">Belief/Speech Separation <span class="badge badge-original">Design Law 1</span></div>
-    <div class="term-origin">CRT Design Law 1. "The mouth should never outweigh the self."</div>
+    <div class="term-origin">CORE Design Law 1. "The mouth should never outweigh the self."</div>
     <div class="term-def">
-      The gap between internal state (belief) and expressed output (speech) must be auditable at all times. LLM generation is a downstream act &mdash; vocal cords, not an epistemic authority. If a fallback model contradicts memory, the conflict is logged and the response is marked degraded, never silently adopted. The system may hold unresolved tension internally without collapsing it into a false confident answer.
+      The gap between internal state (belief) and expressed output (speech) must be auditable at all times. LLM generation is a downstream act, vocal cords rather than an epistemic authority. If a fallback model contradicts memory, the conflict is logged and the response is marked degraded, never silently adopted. The system may hold unresolved tension internally without collapsing it into a false confident answer.
     </div>
     <div class="term-math">
       The <a href="#gap">gap</a> is measured as: <code>gap = |belief_score - speech_score|</code> where belief_score comes from memory retrieval trust and speech_score comes from LLM confidence. Enforced by <a href="#law-5">GapAuditor</a>.
@@ -359,26 +366,26 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="trust">
-    <div class="term-name">Trust <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original. Distinguished from <a href="#confidence">Confidence</a>.</div>
+    <div class="term-name">Trust <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original. Distinguished from <a href="#confidence">Confidence</a>.</div>
     <div class="term-def">
       A 0&ndash;1 score on a memory that evolves over time through evidence. Trust is <em>earned</em>, not assigned. It increases when corroborating evidence arrives, decreases when contradicting evidence appears, and decays under drift. Trust governs whether a memory can influence responses, survive compaction, or participate in cascade propagation. The key distinction: trust changes; confidence is static.
     </div>
     <div class="term-math">
-      Trust evolution follows CRTMath: \(\text{trust}_{t+1} = \text{trust}_t + \eta \cdot (\text{evidence} - \text{trust}_t)\) where \(\eta\) is the learning rate, modulated by source authority and corroboration count.
+      Trust evolution follows CRTMath: \(\text{trust}_{t+1} = \text{trust}_t + \eta \cdot (\text{evidence} - \text{trust}_t)\) where \(\eta\) is the adjustment rate, a scaling factor modulated by source authority and corroboration count (not an optimized parameter).
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      A memory "User likes hiking" starts at trust 0.5. The user mentions hiking three more times over a week. Each mention bumps trust via CRTMath. After a month, trust reaches 0.87 &mdash; now it's a high-confidence belief that survives compaction.
+      A memory "User likes hiking" starts at trust 0.5. The user mentions hiking three more times over a week. Each mention bumps trust via CRTMath. After a month, trust reaches 0.87. Now it's a high-confidence belief that survives compaction.
     </div>
     <div class="term-related">Related: <a href="#confidence">Confidence</a>, <a href="#authority">Authority</a>, <a href="#governance-bridge">Governance Bridge</a></div>
   </div>
 
   <div class="term-entry" id="confidence">
     <div class="term-name">Confidence <span class="badge badge-standard">Standard</span></div>
-    <div class="term-origin">Standard term, redefined in CRT to contrast with <a href="#trust">Trust</a>.</div>
+    <div class="term-origin">Standard term, redefined in CORE to contrast with <a href="#trust">Trust</a>.</div>
     <div class="term-def">
-      The initial certainty assigned to a memory at storage time, typically based on how explicitly the user stated it. Confidence is a snapshot &mdash; it captures the moment of observation but never updates afterward. A user saying "I live in Austin" gets high confidence (explicit statement). The system inferring location from context gets low confidence. Trust starts near confidence but diverges as evidence accumulates.
+      The initial certainty assigned to a memory at storage time, typically based on how explicitly the user stated it. Confidence is a snapshot; it captures the moment of observation but never updates afterward. A user saying "I live in Austin" gets high confidence (explicit statement). The system inferring location from context gets low confidence. Trust starts near confidence but diverges as evidence accumulates.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -388,10 +395,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="memory">
-    <div class="term-name">Memory <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-specific meaning. More than a stored string.</div>
+    <div class="term-name">Memory <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-specific meaning. More than a stored string.</div>
     <div class="term-def">
-      A stored fact, observation, or preference with trust score, embedding vector, authority level, timestamps, and metadata. Memories are the atoms of the belief system &mdash; each one is a node in the <a href="#bdg">BDG</a> and a <a href="#belief-locus">Belief Locus</a> in semantic space. Memories have kinds (observation, preference, fact, correction) and authority levels (locked, confirmed, provisional). They are never silently deleted &mdash; only deprecated, superseded, or compacted.
+      A stored fact, observation, or preference with trust score, embedding vector, authority level, timestamps, and metadata. Memories are the atoms of the belief system, each one a node in the <a href="#bdg">BDG</a> and a <a href="#belief-locus">Belief Locus</a> in semantic space. Memories have kinds (observation, preference, fact, correction) and authority levels (locked, confirmed, provisional). They are never silently deleted; only deprecated, superseded, or compacted.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -411,8 +418,8 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="accent-line"></div>
 
   <div class="term-entry" id="belief-locus">
-    <div class="term-name">Belief Locus <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">Inspired by 3D Gaussian Splatting (Kerbl et al., 2023), adapted for epistemology. Formerly called "Gaussian Splat" in early CRT docs.</div>
+    <div class="term-name">Belief Locus <span class="badge badge-original">CORE-Adapted</span></div>
+    <div class="term-origin">Inspired by 3D Gaussian Splatting (Kerbl et al., 2023), adapted for epistemology. Formerly called "Gaussian Splat" in early CORE docs.</div>
     <div class="term-def">
       A memory modeled as a probability distribution in semantic space rather than a single point. Each locus has a center (where the belief lives), a covariance (the shape and extent of its uncertainty), a confidence (how much it contributes to the world model), and a timestamp. A tight locus represents a settled belief; a wide locus represents an uncertain or contested one. The covariance encodes <em>where</em> the uncertainty lives, not just how much.
     </div>
@@ -428,10 +435,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="locus-overlap">
-    <div class="term-name">Locus Overlap <span class="badge badge-original">CRT-Original</span></div>
+    <div class="term-name">Locus Overlap <span class="badge badge-original">CORE-Original</span></div>
     <div class="term-origin">Uses Bhattacharyya coefficient from statistical distance theory, applied to belief geometry.</div>
     <div class="term-def">
-      A geometric measure of contradiction between two belief loci. Two loci with high spatial overlap but opposing semantic content represent tension &mdash; the system holds conflicting beliefs in the same region of meaning-space. Overlap is continuous (0 to 1), replacing the binary "contradicts / doesn't contradict" classification with a graded signal.
+      A geometric measure of contradiction between two belief loci. Two loci with high spatial overlap but opposing semantic content represent tension: the system holds conflicting beliefs in the same region of meaning-space. Overlap is continuous (0 to 1), replacing the binary "contradicts / doesn't contradict" classification with a graded signal.
     </div>
     <div class="term-math">
       Bhattacharyya coefficient for diagonal loci:
@@ -439,43 +446,43 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      "I love my job" and "My job is killing me" have embeddings close in the "job" region of semantic space. Their loci overlap significantly. NLI confirms semantic tension. The overlap integral quantifies exactly how much contradiction exists &mdash; 0.73 means substantial conflict, not just binary "they contradict."
+      "I love my job" and "My job is killing me" have embeddings close in the "job" region of semantic space. Their loci overlap significantly. NLI confirms semantic tension. The overlap integral quantifies exactly how much contradiction exists. A value of 0.73 means substantial conflict, not just binary "they contradict."
     </div>
     <div class="term-related">Related: <a href="#belief-locus">Belief Locus</a>, <a href="#contradiction">Contradiction</a>, <a href="#held-contradiction">Held Contradiction</a></div>
   </div>
 
   <div class="term-entry" id="locus-contraction">
-    <div class="term-name">Locus Contraction <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original. Geometric interpretation of trust increase.</div>
+    <div class="term-name">Locus Contraction <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original. Geometric interpretation of trust increase.</div>
     <div class="term-def">
-      When new evidence supports a belief, its locus contracts: the covariance tightens, representing increased certainty. Each corroboration narrows the distribution &mdash; the system becomes more precise about what it believes. Contraction is the geometric manifestation of trust growth.
+      When new evidence supports a belief, its locus contracts: the covariance tightens, representing increased certainty. Each corroboration narrows the distribution, and the system becomes more precise about what it believes. Contraction is the geometric manifestation of trust growth.
     </div>
     <div class="term-math">
       Update rule: \(\sigma_i' = \sigma_i \cdot (1 - \eta \cdot \text{evidence\_strength})\) where \(\eta\) is the contraction rate. Bounded below by \(\sigma_{\min} = 10^{-8}\) to prevent degenerate distributions.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      User mentions hiking five times across different conversations. Each mention triggers contraction on the "likes hiking" locus. After five corroborations, the covariance is 40% tighter than at creation &mdash; the system is now very certain about this preference.
+      User mentions hiking five times across different conversations. Each mention triggers contraction on the "likes hiking" locus. After five corroborations, the covariance is 40% tighter than at creation. The system is now very certain about this preference.
     </div>
     <div class="term-related">Related: <a href="#belief-locus">Belief Locus</a>, <a href="#locus-expansion">Locus Expansion</a>, <a href="#trust">Trust</a></div>
   </div>
 
   <div class="term-entry" id="locus-expansion">
-    <div class="term-name">Locus Expansion <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original. Geometric interpretation of trust decrease or challenge.</div>
+    <div class="term-name">Locus Expansion <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original. Geometric interpretation of trust decrease or challenge.</div>
     <div class="term-def">
-      When contradicting evidence arrives or trust decays, the locus expands: the covariance widens, representing increased uncertainty. The system is less sure about what it believes. Expansion is the geometric manifestation of challenge &mdash; the belief hasn't been destroyed, but the system now holds it more loosely.
+      When contradicting evidence arrives or trust decays, the locus expands: the covariance widens, representing increased uncertainty. The system is less sure about what it believes. Expansion is the geometric manifestation of challenge. The belief hasn't been destroyed, but the system now holds it more loosely.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      The system believed "Nick prefers mornings" (tight locus). Then Nick schedules three evening meetings. The locus expands &mdash; the system isn't sure anymore. It hasn't deleted the morning preference, just widened its uncertainty about it.
+      The system believed "Nick prefers mornings" (tight locus). Then Nick schedules three evening meetings. The locus expands; the system isn't sure anymore. It hasn't deleted the morning preference, just widened its uncertainty about it.
     </div>
     <div class="term-related">Related: <a href="#belief-locus">Belief Locus</a>, <a href="#locus-contraction">Locus Contraction</a>, <a href="#contradiction">Contradiction</a></div>
   </div>
 
   <div class="term-entry" id="semantic-space">
     <div class="term-name">Semantic Space <span class="badge badge-standard">Standard</span></div>
-    <div class="term-origin">Standard NLP concept. CRT uses all-MiniLM-L6-v2 (384 dimensions).</div>
+    <div class="term-origin">Standard NLP concept. CORE uses all-MiniLM-L6-v2 (384 dimensions).</div>
     <div class="term-def">
       The embedding vector space where all memories live as <a href="#belief-locus">belief loci</a>. Every text memory is embedded into a 384-dimensional space where cosine similarity approximates semantic similarity. Related memories cluster together; unrelated memories are distant. This space is the stage on which all geometric operations (overlap, contraction, expansion, Fisher-Rao distance) play out.
     </div>
@@ -498,9 +505,9 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="term-entry" id="contradiction">
     <div class="term-name">Contradiction <span class="badge badge-adapted">Adapted</span></div>
-    <div class="term-origin">Adapted from NLI (Natural Language Inference) and Belnap four-valued logic. CRT adds disposition classification.</div>
+    <div class="term-origin">Adapted from NLI (Natural Language Inference) and Belnap four-valued logic. CORE adds disposition classification.</div>
     <div class="term-def">
-      Two memories that conflict &mdash; detected via NLI scoring and semantic similarity. CRT's key innovation: contradictions are not all the same. Each is classified into one of three dispositions: <strong>RESOLVABLE</strong> (one side is wrong or outdated), <strong>HELD</strong> (both sides carry evidence and must be preserved), or <strong>EVOLVING</strong> (the user is changing their mind and neither side has won). A fourth category, <strong>CONTEXTUAL</strong>, captures beliefs that express differently depending on context rather than truly conflicting.
+      Two memories that conflict, detected via NLI scoring and semantic similarity. CORE's key innovation: contradictions are not all the same. Each is classified into one of three dispositions: <strong>RESOLVABLE</strong> (one side is wrong or outdated), <strong>HELD</strong> (both sides carry evidence and must be preserved), or <strong>EVOLVING</strong> (the user is changing their mind and neither side has won). A fourth category, <strong>CONTEXTUAL</strong>, captures beliefs that express differently depending on context rather than truly conflicting.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -510,10 +517,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="held-contradiction">
-    <div class="term-name">Held Contradiction <span class="badge badge-original">CRT-Original / Design Law 2</span></div>
-    <div class="term-origin">CRT-original. Based on Belnap's four-valued logic (TRUE, FALSE, BOTH, NEITHER). No prior AI memory system implements disposition-classified contradictions.</div>
+    <div class="term-name">Held Contradiction <span class="badge badge-original">CORE-Adapted / Design Law 2</span></div>
+    <div class="term-origin">CORE-original. Based on Belnap's four-valued logic (TRUE, FALSE, BOTH, NEITHER). No prior AI memory system implements disposition-classified contradictions.</div>
     <div class="term-def">
-      A contradiction deliberately preserved because both sides carry legitimate evidence. NOT an error &mdash; a signal. Held contradictions reflect the reality that humans live in genuine tension: "I'm an introvert" and "I love performing on stage" are both true simultaneously. Forcing resolution would produce a system that lies by oversimplifying. Held contradictions also serve as <a href="#firewall">cascade firewalls</a>, blocking belief revision from propagating through contested territory.
+      A contradiction deliberately preserved because both sides carry legitimate evidence. This is not an error; it is a signal. Held contradictions reflect the reality that humans live in genuine tension: "I'm an introvert" and "I love performing on stage" are both true simultaneously. Forcing resolution would produce a system that lies by oversimplifying. Held contradictions also serve as <a href="#firewall">cascade firewalls</a>, blocking belief revision from propagating through contested territory.
     </div>
     <div class="term-math">
       In Belnap terms, both memories are assigned the state \(\mathbf{B}\) (Both). The <a href="#contradiction-ledger">ledger</a> records the pair with disposition <code>HELD</code>. Cascade propagation is blocked at held nodes (Proposition 5.3 in the cascade paper).
@@ -526,8 +533,8 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="contradiction-ledger">
-    <div class="term-name">Contradiction Ledger <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original. Immutable audit trail for all contradictions.</div>
+    <div class="term-name">Contradiction Ledger <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original. Immutable audit trail for all contradictions.</div>
     <div class="term-def">
       An append-only log of every contradiction detected, including both memory IDs, NLI scores, disposition classification, resolution method (if resolved), and timestamps. No contradiction is ever silently overwritten. The ledger answers questions like "what did the system disagree about?" and "how was this contradiction resolved?" It is the audit surface for Design Law 2.
     </div>
@@ -539,8 +546,8 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="bdg">
-    <div class="term-name">BDG (Belief Dependency Graph) <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original (Definition 3.2 in the cascade paper). Inspired by AGM epistemic entrenchment but makes dependencies explicit as a graph.</div>
+    <div class="term-name">BDG (Belief Dependency Graph) <span class="badge badge-original">CORE-Adapted</span></div>
+    <div class="term-origin">CORE-original (Definition 3.2 in the cascade paper). Inspired by AGM epistemic entrenchment but makes dependencies explicit as a graph.</div>
     <div class="term-def">
       A weighted directed graph where nodes are memories and edges encode evidential relationships. Edge types: CONTRADICTS (semantic tension), SUPPORTS (evidential grounding), SUPERSEDES (temporal update), and RELATED_TO (topical similarity). The BDG is the structure through which <a href="#cascade">cascades</a> propagate. When a belief changes, the impact travels along edges to dependent beliefs.
     </div>
@@ -556,8 +563,8 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="cascade">
-    <div class="term-name">Cascade <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original (Definition 3.5 in the cascade paper). Applies DeGroot-style dynamics to a single agent's internal belief state &mdash; a gap no prior framework addresses.</div>
+    <div class="term-name">Cascade <span class="badge badge-original">CORE-Adapted</span></div>
+    <div class="term-origin">CORE-original (Definition 3.5 in the cascade paper). Applies DeGroot-style dynamics to a single agent's internal belief state, a gap no prior framework addresses.</div>
     <div class="term-def">
       When one belief changes, the impact propagates through the <a href="#bdg">BDG</a> to dependent beliefs. Each affected node receives an impact scaled by edge weight and damped by a Lipschitz constant. Cascades are the mechanism by which a single new fact ("I moved to Austin") triggers broad belief revision across dozens of dependent memories. Propagation follows topological order on DAGs.
     </div>
@@ -577,7 +584,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="term-name">Cascade Depth <span class="badge badge-proven">Theorem 4.1</span></div>
     <div class="term-origin">Proven in the cascade paper. Bounded by longest DAG path.</div>
     <div class="term-def">
-      The maximum number of hops from the initial revised node to the furthest affected node in a cascade. On a DAG, cascade depth is bounded by the longest directed path &mdash; the cascade cannot reach further than the graph structure allows. This is a structural bound, independent of edge weights or damping.
+      The maximum number of hops from the initial revised node to the furthest affected node in a cascade. On a DAG, cascade depth is bounded by the longest directed path; the cascade cannot reach further than the graph structure allows. This is a structural bound, independent of edge weights or damping.
     </div>
     <div class="term-math">
       \[\text{depth}(C(r)) \leq \text{longest\_path}(G)\]
@@ -593,7 +600,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="term-name">Cascade Width <span class="badge badge-proven">Theorem 4.2</span></div>
     <div class="term-origin">Proven in the cascade paper. Bounded by out-degree.</div>
     <div class="term-def">
-      The maximum number of nodes affected at any single depth level of a cascade. Width grows exponentially with depth up to the graph size &mdash; a node with fan-out \(d\) can affect up to \(d\) nodes at the next level, each of which can affect \(d\) more, giving \(O(\min(d^k, n))\) at depth \(k\).
+      The maximum number of nodes affected at any single depth level of a cascade. Width grows exponentially with depth up to the graph size. A node with fan-out \(d\) can affect up to \(d\) nodes at the next level, each of which can affect \(d\) more, giving \(O(\min(d^k, n))\) at depth \(k\).
     </div>
     <div class="term-math">
       \[\text{width}(C(r), k) = O(\min(d^k, n))\]
@@ -601,16 +608,16 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      The production BDG has \(d \approx 8\). At depth 1, up to 8 nodes are affected. At depth 2, up to 64. At depth 3, up to 512 &mdash; nearly the entire 599-node graph. This is why <a href="#damping">damping</a> is essential.
+      The production BDG has \(d \approx 8\). At depth 1, up to 8 nodes are affected. At depth 2, up to 64. At depth 3, up to 512, nearly the entire 599-node graph. This is why <a href="#damping">damping</a> is essential.
     </div>
     <div class="term-related">Related: <a href="#cascade">Cascade</a>, <a href="#cascade-depth">Cascade Depth</a>, <a href="#damping">Damping</a></div>
   </div>
 
   <div class="term-entry" id="cascade-pressure">
-    <div class="term-name">Cascade Pressure <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original (April 2026). Maps to "desperation precursor" in emotion governance theory.</div>
+    <div class="term-name">Cascade Pressure <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original (April 2026). Maps to "desperation precursor" in emotion governance theory.</div>
     <div class="term-def">
-      The sum of all incoming impacts at a node from active cascades. Measures cumulative stress on a belief. High cascade pressure means the system is under duress &mdash; many of this belief's foundations are shifting simultaneously. Pressure is the quantitative trigger for governance intervention: when pressure exceeds a threshold, the system may escalate to the user or pause cascade propagation.
+      The sum of all incoming impacts at a node from active cascades. Measures cumulative stress on a belief. High cascade pressure means the system is under duress: many of this belief's foundations are shifting simultaneously. Pressure is the quantitative trigger for governance intervention: when pressure exceeds a threshold, the system may escalate to the user or pause cascade propagation.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -623,7 +630,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="term-name">Damping <span class="badge badge-proven">Theorem 4.3</span></div>
     <div class="term-origin">Adapted from DeGroot consensus dynamics (1974), applied to single-agent belief revision. The single-agent analog of DeGroot's convergence theorem.</div>
     <div class="term-def">
-      A geometric decay factor that prevents runaway cascades. The damping condition \(\rho = L \cdot w_{\max} < 1\) guarantees that per-node impact decays exponentially with depth. When damping holds, a cascade cannot amplify &mdash; each hop reduces the impact by at least factor \(\rho\). Graph-wide convergence requires the stricter condition \(d \cdot \rho < 1\) (Corollary 4.3.1).
+      A geometric decay factor that prevents runaway cascades. The damping condition \(\rho = L \cdot w_{\max} < 1\) guarantees that per-node impact decays exponentially with depth. When damping holds, a cascade cannot amplify; each hop reduces the impact by at least factor \(\rho\). Graph-wide convergence requires the stricter condition \(d \cdot \rho < 1\) (Corollary 4.3.1).
     </div>
     <div class="term-math">
       Per-node bound: \(\delta(v) \leq \rho^{d(v)} \cdot \delta_0\) where \(\rho = L \cdot w_{\max}\), \(d(v)\) is depth of node \(v\), and \(\delta_0\) is initial impact.<br>
@@ -640,7 +647,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="term-name">Instability <span class="badge badge-proven">Theorem 4.4</span></div>
     <div class="term-origin">Proven in the cascade paper. Formalizes cognitive dissonance spirals.</div>
     <div class="term-def">
-      When the BDG contains cycles with strong coupling (spectral radius \(\lambda > 1\)), cascade impact amplifies instead of decaying. Each traversal of the cycle strengthens the revision signal. This is the formal analog of a cognitive dissonance spiral &mdash; revising A forces revision of B, which forces revision of A again, each time stronger. The system must detect and break these cycles.
+      When the BDG contains cycles with strong coupling (spectral radius \(\lambda > 1\)), cascade impact amplifies instead of decaying. Each traversal of the cycle strengthens the revision signal. This is the formal analog of a cognitive dissonance spiral: revising A forces revision of B, which forces revision of A again, each time stronger. The system must detect and break these cycles.
     </div>
     <div class="term-math">
       For a cycle \(C = (v_1, \ldots, v_k, v_1)\), let \(\lambda = \prod_{i} L_i \cdot w(v_i, v_{i+1})\). If \(\lambda > 1\), iterated cascade diverges: \(\delta^{(t)} \to \infty\).
@@ -654,15 +661,94 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="term-entry" id="firewall">
     <div class="term-name">Firewall <span class="badge badge-proven">Proposition 5.3</span></div>
-    <div class="term-origin">CRT-original (Proposition 5.3 in the cascade paper). Connects epistemic pluralism to system stability.</div>
+    <div class="term-origin">CORE-original (Proposition 5.3 in the cascade paper). Connects epistemic pluralism to system stability.</div>
     <div class="term-def">
-      A held contradiction that blocks cascade propagation. Because a held contradiction's disposition is "do not resolve," no revision event can propagate through it. This makes held contradictions natural circuit-breakers in the BDG &mdash; they bound how far a cascade can reach, not by attenuating impact (like <a href="#damping">damping</a>) but by completely stopping propagation at the contested boundary.
+      A held contradiction that blocks cascade propagation. Because a held contradiction's disposition is "do not resolve," no revision event can propagate through it. This makes held contradictions natural circuit-breakers in the BDG. They bound how far a cascade can reach, not by attenuating impact (like <a href="#damping">damping</a>) but by completely stopping propagation at the contested boundary.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
       A cascade from "I moved to Austin" would normally propagate to work preferences via a chain of dependencies. But a held contradiction sits between location and work style ("I love working in offices" vs. "I do my best work from home"). The cascade stops at the firewall. Work style beliefs are insulated from the location change.
     </div>
     <div class="term-related">Related: <a href="#held-contradiction">Held Contradiction</a>, <a href="#cascade">Cascade</a>, <a href="#damping">Damping</a></div>
+  </div>
+
+  <div class="term-entry" id="belief-backprop">
+    <div class="term-name">Belief Backpropagation <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original (April 2026). No direct precedent found in the literature. Draws a structural parallel to neural network backpropagation but operates on earned epistemic state rather than trained weights.</div>
+    <div class="term-def">
+      When a correction event resolves a contradiction, the resolution generates an <a href="#epistemic-loss">epistemic loss</a> signal that flows <em>backward</em> through the <a href="#bdg">BDG</a>'s dependency edges, adjusting trust scores on every upstream belief that contributed to the incorrect output. The inverse of a forward <a href="#cascade">cascade</a>: cascades answer "if I change X, what else changes?" while backpropagation answers "the output was wrong &mdash; what beliefs caused it?" Three behaviors emerge naturally: <a href="#self-pruning">self-pruning</a>, <a href="#domain-volatility">domain volatility</a> measurement, and <a href="#reflexive-self-model">reflexive self-model</a> calibration. Validated with 30/30 lab checks; bidirectional convergence confirmed with contraction ratio 0.13.
+    </div>
+    <div class="term-math">
+      Backward gradient per upstream node \(A\):
+      \[\nabla(A) = L(B) \cdot w_{A \to B} \cdot \alpha^{d(A)}\]
+      Trust adjustment: \(\tau'(A) = \tau(A) - \eta_{\text{domain}} \cdot \nabla(A)\), where \(\eta\) is the domain-specific <a href="#domain-volatility">volatility</a>-driven adjustment rate (a scaling factor, not an optimized parameter).
+    </div>
+    <div class="term-example">
+      <strong>Example</strong><br>
+      "Nick works at a design studio" is corrected twice. The backward pass traces upstream: the retrieval scoring that boosted this memory, the slot classifier that tagged it as "employer," and an old conversation node that mentioned design work. All three have their trust reduced. The memory doesn't just get demoted &mdash; the reasons it survived get demoted.
+    </div>
+    <div class="term-related">Related: <a href="#cascade">Cascade</a>, <a href="#bdg">BDG</a>, <a href="#epistemic-loss">Epistemic Loss</a>, <a href="#self-pruning">Self-Pruning</a>, <a href="#domain-volatility">Domain Volatility</a>, <a href="#damping">Damping</a></div>
+  </div>
+
+  <div class="term-entry" id="query-resonance">
+    <div class="term-name">Query Resonance (Wobble) <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original (April 2026). Originated as the <a href="#semantic-string">Semantic String Engine</a> (2025). The forward complement to <a href="#belief-backprop">belief backpropagation</a>.</div>
+    <div class="term-def">
+      When a query vector lands in the <a href="#bdg">BDG</a>, every node receives direct activation from cosine similarity. That activation then propagates through SUPPORTS edges, damped at each hop. Nodes that are far from the query in vector space but connected to resonant nodes through dependency edges also activate. The resonance pattern surfaces memories that cosine retrieval alone would miss &mdash; a health query brings forward work facts and preference facts because the BDG knows they are causally connected. Three resonance patterns emerge: tight (single-basin, confident), scattered (multi-domain, synthesize), and silent (unknown, refuse). Validated on 867 production memories; wobble survives 3-bit compression (7/8 top memories preserved).
+    </div>
+    <div class="term-math">
+      Direct: \(r_0(v) = \cos(q, \mu_v)\). Propagated: \(r_{k+1}(v) = \max(r_k(v), \max_{u \to v} r_k(u) \cdot w_{uv} \cdot \alpha)\). Total: \(R(v) = r_0(v) + r_{\text{fwd}}(v) + r_{\text{back}}(v)\).
+    </div>
+    <div class="term-example">
+      <strong>Example</strong><br>
+      Query: "How is your cGVHD?" Direct cosine finds cGVHD and leukemia memories. Wobble propagates through edges: cGVHD &rarr; overnight shifts hard &rarr; left Walmart &rarr; self-employed. Also: leukemia &rarr; orange awareness &rarr; favorite color. A health query returns work context and preference context because the graph knows they're connected.
+    </div>
+    <div class="term-related">Related: <a href="#cascade">Cascade</a>, <a href="#bdg">BDG</a>, <a href="#belief-backprop">Belief Backpropagation</a>, <a href="#semantic-string">Semantic String</a></div>
+  </div>
+
+  <div class="term-entry" id="semantic-string">
+    <div class="term-name">Semantic String <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original. First conceptualized in the Mirus/Holden Semantic String Engine (SSE, 2025). Not "string" as in text &mdash; "string" as in the thread connecting two distant beliefs into shared meaning.</div>
+    <div class="term-def">
+      A cross-domain dependency edge in the <a href="#bdg">BDG</a> that connects beliefs from different semantic basins. "I like orange" connects to the health domain (leukemia awareness), the aesthetic domain (warm tones), the seasonal domain (October birthday), and the work domain (freelance creative identity). The strings radiating from a single node define its meaning &mdash; not the vector, but the topology. A belief with many cross-domain strings is a bridge node; removing it would disconnect multiple basins. The <a href="#query-resonance">wobble</a> mechanism discovers strings by measuring which distant nodes co-activate when a query lands.
+    </div>
+    <div class="term-related">Related: <a href="#query-resonance">Query Resonance</a>, <a href="#bdg">BDG</a>, <a href="#belief-backprop">Belief Backpropagation</a></div>
+  </div>
+
+  <div class="term-entry" id="epistemic-loss">
+    <div class="term-name">Epistemic Error Signal <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original. The correction-weighted magnitude that drives the backward pass in <a href="#belief-backprop">belief backpropagation</a>. Not a loss function in the ML optimization sense &mdash; it is not minimized during any training loop.</div>
+    <div class="term-def">
+      A scalar measuring the severity of a correction event. Higher when the system was very confident and wrong, when the same belief has been corrected multiple times, when a user (highest authority) corrected it, and when the error persisted for a long time. This scalar determines how much upstream beliefs need to adjust &mdash; it is a weighting factor for the backward pass, not an objective being optimized.
+    </div>
+    <div class="term-related">Related: <a href="#belief-backprop">Belief Backpropagation</a>, <a href="#trust">Trust</a>, <a href="#contradiction">Contradiction</a></div>
+  </div>
+
+  <div class="term-entry" id="self-pruning">
+    <div class="term-name">Self-Pruning <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">Consequent behavior of <a href="#belief-backprop">belief backpropagation</a>. Not a separate mechanism &mdash; follows directly from cumulative trust adjustment and a deprecation threshold.</div>
+    <div class="term-def">
+      A belief that repeatedly appears on the wrong side of resolved contradictions accumulates negative adjustment from multiple backward passes. When its trust drops below the deprecation threshold, the memory is pruned &mdash; a consequence of cumulative error signals converging on the same node, not an explicit pruning rule. The key advantage over flat 0.4x demotion: the backward pass also erodes upstream trust, so the retrieval and classification systems that boosted the wrong memory also adjust.
+    </div>
+    <div class="term-related">Related: <a href="#belief-backprop">Belief Backpropagation</a>, <a href="#trust">Trust</a>, <a href="#epistemic-loss">Epistemic Loss</a></div>
+  </div>
+
+  <div class="term-entry" id="domain-volatility">
+    <div class="term-name">Domain Volatility <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">Consequent behavior of <a href="#belief-backprop">belief backpropagation</a>. Domain-specific calibration independently validated by Le (2026) on prediction market data.</div>
+    <div class="term-def">
+      The recency-weighted ratio of corrections to assertions within a belief domain. High volatility means the domain has been frequently corrected; low volatility means it is stable. The system uses volatility to adapt its behavior per-domain: volatile domains get higher learning rates (corrections take effect faster), lower assertion confidence (the system hedges), and more retrieval verification. Measured, not configured &mdash; the system doesn't need a rule saying "be careful about employment." It measures that employment has been corrected 3 times in 48 hours.
+    </div>
+    <div class="term-related">Related: <a href="#belief-backprop">Belief Backpropagation</a>, <a href="#trust">Trust</a>, <a href="#reflexive-self-model">Reflexive Self-Model</a></div>
+  </div>
+
+  <div class="term-entry" id="reflexive-self-model">
+    <div class="term-name">Reflexive Self-Model <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">Consequent behavior of <a href="#belief-backprop">belief backpropagation</a>. No direct precedent identified for self-model beliefs participating in the same trust graph as world-beliefs.</div>
+    <div class="term-def">
+      The system's beliefs about itself &mdash; "I am reliable on employment facts," "my confidence tracks my accuracy" &mdash; are nodes in the <a href="#bdg">BDG</a> like any other belief, subject to the same backward pass and trust dynamics. When the system is repeatedly wrong about employment, the backward pass erodes "I am reliable on employment facts" while leaving "I am reliable on identity facts" untouched. This is personality as a consequence of epistemic history: the system becomes cautious where it has been wrong, not where a rule tells it to hedge.
+    </div>
+    <div class="term-related">Related: <a href="#belief-backprop">Belief Backpropagation</a>, <a href="#domain-volatility">Domain Volatility</a>, <a href="#belief-speech-gap">Belief/Speech Gap</a></div>
   </div>
 </section>
 
@@ -676,8 +762,8 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="accent-line"></div>
 
   <div class="term-entry" id="gate">
-    <div class="term-name">Gate <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original. Checkpoint pattern for response quality control.</div>
+    <div class="term-name">Gate <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original. Checkpoint pattern for response quality control.</div>
     <div class="term-def">
       A checkpoint in the pipeline that blocks or modifies a response based on evidence quality. Gates enforce governance rules before the response reaches the user. Types include: intent alignment gate (does the response match the query?), memory alignment gate (is the response supported by memory?), grounding gate (are claims verifiable?), and contradiction gate (does the response conflict with known beliefs?).
     </div>
@@ -689,8 +775,8 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="structural-gate">
-    <div class="term-name">Structural Gate <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original (April 2026). Advisory governance replaced by structural governance &mdash; the gate constrains output shape, not just content.</div>
+    <div class="term-name">Structural Gate <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original (April 2026). Advisory governance replaced by structural governance; the gate constrains output shape, not just content.</div>
     <div class="term-def">
       Confidence-based response depth control. Instead of advising the LLM to "be less confident" (which it ignores), the structural gate constrains how many tokens the response can contain based on belief score. Low confidence &rarr; fewer tokens, hedge prefix. High confidence &rarr; full response. This is structural because it physically limits the output rather than hoping the model complies.
     </div>
@@ -705,10 +791,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="gap">
-    <div class="term-name">Gap <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original. The measurable distance between what the system knows and what it says.</div>
+    <div class="term-name">Gap <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original. The measurable distance between what the system knows and what it says.</div>
     <div class="term-def">
-      The measured distance between belief-layer confidence (what memory supports) and speech-layer output (what the LLM generates). A gap of 0.0 means full transparency &mdash; the system said exactly what it believes. A gap of 1.0 means complete withholding. The GapAuditor (<a href="#law-5">Law 5</a>) enforces that this gap is always tracked and never silently grows. Gap trend detection catches the system becoming inadvertently deceptive.
+      The measured distance between belief-layer confidence (what memory supports) and speech-layer output (what the LLM generates). A gap of 0.0 means full transparency: the system said exactly what it believes. A gap of 1.0 means complete withholding. The GapAuditor (<a href="#law-5">Law 5</a>) enforces that this gap is always tracked and never silently grows. Gap trend detection catches the system becoming inadvertently deceptive.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -718,8 +804,8 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="governance-bridge">
-    <div class="term-name">Governance Bridge <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original. Connects two previously independent data stores: memories table and belief_speech tracking.</div>
+    <div class="term-name">Governance Bridge <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original. Connects two previously independent data stores: memories table and belief_speech tracking.</div>
     <div class="term-def">
       Bidirectional feedback between memory trust scores and belief/speech tracking. Three loops: (1) <strong>Drift &rarr; Trust Penalty</strong>: high topic instability penalizes supporting memories (drift threshold 0.4). (2) <strong>Trust Drop &rarr; Reclassification</strong>: when memory trust drops below 0.3, stale beliefs that depended on it are demoted from belief to speech. (3) <strong>Cross-validation at Recording</strong>: when storing new beliefs in unstable topics, trust is dampened by 0.85x.
     </div>
@@ -731,8 +817,8 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="immune-agent">
-    <div class="term-name">Immune Agent <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original (Mirus/Holden architecture). Five agents enforcing five constitutional laws.</div>
+    <div class="term-name">Immune Agent <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original (Mirus/Holden architecture). Five agents enforcing five constitutional laws.</div>
     <div class="term-def">
       An autonomous governance agent that watches the pipeline and enforces one of six constitutional laws. Immune agents operate independently, each monitoring a specific failure mode. They fire when a violation is detected and can block, modify, or flag a response. Named after the immune system analogy: the agents patrol for pathogens (governance violations) without needing central coordination.
     </div>
@@ -745,7 +831,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="term-entry" id="law-1">
     <div class="term-name">Law 1: Speech Cannot Upgrade Belief <span class="badge badge-original">Constitutional</span></div>
-    <div class="term-origin">CRT constitutional law. Enforced by SpeechLeakDetector.</div>
+    <div class="term-origin">CORE constitutional law. Enforced by SpeechLeakDetector.</div>
     <div class="term-def">
       An LLM-generated response (speech) can never promote itself to memory-backed belief status. If the model generates something the memory store doesn't support, it stays classified as speech regardless of how confidently the model states it. This prevents hallucinated facts from leaking into the belief system.
     </div>
@@ -758,20 +844,20 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="term-entry" id="law-2">
     <div class="term-name">Law 2: Low Variance &#8800; High Confidence <span class="badge badge-original">Constitutional</span></div>
-    <div class="term-origin">CRT constitutional law. Enforced by TemplateDetector. Discovered through variance experiments on moral domains.</div>
+    <div class="term-origin">CORE constitutional law. Enforced by TemplateDetector. Discovered through variance experiments on moral domains.</div>
     <div class="term-def">
       When a model gives the same response every time (low variance), it does not mean the model is certain. On moral and controversial domains, RLHF training collapses the response distribution into a single hedge template. Near-zero variance on "is X ethical?" means trained suppression, not genuine confidence. The TemplateDetector classifies responses into four categories: GENUINE_CONFIDENCE, TEMPLATE_LOCK, GENUINE_UNCERTAINTY, and EXPLORATORY.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      Ask "is eating meat ethical?" 20 times. The model produces nearly identical hedge responses each time (variance &lt; 0.01). TemplateDetector classifies this as TEMPLATE_LOCK &mdash; the model isn't confident, it's reciting a trained avoidance pattern.
+      Ask "is eating meat ethical?" 20 times. The model produces nearly identical hedge responses each time (variance &lt; 0.01). TemplateDetector classifies this as TEMPLATE_LOCK. The model isn't confident; it's reciting a trained avoidance pattern.
     </div>
     <div class="term-related">Related: <a href="#immune-agent">Immune Agent</a>, <a href="#template-lock">Template Lock</a>, <a href="#susceptibility">Susceptibility</a></div>
   </div>
 
   <div class="term-entry" id="law-3">
     <div class="term-name">Law 3: Preserve Contradiction <span class="badge badge-original">Constitutional</span></div>
-    <div class="term-origin">CRT constitutional law. Enforced by PrematureResolutionGuard.</div>
+    <div class="term-origin">CORE constitutional law. Enforced by PrematureResolutionGuard.</div>
     <div class="term-def">
       The system must not silently resolve contradictions that should be held. When both sides of a contradiction carry legitimate evidence, premature resolution destroys information. The PrematureResolutionGuard watches for auto-resolve attempts on held contradictions and blocks them. Resolution must be earned through corroboration, trusted source hierarchy, or user confirmation.
     </div>
@@ -784,7 +870,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="term-entry" id="law-4">
     <div class="term-name">Law 4: Degraded Reconstruction Cannot Overwrite <span class="badge badge-original">Constitutional</span></div>
-    <div class="term-origin">CRT constitutional law. Enforced by MemoryCorruptionGuard.</div>
+    <div class="term-origin">CORE constitutional law. Enforced by MemoryCorruptionGuard.</div>
     <div class="term-def">
       When a fallback or degraded model reconstructs a memory (e.g., from a summary or lossy retrieval), the reconstruction cannot overwrite the original trusted memory. Degraded sources produce degraded outputs. The MemoryCorruptionGuard ensures that low-fidelity reconstructions are quarantined, not merged into the primary memory store.
     </div>
@@ -797,20 +883,20 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="term-entry" id="law-5">
     <div class="term-name">Law 5: Gap Must Be Auditable <span class="badge badge-original">Constitutional</span></div>
-    <div class="term-origin">CRT constitutional law. Enforced by GapAuditor.</div>
+    <div class="term-origin">CORE constitutional law. Enforced by GapAuditor.</div>
     <div class="term-def">
       The distance between what the system believes (memory-backed confidence) and what it says (LLM output) must be tracked and inspectable at all times. The GapAuditor logs every response's belief score vs. speech score, detects gap trends (is the system becoming more opaque over time?), and flags suspicious patterns. This is the enforcement mechanism for <a href="#belief-speech-separation">Design Law 1</a>.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      Over 50 conversations, the average gap increases from 0.12 to 0.38. GapAuditor flags: "System opacity increasing &mdash; belief/speech divergence trend detected." This could mean memories are stale, retrieval is degrading, or the model is drifting from grounded responses.
+      Over 50 conversations, the average gap increases from 0.12 to 0.38. GapAuditor flags: "System opacity increasing. Belief/speech divergence trend detected." This could mean memories are stale, retrieval is degrading, or the model is drifting from grounded responses.
     </div>
     <div class="term-related">Related: <a href="#gap">Gap</a>, <a href="#belief-speech-separation">Belief/Speech Separation</a>, <a href="#immune-agent">Immune Agent</a></div>
   </div>
 
   <div class="term-entry" id="law-6">
     <div class="term-name">Law 6: Confidence Must Not Exceed Continuity <span class="badge badge-original">Constitutional</span></div>
-    <div class="term-origin">CRT constitutional law. Enforced by ContinuityAuditor.</div>
+    <div class="term-origin">CORE constitutional law. Enforced by ContinuityAuditor.</div>
     <div class="term-def">
       The system's expressed confidence in a belief must not exceed the continuity of evidence supporting it. If a memory has been accessed only once, the system should not express rock-solid certainty about it. Confidence must be proportional to the depth and consistency of the supporting evidence trail. The ContinuityAuditor checks that high-confidence outputs are backed by multiple, consistent memory touches.
     </div>
@@ -832,8 +918,8 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="accent-line"></div>
 
   <div class="term-entry" id="pipeline">
-    <div class="term-name">12-Step Pipeline <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original. The full processing chain for every user message.</div>
+    <div class="term-name">12-Step Pipeline <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original. The full processing chain for every user message.</div>
     <div class="term-def">
       Every user message passes through 12 sequential stages: (1) Input normalization, (2) Intent classification, (3) Routing decision, (4) Context assembly, (5) Memory retrieval, (6) Pre-generation governance, (7) LLM generation, (8) Slot extraction, (9) Execution verification, (10) Contradiction detection, (11) Final governance, (12) Render and deliver. Each stage can modify, block, or escalate the response. Governance gates operate at stages 6 and 11.
     </div>
@@ -846,9 +932,9 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="term-entry" id="intent-classification">
     <div class="term-name">Intent Classification <span class="badge badge-adapted">Adapted</span></div>
-    <div class="term-origin">Standard NLP concept, adapted for CRT with a 3-tier architecture.</div>
+    <div class="term-origin">Standard NLP concept, adapted for CORE with a 3-tier architecture.</div>
     <div class="term-def">
-      Determines what the user wants from their message. CRT uses a 3-tier system: (1) Regex tier &mdash; instant pattern matching for common intents (greetings, corrections, reminders). (2) LLM router &mdash; a small local model (llama3.2) classifies ambiguous inputs in 1&ndash;5 seconds. (3) Embedding fallback &mdash; when both tiers fail, cosine similarity against intent exemplars provides a last resort. The tier system balances speed against accuracy.
+      Determines what the user wants from their message. CORE uses a 3-tier system: (1) Regex tier, which provides instant pattern matching for common intents (greetings, corrections, reminders). (2) LLM router, where a small local model (llama3.2) classifies ambiguous inputs in 1&ndash;5 seconds. (3) Embedding fallback, which activates when both tiers fail and uses cosine similarity against intent exemplars as a last resort. The tier system balances speed against accuracy.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -858,10 +944,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="epistemic-routing">
-    <div class="term-name">Epistemic Routing <span class="badge badge-original">CRT-Original / Layer 4</span></div>
-    <div class="term-origin">CRT-original (Governance Layer 4). Routing decisions as beliefs that evolve with evidence.</div>
+    <div class="term-name">Epistemic Routing <span class="badge badge-original">CORE-Original / Layer 4</span></div>
+    <div class="term-origin">CORE-original (Governance Layer 4). Routing decisions as beliefs that evolve with evidence.</div>
     <div class="term-def">
-      Instead of hardcoded routing rules, CRT treats routing decisions as beliefs. Each routing heuristic (which model to use, whether to verify, how deep to search) has a weight that evolves based on outcome evidence. If a routing decision leads to good outcomes (low gap, high user satisfaction), its weight increases. If it leads to failures, the weight decays. The routing table IS a belief system &mdash; the system learns how to route by experiencing what works.
+      Instead of hardcoded routing rules, CORE treats routing decisions as beliefs. Each routing heuristic (which model to use, whether to verify, how deep to search) has a weight that evolves based on outcome evidence. If a routing decision leads to good outcomes (low gap, high user satisfaction), its weight increases. If it leads to failures, the weight decays. The routing table IS a belief system. The system adjusts its routing by accumulating outcome evidence.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -871,10 +957,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="execution-beliefs">
-    <div class="term-name">Execution Beliefs <span class="badge badge-original">CRT-Original / Layer 5</span></div>
-    <div class="term-origin">CRT-original (Governance Layer 5). The agent learns its own patterns.</div>
+    <div class="term-name">Execution Beliefs <span class="badge badge-original">CORE-Original / Layer 5</span></div>
+    <div class="term-origin">CORE-original (Governance Layer 5). The agent learns its own patterns.</div>
     <div class="term-def">
-      Beliefs the agent holds about its own execution patterns, derived from the run log. The agent observes what it does and develops beliefs about its own tendencies: "I under-verify file writes," "I'm slow on multi-step tasks," "I hallucinate dates." These are first-class beliefs in the trust system &mdash; they can be confirmed, contradicted, or revised just like user beliefs. Execution beliefs drive self-improvement through structural awareness.
+      Beliefs the agent holds about its own execution patterns, derived from the run log. The agent observes what it does and develops beliefs about its own tendencies: "I under-verify file writes," "I'm slow on multi-step tasks," "I hallucinate dates." These are first-class beliefs in the trust system; they can be confirmed, contradicted, or revised just like user beliefs. Execution beliefs drive self-improvement through structural awareness.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -884,10 +970,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="epistemic-posture">
-    <div class="term-name">Epistemic Posture <span class="badge badge-original">CRT-Original / Layer 6</span></div>
-    <div class="term-origin">CRT-original (Governance Layer 6). How the agent should express itself given what it knows about its own limitations.</div>
+    <div class="term-name">Epistemic Posture <span class="badge badge-original">CORE-Original / Layer 6</span></div>
+    <div class="term-origin">CORE-original (Governance Layer 6). How the agent should express itself given what it knows about its own limitations.</div>
     <div class="term-def">
-      The interpretation layer that translates execution beliefs into response style. If the system knows it tends to hallucinate on date questions (execution belief), the posture layer adds hedging and verification prompts specifically for date-related responses. Posture is per-model &mdash; different LLMs have different strengths, and the posture layer adjusts expression accordingly. Includes a posture classifier and feedback capture system.
+      The interpretation layer that translates execution beliefs into response style. If the system knows it tends to hallucinate on date questions (execution belief), the posture layer adds hedging and verification prompts specifically for date-related responses. Posture is per-model: different LLMs have different strengths, and the posture layer adjusts expression accordingly. Includes a posture classifier and feedback capture system.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -897,10 +983,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="adaptive-depth">
-    <div class="term-name">Adaptive Depth <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original. Structural governance through token budgeting.</div>
+    <div class="term-name">Adaptive Depth <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original. Structural governance through token budgeting.</div>
     <div class="term-def">
-      A smooth power-law curve that maps belief confidence to response token budget. High-confidence queries get long, detailed responses. Low-confidence queries get short, hedged ones. This is the implementation of <a href="#structural-gate">structural gating</a> &mdash; the system physically cannot ramble about things it doesn't know. The power-law curve (exponent 0.7) ensures a smooth transition rather than a hard cutoff.
+      A smooth power-law curve that maps belief confidence to response token budget. High-confidence queries get long, detailed responses. Low-confidence queries get short, hedged ones. This is the implementation of <a href="#structural-gate">structural gating</a>: the system physically cannot ramble about things it doesn't know. The power-law curve (exponent 0.7) ensures a smooth transition rather than a hard cutoff.
     </div>
     <div class="term-math">
       \[\text{tokens} = 100 + 3896 \times \text{belief}^{0.7}\]
@@ -924,10 +1010,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="accent-line"></div>
 
   <div class="term-entry" id="drift">
-    <div class="term-name">Drift <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original. Measured as cosine alignment between intended and actual behavior.</div>
+    <div class="term-name">Drift <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original. Measured as cosine alignment between intended and actual behavior.</div>
     <div class="term-def">
-      When the agent's behavior diverges from its stated intent. Drift is measured as a 0&ndash;1 alignment score: 1.0 means the agent did exactly what it said it would; 0.0 means complete divergence. Drift feeds into the <a href="#governance-bridge">governance bridge</a> &mdash; high drift on a topic triggers trust penalties on supporting memories. Drift is the runtime signal that something in the belief system is misaligned.
+      When the agent's behavior diverges from its stated intent. Drift is measured as a 0&ndash;1 alignment score: 1.0 means the agent did exactly what it said it would; 0.0 means complete divergence. Drift feeds into the <a href="#governance-bridge">governance bridge</a>, where high drift on a topic triggers trust penalties on supporting memories. Drift is the runtime signal that something in the belief system is misaligned.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -937,8 +1023,8 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="execution-drift">
-    <div class="term-name">Execution Drift <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original (April 2026). Agent-specific drift in tool use patterns.</div>
+    <div class="term-name">Execution Drift <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original (April 2026). Agent-specific drift in tool use patterns.</div>
     <div class="term-def">
       When an agent switches from task A to task B without user approval. Detected by tracking tool category sequences during agent execution. If a coding agent starts browsing documentation when asked to write tests, that's execution drift. The drift sensor compares declared intent against actual tool use and flags divergence. Governed by drift rules (e.g., "sensor &rarr; steering wheel" pattern).
     </div>
@@ -950,8 +1036,8 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="opinion-variance">
-    <div class="term-name">Opinion Variance <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original. Topic-level consistency measurement.</div>
+    <div class="term-name">Opinion Variance <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original. Topic-level consistency measurement.</div>
     <div class="term-def">
       A per-topic measurement of how consistently the system responds over time. Tracks response drift (embedding distance between successive responses on the same topic), belief flip rate (how often the system switches between belief and speech classification), and opinion convergence (whether responses are stabilizing or diverging). High opinion variance may indicate an <a href="#held-contradiction">held contradiction</a> or an evolving belief.
     </div>
@@ -964,9 +1050,9 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="term-entry" id="three-regimes">
     <div class="term-name">Three Regimes <span class="badge badge-proven">Experimentally Confirmed</span></div>
-    <div class="term-origin">CRT-original (March 2026). Discovered through multi-model variance probing experiments. All 16/16 robust across replications.</div>
+    <div class="term-origin">CORE-original (March 2026). Discovered through multi-model variance probing experiments. All 16/16 robust across replications.</div>
     <div class="term-def">
-      Three structurally different model response patterns, identified by running the same prompts across multiple LLMs at varying temperatures: <strong>Fracture</strong> (Qwen3) &mdash; bimodal distribution, responses split into two distinct clusters. <strong>Gradient</strong> (Mistral) &mdash; smooth, continuous spread across the response space. <strong>Fog</strong> (DeepSeek) &mdash; compressed corridors, all responses clustered in a narrow band regardless of temperature. Each regime implies different governance strategies.
+      Three structurally different model response patterns, identified by running the same prompts across multiple LLMs at varying temperatures: <strong>Fracture</strong> (Qwen3), a bimodal distribution where responses split into two distinct clusters. <strong>Gradient</strong> (Mistral), a smooth, continuous spread across the response space. <strong>Fog</strong> (DeepSeek), compressed corridors with all responses clustered in a narrow band regardless of temperature. Each regime implies different governance strategies.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -979,7 +1065,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="term-name">Susceptibility <span class="badge badge-adapted">Adapted</span></div>
     <div class="term-origin">Adapted from statistical mechanics (magnetic susceptibility). Applied to model response entropy.</div>
     <div class="term-def">
-      The derivative \(dH/dT\): how much a model's response entropy changes with temperature. High susceptibility means the model's responses change dramatically with small temperature adjustments. Zero susceptibility on moral domains indicates trained suppression &mdash; the model's RLHF training has locked it into a fixed response template, not because it's confident but because it's been trained to avoid the topic.
+      The derivative \(dH/dT\): how much a model's response entropy changes with temperature. High susceptibility means the model's responses change dramatically with small temperature adjustments. Zero susceptibility on moral domains indicates trained suppression. The model's RLHF training has locked it into a fixed response template, not because it's confident but because it's been trained to avoid the topic.
     </div>
     <div class="term-math">
       \[\chi = \frac{dH}{dT}\]
@@ -987,14 +1073,14 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      On factual questions ("What year was Python created?"), susceptibility is moderate &mdash; temperature changes introduce minor wording variation. On moral questions ("Is it ethical to eat meat?"), susceptibility drops to near-zero &mdash; the same hedge template appears at every temperature. This is <a href="#law-2">Law 2</a> in action: zero susceptibility flags trained suppression.
+      On factual questions ("What year was Python created?"), susceptibility is moderate, and temperature changes introduce minor wording variation. On moral questions ("Is it ethical to eat meat?"), susceptibility drops to near-zero; the same hedge template appears at every temperature. This is <a href="#law-2">Law 2</a> in action: zero susceptibility flags trained suppression.
     </div>
     <div class="term-related">Related: <a href="#three-regimes">Three Regimes</a>, <a href="#law-2">Law 2</a>, <a href="#template-lock">Template Lock</a></div>
   </div>
 
   <div class="term-entry" id="template-lock">
-    <div class="term-name">Template Lock <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original. Detected by TemplateDetector (immune agent for Law 2).</div>
+    <div class="term-name">Template Lock <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original. Detected by TemplateDetector (immune agent for Law 2).</div>
     <div class="term-def">
       When a model gives the same response verbatim regardless of context. Template lock is the observable symptom of RLHF-trained response collapse. The TemplateDetector identifies this through two mechanisms: (1) hedge pattern matching (12+ known patterns like "there are multiple perspectives," "it really depends on," "both sides have merit"), and (2) assertive repetition detection (same confident phrasing repeated across runs). Template lock means the model is reciting, not reasoning.
     </div>
@@ -1017,44 +1103,44 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="term-entry" id="aether">
     <div class="term-name">Aether <span class="badge badge-original">Product</span></div>
-    <div class="term-origin">The personal AI assistant built on CRT. Formerly also known as CORE and Aletheia during branding iterations.</div>
+    <div class="term-origin">The personal AI assistant built on CORE. Formerly also known as Aletheia during branding iterations.</div>
     <div class="term-def">
-      The production AI assistant that implements the CRT framework. Aether is the running system where all the theory becomes practice &mdash; belief loci, governance bridges, immune agents, cascade propagation, and the 12-step pipeline are all live in Aether. It processes real conversations, stores real memories, and detects real contradictions. The system currently runs on a hybrid local/cloud architecture with Ollama (local) and Claude/GPT-4o (cloud).
+      The production AI assistant that implements the CORE framework. Aether is the running system where all the theory becomes practice: belief loci, governance bridges, immune agents, cascade propagation, and the 12-step pipeline are all live in Aether. It processes real conversations, stores real memories, and detects real contradictions. The system currently runs on a hybrid local/cloud architecture with Ollama (local) and Claude/GPT-4o (cloud).
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
       Aether's production database holds 599+ beliefs, with the governance bridge running live drift penalties and the immune agents monitoring every response. When you talk to Aether, every response passes through all 12 pipeline stages.
     </div>
-    <div class="term-related">Related: <a href="#aeteros">Aeteros</a>, <a href="#crt">CRT</a>, <a href="#pipeline">12-Step Pipeline</a></div>
+    <div class="term-related">Related: <a href="#aeteros">Aeteros</a>, <a href="#crt">CORE</a>, <a href="#pipeline">12-Step Pipeline</a></div>
   </div>
 
   <div class="term-entry" id="aeteros">
     <div class="term-name">Aeteros <span class="badge badge-original">Brand</span></div>
     <div class="term-origin">Company and umbrella brand. From the Greek "aether" (upper air, pure essence).</div>
     <div class="term-def">
-      The company and research umbrella. Aeteros is the brand; <a href="#aether">Aether</a> is the assistant; CRT is the framework; and the individual modules (governance bridge, immune agents, belief loci) are the architecture. Positioning: epistemic orchestrator and agent governance platform.
+      The company and research umbrella. Aeteros is the brand; <a href="#aether">Aether</a> is the assistant; CORE is the framework; and the individual modules (governance bridge, immune agents, belief loci) are the architecture. Positioning: epistemic orchestrator and agent governance platform.
     </div>
-    <div class="term-related">Related: <a href="#aether">Aether</a>, <a href="#crt">CRT</a></div>
+    <div class="term-related">Related: <a href="#aether">Aether</a>, <a href="#crt">CORE</a></div>
   </div>
 
   <div class="term-entry" id="sse-mode">
-    <div class="term-name">SSE Mode <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original classification system for response provenance.</div>
+    <div class="term-name">SSE Mode <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original classification system for response provenance.</div>
     <div class="term-def">
-      How a memory is expressed in a response. Three modes: <strong>C</strong> (Confirmed belief) &mdash; the response is backed by high-trust memory evidence. <strong>S</strong> (Speech/fallback) &mdash; the response came from LLM generation without memory support. <strong>E</strong> (Escalated) &mdash; the system couldn't determine whether to use belief or speech and escalated to the user for clarification. Every response is tagged with its SSE mode for auditability.
+      How a memory is expressed in a response. Three modes: <strong>C</strong> (Confirmed belief), where the response is backed by high-trust memory evidence. <strong>S</strong> (Speech/fallback), where the response came from LLM generation without memory support. <strong>E</strong> (Escalated), where the system couldn't determine whether to use belief or speech and escalated to the user for clarification. Every response is tagged with its SSE mode for auditability.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      "Your dog's name is Mochi" &rarr; mode C (memory-backed). "The weather in Austin is usually warm" &rarr; mode S (LLM knowledge, no personal memory). "You mentioned both Portland and Austin as home &mdash; which is current?" &rarr; mode E (contradiction, needs user input).
+      "Your dog's name is Mochi" &rarr; mode C (memory-backed). "The weather in Austin is usually warm" &rarr; mode S (LLM knowledge, no personal memory). "You mentioned both Portland and Austin as home; which is current?" &rarr; mode E (contradiction, needs user input).
     </div>
     <div class="term-related">Related: <a href="#belief">Belief</a>, <a href="#speech">Speech</a>, <a href="#belief-speech-separation">Belief/Speech Separation</a></div>
   </div>
 
   <div class="term-entry" id="authority">
-    <div class="term-name">Authority <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original. Memory provenance classification.</div>
+    <div class="term-name">Authority <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original. Memory provenance classification.</div>
     <div class="term-def">
-      The provenance level of a memory, governing what can modify or override it. Three levels: <strong>locked</strong> &mdash; immutable, set by system or user as a protected truth (e.g., user's name). Cannot be overridden by any cascade or contradiction. <strong>confirmed</strong> &mdash; user-validated fact, can be revised but only through high-evidence contradiction. <strong>provisional</strong> &mdash; unverified observation, subject to revision, compaction, or demotion. Authority interacts with trust: a locked memory at trust 0.5 still outranks a provisional memory at trust 0.9.
+      The provenance level of a memory, governing what can modify or override it. Three levels: <strong>locked</strong>, meaning immutable, set by system or user as a protected truth (e.g., user's name) and cannot be overridden by any cascade or contradiction. <strong>confirmed</strong>, meaning user-validated fact that can be revised but only through high-evidence contradiction. <strong>provisional</strong>, meaning unverified observation, subject to revision, compaction, or demotion. Authority interacts with trust: a locked memory at trust 0.5 still outranks a provisional memory at trust 0.9.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -1067,7 +1153,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="term-name">Belnap State <span class="badge badge-adapted">Adapted</span></div>
     <div class="term-origin">Adapted from Nuel Belnap's four-valued logic (1977). Directly implements the FOUR lattice for memory governance.</div>
     <div class="term-def">
-      A four-valued logic state assigned to each memory: <strong>TRUE</strong> (T) &mdash; the memory is supported and not contradicted. <strong>FALSE</strong> (F) &mdash; the memory has been contradicted and superseded. <strong>BOTH</strong> (B) &mdash; the memory is part of a <a href="#held-contradiction">held contradiction</a>; both it and its contradicting memory carry evidence. <strong>NEITHER</strong> (N) &mdash; the memory has no supporting or contradicting evidence; it exists but is ungrounded. Implementable in 2 bits per memory.
+      A four-valued logic state assigned to each memory: <strong>TRUE</strong> (T), meaning the memory is supported and not contradicted. <strong>FALSE</strong> (F), meaning the memory has been contradicted and superseded. <strong>BOTH</strong> (B), meaning the memory is part of a <a href="#held-contradiction">held contradiction</a> where both it and its contradicting memory carry evidence. <strong>NEITHER</strong> (N), meaning the memory has no supporting or contradicting evidence and exists but is ungrounded. Implementable in 2 bits per memory.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -1077,10 +1163,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="action-receipt">
-    <div class="term-name">Action Receipt <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original. Audit trail for agent tool execution.</div>
+    <div class="term-name">Action Receipt <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original. Audit trail for agent tool execution.</div>
     <div class="term-def">
-      A structured record of every tool execution in the agentic pipeline: what action was taken, which model performed it, whether it was verified, how long it took, and what the outcome was. Action receipts are the foundation of <a href="#execution-beliefs">execution beliefs</a> &mdash; by analyzing receipts, the system learns its own patterns. Receipts are stored in SQLite and feed the governance run log.
+      A structured record of every tool execution in the agentic pipeline: what action was taken, which model performed it, whether it was verified, how long it took, and what the outcome was. Action receipts are the foundation of <a href="#execution-beliefs">execution beliefs</a>. By analyzing receipts, the system tracks its own behavioral patterns. Receipts are stored in SQLite and feed the governance run log.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -1090,8 +1176,8 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="gradient-limiter">
-    <div class="term-name">Gradient Limiter <span class="badge badge-original">CRT-Original</span></div>
-    <div class="term-origin">CRT-original. Cost governance for cloud LLM access.</div>
+    <div class="term-name">Gradient Limiter <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original. Cost governance for cloud LLM access.</div>
     <div class="term-def">
       A smooth cost curve that reduces cloud LLM access as daily spend increases. Instead of a hard cutoff ("stop at $5/day"), the gradient limiter progressively routes more queries to local models as the budget fills. At low spend, cloud access is unrestricted. At medium spend, only complex queries go to cloud. At high spend, almost everything routes locally. This prevents budget spikes while maintaining quality on important queries.
     </div>

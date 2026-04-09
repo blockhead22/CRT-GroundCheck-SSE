@@ -3665,7 +3665,22 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             p in _eff_lower for p in ("who am i", "about who i am", "about me")
         ) and "?" in effective_message
 
+    # Skip legacy broad_recall when the orchestrator will handle it.
+    # The orchestrator has belief state injection (Tier 1 + Tier 2) which
+    # grounds answers properly. The legacy path uses a local model that
+    # hallucinates facts (Bug #8).
+    _skip_legacy_broad_recall = False
     if _is_identity_question:
+        try:
+            _rt_cfg_br = get_runtime_config()
+            _al_enabled_br = _rt_cfg_br.get("agent_loop", {}).get("enabled", False)
+            if _al_enabled_br:
+                _skip_legacy_broad_recall = True
+                _safe_print("[BROAD_RECALL] Skipping legacy path — orchestrator will handle via belief state injection")
+        except Exception:
+            pass
+
+    if _is_identity_question and not _skip_legacy_broad_recall:
         control_state.request_kind = "broad_recall"
         control_state.mark("bind", "memory_dump")
 
@@ -5127,6 +5142,22 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         logger.debug("[CRT-CRITIC] crt_critic not available")
     except Exception as e:
         logger.warning(f"[CRT-CRITIC] Verification error (non-fatal): {e}")
+    # ── NLI enforcement: soft_fail with contradictions should also gate ──
+    # Previously only hard_fail set gates_passed=False. Soft_fail with
+    # unrevised contradictions silently delivered the wrong answer.
+    if critic_meta:
+        _critic_v = str(critic_meta.get("verdict") or "")
+        _critic_contras = critic_meta.get("contradictions") or []
+        _critic_revised = bool(critic_meta.get("was_revised"))
+        if _critic_v == "soft_fail" and _critic_contras and not _critic_revised:
+            # Soft fail + contradictions found + revision failed = gate should fail
+            result["gates_passed"] = False
+            result["gate_reason"] = "nli_soft_fail_unrevised"
+            result["critic_meta"] = critic_meta
+            _safe_print(
+                f"[NLI_ENFORCEMENT] soft_fail with {len(_critic_contras)} unrevised contradictions — gating response"
+            )
+
     _mark("critic_done")
     control_state.mark(
         "validate",
@@ -6223,11 +6254,87 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             " | ".join(f"{row.get('stage')}:{row.get('dt_ms')}ms" for row in timing_rows),
         )
 
+    # ====== FIDELITY MIRROR (Breathing Loop) ======
+    # Post-generation integrity check: did the response faithfully represent
+    # the belief state? Three checks: belief fidelity, request alignment,
+    # factual grounding. If below threshold, gate the response.
+    try:
+        from personal_agent.fidelity_mirror import check_fidelity
+        _fidelity = check_fidelity(
+            response=final_answer,
+            query=effective_message,
+            memories=retrieved_mems if retrieved_mems else [],
+        )
+        metadata["fidelity_mirror"] = {
+            "belief_fidelity": _fidelity.belief_fidelity,
+            "request_alignment": _fidelity.request_alignment,
+            "factual_grounding": _fidelity.factual_grounding,
+            "composite": _fidelity.composite,
+            "passed": _fidelity.passed,
+            "latency_ms": _fidelity.latency_ms,
+        }
+        if not _fidelity.passed:
+            result["gates_passed"] = False
+            result["gate_reason"] = "fidelity_mirror"
+            _safe_print(
+                f"[FIDELITY_MIRROR] FAILED composite={_fidelity.composite:.3f} "
+                f"(belief={_fidelity.belief_fidelity:.2f}, request={_fidelity.request_alignment:.2f}, "
+                f"grounding={_fidelity.factual_grounding:.2f})"
+            )
+            for _f in _fidelity.findings:
+                _safe_print(f"  [FIDELITY] {_f}")
+        else:
+            _safe_print(
+                f"[FIDELITY_MIRROR] passed composite={_fidelity.composite:.3f} "
+                f"({_fidelity.latency_ms:.0f}ms)"
+            )
+    except Exception as _fm_err:
+        _safe_print(f"[FIDELITY_MIRROR] skipped: {_fm_err}")
+
+    # ====== NLI ENFORCEMENT GATE (Bug #9 fix) ======
+    # Structural veto: when gates_passed=False due to contradiction,
+    # hedge the response instead of delivering it as-is.
+    # This is the enforcement layer — advisory governance becomes structural.
+    _gates_final = bool(result.get("gates_passed"))
+    _gate_reason_final = result.get("gate_reason") if isinstance(result.get("gate_reason"), str) else None
+    if not _gates_final and _gate_reason_final:
+        _is_contradiction_gate = any(
+            term in str(_gate_reason_final).lower()
+            for term in ("contradiction", "nli", "ledger", "conflict")
+        )
+        if _is_contradiction_gate:
+            # Build hedge prefix from contradiction context
+            _contra_details = result.get("contradiction_details") or ""
+            _critic_meta = result.get("critic_meta") or {}
+            _contradictions_list = _critic_meta.get("contradictions") or []
+
+            _hedge_lines = [
+                "**Note:** My response may conflict with what I have on record.",
+            ]
+            if _contradictions_list:
+                for _c_text in _contradictions_list[:3]:
+                    _hedge_lines.append(f"- Stored belief: \"{str(_c_text)[:150]}\"")
+            _hedge_lines.append(
+                "I'm delivering my answer below, but flagging that my confidence is lower than usual. "
+                "If something sounds wrong, correct me and I'll update."
+            )
+            _hedge_prefix = "\n".join(_hedge_lines) + "\n\n---\n\n"
+            final_answer = _hedge_prefix + final_answer
+            _safe_print(
+                f"[NLI_ENFORCEMENT] Gate failed ({_gate_reason_final}) — "
+                f"hedged response with contradiction disclosure ({len(_contradictions_list)} conflicts)"
+            )
+            metadata["nli_enforcement"] = {
+                "action": "hedged",
+                "gate_reason": _gate_reason_final,
+                "contradictions_disclosed": len(_contradictions_list),
+            }
+
     return _chat_response(
         answer=final_answer,
         response_type=str(result.get("response_type") or "speech"),
-        gates_passed=bool(result.get("gates_passed")),
-        gate_reason=(result.get("gate_reason") if isinstance(result.get("gate_reason"), str) else None),
+        gates_passed=_gates_final,
+        gate_reason=_gate_reason_final,
         metadata=metadata,
         xray=xray_data,
     )
@@ -7145,10 +7252,13 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     except Exception:
                         pass
 
-                    # Filter to reasonably relevant matches (similarity > 0.3)
+                    # Filter to reasonably relevant matches
+                    # Lower threshold (0.15) because short corrections like
+                    # "that is incorrect" have weak semantic signal.
+                    # Conversation context helps identify the target.
                     _corr_candidates = [
                         (mem, score) for mem, score in _corr_results
-                        if score > 0.3 and mem.trust > 0.15
+                        if score > 0.15 and mem.trust > 0.10
                     ]
 
                     _safe_print(f"[CORRECTION] Found {len(_corr_candidates)} candidate memories (from {len(_corr_results)} total)")

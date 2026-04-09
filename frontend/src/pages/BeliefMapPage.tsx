@@ -24,10 +24,29 @@ type MapTopic = {
   centroid_z?: number
 }
 
+type BdgEdge = {
+  source: string
+  target: string
+  edge_type: string
+  weight: number
+}
+
+type Contradiction = {
+  entry_id_a: number | string
+  entry_id_b: number | string
+  ledger_id: string
+  status?: string
+  type?: string
+  disposition?: string
+  slots?: string
+  summary?: string
+}
+
 type MapData = {
   points: MapPoint[]
-  contradictions: { entry_id_a: number; entry_id_b: number; ledger_id: string }[]
+  contradictions: Contradiction[]
   topics: MapTopic[]
+  bdg_edges?: BdgEdge[]
   error?: string
 }
 
@@ -147,10 +166,44 @@ export default function BeliefMapPage({ threadId }: { threadId?: string }) {
       ctx.stroke()
     }
 
-    // Contradiction lines
+    // BDG dependency edges (thin, low opacity SUPPORTS lines)
+    if (data.bdg_edges && data.bdg_edges.length > 0) {
+      // Build a memory_id -> nearest point lookup using response_preview matching
+      // BDG edges reference memory_ids; points are belief_speech entries.
+      // We draw edges between the closest matching points.
+      const pointsByEntry = new Map<string | number, MapPoint>()
+      for (const p of data.points) {
+        pointsByEntry.set(String(p.entry_id), p)
+      }
+
+      ctx.globalAlpha = 0.12
+      ctx.lineWidth = 0.8
+      for (const edge of data.bdg_edges) {
+        // Try direct entry_id match first
+        let a = pointsByEntry.get(edge.source)
+        let b = pointsByEntry.get(edge.target)
+        if (a && b) {
+          const sa = worldToScreen(a.x, a.y, canvas)
+          const sb = worldToScreen(b.x, b.y, canvas)
+          ctx.strokeStyle = edge.edge_type === 'CONTRADICTS' ? COLORS.contradiction : COLORS.belief
+          ctx.beginPath()
+          ctx.moveTo(sa.sx, sa.sy)
+          ctx.lineTo(sb.sx, sb.sy)
+          ctx.stroke()
+        }
+      }
+      ctx.globalAlpha = 1.0
+    }
+
+    // Contradiction lines (dashed red, higher visibility)
     for (const c of data.contradictions) {
-      const a = data.points.find(p => p.entry_id === c.entry_id_a)
-      const b = data.points.find(p => p.entry_id === c.entry_id_b)
+      // Match by entry_id (numeric) or by string ID (memory_id)
+      const a = data.points.find(p =>
+        p.entry_id === c.entry_id_a || String(p.entry_id) === String(c.entry_id_a)
+      )
+      const b = data.points.find(p =>
+        p.entry_id === c.entry_id_b || String(p.entry_id) === String(c.entry_id_b)
+      )
       if (a && b) {
         const sa = worldToScreen(a.x, a.y, canvas)
         const sb = worldToScreen(b.x, b.y, canvas)
@@ -222,13 +275,48 @@ export default function BeliefMapPage({ threadId }: { threadId?: string }) {
     ctx.fillStyle = COLORS.textMuted
     ctx.fillText('Speech (ungrounded)', lx + 12, ly + 22)
 
+    // Edge legend items
+    if (data.contradictions.length > 0 || (data.bdg_edges && data.bdg_edges.length > 0)) {
+      let ely = ly + 36
+      if (data.bdg_edges && data.bdg_edges.length > 0) {
+        ctx.strokeStyle = COLORS.belief
+        ctx.globalAlpha = 0.4
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.moveTo(lx - 4, ely)
+        ctx.lineTo(lx + 8, ely)
+        ctx.stroke()
+        ctx.globalAlpha = 1.0
+        ctx.fillStyle = COLORS.textMuted
+        ctx.fillText(`~ similar`, lx + 16, ely + 4)
+        ely += 14
+      }
+      if (data.contradictions.length > 0) {
+        ctx.strokeStyle = COLORS.contradiction
+        ctx.lineWidth = 1.5
+        ctx.setLineDash([3, 3])
+        ctx.beginPath()
+        ctx.moveTo(lx - 4, ely)
+        ctx.lineTo(lx + 8, ely)
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.fillStyle = COLORS.textMuted
+        ctx.fillText(`-- contra`, lx + 16, ely + 4)
+      }
+    }
+
     // Count display
     const beliefs = data.points.filter(p => p.is_belief).length
     const speeches = data.points.length - beliefs
+    const edgeCount = (data.bdg_edges?.length || 0) + data.contradictions.length
     ctx.fillStyle = COLORS.textMuted
     ctx.font = '10px monospace'
     ctx.textAlign = 'right'
-    ctx.fillText(`${data.points.length} points | ${beliefs} beliefs | ${speeches} speech | ${data.topics.length} topics`, rect.width - 16, rect.height - 16)
+    ctx.fillText(
+      `${data.points.length} points | ${beliefs} beliefs | ${speeches} speech | ${data.topics.length} topics` +
+      (edgeCount > 0 ? ` | ${edgeCount} edges` : ''),
+      rect.width - 16, rect.height - 16
+    )
   }, [data, selectedTopic, worldToScreen])
 
   // Mouse interactions

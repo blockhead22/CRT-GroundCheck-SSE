@@ -251,7 +251,10 @@ class UnifiedLLMClient:
         except Exception:
             pass
 
-        print(f"[CLOUD_COST] {provider}/{model}: {input_t} in + {output_t} out = ${cost:.6f} (session: ${self._request_cost_usd:.4f})")
+        # Only print cost for non-free calls to reduce log noise (Bug #3)
+        # Local Ollama calls are $0.000000 and spam 40+ lines per message
+        if cost > 0:
+            print(f"[CLOUD_COST] {provider}/{model}: {input_t} in + {output_t} out = ${cost:.6f} (session: ${self._request_cost_usd:.4f})")
 
     def reset_request_cost(self):
         """Reset per-request cost accumulator. Call at the start of each user message."""

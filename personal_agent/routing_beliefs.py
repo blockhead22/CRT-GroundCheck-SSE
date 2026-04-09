@@ -501,8 +501,18 @@ def should_orchestrate(message: str, intent: Any = None) -> RoutingDecision:
     _FORCE_ORCHESTRATOR_INTENTS = {
         "gpt_log_search", "gpt_log_context", "gpt_log_promote",
     }
+    # Reasons that indicate the query needs belief-grounded generation
+    # (user identity questions, personal facts, broad recall).
+    # These route to orchestrator so the belief state injection provides context.
+    _FORCE_ORCHESTRATOR_REASONS = {
+        "personal_fact_full_pipeline",
+    }
+    _FORCE_ORCHESTRATOR_INTENT_TYPES = {
+        "broad_recall",
+    }
     if intent is not None:
         _intent_type = getattr(intent, "intent_type", None)
+        _intent_reason = getattr(intent, "reason", None) or ""
         if _intent_type in _FORCE_ORCHESTRATOR_INTENTS:
             return RoutingDecision(
                 route="orchestrator",
@@ -510,6 +520,41 @@ def should_orchestrate(message: str, intent: Any = None) -> RoutingDecision:
                 reasons=[f"forced_by_intent({_intent_type})"],
                 features={},
             )
+        if _intent_type in _FORCE_ORCHESTRATOR_INTENT_TYPES:
+            return RoutingDecision(
+                route="orchestrator",
+                confidence=0.90,
+                reasons=[f"forced_by_intent_type({_intent_type})"],
+                features={},
+            )
+        if _intent_reason in _FORCE_ORCHESTRATOR_REASONS:
+            return RoutingDecision(
+                route="orchestrator",
+                confidence=0.85,
+                reasons=[f"forced_by_reason({_intent_reason})"],
+                features={},
+            )
+
+    # Pattern-based override: personal identity / belief-state questions
+    # These need the orchestrator because belief state is injected there.
+    import re as _re_routing
+    _personal_q = _re_routing.search(
+        r"\b(?:what(?:'s| is) my (?:name|job|age|location|color|health)|"
+        r"where do i (?:work|live)|"
+        r"do you (?:know|remember) (?:me|my|who i|about me)|"
+        r"what (?:do you (?:know|remember|believe|hold)|contradictions?|facts? do you (?:have|know))|"
+        r"(?:tell|show) me (?:about|what you know about) (?:me|myself|who i)|"
+        r"(?:describe|summarize) (?:me|what you know)|"
+        r"who am i)\b",
+        message, _re_routing.IGNORECASE,
+    )
+    if _personal_q:
+        return RoutingDecision(
+            route="orchestrator",
+            confidence=0.85,
+            reasons=["personal_identity_query"],
+            features={},
+        )
 
     features = _extract_all_features(message)
     weights = _get_db().get_weights()
