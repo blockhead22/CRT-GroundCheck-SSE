@@ -104,6 +104,58 @@ EMBEDDING_UNRELATED_THRESHOLD = 0.25
 TRUST_DECAY_THRESHOLD = 0.5
 TRUST_CONFLICT_DELTA = 0.15  # Minimum trust difference to pick a winner
 
+# Oscillation thresholds (validated by exp5b_oscillation.py 2026-04-10)
+# osc=0: 2.9% corrected, osc≥2: 11.5% (3.9x), osc≥4: 31.1% (10.7x)
+OSCILLATION_FLAG_THRESHOLD = 4   # Flag memories with 4+ direction changes
+OSCILLATION_TENSION_BOOST = 0.20  # Boost tension_score for high oscillators
+
+
+# ============================================================================
+# Oscillation Detection
+# ============================================================================
+
+def compute_oscillation_count(trust_history: List[Dict]) -> int:
+    """Count trust direction changes from a memory's trust history.
+
+    An oscillation is a direction change: trust goes up, then down, or vice versa.
+
+    Args:
+        trust_history: List of {old_trust, new_trust, ...} dicts, ordered by time
+
+    Returns:
+        Number of direction changes (oscillations). 0 if monotonic or <2 entries.
+
+    Validated by exp5b_oscillation.py (2026-04-10):
+    - osc=0: 2.9% correction rate (stable memories)
+    - osc≥4: 31.1% correction rate (10.7x baseline, highly unstable)
+    """
+    if len(trust_history) < 2:
+        return 0
+
+    # Sort by timestamp ascending (oldest first) if not already
+    # trust_history may come in DESC order from DB
+    sorted_hist = sorted(trust_history, key=lambda x: x.get('timestamp', 0))
+
+    oscillations = 0
+    last_direction = None  # +1 for up, -1 for down, None for no change
+
+    for entry in sorted_hist:
+        old = entry.get('old_trust', 0.5)
+        new = entry.get('new_trust', 0.5)
+        delta = new - old
+
+        if abs(delta) < 0.01:  # Skip negligible changes
+            continue
+
+        direction = 1 if delta > 0 else -1
+
+        if last_direction is not None and direction != last_direction:
+            oscillations += 1
+
+        last_direction = direction
+
+    return oscillations
+
 
 # ============================================================================
 # Core: StructuralTensionMeter
@@ -148,6 +200,8 @@ class StructuralTensionMeter:
         slots_b: Optional[Dict] = None,
         vector_a: Optional[np.ndarray] = None,
         vector_b: Optional[np.ndarray] = None,
+        oscillation_a: int = 0,
+        oscillation_b: int = 0,
     ) -> TensionResult:
         """Measure structural tension between two memories.
 
@@ -215,6 +269,13 @@ class StructuralTensionMeter:
         temporal_evolution = self._check_temporal_evolution(overlaps)
         signals["temporal_evolution"] = temporal_evolution
 
+        # Step 5b: Oscillation (trust direction changes — validated predictor of correction)
+        max_oscillation = max(oscillation_a, oscillation_b)
+        high_oscillator = max_oscillation >= OSCILLATION_FLAG_THRESHOLD
+        signals["oscillation_a"] = oscillation_a
+        signals["oscillation_b"] = oscillation_b
+        signals["high_oscillator"] = high_oscillator
+
         # Step 6: Scoring / Propagation
         return self._score(
             overlaps=overlaps,
@@ -237,6 +298,8 @@ class StructuralTensionMeter:
             trust_a_low=trust_a_low,
             trust_b_low=trust_b_low,
             temporal_evolution=temporal_evolution,
+            high_oscillator=high_oscillator,
+            max_oscillation=max_oscillation,
         )
 
     def measure_pair(self, mem_a, mem_b) -> TensionResult:
@@ -244,6 +307,7 @@ class StructuralTensionMeter:
 
         Works with any object that has .text, .trust, .source, .timestamp attributes.
         Reads pre-cached slots from .fact_slots if available.
+        Reads oscillation_count from .oscillation if available.
         """
         return self.measure(
             text_a=getattr(mem_a, "text", str(mem_a)),
@@ -256,6 +320,8 @@ class StructuralTensionMeter:
             timestamp_b=getattr(mem_b, "timestamp", 0.0),
             vector_a=getattr(mem_a, "vector", None),
             vector_b=getattr(mem_b, "vector", None),
+            oscillation_a=getattr(mem_a, "oscillation", 0),
+            oscillation_b=getattr(mem_b, "oscillation", 0),
         )
 
     def measure_against_cluster(
@@ -537,6 +603,9 @@ class StructuralTensionMeter:
         trust_b_low = kwargs["trust_b_low"]
         temporal_evolution = kwargs["temporal_evolution"]
         trust_delta = kwargs["trust_delta"]
+        # Oscillation: 4+ direction changes = 31.1% correction rate (exp5b)
+        high_oscillator = kwargs.get("high_oscillator", False)
+        max_oscillation = kwargs.get("max_oscillation", 0)
 
         # --- Rule 1: Unrelated (low similarity, no shared slots) ---
         if is_unrelated and no_shared_slots:
@@ -578,6 +647,21 @@ class StructuralTensionMeter:
                 relationship=TensionRelationship.COMPATIBLE,
                 action=TensionAction.KEEP_BOTH,
                 confidence=0.8,
+                supporting_signals=signals,
+                slot_overlaps=overlaps,
+            )
+
+        # --- Rule 4b: High oscillation (validated 2026-04-10, exp5b) ---
+        # osc≥4 = 31.1% correction rate vs 2.9% baseline (10.7x)
+        # These memories have unstable trust history — flag for consolidation review
+        if high_oscillator and same_topic:
+            # Apply tension boost proportional to oscillation count
+            osc_boost = min(OSCILLATION_TENSION_BOOST, max_oscillation * 0.04)
+            return TensionResult(
+                tension_score=0.45 + osc_boost,  # Elevated base + boost
+                relationship=TensionRelationship.TENSION,
+                action=TensionAction.FLAG_FOR_REVIEW,
+                confidence=0.7,  # Lower confidence — oscillation is a signal, not proof
                 supporting_signals=signals,
                 slot_overlaps=overlaps,
             )

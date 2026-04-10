@@ -121,7 +121,7 @@ def retrieve_plain_rag(query: str, memories: List[Dict], k: int = 5) -> str:
     # Format: plain text, no trust scores, no metadata
     lines = ["## Relevant memories:"]
     for mem, sim in top:
-        text = mem["text"].strip()[:200]
+        text = sanitize_text(mem["text"].strip()[:200])
         lines.append(f"- {text}")
 
     return "\n".join(lines)
@@ -155,7 +155,7 @@ def retrieve_crt(query: str, memories: List[Dict], k: int = 5) -> str:
     # Format: with trust scores and source metadata
     lines = ["## What I know about you (sorted by trust, highest first):"]
     for mem, score, sim in top:
-        text = mem["text"].strip()[:200]
+        text = sanitize_text(mem["text"].strip()[:200])
         trust = mem["trust"]
         source = mem["source"]
         lines.append(f"- [trust:{trust:.2f}] [source:{source}] {text}")
@@ -167,7 +167,7 @@ def retrieve_crt(query: str, memories: List[Dict], k: int = 5) -> str:
         lines.append("")
         lines.append("## Low-confidence memories (may be outdated):")
         for mem in low_trust[:3]:
-            text = mem["text"].strip()[:150]
+            text = sanitize_text(mem["text"].strip()[:150])
             lines.append(f"- [trust:{mem['trust']:.2f}] {text}")
 
     return "\n".join(lines)
