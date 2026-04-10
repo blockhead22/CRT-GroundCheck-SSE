@@ -348,6 +348,16 @@ def run_consolidation_pass(
     except ImportError:
         logger.warning("[CONSOLIDATION] Disposition classifier not available")
 
+    # --- Pre-filter: structural tension meter (skip NLI for clear cases) ---
+    _tension_meter = None
+    _tension_skipped = 0
+    _tension_resolved = 0
+    try:
+        from .structural_tension import StructuralTensionMeter, TensionRelationship
+        _tension_meter = StructuralTensionMeter()
+    except ImportError:
+        logger.debug("[CONSOLIDATION] StructuralTensionMeter not available, using NLI for all pairs")
+
     for mem_a, mem_b, sim in candidates:
         result.pairs_checked += 1
         text_a = getattr(mem_a, "text", "")
@@ -355,15 +365,47 @@ def run_consolidation_pass(
         mid_a = getattr(mem_a, "memory_id", "?")
         mid_b = getattr(mem_b, "memory_id", "?")
 
+        # --- Structural tension pre-filter ---
+        # If the tension meter can resolve this pair structurally, skip NLI entirely.
+        _use_nli = True
+        if _tension_meter is not None:
+            try:
+                _t_result = _tension_meter.measure_pair(mem_a, mem_b)
+                if _t_result.confidence >= 0.7:
+                    if _t_result.relationship == TensionRelationship.UNRELATED:
+                        _tension_skipped += 1
+                        continue  # Not a contradiction — skip
+                    elif _t_result.relationship == TensionRelationship.COMPATIBLE:
+                        _tension_skipped += 1
+                        continue  # Compatible — skip
+                    elif _t_result.relationship == TensionRelationship.DUPLICATE:
+                        _tension_skipped += 1
+                        continue  # Duplicate — handled by dedup, skip
+                    elif _t_result.relationship == TensionRelationship.CONFLICT:
+                        # Structural conflict — treat as contradiction, skip NLI
+                        _use_nli = False
+                        _tension_resolved += 1
+                        logger.info(
+                            "[CONSOLIDATION] Structural conflict: %s vs %s (score=%.2f, confidence=%.2f)",
+                            mid_a, mid_b, _t_result.tension_score, _t_result.confidence,
+                        )
+                    # TENSION, REFINEMENT, DECAYED → fall through to NLI for confirmation
+            except Exception as _te:
+                logger.debug("[CONSOLIDATION] Tension pre-filter error: %s", _te)
+
         try:
             # Check for contradiction
             is_contradiction = False
             nli_confidence = 0.0
 
-            if nli_detector:
+            if _use_nli and nli_detector:
                 nli_result = nli_detector.check_contradiction(text_a, text_b)
                 is_contradiction = nli_result.is_contradiction
                 nli_confidence = nli_result.confidence
+            elif not _use_nli:
+                # Structural conflict already confirmed
+                is_contradiction = True
+                nli_confidence = _t_result.confidence if '_t_result' in dir() else 0.7
             else:
                 # Fallback: use drift threshold
                 drift = 1.0 - sim
@@ -537,6 +579,8 @@ def run_consolidation_pass(
         f"held={result.held_created} "
         f"evolving={result.evolving_tracked} "
         f"bdg_edges={result.bdg_edges_added} "
+        f"tension_skipped={_tension_skipped} "
+        f"tension_resolved={_tension_resolved} "
         f"duration={result.duration_seconds:.1f}s"
     )
 

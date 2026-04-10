@@ -32,7 +32,7 @@ StructuralTensionMeter = mod.StructuralTensionMeter
 
 
 def p(msg):
-    print(msg, flush=True)
+    print(msg.encode('ascii', 'replace').decode('ascii'), flush=True)
 
 
 TESTS = [

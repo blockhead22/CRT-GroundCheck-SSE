@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import numpy as np
 from .text_utils import sanitize_thread_id
 
 logger = logging.getLogger(__name__)
@@ -1096,6 +1097,108 @@ Reason carefully. If unsure, reply with action=none.
                 logger.info(f"[HEARTBEAT] Contradictions: {len(open_contradictions)} open, {len(stale)} stale")
         except Exception as e:
             logger.debug(f"[HEARTBEAT] Contradiction check skipped: {e}")
+
+        # --- 2a. Structural Tension Scan (Breathing Loop) ---
+        # Measure tension across recently-changed memories using slot extraction +
+        # embedding similarity. Zero LLM calls, ~0.2s per pair. Surfaces rising
+        # tensions and triggers trust adjustments for confirmed conflicts.
+        try:
+            from .structural_tension import StructuralTensionMeter, TensionRelationship, TensionAction
+            import sqlite3 as _sqlite3
+
+            _mem_db_path_var = self._resolve_memory_db_path(thread_id)
+            if _mem_db_path_var and Path(_mem_db_path_var).exists():
+                if not hasattr(self, '_tension_meter'):
+                    self._tension_meter = StructuralTensionMeter()
+
+                # Find memories with trust changes since last heartbeat (~30 min)
+                _scan_window = float((config or {}).get("every_seconds", 1800)) * 1.1
+                _cutoff = _time.time() - _scan_window
+                _changed_ids = set()
+                try:
+                    _tl_conn = _sqlite3.connect(_mem_db_path_var, timeout=10.0)
+                    _tl_rows = _tl_conn.execute(
+                        "SELECT DISTINCT memory_id FROM trust_log WHERE timestamp > ? LIMIT 50",
+                        (_cutoff,)
+                    ).fetchall()
+                    _tl_conn.close()
+                    _changed_ids = {str(r[0]) for r in _tl_rows}
+                except Exception:
+                    pass
+
+                if _changed_ids:
+                    from .crt_memory import CRTMemorySystem as _CMS_scan
+                    _scan_mem = _CMS_scan(db_path=_mem_db_path_var)
+                    _all_mems = _scan_mem._load_all_memories()
+                    _changed_mems = [m for m in _all_mems if getattr(m, "memory_id", "") in _changed_ids and not getattr(m, "deprecated", 0)]
+                    _other_mems = [m for m in _all_mems if getattr(m, "memory_id", "") not in _changed_ids and not getattr(m, "deprecated", 0)]
+
+                    _tensions_found = []
+                    _scanned = 0
+                    for _cm in _changed_mems[:10]:  # Cap at 10 changed memories per cycle
+                        # Find neighbors by embedding similarity
+                        _cm_vec = getattr(_cm, "vector", None)
+                        if _cm_vec is None or not hasattr(_cm_vec, '__len__') or len(_cm_vec) == 0:
+                            continue
+                        _cm_vec_np = np.array(_cm_vec, dtype=np.float32)
+                        _neighbors = []
+                        for _om in _other_mems:
+                            _om_vec = getattr(_om, "vector", None)
+                            if _om_vec is not None and hasattr(_om_vec, '__len__') and len(_om_vec) > 0:
+                                _s = float(np.dot(_cm_vec_np, np.array(_om_vec, dtype=np.float32)))
+                                if _s > 0.40:
+                                    _neighbors.append(_om)
+                        _neighbors = _neighbors[:5]
+
+                        if _neighbors:
+                            _results = self._tension_meter.measure_against_cluster(
+                                text=getattr(_cm, "text", ""),
+                                cluster=_neighbors,
+                                trust=getattr(_cm, "trust", 0.5),
+                                source=getattr(_cm, "source", "user"),
+                                timestamp=getattr(_cm, "timestamp", 0.0),
+                                vector=_cm_vec_np,
+                            )
+                            for _nm, _tr in _results:
+                                _scanned += 1
+                                if _tr.relationship in (TensionRelationship.CONFLICT, TensionRelationship.TENSION):
+                                    _tensions_found.append({
+                                        "memory_a": getattr(_cm, "memory_id", "?"),
+                                        "memory_b": getattr(_nm, "memory_id", "?"),
+                                        "relationship": _tr.relationship.value,
+                                        "tension_score": _tr.tension_score,
+                                        "action": _tr.action.value,
+                                    })
+                                    # Auto-act on high-confidence conflicts
+                                    if _tr.relationship == TensionRelationship.CONFLICT and _tr.confidence >= 0.75:
+                                        _weaker_id = getattr(_nm, "memory_id", None)
+                                        _weaker_trust = getattr(_nm, "trust", 0.5)
+                                        if _weaker_id and _weaker_trust > 0.1:
+                                            _new_trust = float(_weaker_trust) * 0.5
+                                            try:
+                                                _scan_mem.update_trust(
+                                                    _weaker_id,
+                                                    _new_trust,
+                                                    reason=f"breathing_loop:tension_conflict (score={_tr.tension_score:.2f})",
+                                                )
+                                            except Exception:
+                                                pass
+
+                    if _scanned > 0:
+                        actions_taken.append({
+                            "action": "tension_scan",
+                            "detail": f"Scanned {_scanned} pairs from {len(_changed_mems)} changed memories, found {len(_tensions_found)} tensions",
+                            "tensions_found": len(_tensions_found),
+                            "pairs_scanned": _scanned,
+                            "tensions": _tensions_found[:5],  # Keep top 5 for record
+                        })
+                        if _tensions_found:
+                            logger.info(
+                                "[HEARTBEAT] Tension scan: %d tensions found in %d pairs",
+                                len(_tensions_found), _scanned,
+                            )
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Tension scan skipped: {e}")
 
         # --- 2b. System State Snapshot + Behavioral Triggers ---
         system_snapshot = None

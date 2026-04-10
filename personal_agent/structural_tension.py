@@ -549,24 +549,24 @@ class StructuralTensionMeter:
                 slot_overlaps=overlaps,
             )
 
-        # --- Rule 2: Near-duplicate (very high similarity, slots agree) ---
-        if near_dup and (all_agree or no_shared_slots):
-            return TensionResult(
-                tension_score=0.05,
-                relationship=TensionRelationship.DUPLICATE,
-                action=TensionAction.BUMP_EXISTING,
-                confidence=0.95,
-                supporting_signals=signals,
-                slot_overlaps=overlaps,
-            )
-
-        # --- Rule 3: Refinement (one value contains the other) ---
+        # --- Rule 2: Refinement (one value contains the other) — checked before duplicate ---
         if has_refinement and not has_conflict:
             return TensionResult(
                 tension_score=0.15,
                 relationship=TensionRelationship.REFINEMENT,
                 action=TensionAction.KEEP_MORE_SPECIFIC,
                 confidence=0.85,
+                supporting_signals=signals,
+                slot_overlaps=overlaps,
+            )
+
+        # --- Rule 3: Near-duplicate (very high similarity, slots agree, no refinement) ---
+        if near_dup and (all_agree or no_shared_slots):
+            return TensionResult(
+                tension_score=0.05,
+                relationship=TensionRelationship.DUPLICATE,
+                action=TensionAction.BUMP_EXISTING,
+                confidence=0.95,
                 supporting_signals=signals,
                 slot_overlaps=overlaps,
             )

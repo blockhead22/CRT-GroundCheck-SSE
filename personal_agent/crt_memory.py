@@ -1767,16 +1767,17 @@ class CRTMemorySystem:
                 return existing_mem
             # Fallthrough: if the row vanished between check and fetch, insert normally
 
-        # --- Slot-level behavior: handle exclusive/additive/temporal slots dynamically ---
-        # Sprint 6: replaced hardcoded EXCLUSIVE_SLOTS with learned slot types.
-        # This runs AFTER text-based dedup (which only catches near-identical text)
-        # to handle cases like "favorite color is green" vs "favorite color is orange".
+        # Corrective language detection (used for trust boost below)
         _corrective_phrases = ("not ", "actually", "always has been", "never was")
         _has_corrective_language = any(p in text.lower() for p in _corrective_phrases)
-        _write_path_contradictions = []  # Collect slot contradictions for ledger (written after memory creation)
 
-        # Guard 2: Third-person filter — skip fact extraction entirely if the
-        # text is about someone else, not the user.
+        # --- Structural tension check: slot + embedding based conflict detection ---
+        # Replaces ad-hoc slot exclusivity block (Sprint 6) with the centralized
+        # StructuralTensionMeter. Handles DUPLICATE, REFINEMENT, CONFLICT, and
+        # COMPATIBLE relationships in one pass. Zero LLM calls.
+        _write_path_contradictions = []
+
+        # Guard: Third-person filter — skip tension check for text about others
         _third_person_indicators = (
             "my friend ", "my buddy ", "my colleague ", "my sister ", "my brother ",
             "my mom ", "my dad ", "my wife ", "my husband ", "my partner ",
@@ -1787,105 +1788,120 @@ class CRTMemorySystem:
         _text_lower = text.lower().strip()
         _has_third_person = any(ind in _text_lower for ind in _third_person_indicators)
         _has_first_person = any(_text_lower.startswith(ind) or f" {ind}" in _text_lower for ind in _first_person_indicators)
-        _skip_slot_extraction = _has_third_person and not _has_first_person
+        _skip_tension_check = _has_third_person and not _has_first_person
 
-        if _skip_slot_extraction:
-            logger.info("[SLOT_EXCLUSIVITY] Skipping — third-person text detected: %s", text[:60])
+        _skip_slot_extraction = _skip_tension_check  # Preserve for downstream cloud fact extraction
 
-        try:
-            from .fact_slots import extract_fact_slots as _efs
-            from .slot_discovery import get_slot_type, on_fact_stored, SlotType
-            _new_slots = _efs(text) if not _skip_slot_extraction else {}
-            _discovery_db = None  # Use default discovery DB path
-            for _slot_name, _slot_fact in _new_slots.items():
-                _slot_type = get_slot_type(_slot_name, db_path=_discovery_db)
-                _new_val_norm = str(getattr(_slot_fact, "normalized", getattr(_slot_fact, "value", _slot_fact))).strip().lower()
+        if _skip_tension_check:
+            logger.info("[TENSION] Skipping — third-person text detected: %s", text[:60])
 
-                if _slot_type == SlotType.ADDITIVE:
-                    # Multiple values coexist — no demotion needed
-                    logger.debug(
-                        "[SLOT_DISCOVERY] Slot %s is ADDITIVE — keeping all values",
-                        _slot_name,
+        if not _skip_tension_check:
+            try:
+                from .structural_tension import StructuralTensionMeter, TensionRelationship, TensionAction
+
+                # Lazy-init meter on this CRTMemorySystem instance
+                if not hasattr(self, '_tension_meter'):
+                    self._tension_meter = StructuralTensionMeter()
+
+                # Find top-5 neighbors by embedding similarity (reuse the vector we already computed)
+                _all_mems = self._load_all_memories()
+                _neighbor_candidates = []
+                for _m in _all_mems:
+                    if getattr(_m, "deprecated", 0):
+                        continue
+                    _m_vec = getattr(_m, "vector", None)
+                    if _m_vec is not None and hasattr(_m_vec, '__len__') and len(_m_vec) > 0:
+                        _sim = float(np.dot(vector, np.array(_m_vec, dtype=np.float32)))
+                        if _sim > 0.40:
+                            _neighbor_candidates.append((_m, _sim))
+                _neighbor_candidates.sort(key=lambda x: x[1], reverse=True)
+                _neighbors = [m for m, s in _neighbor_candidates[:5]]
+
+                if _neighbors:
+                    _tension_results = self._tension_meter.measure_against_cluster(
+                        text=text,
+                        cluster=_neighbors,
+                        trust=initial_trust if 'initial_trust' in dir() else confidence,
+                        source=source,
+                        timestamp=time.time(),
+                        vector=vector,
                     )
-                    continue
 
-                if _slot_type == SlotType.UNKNOWN:
-                    # Not enough data — default to exclusive for safety
-                    logger.debug(
-                        "[SLOT_DISCOVERY] Slot %s is UNKNOWN — defaulting to exclusive behavior",
-                        _slot_name,
-                    )
+                    for _neighbor_mem, _t_result in _tension_results:
+                        _neighbor_id = getattr(_neighbor_mem, "memory_id", "?")
+                        _neighbor_trust = getattr(_neighbor_mem, "trust", 0.5)
 
-                # EXCLUSIVE, TEMPORAL, HIERARCHICAL, or UNKNOWN → demote old values
-                # Query memory_facts for existing entries with same slot but different value
-                _conn_ex = self._get_connection()
-                _cur_ex = _conn_ex.cursor()
-                _cur_ex.execute("""
-                    SELECT mf.memory_id, mf.normalized, m.trust
-                    FROM memory_facts mf
-                    JOIN memories m ON mf.memory_id = m.memory_id
-                    WHERE mf.slot = ? AND m.deprecated = 0
-                """, (_slot_name,))
-                _existing_rows = _cur_ex.fetchall()
-                _conn_ex.close()
-                for _ex_mem_id, _ex_norm, _ex_trust in _existing_rows:
-                    _ex_val_norm = str(_ex_norm).strip().lower()
-                    # Guard 1: Same-value skip — exact match OR substring containment
-                    # "Anthropic" matches "anthropic as a research engineer" and vice versa
-                    if (_ex_val_norm == _new_val_norm
-                            or _new_val_norm in _ex_val_norm
-                            or _ex_val_norm in _new_val_norm):
-                        continue  # Same or overlapping value — not a conflict
+                        if _t_result.relationship == TensionRelationship.CONFLICT:
+                            # Demote the weaker memory
+                            if _t_result.action == TensionAction.DEPRECATE_WEAKER:
+                                _demoted_trust = float(_neighbor_trust) * 0.4
+                                self.update_trust(
+                                    _neighbor_id,
+                                    _demoted_trust,
+                                    reason=f"tension_conflict: {_t_result.supporting_signals.get('shared_slots', 0)} shared slots differ",
+                                )
+                                self.record_memory_event(
+                                    memory_id=_neighbor_id,
+                                    event_type="tension_conflict_demoted",
+                                    actor="system",
+                                    reason=f"structural conflict detected with new memory",
+                                    metadata=_t_result.to_dict(),
+                                )
+                                logger.info(
+                                    "[TENSION] CONFLICT: demoted %s (trust %.3f -> %.3f). Score: %.2f",
+                                    _neighbor_id, _neighbor_trust, _demoted_trust, _t_result.tension_score,
+                                )
+                            _write_path_contradictions.append({
+                                "old_memory_id": _neighbor_id,
+                                "slot": ", ".join(o.slot for o in _t_result.slot_overlaps if o.match_type == "different"),
+                                "relationship": _t_result.relationship.value,
+                                "tension_score": _t_result.tension_score,
+                                "old_trust": float(_neighbor_trust),
+                            })
 
-                    if _slot_type == SlotType.TEMPORAL:
-                        # Archive: lighter demotion — old value was true in the past
-                        _demoted_trust = float(_ex_trust) * 0.6
-                    else:
-                        # Exclusive/unknown: stronger demotion
-                        _demoted_trust = float(_ex_trust) * 0.4
+                        elif _t_result.relationship == TensionRelationship.REFINEMENT:
+                            # Lighter demotion for refined memory
+                            _demoted_trust = float(_neighbor_trust) * 0.6
+                            self.update_trust(
+                                _neighbor_id,
+                                _demoted_trust,
+                                reason=f"tension_refinement: new memory is more specific",
+                            )
+                            self.record_memory_event(
+                                memory_id=_neighbor_id,
+                                event_type="tension_refinement_demoted",
+                                actor="system",
+                                reason=f"refined by more specific memory",
+                                metadata=_t_result.to_dict(),
+                            )
+                            logger.info(
+                                "[TENSION] REFINEMENT: demoted %s (trust %.3f -> %.3f)",
+                                _neighbor_id, _neighbor_trust, _demoted_trust,
+                            )
 
-                    # Use public update_trust (not private _update_memory_trust) so the
-                    # demotion is written to trust_log and visible in the trust-delta UI.
-                    self.update_trust(
-                        _ex_mem_id,
-                        _demoted_trust,
-                        reason=f"slot_demotion:{_slot_name}={_new_val_norm} superseded {_ex_norm}",
-                    )
-                    self.record_memory_event(
-                        memory_id=_ex_mem_id,
-                        event_type="slot_exclusivity_demoted",
-                        actor="system",
-                        reason=f"superseded by new memory: {_slot_name}={_new_val_norm}",
-                        metadata={
-                            "slot": _slot_name,
-                            "slot_type": _slot_type.value,
-                            "old_value": str(_ex_norm),
-                            "new_value": _new_val_norm,
-                            "old_trust": float(_ex_trust),
-                            "demoted_trust": _demoted_trust,
-                        },
-                    )
-                    logger.info(
-                        "[SLOT_EXCLUSIVITY] Demoted %s for slot %s (%s): %s -> %s (trust %.3f -> %.3f)",
-                        _ex_mem_id, _slot_name, _slot_type.value, _ex_norm, _new_val_norm,
-                        float(_ex_trust), _demoted_trust,
-                    )
-                    # Collect for ledger entry (written after memory creation when we have memory_id)
-                    _write_path_contradictions.append({
-                        "old_memory_id": _ex_mem_id,
-                        "slot": _slot_name,
-                        "old_value": str(_ex_norm),
-                        "new_value": _new_val_norm,
-                        "old_trust": float(_ex_trust),
-                    })
+                        elif _t_result.relationship == TensionRelationship.DUPLICATE:
+                            # Already handled by dedup check above, but log if it slipped through
+                            logger.debug(
+                                "[TENSION] DUPLICATE detected for %s (already handled by dedup)",
+                                _neighbor_id,
+                            )
 
-                # Notify slot discovery of the new fact (non-blocking)
+                # Notify slot discovery (preserve existing behavior)
                 try:
-                    on_fact_stored(_slot_name, _new_val_norm, confidence, db_path=_discovery_db)
+                    from .fact_slots import extract_fact_slots as _efs
+                    from .slot_discovery import on_fact_stored
+                    _new_slots = _efs(text) or {}
+                    for _slot_name, _slot_fact in _new_slots.items():
+                        _new_val_norm = str(getattr(_slot_fact, "normalized", getattr(_slot_fact, "value", _slot_fact))).strip().lower()
+                        try:
+                            on_fact_stored(_slot_name, _new_val_norm, confidence)
+                        except Exception:
+                            pass
                 except Exception:
                     pass
-        except Exception as _slot_ex_err:
-            logger.debug(f"[SLOT_EXCLUSIVITY] Slot behavior check failed (non-fatal): {_slot_ex_err}")
+
+            except Exception as _tension_err:
+                logger.debug(f"[TENSION] Write-path tension check failed (non-fatal): {_tension_err}")
 
         # Corrective language trust boost: if user is explicitly correcting a value,
         # start the new memory at 0.90 instead of the default 0.70.

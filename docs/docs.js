@@ -16,6 +16,7 @@
     { href: 'continuity-blind.html',       label: 'Continuity-Blind',       group: 'Evidence' },
     { href: 'variance-probing.html',       label: 'Variance Probing',       group: 'Evidence' },
     { href: 'governance-validation.html',  label: 'Governance Validation',  group: 'Evidence' },
+    { href: 'bdg-reasoning-scaffolds.html', label: 'BDG Reasoning Scaffolds', group: 'Evidence' },
     { href: 'labs.html',                   label: 'Labs',                   group: 'Evidence' },
     // Architecture (how CORE works)
     { href: 'whitepaper.html',             label: 'Whitepaper',             group: 'Architecture' },
@@ -27,6 +28,7 @@
     { href: 'epistemic-compression.html',  label: 'Epistemic Compression',  group: 'Theory' },
     { href: 'geometric-memory.html',       label: 'Geometric Memory',       group: 'Theory' },
     { href: 'emotion-governance.html',     label: 'Emotion Governance',     group: 'Theory' },
+    { href: 'structural-tension.html',    label: 'Structural Tension',     group: 'Theory' },
     // Reference
     { href: 'claim-evaluation-guide.html', label: 'Research Guide',          group: 'Reference' },
     { href: 'why-this-matters.html',       label: 'Why This Should Exist',  group: 'Reference' },
