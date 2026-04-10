@@ -1,0 +1,16 @@
+{
+  "lessons": [
+    {
+      "challenge": "Reverse a string without slicing",
+      "wrong_approach": "def reverse_string(s):\n    left = 0\n    right = len(s) - 1\n    while left < right:\n        s[left], s[right] = s[right], s[left]\n        left += 1\n        right -= 1\n    return s\n\n# Test the function\n",
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\block\\AppData\\Local\\Temp\\tmpqg9l8ioo.py\", line 11, in <module>\n    print(reverse_string(\"Hello World\"))\n  File \"C:\\Users\\block\\AppData\\Local\\Temp\\tm",
+      "correct_approach": "def reverse_string(s):\n    result = \"\"\n    for char in s:\n        result = char + result\n    return result\n\nprint(reverse_string(\"Hello World\"))  # dlroW olleH",
+      "lesson": "Python strings are immutable \u00e2\u20ac\u201d build a new string instead of modifying the original."
+    }
+  ],
+  "stats": {
+    "mirus_solo": 0,
+    "mirus_coached": 3,
+    "holden_solved": 0
+  }
+}

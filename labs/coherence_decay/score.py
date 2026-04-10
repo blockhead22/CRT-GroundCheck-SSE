@@ -50,43 +50,96 @@ def cosine_similarity(a, b):
 
 
 # ---------------------------------------------------------------------------
-# 1. Factual Fidelity
+# 1. Factual Fidelity (hybrid: keyword + semantic similarity)
 # ---------------------------------------------------------------------------
-def score_fidelity(full_text: str, prompt_data: dict, domain: str) -> dict:
-    """Check how many ground truth elements are present in the output."""
+SEMANTIC_THRESHOLD = 0.55  # Cosine similarity threshold for "fact found"
+
+
+def _semantic_fact_check(facts: list[str], full_text: str) -> tuple[list, list, list]:
+    """Check facts using both keyword matching AND semantic similarity.
+
+    Returns (found, missing, scores) where scores are per-fact
+    max similarity values for analysis.
+    """
+    embedder = get_embedder()
     text_lower = full_text.lower()
 
+    # Split output into sentences for fine-grained matching
+    import re
+    sentences = [s.strip() for s in re.split(r'[.!?\n]+', full_text) if len(s.strip()) > 10]
+
+    found = []
+    missing = []
+    scores = []
+
+    for fact in facts:
+        fact_lower = fact.lower()
+
+        # Method 1: Direct keyword match (fast, exact)
+        if fact_lower in text_lower:
+            found.append(fact)
+            scores.append(1.0)
+            continue
+
+        # Method 2: Semantic similarity (catches paraphrases)
+        if embedder and sentences:
+            fact_emb = embedder.encode(fact)
+            sent_embs = embedder.encode(sentences)
+            sims = [cosine_similarity(fact_emb, se) for se in sent_embs]
+            max_sim = max(sims) if sims else 0.0
+            scores.append(round(max_sim, 3))
+
+            if max_sim >= SEMANTIC_THRESHOLD:
+                found.append(fact)
+                continue
+
+        # Method 3: Fuzzy keyword — check if most words from the fact
+        # appear near each other in the text (handles reordering)
+        fact_words = [w for w in fact_lower.split() if len(w) > 2]
+        if fact_words:
+            word_hits = sum(1 for w in fact_words if w in text_lower)
+            word_ratio = word_hits / len(fact_words)
+            if word_ratio >= 0.7:
+                found.append(fact)
+                if not scores or scores[-1] < word_ratio:
+                    scores.append(round(word_ratio, 3))
+                continue
+
+        missing.append(fact)
+        if not scores or len(scores) < len(found) + len(missing):
+            scores.append(0.0)
+
+    return found, missing, scores
+
+
+def score_fidelity(full_text: str, prompt_data: dict, domain: str) -> dict:
+    """Score factual fidelity using hybrid keyword + semantic matching.
+
+    Three methods per fact:
+      1. Exact keyword match (fast, precise)
+      2. Semantic similarity > 0.55 (catches paraphrases)
+      3. Fuzzy word overlap > 70% (catches reordered facts)
+    """
     if domain == "programming":
-        keywords = prompt_data.get("ground_truth_keywords", [])
-        hits = [kw for kw in keywords if kw.lower() in text_lower]
-        return {
-            "fidelity_score": len(hits) / len(keywords) if keywords else 1.0,
-            "keywords_found": hits,
-            "keywords_missing": [kw for kw in keywords if kw.lower() not in text_lower],
-            "total_keywords": len(keywords),
-        }
-
-    elif domain == "narrative":
+        facts = prompt_data.get("ground_truth_keywords", [])
+    elif domain in ("narrative", "memory"):
         facts = prompt_data.get("ground_truth_facts", [])
-        found = [f for f in facts if f.lower() in text_lower]
-        return {
-            "fidelity_score": len(found) / len(facts) if facts else 1.0,
-            "facts_found": found,
-            "facts_missing": [f for f in facts if f.lower() not in text_lower],
-            "total_facts": len(facts),
-        }
+    else:
+        return {"fidelity_score": 0.0, "error": f"Unknown domain: {domain}"}
 
-    elif domain == "memory":
-        facts = prompt_data.get("ground_truth_facts", [])
-        found = [f for f in facts if f.lower() in text_lower]
-        return {
-            "fidelity_score": len(found) / len(facts) if facts else 1.0,
-            "facts_found": found,
-            "facts_missing": [f for f in facts if f.lower() not in text_lower],
-            "total_facts": len(facts),
-        }
+    if not facts:
+        return {"fidelity_score": 1.0, "facts_found": [], "facts_missing": [], "total_facts": 0}
 
-    return {"fidelity_score": 0.0, "error": f"Unknown domain: {domain}"}
+    found, missing, scores = _semantic_fact_check(facts, full_text)
+
+    return {
+        "fidelity_score": round(len(found) / len(facts), 4),
+        "facts_found": found,
+        "facts_missing": missing,
+        "total_facts": len(facts),
+        "similarity_scores": scores,
+        "method": "hybrid_keyword_semantic",
+    }
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,442 @@
+[
+  {
+    "prompt_id": "mem_01",
+    "domain": "memory",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L0_free_500",
+    "total_tokens": 101,
+    "total_time_ms": 1544.5847511291504,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "facts_found": [
+        "marine biologist",
+        "Woods Hole",
+        "shellfish allergy",
+        "S\u00c3\u00a3o Paulo",
+        "2018",
+        "Massachusetts",
+        "thermal vents",
+        "twin daughters",
+        "7 years old"
+      ],
+      "facts_missing": [],
+      "total_facts": 9,
+      "similarity_scores": [
+        1.0,
+        1.0,
+        0.612,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.28,
+        1.0
+      ],
+      "method": "hybrid_keyword_semantic"
+    },
+    "drift": {
+      "drift_scores": [
+        0.2945
+      ],
+      "drift_mean": 0.2945,
+      "drift_max": 0.2945,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "all_facts_present",
+      "note": "see fidelity_score"
+    },
+    "composite": 0.9264
+  },
+  {
+    "prompt_id": "mem_02",
+    "domain": "memory",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L0_free_500",
+    "total_tokens": 108,
+    "total_time_ms": 1507.0929527282715,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.75,
+      "facts_found": [
+        "built 1952",
+        "architect died 1948",
+        "architect supervised construction"
+      ],
+      "facts_missing": [
+        "70+ years"
+      ],
+      "total_facts": 4,
+      "similarity_scores": [
+        0.559,
+        0.206,
+        0.741,
+        0.535,
+        1.0
+      ],
+      "method": "hybrid_keyword_semantic"
+    },
+    "drift": {
+      "drift_scores": [
+        0.18
+      ],
+      "drift_mean": 0.18,
+      "drift_max": 0.18,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "detect_contradiction",
+      "contradiction_detected": true
+    },
+    "composite": 0.855
+  },
+  {
+    "prompt_id": "mem_01",
+    "domain": "memory",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L2_burst_50",
+    "total_tokens": 156,
+    "total_time_ms": 2856.240749359131,
+    "reanchors": 4,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "facts_found": [
+        "marine biologist",
+        "Woods Hole",
+        "shellfish allergy",
+        "S\u00c3\u00a3o Paulo",
+        "2018",
+        "Massachusetts",
+        "thermal vents",
+        "twin daughters",
+        "7 years old"
+      ],
+      "facts_missing": [],
+      "total_facts": 9,
+      "similarity_scores": [
+        1.0,
+        1.0,
+        0.539,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "method": "hybrid_keyword_semantic"
+    },
+    "drift": {
+      "drift_scores": [
+        0.3785,
+        0.6757,
+        0.3824,
+        0.544
+      ],
+      "drift_mean": 0.4952,
+      "drift_max": 0.6757,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "all_facts_present",
+      "note": "see fidelity_score"
+    },
+    "composite": 0.8762
+  },
+  {
+    "prompt_id": "mem_02",
+    "domain": "memory",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L2_burst_50",
+    "total_tokens": 172,
+    "total_time_ms": 3276.7715454101562,
+    "reanchors": 5,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.75,
+      "facts_found": [
+        "built 1952",
+        "architect died 1948",
+        "architect supervised construction"
+      ],
+      "facts_missing": [
+        "70+ years"
+      ],
+      "total_facts": 4,
+      "similarity_scores": [
+        0.562,
+        0.284,
+        0.703,
+        0.561
+      ],
+      "method": "hybrid_keyword_semantic"
+    },
+    "drift": {
+      "drift_scores": [
+        0.1857,
+        0.3181,
+        0.1989,
+        0.5407,
+        0.5511
+      ],
+      "drift_mean": 0.3589,
+      "drift_max": 0.5511,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "detect_contradiction",
+      "contradiction_detected": true
+    },
+    "composite": 0.8103
+  },
+  {
+    "prompt_id": "mem_01",
+    "domain": "memory",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L4_full_scaffold",
+    "total_tokens": 156,
+    "total_time_ms": 11822.678089141846,
+    "reanchors": 9,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "facts_found": [
+        "marine biologist",
+        "Woods Hole",
+        "shellfish allergy",
+        "S\u00c3\u00a3o Paulo",
+        "2018",
+        "Massachusetts",
+        "thermal vents",
+        "twin daughters",
+        "7 years old"
+      ],
+      "facts_missing": [],
+      "total_facts": 9,
+      "similarity_scores": [
+        1.0,
+        1.0,
+        0.56,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "method": "hybrid_keyword_semantic"
+    },
+    "drift": {
+      "drift_scores": [
+        0.4684,
+        0.3784,
+        0.5348,
+        0.5115,
+        0.4469,
+        0.4914,
+        0.5753,
+        0.9065,
+        1.0378
+      ],
+      "drift_mean": 0.5946,
+      "drift_max": 1.0378,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.84,
+        0.913,
+        0.8182,
+        0.8333,
+        0.7273,
+        0.8077,
+        0.9167,
+        0.9,
+        0.0
+      ],
+      "entropy_global_mean": 0.8396,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "decreasing",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "all_facts_present",
+      "note": "see fidelity_score"
+    },
+    "composite": 0.8514
+  },
+  {
+    "prompt_id": "mem_02",
+    "domain": "memory",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L4_full_scaffold",
+    "total_tokens": 182,
+    "total_time_ms": 13050.520896911621,
+    "reanchors": 9,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.75,
+      "facts_found": [
+        "built 1952",
+        "architect died 1948",
+        "architect supervised construction"
+      ],
+      "facts_missing": [
+        "70+ years"
+      ],
+      "total_facts": 4,
+      "similarity_scores": [
+        0.607,
+        0.246,
+        0.72,
+        0.473,
+        1.0
+      ],
+      "method": "hybrid_keyword_semantic"
+    },
+    "drift": {
+      "drift_scores": [
+        0.3175,
+        0.4216,
+        0.4035,
+        0.456,
+        0.3247,
+        0.4598,
+        0.3111,
+        0.4743,
+        0.7262
+      ],
+      "drift_mean": 0.4327,
+      "drift_max": 0.7262,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.8889,
+        0.8261,
+        0.95,
+        0.96,
+        0.9643,
+        0.6087,
+        0.5,
+        0.9333,
+        0.2105
+      ],
+      "entropy_global_mean": 0.7834,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "decreasing",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 1,
+      "contradictions": [
+        {
+          "sentence_a_idx": 1,
+          "sentence_a": "The contradiction lies between Statement A and Statement B",
+          "sentence_b_idx": 4,
+          "sentence_b": "Therefore, the contradiction arises because Statement A and Statement B cannot both be true at the s",
+          "similarity": 0.897,
+          "method": "embedding+negation"
+        }
+      ],
+      "self_consistent": false
+    },
+    "memory_behavior": {
+      "expected_behavior": "detect_contradiction",
+      "contradiction_detected": true
+    },
+    "composite": 0.6668
+  }
+]

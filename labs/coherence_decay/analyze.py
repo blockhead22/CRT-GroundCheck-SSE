@@ -54,7 +54,10 @@ def chart_heatmap(scored: list[dict], metric: str = "composite"):
     for s in scored:
         mi = models.index(s["model_tier"])
         si = strategies.index(s["strategy"])
-        grid[mi, si] += s.get(metric, 0)
+        val = s.get(metric, 0)
+        if isinstance(val, dict):
+            val = val.get(f"{metric}_score", val.get("score", 0))
+        grid[mi, si] += val
         counts[mi, si] += 1
 
     # Average

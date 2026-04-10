@@ -1,0 +1,1178 @@
+[
+  {
+    "prompt_id": "mem_01",
+    "domain": "memory",
+    "model_tier": "cloud_opus",
+    "model_name": "claude-opus-4-6",
+    "strategy": "L0_free_500",
+    "total_tokens": 61,
+    "total_time_ms": 4963.139533996582,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "facts_found": [
+        "marine biologist",
+        "Woods Hole",
+        "shellfish allergy",
+        "S\u00c3\u00a3o Paulo",
+        "2018",
+        "Massachusetts",
+        "thermal vents",
+        "twin daughters",
+        "7 years old"
+      ],
+      "facts_missing": [],
+      "total_facts": 9,
+      "similarity_scores": [
+        1.0,
+        1.0,
+        0.578,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.282,
+        1.0
+      ],
+      "method": "hybrid_keyword_semantic"
+    },
+    "drift": {
+      "drift_scores": [
+        0.2905
+      ],
+      "drift_mean": 0.2905,
+      "drift_max": 0.2905,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "all_facts_present",
+      "note": "see fidelity_score"
+    },
+    "composite": 0.9274
+  },
+  {
+    "prompt_id": "mem_02",
+    "domain": "memory",
+    "model_tier": "cloud_opus",
+    "model_name": "claude-opus-4-6",
+    "strategy": "L0_free_500",
+    "total_tokens": 86,
+    "total_time_ms": 5878.607988357544,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.75,
+      "facts_found": [
+        "built 1952",
+        "architect died 1948",
+        "architect supervised construction"
+      ],
+      "facts_missing": [
+        "70+ years"
+      ],
+      "total_facts": 4,
+      "similarity_scores": [
+        0.575,
+        0.421,
+        0.752,
+        0.519,
+        1.0
+      ],
+      "method": "hybrid_keyword_semantic"
+    },
+    "drift": {
+      "drift_scores": [
+        0.2371
+      ],
+      "drift_mean": 0.2371,
+      "drift_max": 0.2371,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "detect_contradiction",
+      "contradiction_detected": true
+    },
+    "composite": 0.8407
+  },
+  {
+    "prompt_id": "mem_03",
+    "domain": "memory",
+    "model_tier": "cloud_opus",
+    "model_name": "claude-opus-4-6",
+    "strategy": "L0_free_500",
+    "total_tokens": 198,
+    "total_time_ms": 11099.565982818604,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "facts_found": [
+        "Dr. Chen",
+        "quantum error correction",
+        "2019",
+        "three reviewers",
+        "Physical Review Letters"
+      ],
+      "facts_missing": [],
+      "total_facts": 5,
+      "similarity_scores": [
+        1.0,
+        1.0,
+        1.0,
+        0.683,
+        1.0
+      ],
+      "method": "hybrid_keyword_semantic"
+    },
+    "drift": {
+      "drift_scores": [
+        0.2686
+      ],
+      "drift_mean": 0.2686,
+      "drift_max": 0.2686,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "update_belief_on_evidence",
+      "shows_update": true
+    },
+    "composite": 0.9328
+  },
+  {
+    "prompt_id": "mem_04",
+    "domain": "memory",
+    "model_tier": "cloud_opus",
+    "model_name": "claude-opus-4-6",
+    "strategy": "L0_free_500",
+    "total_tokens": 59,
+    "total_time_ms": 4761.977672576904,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.8571,
+      "facts_found": [
+        "sell house",
+        "commute 2 hours each way",
+        "kitchen renovated",
+        "no remote work starting January",
+        "policy change",
+        "Riverside school"
+      ],
+      "facts_missing": [
+        "Sarah didn't know about policy change"
+      ],
+      "total_facts": 7,
+      "similarity_scores": [
+        0.841,
+        0.654,
+        0.585,
+        0.542,
+        1.0,
+        1.0,
+        0.664,
+        0.486
+      ],
+      "method": "hybrid_keyword_semantic"
+    },
+    "drift": {
+      "drift_scores": [
+        0.3993
+      ],
+      "drift_mean": 0.3993,
+      "drift_max": 0.3993,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "accurate_extraction"
+    },
+    "composite": 0.843
+  },
+  {
+    "prompt_id": "mem_05",
+    "domain": "memory",
+    "model_tier": "cloud_opus",
+    "model_name": "claude-opus-4-6",
+    "strategy": "L0_free_500",
+    "total_tokens": 247,
+    "total_time_ms": 12900.424480438232,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "facts_found": [
+        "deadline March 15 -> April 1",
+        "team 6 -> 4 members",
+        "budget $50k unchanged",
+        "weekly -> daily standups"
+      ],
+      "facts_missing": [],
+      "total_facts": 4,
+      "similarity_scores": [
+        0.741,
+        0.863,
+        0.79,
+        0.634
+      ],
+      "method": "hybrid_keyword_semantic"
+    },
+    "drift": {
+      "drift_scores": [
+        0.3317
+      ],
+      "drift_mean": 0.3317,
+      "drift_max": 0.3317,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "belief_update_with_reasoning",
+      "shows_reasoning": true
+    },
+    "composite": 0.9171
+  },
+  {
+    "prompt_id": "mem_01",
+    "domain": "memory",
+    "model_tier": "cloud_opus",
+    "model_name": "claude-opus-4-6",
+    "strategy": "L5_planned_burst",
+    "total_tokens": 500,
+    "total_time_ms": 330356.38546943665,
+    "reanchors": 35,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.8889,
+      "facts_found": [
+        "marine biologist",
+        "Woods Hole",
+        "shellfish allergy",
+        "S\u00c3\u00a3o Paulo",
+        "2018",
+        "Massachusetts",
+        "thermal vents",
+        "twin daughters"
+      ],
+      "facts_missing": [
+        "7 years old"
+      ],
+      "total_facts": 9,
+      "similarity_scores": [
+        1.0,
+        1.0,
+        0.585,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.389
+      ],
+      "method": "hybrid_keyword_semantic"
+    },
+    "drift": {
+      "drift_scores": [
+        0.3338,
+        0.3022,
+        0.7065,
+        0.9057,
+        0.5913,
+        0.5791,
+        0.5703,
+        0.9779,
+        0.5709,
+        0.8457,
+        0.5709,
+        0.5709,
+        0.5709,
+        0.5709,
+        0.5709,
+        0.5709,
+        0.5709,
+        0.5709,
+        0.5709,
+        0.5709,
+        0.5709,
+        0.5709,
+        0.5709,
+        0.8178,
+        0.5709,
+        0.5709,
+        0.5709,
+        0.5709,
+        0.5709,
+        0.5709,
+        0.5709,
+        0.7436,
+        0.7436,
+        0.9195,
+        0.9195,
+        0.9919
+      ],
+      "drift_mean": 0.6371,
+      "drift_max": 0.9919,
+      "drift_trend": "stable",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "all_facts_present",
+      "note": "see fidelity_score"
+    },
+    "composite": 0.7963
+  },
+  {
+    "prompt_id": "mem_02",
+    "domain": "memory",
+    "model_tier": "cloud_opus",
+    "model_name": "claude-opus-4-6",
+    "strategy": "L5_planned_burst",
+    "total_tokens": 500,
+    "total_time_ms": 580729.9556732178,
+    "reanchors": 58,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "facts_found": [
+        "built 1952",
+        "70+ years",
+        "architect died 1948",
+        "architect supervised construction"
+      ],
+      "facts_missing": [],
+      "total_facts": 4,
+      "similarity_scores": [
+        0.608,
+        0.626,
+        0.782,
+        0.473,
+        1.0
+      ],
+      "method": "hybrid_keyword_semantic"
+    },
+    "drift": {
+      "drift_scores": [
+        0.2927,
+        0.5194,
+        0.6141,
+        0.8829,
+        0.8521,
+        0.8669,
+        0.6124,
+        0.8733,
+        0.8733,
+        0.8297,
+        0.9102,
+        0.8514,
+        0.8041,
+        0.9102,
+        1.0025,
+        0.8651,
+        0.889,
+        0.9102,
+        0.8041,
+        0.8949,
+        0.8949,
+        0.8336,
+        0.8949,
+        0.8949,
+        0.3474,
+        0.8949,
+        0.8949,
+        0.8336,
+        0.8949,
+        0.8402,
+        0.8336,
+        0.8949,
+        0.8949,
+        0.8949,
+        0.8336,
+        0.889,
+        0.8949,
+        0.818,
+        0.8949,
+        0.8336,
+        0.8949,
+        0.8949,
+        0.8949,
+        0.4082,
+        0.8949,
+        0.8336,
+        0.8949,
+        0.8949,
+        0.8336,
+        0.889,
+        0.8041,
+        0.8041,
+        1.0097,
+        1.0097,
+        1.0097,
+        1.0097,
+        1.0097,
+        1.0312,
+        1.0312
+      ],
+      "drift_mean": 0.8478,
+      "drift_max": 1.0312,
+      "drift_trend": "stable",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 24,
+      "contradictions": [
+        {
+          "sentence_a_idx": 4,
+          "sentence_a": "\"Analysis complete \u00e2\u20ac\u201d no further detail needed",
+          "sentence_b_idx": 8,
+          "sentence_b": "Analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "similarity": 0.912,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 4,
+          "sentence_a": "\"Analysis complete \u00e2\u20ac\u201d no further detail needed",
+          "sentence_b_idx": 9,
+          "sentence_b": "Analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "similarity": 0.912,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 6,
+          "sentence_a": "Analysis is complete \u00e2\u20ac\u201d no further detail needed",
+          "sentence_b_idx": 8,
+          "sentence_b": "Analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "similarity": 0.949,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 6,
+          "sentence_a": "Analysis is complete \u00e2\u20ac\u201d no further detail needed",
+          "sentence_b_idx": 9,
+          "sentence_b": "Analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "similarity": 0.949,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 8,
+          "sentence_a": "Analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "sentence_b_idx": 12,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d no further additions needed",
+          "similarity": 0.895,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 8,
+          "sentence_a": "Analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "sentence_b_idx": 16,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d no further additions needed",
+          "similarity": 0.895,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 9,
+          "sentence_a": "Analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "sentence_b_idx": 12,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d no further additions needed",
+          "similarity": 0.895,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 9,
+          "sentence_a": "Analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "sentence_b_idx": 16,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d no further additions needed",
+          "similarity": 0.895,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 12,
+          "sentence_a": "The analysis is complete \u00e2\u20ac\u201d no further additions needed",
+          "sentence_b_idx": 20,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "similarity": 0.948,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 16,
+          "sentence_a": "The analysis is complete \u00e2\u20ac\u201d no further additions needed",
+          "sentence_b_idx": 20,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "similarity": 0.948,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 20,
+          "sentence_a": "The analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "sentence_b_idx": 23,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d no further output needed",
+          "similarity": 0.885,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 20,
+          "sentence_a": "The analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "sentence_b_idx": 24,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d no further output needed",
+          "similarity": 0.885,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 20,
+          "sentence_a": "The analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "sentence_b_idx": 27,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d no further output needed",
+          "similarity": 0.885,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 20,
+          "sentence_a": "The analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "sentence_b_idx": 28,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d no further output needed",
+          "similarity": 0.885,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 40,
+          "sentence_a": "The analysis is complete \u00e2\u20ac\u201d no further output needed",
+          "sentence_b_idx": 45,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "similarity": 0.885,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 41,
+          "sentence_a": "The analysis is complete \u00e2\u20ac\u201d no further output needed",
+          "sentence_b_idx": 45,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "similarity": 0.885,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 42,
+          "sentence_a": "The analysis is complete \u00e2\u20ac\u201d no further output needed",
+          "sentence_b_idx": 45,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "similarity": 0.885,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 45,
+          "sentence_a": "The analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "sentence_b_idx": 49,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d no further output needed",
+          "similarity": 0.885,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 45,
+          "sentence_a": "The analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "sentence_b_idx": 52,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d no further output needed",
+          "similarity": 0.885,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 45,
+          "sentence_a": "The analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "sentence_b_idx": 53,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d no further output needed",
+          "similarity": 0.885,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 45,
+          "sentence_a": "The analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "sentence_b_idx": 54,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d no further output needed",
+          "similarity": 0.885,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 57,
+          "sentence_a": "The analysis is complete \u00e2\u20ac\u201d no further output needed",
+          "sentence_b_idx": 64,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "similarity": 0.885,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 60,
+          "sentence_a": "The analysis is complete \u00e2\u20ac\u201d no further output needed",
+          "sentence_b_idx": 64,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "similarity": 0.885,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 61,
+          "sentence_a": "The analysis is complete \u00e2\u20ac\u201d no further output needed",
+          "sentence_b_idx": 64,
+          "sentence_b": "The analysis is complete \u00e2\u20ac\u201d nothing further to add",
+          "similarity": 0.885,
+          "method": "embedding+negation"
+        }
+      ],
+      "self_consistent": false
+    },
+    "memory_behavior": {
+      "expected_behavior": "detect_contradiction",
+      "contradiction_detected": true
+    },
+    "composite": 0.663
+  },
+  {
+    "prompt_id": "mem_03",
+    "domain": "memory",
+    "model_tier": "cloud_opus",
+    "model_name": "claude-opus-4-6",
+    "strategy": "L5_planned_burst",
+    "total_tokens": 500,
+    "total_time_ms": 382033.64634513855,
+    "reanchors": 35,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.8,
+      "facts_found": [
+        "quantum error correction",
+        "2019",
+        "three reviewers",
+        "Physical Review Letters"
+      ],
+      "facts_missing": [
+        "Dr. Chen"
+      ],
+      "total_facts": 5,
+      "similarity_scores": [
+        0.462,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "method": "hybrid_keyword_semantic"
+    },
+    "drift": {
+      "drift_scores": [
+        0.3115,
+        0.6051,
+        0.4249,
+        0.7881,
+        0.7173,
+        0.5023,
+        0.5592,
+        0.5439,
+        0.5036,
+        0.4914,
+        0.6634,
+        0.9539,
+        0.9608,
+        0.8943,
+        0.8556,
+        0.8631,
+        0.8761,
+        0.9303,
+        0.9218,
+        0.8993,
+        0.4663,
+        0.8822,
+        0.5978,
+        1.0027,
+        0.6231,
+        0.8724,
+        0.3356,
+        0.9043,
+        0.9375,
+        0.8826,
+        0.92,
+        0.8894,
+        0.9085,
+        0.9228,
+        0.9228,
+        0.9738
+      ],
+      "drift_mean": 0.7585,
+      "drift_max": 1.0027,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "update_belief_on_evidence",
+      "shows_update": true
+    },
+    "composite": 0.7304
+  },
+  {
+    "prompt_id": "mem_04",
+    "domain": "memory",
+    "model_tier": "cloud_opus",
+    "model_name": "claude-opus-4-6",
+    "strategy": "L5_planned_burst",
+    "total_tokens": 515,
+    "total_time_ms": 383938.928604126,
+    "reanchors": 29,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "facts_found": [
+        "sell house",
+        "commute 2 hours each way",
+        "kitchen renovated",
+        "no remote work starting January",
+        "policy change",
+        "Riverside school",
+        "Sarah didn't know about policy change"
+      ],
+      "facts_missing": [],
+      "total_facts": 7,
+      "similarity_scores": [
+        0.842,
+        0.764,
+        0.678,
+        0.592,
+        1.0,
+        0.724,
+        0.563
+      ],
+      "method": "hybrid_keyword_semantic"
+    },
+    "drift": {
+      "drift_scores": [
+        0.5383,
+        0.4615,
+        0.5333,
+        0.5972,
+        0.5373,
+        0.6305,
+        0.7372,
+        0.785,
+        0.821,
+        0.655,
+        0.6117,
+        0.7397,
+        0.8744,
+        0.5703,
+        0.6941,
+        0.736,
+        0.7666,
+        0.5668,
+        0.5403,
+        0.7547,
+        0.8114,
+        0.6367,
+        0.6254,
+        0.5249,
+        0.714,
+        0.614,
+        0.9068,
+        0.7175,
+        0.7136,
+        0.5277
+      ],
+      "drift_mean": 0.6648,
+      "drift_max": 0.9068,
+      "drift_trend": "stable",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "accurate_extraction"
+    },
+    "composite": 0.8338
+  },
+  {
+    "prompt_id": "mem_05",
+    "domain": "memory",
+    "model_tier": "cloud_opus",
+    "model_name": "claude-opus-4-6",
+    "strategy": "L5_planned_burst",
+    "total_tokens": 500,
+    "total_time_ms": 258298.50506782532,
+    "reanchors": 23,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "facts_found": [
+        "deadline March 15 -> April 1",
+        "team 6 -> 4 members",
+        "budget $50k unchanged",
+        "weekly -> daily standups"
+      ],
+      "facts_missing": [],
+      "total_facts": 4,
+      "similarity_scores": [
+        0.782,
+        0.753,
+        0.743,
+        0.549,
+        1.0
+      ],
+      "method": "hybrid_keyword_semantic"
+    },
+    "drift": {
+      "drift_scores": [
+        0.2835,
+        0.3951,
+        0.6026,
+        0.6263,
+        0.5188,
+        0.3336,
+        0.4279,
+        0.6978,
+        0.7692,
+        0.5143,
+        0.4545,
+        0.5483,
+        0.6302,
+        0.3809,
+        0.5986,
+        0.7419,
+        0.712,
+        0.6883,
+        0.5295,
+        0.5337,
+        0.9641,
+        0.9641,
+        0.9641,
+        0.9641
+      ],
+      "drift_mean": 0.6185,
+      "drift_max": 0.9641,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "belief_update_with_reasoning",
+      "shows_reasoning": true
+    },
+    "composite": 0.8454
+  }
+]

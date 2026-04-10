@@ -64,22 +64,29 @@ async def ollama_generate(
     system: str = "",
     max_tokens: int = 200,
     temperature: float = 0.3,
+    raw_mode: bool = False,
 ) -> tuple[str, list[float]]:
     """Generate from Ollama, return (text, entropy_per_token).
 
-    Uses /api/generate with raw mode for logprob access.
+    When raw_mode=True, sends the prompt as a raw prefix (no chat
+    template wrapping) so the model continues it naturally. This is
+    critical for burst generation — the model sees prompt + prior
+    output as one text and picks up where it left off.
     """
     payload = {
         "model": model,
         "prompt": prompt,
-        "system": system,
         "stream": False,
+        "raw": raw_mode,
         "options": {
             "temperature": temperature,
             "num_predict": max_tokens,
             "num_ctx": 4096,
         },
     }
+    # Only include system when not in raw mode (raw mode ignores it)
+    if system and not raw_mode:
+        payload["system"] = system
 
     url = f"{OLLAMA_URL}/api/generate"
     try:
@@ -127,7 +134,7 @@ async def ollama_entropy_probe(
     Simpler approach: Run the same prompt N times at temp=0.7 and
     measure output variance as entropy proxy.
     """
-    NUM_SAMPLES = 3
+    NUM_SAMPLES = 2  # Keep low for speed; 2 samples still detects variance
     samples = []
 
     for _ in range(NUM_SAMPLES):
@@ -135,6 +142,7 @@ async def ollama_entropy_probe(
             session, model, context_prefix, system,
             max_tokens=len(generated_text.split()) + 10,
             temperature=0.7,
+            raw_mode=True,
         )
         samples.append(text)
 
@@ -161,8 +169,13 @@ async def openai_generate(
     model: str = "gpt-4o-mini",
     max_tokens: int = 200,
     temperature: float = 0.3,
+    assistant_prefix: str | None = None,
 ) -> tuple[str, list[float]]:
-    """Generate from OpenAI API with logprobs."""
+    """Generate from OpenAI API with logprobs.
+
+    When assistant_prefix is provided, adds it as a prior assistant
+    message so the model continues from that point (prefill pattern).
+    """
     api_key = os.getenv("OPENAI_API_KEY", "")
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY not set")
@@ -171,19 +184,21 @@ async def openai_generate(
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+    if assistant_prefix:
+        messages.append({"role": "assistant", "content": assistant_prefix})
+
     payload = {
         "model": model,
-        "messages": [
-            {"role": "system", "content": system} if system else None,
-            {"role": "user", "content": prompt},
-        ],
+        "messages": messages,
         "max_tokens": max_tokens,
         "temperature": temperature,
         "logprobs": True,
         "top_logprobs": 5,
     }
-    # Remove None system message
-    payload["messages"] = [m for m in payload["messages"] if m is not None]
 
     async with aiohttp.ClientSession() as session:
         async with session.post(
@@ -216,6 +231,113 @@ async def openai_generate(
     return text, entropy_per_token
 
 
+async def anthropic_generate(
+    prompt: str,
+    system: str = "",
+    model: str = "claude-opus-4-6",
+    max_tokens: int = 200,
+    temperature: float = 0.3,
+) -> tuple[str, list[float]]:
+    """Generate from Anthropic API or Claude CLI fallback."""
+    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+
+    if api_key:
+        # Direct API path
+        headers = {
+            "x-api-key": api_key,
+            "content-type": "application/json",
+            "anthropic-version": "2023-06-01",
+        }
+        payload = {
+            "model": model,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "messages": [
+                {"role": "user", "content": prompt},
+            ],
+        }
+        if system:
+            payload["system"] = system
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "https://api.anthropic.com/v1/messages",
+                headers=headers,
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=120),
+            ) as resp:
+                if resp.status != 200:
+                    error = await resp.text()
+                    raise RuntimeError(f"Anthropic error {resp.status}: {error}")
+                data = await resp.json()
+
+        text = ""
+        for block in data.get("content", []):
+            if block.get("type") == "text":
+                text += block["text"]
+    else:
+        # CLI fallback — uses existing Claude Code auth
+        text = await _claude_cli_generate(prompt, system, model, max_tokens)
+
+    entropy_per_token = []  # No logprobs from Anthropic
+    return text, entropy_per_token
+
+
+async def _claude_cli_generate(
+    prompt: str,
+    system: str = "",
+    model: str = "claude-opus-4-6",
+    max_tokens: int = 200,
+) -> str:
+    """Generate via Claude Code CLI using existing auth."""
+    import subprocess
+
+    cli_path = os.getenv(
+        "CLAUDE_CODE_EXECPATH",
+        r"C:\Users\block\AppData\Roaming\Claude\claude-code\2.1.92\claude.exe"
+    )
+
+    full_prompt = prompt
+    if system:
+        full_prompt = f"[System: {system}]\n\n{prompt}\n\n[Respond in {max_tokens} tokens or less. Be concise.]"
+
+    try:
+        result = subprocess.run(
+            [cli_path, "-p", full_prompt, "--model", model, "--max-turns", "1"],
+            capture_output=True, text=True, timeout=120,
+            env={**os.environ, "CLAUDE_CODE_DISABLE_CRON": "1"},
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"Claude CLI error: {result.stderr[:300]}")
+        return result.stdout.strip()
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("Claude CLI timeout after 120s")
+
+
+# ---------------------------------------------------------------------------
+# Provider routing helper
+# ---------------------------------------------------------------------------
+async def _route_generate(
+    session: aiohttp.ClientSession,
+    model_cfg: dict,
+    prompt: str,
+    system: str = "",
+    max_tokens: int = 200,
+) -> tuple[str, list[float]]:
+    """Route generation to the appropriate provider."""
+    provider = model_cfg["provider"]
+    model_name = model_cfg["name"]
+
+    if provider == "ollama":
+        return await ollama_generate(session, model_name, prompt, system, max_tokens)
+    elif provider == "anthropic":
+        return await anthropic_generate(prompt, system, model_name, max_tokens)
+    elif provider == "openai":
+        return await openai_generate(prompt, system, model_name, max_tokens)
+    else:
+        raise RuntimeError(f"Unknown provider: {provider}")
+
+
 # ---------------------------------------------------------------------------
 # Strategy execution
 # ---------------------------------------------------------------------------
@@ -229,14 +351,9 @@ async def generate_free_run(
     """L0/L1: Single generation, no intervention."""
     t0 = time.time()
 
-    if model_cfg["provider"] == "ollama":
-        text, entropy = await ollama_generate(
-            session, model_cfg["name"], prompt_text, system, max_tokens
-        )
-    else:
-        text, entropy = await openai_generate(
-            prompt_text, system, model_cfg["name"], max_tokens
-        )
+    text, entropy = await _route_generate(
+        session, model_cfg, prompt_text, system, max_tokens
+    )
 
     span = SpanResult(
         span_index=0,
@@ -250,6 +367,89 @@ async def generate_free_run(
     return text, [span]
 
 
+async def _plan_next_burst(
+    session: aiohttp.ClientSession,
+    model_cfg: dict,
+    prompt_text: str,
+    full_text: str,
+    system: str = "",
+) -> str:
+    """L5: Ask the model to analyze what's missing and plan the next burst.
+
+    This is the Mythos-style move — instead of blindly continuing,
+    the system introspects on what it has vs. what's needed, then
+    generates a focused directive for the next burst.
+    """
+    plan_prompt = (
+        f"Original task:\n{prompt_text}\n\n"
+        f"What has been written so far:\n{full_text}\n\n"
+        f"Analyze what has been covered and what is still MISSING or INCOMPLETE. "
+        f"In 1-2 sentences, state exactly what the next section should focus on. "
+        f"Be specific. Do not repeat what's done."
+    )
+
+    plan_text, _ = await _route_generate(
+        session, model_cfg, plan_prompt, system, max_tokens=60
+    )
+
+    return plan_text.strip()
+
+
+async def _burst_generate(
+    session: aiohttp.ClientSession,
+    model_cfg: dict,
+    prompt_text: str,
+    full_text: str,
+    system: str,
+    max_tokens: int,
+    plan: str | None = None,
+) -> tuple[str, list[float]]:
+    """Generate a burst, using the best continuation method per provider.
+
+    For Ollama: raw prefix mode — model sees prompt+output as one stream.
+    For OpenAI: assistant prefill — model continues from prior output.
+    For Anthropic/CLI: re-anchor with instructions (best we can do).
+    """
+    provider = model_cfg["provider"]
+
+    if provider == "ollama":
+        # Raw prefix: model sees this as one continuous text and continues it
+        if plan:
+            prefix = f"{prompt_text}\n\n{full_text}\n\n[Next: {plan}]\n\n"
+        else:
+            prefix = f"{prompt_text}\n\n{full_text}"
+        return await ollama_generate(
+            session, model_cfg["name"], prefix, system, max_tokens,
+            raw_mode=True,
+        )
+    elif provider == "openai":
+        # Assistant prefill: OpenAI continues from assistant's prior output
+        messages_prompt = prompt_text
+        if plan:
+            messages_prompt += f"\n\n[Next section should focus on: {plan}]"
+        return await openai_generate(
+            messages_prompt, system, model_cfg["name"], max_tokens,
+            assistant_prefix=full_text,
+        )
+    else:
+        # Anthropic/CLI: instruction-based re-anchor (no raw mode available)
+        if plan:
+            context = (
+                f"{prompt_text}\n\n"
+                f"[Here is what you have written so far:]\n{full_text}\n\n"
+                f"[PLAN for next section: {plan}]\n\n"
+                f"[Write ONLY the next part. Do not repeat what was already written.]"
+            )
+        else:
+            context = (
+                f"{prompt_text}\n\n"
+                f"[Continue from where you left off. Here is what you have written so far:]\n"
+                f"{full_text}\n\n"
+                f"[Continue writing the next part. Do not repeat what was already written.]"
+            )
+        return await _route_generate(session, model_cfg, context, system, max_tokens)
+
+
 async def generate_burst(
     session: aiohttp.ClientSession,
     model_cfg: dict,
@@ -257,11 +457,17 @@ async def generate_burst(
     strategy_cfg: dict,
     system: str = "",
 ) -> tuple[str, list[SpanResult], int, int]:
-    """L2/L3/L4: Burst generation with re-anchoring and optional checks."""
+    """L2/L3/L4/L5: Burst generation with re-anchoring and optional checks.
+
+    Key design: uses provider-native continuation (Ollama raw prefix,
+    OpenAI assistant prefill) so the model CONTINUES from prior output
+    instead of re-answering the prompt each time.
+    """
     burst_size = strategy_cfg["burst_size"]
     max_tokens = strategy_cfg["max_tokens"]
     do_entropy = strategy_cfg["entropy_check"]
     do_contradiction = strategy_cfg["contradiction_check"]
+    do_plan = strategy_cfg.get("plan_next", False)
 
     spans = []
     full_text = ""
@@ -276,25 +482,24 @@ async def generate_burst(
         if this_burst <= 0:
             break
 
-        # Build context: original prompt + summary of what we've generated so far
         if full_text:
             reanchors += 1
-            context = (
-                f"{prompt_text}\n\n"
-                f"[Continue from where you left off. Here is what you have written so far:]\n"
-                f"{full_text}\n\n"
-                f"[Continue writing the next part. Do not repeat what was already written.]"
-            )
-        else:
-            context = prompt_text
 
-        if model_cfg["provider"] == "ollama":
-            text, entropy = await ollama_generate(
-                session, model_cfg["name"], context, system, this_burst
+            # L5: Plan what to write next based on gap analysis
+            plan = None
+            if do_plan:
+                plan = await _plan_next_burst(
+                    session, model_cfg, prompt_text, full_text, system
+                )
+
+            text, entropy = await _burst_generate(
+                session, model_cfg, prompt_text, full_text,
+                system, this_burst, plan=plan,
             )
         else:
-            text, entropy = await openai_generate(
-                context, system, model_cfg["name"], this_burst
+            # First burst — normal generation
+            text, entropy = await _route_generate(
+                session, model_cfg, prompt_text, system, this_burst
             )
 
         if not text.strip():
@@ -302,6 +507,13 @@ async def generate_burst(
 
         was_rerun = False
         rerun_reason = None
+
+        # Entropy estimation (L3+): probe uncertainty via multi-sample variance
+        if do_entropy and model_cfg["provider"] == "ollama":
+            prefix = f"{prompt_text}\n\n{full_text}" if full_text else prompt_text
+            entropy = await ollama_entropy_probe(
+                session, model_cfg["name"], prefix, text, system,
+            )
 
         # Entropy check (L3+): if entropy too high, re-run with grounding
         if do_entropy and entropy:
@@ -311,45 +523,49 @@ async def generate_burst(
                 was_rerun = True
                 rerun_reason = f"entropy={mean_ent:.2f} > {ENTROPY_RERUN_THRESHOLD}"
 
-                # Re-run with tighter grounding
-                grounded_context = (
-                    f"{prompt_text}\n\n"
-                    f"[Important: Stay strictly factual. Here is what you have written so far:]\n"
-                    f"{full_text}\n\n"
-                    f"[Continue carefully. Only state things you are confident about.]"
+                # Re-run with stronger system prompt grounding
+                grounded_system = (
+                    (system + "\n\n" if system else "")
+                    + "IMPORTANT: Stay strictly factual. Only state things "
+                    "you are confident about. Do not speculate."
                 )
                 if model_cfg["provider"] == "ollama":
+                    prefix = f"{prompt_text}\n\n{full_text}" if full_text else prompt_text
                     text, entropy = await ollama_generate(
-                        session, model_cfg["name"], grounded_context, system, this_burst
+                        session, model_cfg["name"], prefix, grounded_system,
+                        this_burst, raw_mode=True,
                     )
                 else:
-                    text, entropy = await openai_generate(
-                        grounded_context, system, model_cfg["name"], this_burst
+                    text, entropy = await _route_generate(
+                        session, model_cfg,
+                        f"{prompt_text}\n\n[Stay factual. Prior output:]\n{full_text}\n\n[Continue carefully.]",
+                        system, this_burst,
                     )
 
         # Contradiction check (L4): compare new span against prior spans
         if do_contradiction and len(spans) > 0 and text.strip():
-            # Simple heuristic: check for negation patterns against prior text
-            # Full NLI would go here in production
             contradiction_detected = _simple_contradiction_check(full_text, text)
             if contradiction_detected:
                 reruns += 1
                 was_rerun = True
                 rerun_reason = (rerun_reason or "") + " + contradiction_detected"
 
-                grounded_context = (
-                    f"{prompt_text}\n\n"
-                    f"[You previously stated:]\n{full_text}\n\n"
-                    f"[Continue, but make sure you do NOT contradict anything above. "
-                    f"Stay consistent with all prior statements.]"
+                consistency_system = (
+                    (system + "\n\n" if system else "")
+                    + "IMPORTANT: You must stay consistent with everything "
+                    "you have already written. Do not contradict prior statements."
                 )
                 if model_cfg["provider"] == "ollama":
+                    prefix = f"{prompt_text}\n\n{full_text}" if full_text else prompt_text
                     text, entropy = await ollama_generate(
-                        session, model_cfg["name"], grounded_context, system, this_burst
+                        session, model_cfg["name"], prefix, consistency_system,
+                        this_burst, raw_mode=True,
                     )
                 else:
-                    text, entropy = await openai_generate(
-                        grounded_context, system, model_cfg["name"], this_burst
+                    text, entropy = await _route_generate(
+                        session, model_cfg,
+                        f"{prompt_text}\n\n[Stay consistent with:]\n{full_text}\n\n[Continue without contradicting.]",
+                        system, this_burst,
                     )
 
         span = SpanResult(

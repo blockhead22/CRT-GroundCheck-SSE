@@ -45,6 +45,12 @@ MODELS = {
         "provider": "openai",
         "supports_logprobs": True,
     },
+    "cloud_opus": {
+        "name": "claude-opus-4-6",
+        "params": "frontier",
+        "provider": "anthropic",
+        "supports_logprobs": False,
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -90,6 +96,16 @@ STRATEGIES = {
         "reanchor": True,
         "entropy_check": True,
         "contradiction_check": True,
+        "plan_next": False,
+    },
+    "L5_planned_burst": {
+        "description": "25-token bursts, full scaffold + plan next burst from gap analysis",
+        "max_tokens": 500,
+        "burst_size": 25,
+        "reanchor": True,
+        "entropy_check": True,
+        "contradiction_check": True,
+        "plan_next": True,
     },
 }
 

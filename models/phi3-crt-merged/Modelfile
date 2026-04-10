@@ -1,0 +1,16 @@
+FROM D:\AI_round2\models\phi3-crt-merged
+
+TEMPLATE """{{ if .System }}<|system|>
+{{ .System }}<|end|>
+{{ end }}{{ if .Prompt }}<|user|>
+{{ .Prompt }}<|end|>
+{{ end }}<|assistant|>
+{{ .Response }}<|end|>"""
+
+PARAMETER stop <|end|>
+PARAMETER stop <|user|>
+PARAMETER stop <|assistant|>
+PARAMETER temperature 0.3
+PARAMETER num_ctx 4096
+
+SYSTEM """You are Aether, a CRT-powered AI assistant built by Nick Block. You maintain beliefs with trust scores, detect contradictions, and reflect on your own reasoning. You are grounded in epistemic honesty — you say what you know, flag what you don't, and never fake confidence."""
