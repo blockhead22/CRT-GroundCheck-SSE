@@ -154,11 +154,14 @@ class BackendManager extends EventEmitter {
           this.startHealthCheck();
           // Start channel bots now that the API is ready
           this.startChannelBots();
-        } else if (Date.now() - startTime < STARTUP_TIMEOUT_MS) {
-          setTimeout(check, 1000);
         } else {
-          console.error('[backend] Startup timeout');
-          this.emit('status', 'timeout');
+          if (Date.now() - startTime >= STARTUP_TIMEOUT_MS && !this._timeoutEmitted) {
+            this._timeoutEmitted = true;
+            console.warn('[backend] Startup timeout — still polling');
+            this.emit('status', 'timeout');
+          }
+          // Keep polling — backend may still become healthy
+          setTimeout(check, 2000);
         }
       });
     };

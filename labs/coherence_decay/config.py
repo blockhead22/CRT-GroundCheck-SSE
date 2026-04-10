@@ -28,17 +28,18 @@ MODELS = {
         "supports_logprobs": True,
     },
     "local_medium": {
-        "name": "gemma3:latest",
-        "params": "4B",
+        "name": "mistral:latest",
+        "params": "7B",
         "provider": "ollama",
         "supports_logprobs": True,
     },
-    "local_large": {
-        "name": "qwen3:14b",
-        "params": "14B",
-        "provider": "ollama",
-        "supports_logprobs": True,
-    },
+    # qwen3:14b disabled — too heavy for Mac M2, returns 0 tokens
+    # "local_large": {
+    #     "name": "qwen3:14b",
+    #     "params": "14B",
+    #     "provider": "ollama",
+    #     "supports_logprobs": True,
+    # },
     "cloud": {
         "name": "gpt-4o-mini",
         "params": "~8B?",

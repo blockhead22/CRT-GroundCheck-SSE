@@ -64,22 +64,29 @@ async def ollama_generate(
     system: str = "",
     max_tokens: int = 200,
     temperature: float = 0.3,
+    raw_mode: bool = False,
 ) -> tuple[str, list[float]]:
     """Generate from Ollama, return (text, entropy_per_token).
 
-    Uses /api/generate with raw mode for logprob access.
+    When raw_mode=True, sends the prompt as a raw prefix (no chat
+    template wrapping) so the model continues it naturally. This is
+    critical for burst generation — the model sees prompt + prior
+    output as one text and picks up where it left off.
     """
     payload = {
         "model": model,
         "prompt": prompt,
-        "system": system,
         "stream": False,
+        "raw": raw_mode,
         "options": {
             "temperature": temperature,
             "num_predict": max_tokens,
             "num_ctx": 4096,
         },
     }
+    # Only include system when not in raw mode (raw mode ignores it)
+    if system and not raw_mode:
+        payload["system"] = system
 
     url = f"{OLLAMA_URL}/api/generate"
     try:
@@ -93,18 +100,7 @@ async def ollama_generate(
 
     text = data.get("response", "")
 
-    # Ollama doesn't expose per-token logprobs in standard API
-    # We estimate entropy by running the generation and measuring via
-    # a follow-up eval pass if needed. For now, use response metadata.
-    #
-    # Approximation: use eval_count / eval_duration as a fluency proxy,
-    # and we'll add proper entropy via the scoring pass.
-    eval_count = data.get("eval_count", 0)
-    eval_duration_ns = data.get("eval_duration", 1)
-    prompt_eval_count = data.get("prompt_eval_count", 0)
-
-    # Placeholder entropy — will be computed in scoring pass via
-    # token-by-token evaluation
+    # Placeholder — entropy estimated via multi-sample in a separate pass
     entropy_per_token = []
 
     return text, entropy_per_token
@@ -127,7 +123,7 @@ async def ollama_entropy_probe(
     Simpler approach: Run the same prompt N times at temp=0.7 and
     measure output variance as entropy proxy.
     """
-    NUM_SAMPLES = 3
+    NUM_SAMPLES = 2  # Keep low for speed; 2 samples still detects variance
     samples = []
 
     for _ in range(NUM_SAMPLES):
@@ -135,6 +131,7 @@ async def ollama_entropy_probe(
             session, model, context_prefix, system,
             max_tokens=len(generated_text.split()) + 10,
             temperature=0.7,
+            raw_mode=True,  # Match burst generation mode
         )
         samples.append(text)
 
@@ -161,6 +158,7 @@ async def openai_generate(
     model: str = "gpt-4o-mini",
     max_tokens: int = 200,
     temperature: float = 0.3,
+    assistant_prefix: str | None = None,
 ) -> tuple[str, list[float]]:
     """Generate from OpenAI API with logprobs."""
     api_key = os.getenv("OPENAI_API_KEY", "")
@@ -171,19 +169,21 @@ async def openai_generate(
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+    if assistant_prefix:
+        messages.append({"role": "assistant", "content": assistant_prefix})
+
     payload = {
         "model": model,
-        "messages": [
-            {"role": "system", "content": system} if system else None,
-            {"role": "user", "content": prompt},
-        ],
+        "messages": messages,
         "max_tokens": max_tokens,
         "temperature": temperature,
         "logprobs": True,
         "top_logprobs": 5,
     }
-    # Remove None system message
-    payload["messages"] = [m for m in payload["messages"] if m is not None]
 
     async with aiohttp.ClientSession() as session:
         async with session.post(
@@ -257,7 +257,13 @@ async def generate_burst(
     strategy_cfg: dict,
     system: str = "",
 ) -> tuple[str, list[SpanResult], int, int]:
-    """L2/L3/L4: Burst generation with re-anchoring and optional checks."""
+    """L2/L3/L4: Burst generation with re-anchoring and optional checks.
+
+    Key design: use Ollama's raw prefix mode so the model *continues*
+    from the prior output rather than re-answering the prompt each time.
+    The prompt + prior output is sent as a single string; the model sees
+    it as one coherent generation and picks up where it left off.
+    """
     burst_size = strategy_cfg["burst_size"]
     max_tokens = strategy_cfg["max_tokens"]
     do_entropy = strategy_cfg["entropy_check"]
@@ -276,25 +282,24 @@ async def generate_burst(
         if this_burst <= 0:
             break
 
-        # Build context: original prompt + summary of what we've generated so far
+        # Build prefix: prompt + everything generated so far.
+        # The model sees this as one continuous text and continues it.
         if full_text:
             reanchors += 1
-            context = (
-                f"{prompt_text}\n\n"
-                f"[Continue from where you left off. Here is what you have written so far:]\n"
-                f"{full_text}\n\n"
-                f"[Continue writing the next part. Do not repeat what was already written.]"
-            )
+            prefix = f"{prompt_text}\n\n{full_text}"
         else:
-            context = prompt_text
+            prefix = prompt_text
 
         if model_cfg["provider"] == "ollama":
             text, entropy = await ollama_generate(
-                session, model_cfg["name"], context, system, this_burst
+                session, model_cfg["name"], prefix, system, this_burst,
+                raw_mode=True,  # Use raw prefix continuation
             )
         else:
+            # For OpenAI, use assistant prefill pattern
             text, entropy = await openai_generate(
-                context, system, model_cfg["name"], this_burst
+                prompt_text, system, model_cfg["name"], this_burst,
+                assistant_prefix=full_text if full_text else None,
             )
 
         if not text.strip():
@@ -302,6 +307,12 @@ async def generate_burst(
 
         was_rerun = False
         rerun_reason = None
+
+        # Entropy estimation (L3+): probe uncertainty via multi-sample variance
+        if do_entropy and model_cfg["provider"] == "ollama":
+            entropy = await ollama_entropy_probe(
+                session, model_cfg["name"], prefix, text, system,
+            )
 
         # Entropy check (L3+): if entropy too high, re-run with grounding
         if do_entropy and entropy:
@@ -311,45 +322,45 @@ async def generate_burst(
                 was_rerun = True
                 rerun_reason = f"entropy={mean_ent:.2f} > {ENTROPY_RERUN_THRESHOLD}"
 
-                # Re-run with tighter grounding
-                grounded_context = (
-                    f"{prompt_text}\n\n"
-                    f"[Important: Stay strictly factual. Here is what you have written so far:]\n"
-                    f"{full_text}\n\n"
-                    f"[Continue carefully. Only state things you are confident about.]"
+                # Re-run with stronger system prompt grounding
+                grounded_system = (
+                    (system + "\n\n" if system else "")
+                    + "IMPORTANT: Stay strictly factual. Only state things "
+                    "you are confident about. Do not speculate."
                 )
                 if model_cfg["provider"] == "ollama":
                     text, entropy = await ollama_generate(
-                        session, model_cfg["name"], grounded_context, system, this_burst
+                        session, model_cfg["name"], prefix, grounded_system,
+                        this_burst, raw_mode=True,
                     )
                 else:
                     text, entropy = await openai_generate(
-                        grounded_context, system, model_cfg["name"], this_burst
+                        prompt_text, grounded_system, model_cfg["name"],
+                        this_burst, assistant_prefix=full_text,
                     )
 
         # Contradiction check (L4): compare new span against prior spans
         if do_contradiction and len(spans) > 0 and text.strip():
-            # Simple heuristic: check for negation patterns against prior text
-            # Full NLI would go here in production
             contradiction_detected = _simple_contradiction_check(full_text, text)
             if contradiction_detected:
                 reruns += 1
                 was_rerun = True
                 rerun_reason = (rerun_reason or "") + " + contradiction_detected"
 
-                grounded_context = (
-                    f"{prompt_text}\n\n"
-                    f"[You previously stated:]\n{full_text}\n\n"
-                    f"[Continue, but make sure you do NOT contradict anything above. "
-                    f"Stay consistent with all prior statements.]"
+                consistency_system = (
+                    (system + "\n\n" if system else "")
+                    + "IMPORTANT: You must stay consistent with everything "
+                    "you have already written. Do not contradict prior statements."
                 )
                 if model_cfg["provider"] == "ollama":
                     text, entropy = await ollama_generate(
-                        session, model_cfg["name"], grounded_context, system, this_burst
+                        session, model_cfg["name"], prefix, consistency_system,
+                        this_burst, raw_mode=True,
                     )
                 else:
                     text, entropy = await openai_generate(
-                        grounded_context, system, model_cfg["name"], this_burst
+                        prompt_text, consistency_system, model_cfg["name"],
+                        this_burst, assistant_prefix=full_text,
                     )
 
         span = SpanResult(

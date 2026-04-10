@@ -1388,9 +1388,17 @@ def create_app() -> FastAPI:
                 # handles routing via feature extraction, no LLM call needed.
                 _gen_model = os.getenv("CRT_OLLAMA_MODEL") or "qwen3:14b"
                 _warm_model = _gen_model or "qwen3:14b"
-                print(f"[STARTUP] Pre-warming Ollama model: {_warm_model}")
-                _ollama_mod.generate(model=_warm_model, prompt="", keep_alive="24h")
-                print(f"[STARTUP] Ollama model {_warm_model} loaded into VRAM")
+
+                def _bg_warm():
+                    try:
+                        print(f"[STARTUP] Pre-warming Ollama model: {_warm_model}")
+                        _ollama_mod.generate(model=_warm_model, prompt="", keep_alive="24h")
+                        print(f"[STARTUP] Ollama model {_warm_model} loaded into VRAM")
+                    except Exception as _e:
+                        logger.warning("[STARTUP] Could not pre-warm Ollama model: %s", _e)
+                        print(f"[STARTUP] WARNING: Ollama running but model pre-warm failed: {_e}")
+
+                _threading.Thread(target=_bg_warm, daemon=True).start()
             except Exception as e:
                 logger.warning("[STARTUP] Could not pre-warm Ollama model: %s", e)
                 print(f"[STARTUP] WARNING: Ollama running but model pre-warm failed: {e}")
