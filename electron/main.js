@@ -23,6 +23,9 @@ const { ClipboardMonitor } = require('./clipboard-monitor');
 const { AmbientMonitor } = require('./ambient-monitor');
 const { DesktopPet } = require('./pet-window');
 
+// Load .env from repo root so Electron sees the same PORT, CRT_HOST, etc.
+require('dotenv').config({ path: path.resolve(__dirname, '..', '.env'), override: true });
+
 // ── Config ────────────────────────────────────────────────────────────
 
 const IS_DEV = process.env.NODE_ENV === 'development';
