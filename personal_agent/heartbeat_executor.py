@@ -999,7 +999,7 @@ Reason carefully. If unsure, reply with action=none.
         # Fallback: return 'none' action
         return {
             "action": "none",
-            "reasoning": response_text[:200],
+            "reasoning": (response_text or "")[:200],
         }
     
     def run_heartbeat_for_thread(self, thread_id: str, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
