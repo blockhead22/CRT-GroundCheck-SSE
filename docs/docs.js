@@ -17,6 +17,7 @@
     { href: 'variance-probing.html',       label: 'Variance Probing',       group: 'Evidence' },
     { href: 'governance-validation.html',  label: 'Governance Validation',  group: 'Evidence' },
     { href: 'bdg-reasoning-scaffolds.html', label: 'BDG Reasoning Scaffolds', group: 'Evidence' },
+    { href: 'scaffolded_escape_research.html', label: 'Scaffolded Escape', group: 'Evidence' },
     { href: 'labs.html',                   label: 'Labs',                   group: 'Evidence' },
     // Architecture (how CORE works)
     { href: 'whitepaper.html',             label: 'Whitepaper',             group: 'Architecture' },
