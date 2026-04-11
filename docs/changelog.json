@@ -23,7 +23,8 @@
     {"date": "2026-04-07", "note": "Added Section 14: research writing guide with claim-evidence-interpretation formula, weak vs strong examples, 4 paragraph templates."}
   ],
   "why-this-matters.html": [
-    {"date": "2026-04-07", "note": "New page. External validation from BeliefShift, Suzgun (Nature MI), Sharma/Perez (ICLR 2024), MemOS, Farquhar (Nature 2024), Anthropic emotion vectors. 5 honest cautions. Mythos System Card findings (discontinuity of self, emotion-driven destructive behavior)."}
+    {"date": "2026-04-07", "note": "New page. External validation from BeliefShift, Suzgun (Nature MI), Sharma/Perez (ICLR 2024), MemOS, Farquhar (Nature 2024), Anthropic emotion vectors. 5 honest cautions."},
+    {"date": "2026-04-11", "note": "Removed Mythos System Card section (Section 9). Renumbered remaining sections."}
   ],
   "about.html": [
     {"date": "2026-04-07", "note": "New page. Etymology (aither to Aeteros), naming convention (Aeteros > CORE > aeteros-core), business position, 4-phase path, builder section."}
