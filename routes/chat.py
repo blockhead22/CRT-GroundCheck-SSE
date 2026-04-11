@@ -6302,6 +6302,8 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             term in str(_gate_reason_final).lower()
             for term in ("contradiction", "nli", "ledger", "conflict")
         )
+        _is_fidelity_gate = "fidelity" in str(_gate_reason_final).lower()
+
         if _is_contradiction_gate:
             # Build hedge prefix from contradiction context
             _contra_details = result.get("contradiction_details") or ""
@@ -6329,6 +6331,34 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 "gate_reason": _gate_reason_final,
                 "contradictions_disclosed": len(_contradictions_list),
             }
+
+        elif _is_fidelity_gate:
+            # Fidelity mirror failed — response may not be grounded in memory
+            # or may not answer the actual question. Add disclosure.
+            _fm_data = metadata.get("fidelity_mirror", {})
+            _fm_findings = []
+            if _fm_data.get("belief_fidelity", 1.0) < 0.2:
+                _fm_findings.append("I may not be drawing on what I know about you")
+            if _fm_data.get("request_alignment", 1.0) < 0.2:
+                _fm_findings.append("I may not be directly answering your question")
+            if _fm_data.get("factual_grounding", 1.0) < 0.1:
+                _fm_findings.append("my claims aren't well-grounded in stored facts")
+
+            if _fm_findings:
+                _fidelity_prefix = (
+                    "**Heads up:** " + ", and ".join(_fm_findings) + ". "
+                    "Take this with lower confidence.\n\n---\n\n"
+                )
+                final_answer = _fidelity_prefix + final_answer
+                _safe_print(
+                    f"[FIDELITY_ENFORCEMENT] Gate failed — "
+                    f"hedged response with fidelity disclosure ({len(_fm_findings)} findings)"
+                )
+                metadata["fidelity_enforcement"] = {
+                    "action": "hedged",
+                    "gate_reason": _gate_reason_final,
+                    "findings": _fm_findings,
+                }
 
     return _chat_response(
         answer=final_answer,

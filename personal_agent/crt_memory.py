@@ -1777,6 +1777,10 @@ class CRTMemorySystem:
         # COMPATIBLE relationships in one pass. Zero LLM calls.
         _write_path_contradictions = []
 
+        # Initialize skip flags before any branching that might skip their assignment
+        _skip_slot_extraction = False
+        _skip_tension_check = False
+
         # Guard: Third-person filter — skip tension check for text about others
         _third_person_indicators = (
             "my friend ", "my buddy ", "my colleague ", "my sister ", "my brother ",

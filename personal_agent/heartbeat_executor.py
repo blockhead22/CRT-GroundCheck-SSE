@@ -1505,6 +1505,33 @@ Reason carefully. If unsure, reply with action=none.
         except Exception as e:
             logger.debug(f"[HEARTBEAT] Slot discovery pass skipped: {e}")
 
+        # --- 7b. Slot NAME discovery (learn new slot names from text patterns) ---
+        try:
+            memory_db_path = self._resolve_memory_db_path(thread_id)
+            if memory_db_path and Path(memory_db_path).exists():
+                from .slot_name_discovery import run_name_discovery_pass
+                from .slot_discovery import _get_db_path as _sd_get_db_path
+                name_result = run_name_discovery_pass(
+                    memory_db_path=memory_db_path,
+                    discovery_db_path=_sd_get_db_path(memory_db_path),
+                )
+                if name_result.get("promoted"):
+                    actions_taken.append({
+                        "action": "slot_name_discovery",
+                        "detail": f"Discovered {len(name_result['promoted'])} new slot names: {name_result['promoted'][:5]}",
+                        "promoted": name_result["promoted"],
+                        "candidates": name_result.get("total_candidates", 0),
+                    })
+                    for slot_name in name_result["promoted"]:
+                        logger.info(f"[SLOT_NAME_DISCOVERY] Heartbeat promoted new slot: '{slot_name}'")
+                elif name_result.get("candidates_found", 0) > 0:
+                    logger.info(
+                        f"[SLOT_NAME_DISCOVERY] {name_result['candidates_found']} new candidates, "
+                        f"{name_result.get('total_candidates', 0)} total (none promoted yet)"
+                    )
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Slot name discovery skipped: {e}")
+
         # --- 8. Self-reflection pass (update self-model from evidence) ---
         try:
             from personal_agent.heartbeat_system import run_self_reflection_now

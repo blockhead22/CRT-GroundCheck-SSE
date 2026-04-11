@@ -556,6 +556,30 @@ def should_orchestrate(message: str, intent: Any = None) -> RoutingDecision:
             features={},
         )
 
+    # Reflective / recall conversational queries that need tool access.
+    # These are conversational in tone but require memory_recall or
+    # gpt_log_search to answer well. Without orchestrator routing,
+    # they go through legacy path with weak retrieval and no tools.
+    _reflective_q = _re_routing.search(
+        r"\b(?:what (?:did we|have we) (?:discuss|talk|work|do|build|ship)|"
+        r"(?:remind|tell) me (?:what|about) (?:we|our|last)|"
+        r"what (?:do you think|are you (?:unsure|certain|sure)|drives? me|holds? me)|"
+        r"what (?:are|were) my (?:dreams?|goals?|promises?|plans?|three)|"
+        r"(?:describe|explain) (?:me|my|how i|what i)|"
+        r"what (?:is|was) (?:the biggest|our biggest|your biggest)|"
+        r"dig deeper|carry the torch|keep brainstorming|"
+        r"what (?:do you want|would you|should we|can you do)|"
+        r"anything new with you)\b",
+        message, _re_routing.IGNORECASE,
+    )
+    if _reflective_q:
+        return RoutingDecision(
+            route="orchestrator",
+            confidence=0.80,
+            reasons=["reflective_recall_query"],
+            features={},
+        )
+
     features = _extract_all_features(message)
     weights = _get_db().get_weights()
 

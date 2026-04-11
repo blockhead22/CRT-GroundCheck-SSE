@@ -187,15 +187,95 @@ def extract_case_slots(text):
     return slots
 
 
-def run_tension_analysis(evidence):
+def bootstrap_slots(evidence):
+    """Auto-discover domain slots from evidence corpus. Zero LLM calls."""
+    from slot_bootstrapper import extract_variable_patterns, extract_prepositional_patterns, propose_slot_names
+
+    texts = [e["text"] for e in evidence]
+
+    p("  Phase 1: Variable patterns...")
+    var_patterns = extract_variable_patterns(texts)
+    p(f"    {len(var_patterns)} candidates")
+
+    p("  Phase 2: Prepositional patterns...")
+    prep_patterns = extract_prepositional_patterns(texts)
+    p(f"    {len(prep_patterns)} candidates")
+
+    p("  Phase 3: Proposing slots...")
+    proposals = propose_slot_names(var_patterns, prep_patterns)
+    p(f"    {len(proposals)} unique proposals")
+
+    # Build a dynamic slot extractor from discovered patterns
+    # Filter: require confidence >= 0.4 and evidence_count >= 2
+    promoted = [s for s in proposals if s["confidence"] >= 0.4 and s["evidence_count"] >= 2]
+    p(f"    {len(promoted)} promoted (confidence >= 0.4, evidence >= 2)")
+
+    return promoted
+
+
+def build_dynamic_extractor(promoted_slots, evidence):
+    """Build a slot extraction function from bootstrapped slots.
+
+    Combines:
+    1. Hardcoded case slots (from extract_case_slots)
+    2. Dynamically discovered slots from the bootstrapper
+    """
+    # Build regex patterns from discovered frames
+    discovered_frames = {}
+    for slot in promoted_slots:
+        frame = slot["frame"]
+        name = slot["slot_name"]
+        values = slot["example_values"]
+        discovered_frames[name] = {
+            "frame": frame,
+            "values": values,
+            "source": slot["source"],
+        }
+
+    def hybrid_extract(text):
+        """Extract slots using both hardcoded and discovered patterns."""
+        import re
+        # Start with hardcoded case slots
+        slots = extract_case_slots(text)
+
+        # Layer on discovered slots
+        text_lower = text.lower().strip()
+        for slot_name, info in discovered_frames.items():
+            if slot_name in slots:
+                continue  # Hardcoded takes priority
+
+            frame = info["frame"]
+            if frame in text_lower:
+                # Find what comes after the frame
+                idx = text_lower.index(frame) + len(frame)
+                remainder = text_lower[idx:idx+60].strip()
+                # Clean up
+                remainder = re.sub(r'[,\.\;].*$', '', remainder).strip()
+                if remainder and len(remainder) > 1:
+                    f = type("Fact", (), {})()
+                    f.slot = slot_name
+                    f.value = remainder
+                    f.normalized = remainder.lower()
+                    f.temporal_status = "active"
+                    f.period_text = None
+                    f.domains = ()
+                    f.confidence = 0.7  # Lower confidence for discovered slots
+                    slots[slot_name] = f
+
+        return slots
+
+    return hybrid_extract
+
+
+def run_tension_analysis(evidence, slot_extractor=None):
     """Run structural tension meter on all evidence pairs within topic clusters."""
     from structural_tension import StructuralTensionMeter, TensionRelationship
     from embeddings import encode_text
 
     meter = StructuralTensionMeter()
 
-    # Override the slot extractor with case-specific version
-    meter._extract_slots = extract_case_slots
+    # Use provided extractor or fall back to case-specific
+    meter._extract_slots = slot_extractor or extract_case_slots
 
     # Encode all evidence
     p("  Encoding evidence for tension analysis...")
@@ -422,9 +502,20 @@ def run():
     p("\nCreating isolated memory database...")
     create_isolated_db(evidence)
 
-    # Run tension analysis
-    p("\nRunning structural tension analysis...")
-    tension_results = run_tension_analysis(evidence)
+    # Bootstrap domain slots
+    p("\nBootstrapping domain slots...")
+    promoted_slots = bootstrap_slots(evidence)
+    for s in promoted_slots[:10]:
+        p(f"  [{s['slot_name']}] conf={s['confidence']:.2f} evidence={s['evidence_count']} values={s['example_values'][:2]}")
+
+    # Build hybrid extractor (hardcoded + discovered)
+    p("\nBuilding hybrid slot extractor...")
+    hybrid_extractor = build_dynamic_extractor(promoted_slots, evidence)
+    p(f"  Hardcoded case slots + {len(promoted_slots)} discovered slots")
+
+    # Run tension analysis with hybrid extractor
+    p("\nRunning structural tension analysis (hybrid slots)...")
+    tension_results = run_tension_analysis(evidence, slot_extractor=hybrid_extractor)
     p(f"  {len(tension_results)} tension relationships found")
 
     # Run oscillation analysis

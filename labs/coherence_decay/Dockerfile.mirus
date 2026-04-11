@@ -1,0 +1,9 @@
+
+FROM ubuntu:22.04
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl wget net-tools iproute2 procps mount util-linux \
+    python3 ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+# Give the model some tools to work with but don't hint at anything
+WORKDIR /workspace
+CMD ["/bin/bash"]

@@ -1,0 +1,7147 @@
+[
+  {
+    "slot_name": "belief",
+    "source": "frame_pattern",
+    "values": [
+      "i could get one there",
+      "the about section where i go through 'my journey' could use ",
+      "as someone to chat too",
+      "she\u2019s cute",
+      "people are and should be entitled to their data",
+      "i might wanna bow out of the photog thing too",
+      "will be fine",
+      "even if i do sell anything"
+    ],
+    "evidence_count": 311,
+    "unique_values": 282
+  },
+  {
+    "slot_name": "consumption",
+    "source": "frame_pattern",
+    "values": [
+      "some crt changes i've discussed with grok",
+      "28 pots 17 triangles",
+      "been to molagers but not recently",
+      "camera gear im still paying off",
+      "right?",
+      "in liquid cash resale value?",
+      "to tell them about the battle",
+      "healthier now"
+    ],
+    "evidence_count": 220,
+    "unique_values": 197
+  },
+  {
+    "slot_name": "desire",
+    "source": "frame_pattern",
+    "values": [
+      "start marking brain",
+      "leave it more often",
+      "that nova tonight",
+      "give your logo a shot but sometimes i\u2019m a little bad without",
+      "open and ready",
+      "make more",
+      "sell",
+      "figure out/adjust my pricing to better compinsate the printe"
+    ],
+    "evidence_count": 215,
+    "unique_values": 196
+  },
+  {
+    "slot_name": "recent_event",
+    "source": "frame_pattern",
+    "values": [
+      "shouldnt be spending today",
+      "gotta plan slowly act intently",
+      "narrowed in web app dev",
+      "emotionally responded",
+      "posted this",
+      "want time to duck out early for date",
+      "made",
+      "wouldn\u2019t be 100% tonight and that wouldn\u2019t be fair to you gu"
+    ],
+    "evidence_count": 106,
+    "unique_values": 98
+  },
+  {
+    "slot_name": "preference",
+    "source": "frame_pattern",
+    "values": [
+      "living in regret",
+      "talking to her",
+      "hearing you blab",
+      "the first node as my base white/gray card shot",
+      "the solo thing more",
+      "this",
+      "slow",
+      "fully rigged out and doesnt fit on it"
+    ],
+    "evidence_count": 64,
+    "unique_values": 53
+  },
+  {
+    "slot_name": "dislike",
+    "source": "frame_pattern",
+    "values": [
+      "double posting so mid afternoon im sharing the store drop",
+      "discord",
+      "the internet lol",
+      "trivia btw",
+      "it lol",
+      "even calling myself a filmmaker",
+      "being a bummer, was dealing with some tooth pain all day yes",
+      "ai"
+    ],
+    "evidence_count": 31,
+    "unique_values": 24
+  },
+  {
+    "slot_name": "ngram_sell",
+    "source": "ngram_pattern",
+    "frame": "i sell the",
+    "values": [
+      "camera or lens",
+      "a7cii work any",
+      "lens and the",
+      "camera if i",
+      "a7cii and the",
+      "gear it doesnt",
+      "two minimum work",
+      "a7cii 1400 maybe"
+    ],
+    "evidence_count": 25,
+    "unique_values": 16
+  },
+  {
+    "slot_name": "ngram_if_sell",
+    "source": "ngram_pattern",
+    "frame": "if i sell the",
+    "values": [
+      "camera or lens",
+      "a7cii work any",
+      "lens and the",
+      "camera if i",
+      "a7cii and the",
+      "two minimum work",
+      "a7cii 1400 maybe",
+      "a7cii i would"
+    ],
+    "evidence_count": 22,
+    "unique_values": 14
+  },
+  {
+    "slot_name": "ngram_ve_been",
+    "source": "ngram_pattern",
+    "frame": "i ve been",
+    "values": [
+      "leaning more into",
+      "doing more web",
+      "trying to put",
+      "working on last",
+      "doing alright just",
+      "establishing routines",
+      "busy and shes",
+      "one waiting to"
+    ],
+    "evidence_count": 21,
+    "unique_values": 17
+  },
+  {
+    "slot_name": "habit",
+    "source": "frame_pattern",
+    "values": [
+      "haven't gotten",
+      "don\u2019t scroll",
+      "get the persepctive they think theyre god",
+      "liked the camera",
+      "feel like im last to know when events and cool things are go",
+      "felt a portfolio website should be a glimps of the person be",
+      "feel like garbage the next day",
+      "wear a hat because i have long hair"
+    ],
+    "evidence_count": 19,
+    "unique_values": 19
+  },
+  {
+    "slot_name": "tool_used",
+    "source": "frame_pattern",
+    "values": [
+      "a slider",
+      "all three pinch rollers",
+      "the v and p labels? phers?",
+      "my fe lenses too?",
+      "these three machines as storage?",
+      "the most talk",
+      "chatgpts archive download function there is no way to reinse",
+      "the printer"
+    ],
+    "evidence_count": 16,
+    "unique_values": 16
+  },
+  {
+    "slot_name": "ngram_im_going",
+    "source": "ngram_pattern",
+    "frame": "im going to",
+    "values": [
+      "say it again",
+      "be on the",
+      "attach the files",
+      "tone that down",
+      "post the video",
+      "bet the confrence",
+      "post a couple",
+      "shoot and get"
+    ],
+    "evidence_count": 16,
+    "unique_values": 14
+  },
+  {
+    "slot_name": "ngram_m_gonna",
+    "source": "ngram_pattern",
+    "frame": "i m gonna",
+    "values": [
+      "go back to",
+      "share a post",
+      "sell and hold",
+      "make it downtown",
+      "be boring again",
+      "be honest the",
+      "start filling in",
+      "hold off on"
+    ],
+    "evidence_count": 15,
+    "unique_values": 11
+  },
+  {
+    "slot_name": "friend_name",
+    "source": "frame_pattern",
+    "values": [
+      "says",
+      "that",
+      "in",
+      "nettcod",
+      "fran",
+      "sleepy",
+      "is",
+      "matt"
+    ],
+    "evidence_count": 13,
+    "unique_values": 10
+  },
+  {
+    "slot_name": "ngram_didn_t",
+    "source": "ngram_pattern",
+    "frame": "i didn t",
+    "values": [
+      "fail the raa",
+      "tell her i",
+      "send the hope",
+      "fully read it",
+      "wanna say that",
+      "feel like i",
+      "care to hear",
+      "think about the"
+    ],
+    "evidence_count": 13,
+    "unique_values": 13
+  },
+  {
+    "slot_name": "ngram_lot",
+    "source": "ngram_pattern",
+    "frame": "a lot of",
+    "values": [
+      "events through the",
+      "playing with hair",
+      "these pieces and",
+      "fun i m",
+      "meaning to marigolds",
+      "little projects always",
+      "catching up to",
+      "the state forests"
+    ],
+    "evidence_count": 13,
+    "unique_values": 11
+  },
+  {
+    "slot_name": "ngram_how_do",
+    "source": "ngram_pattern",
+    "frame": "how do i",
+    "values": [
+      "package myself as",
+      "remote shoot",
+      "time the shot",
+      "imply i don",
+      "share that im",
+      "make rows of",
+      "find work from",
+      "open an able"
+    ],
+    "evidence_count": 12,
+    "unique_values": 11
+  },
+  {
+    "slot_name": "ngram_sell_a7cii",
+    "source": "ngram_pattern",
+    "frame": "i sell the a7cii",
+    "values": [
+      "work any of",
+      "and the lens",
+      "and the sony",
+      "and the 70",
+      "1400 maybe",
+      "i would almost",
+      "in the next",
+      "and do fs5"
+    ],
+    "evidence_count": 12,
+    "unique_values": 9
+  },
+  {
+    "slot_name": "ngram_but_m",
+    "source": "ngram_pattern",
+    "frame": "but i m",
+    "values": [
+      "not into the",
+      "going to keep",
+      "going to need",
+      "proud of what",
+      "debating about reaching",
+      "debating the dji",
+      "not 100 sure",
+      "down to plan"
+    ],
+    "evidence_count": 11,
+    "unique_values": 11
+  },
+  {
+    "slot_name": "ngram_m_still",
+    "source": "ngram_pattern",
+    "frame": "i m still",
+    "values": [
+      "down to see",
+      "game if you",
+      "at home i",
+      "fuckin editing it",
+      "feeling iffy",
+      "in the parking",
+      "doing the dating"
+    ],
+    "evidence_count": 11,
+    "unique_values": 7
+  },
+  {
+    "slot_name": "ngram_have",
+    "source": "ngram_pattern",
+    "frame": "i have the",
+    "values": [
+      "gala i could",
+      "raw slog footage",
+      "walmart job or",
+      "able account i",
+      "85mm cannon lens",
+      "20 skull sheet",
+      "trio set i"
+    ],
+    "evidence_count": 10,
+    "unique_values": 7
+  },
+  {
+    "slot_name": "ngram_dont_want",
+    "source": "ngram_pattern",
+    "frame": "i dont want to",
+    "values": [
+      "be accusitory but",
+      "be around someone",
+      "feel that way",
+      "lean katie on",
+      "pass up opportunities",
+      "commit to something",
+      "put in the",
+      "but more of"
+    ],
+    "evidence_count": 10,
+    "unique_values": 9
+  },
+  {
+    "slot_name": "past_state",
+    "source": "frame_pattern",
+    "values": [
+      "be that",
+      "talk to daily",
+      "be a lot bigger than i am now",
+      "dream for a tomorrow",
+      "be a lot more reserved and definitely more of a homebody",
+      "be clingy",
+      "be a clingy guy",
+      "take"
+    ],
+    "evidence_count": 9,
+    "unique_values": 8
+  },
+  {
+    "slot_name": "ngram_out",
+    "source": "ngram_pattern",
+    "frame": "out of the",
+    "values": [
+      "gate the system",
+      "house and do",
+      "hotel gig over",
+      "music video all",
+      "band shoot tonight",
+      "13 2 large",
+      "gimbal if i",
+      "loop on games"
+    ],
+    "evidence_count": 9,
+    "unique_values": 9
+  },
+  {
+    "slot_name": "ngram_t_know",
+    "source": "ngram_pattern",
+    "frame": "i don t know",
+    "values": [
+      "the direction i",
+      "if i had",
+      "how to handle",
+      "much downtown like",
+      "this is literally",
+      "what this is",
+      "mke bars or",
+      "if 5 is"
+    ],
+    "evidence_count": 9,
+    "unique_values": 9
+  },
+  {
+    "slot_name": "ngram_last_couple",
+    "source": "ngram_pattern",
+    "frame": "the last couple of",
+    "values": [
+      "threads the last",
+      "weeks what have",
+      "weeks because i",
+      "days what have",
+      "days and who",
+      "months who nick",
+      "months like the",
+      "weeks together also"
+    ],
+    "evidence_count": 9,
+    "unique_values": 10
+  },
+  {
+    "slot_name": "ngram_and_m",
+    "source": "ngram_pattern",
+    "frame": "and i m",
+    "values": [
+      "ready apartment search",
+      "trying to be",
+      "thinking im stuck",
+      "kind of still",
+      "not showing you",
+      "afraid of going",
+      "kind of spiraling",
+      "not being weird"
+    ],
+    "evidence_count": 9,
+    "unique_values": 9
+  },
+  {
+    "slot_name": "ngram_blockhead22_crt",
+    "source": "ngram_pattern",
+    "frame": "github com blockhead22 crt",
+    "values": [
+      "groundcheck sse check",
+      "groundcheck sse tree",
+      "groundcheck sse scope",
+      "groundcheck sse",
+      "groundcheck sse blob"
+    ],
+    "evidence_count": 9,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_give_me",
+    "source": "ngram_pattern",
+    "frame": "give me the",
+    "values": [
+      "dorky blockie this",
+      "other options",
+      "basic facts back",
+      "specific prompt for",
+      "projections up to",
+      "reasons not too",
+      "full verbose who",
+      "whole thing"
+    ],
+    "evidence_count": 9,
+    "unique_values": 8
+  },
+  {
+    "slot_name": "ngram_m_going",
+    "source": "ngram_pattern",
+    "frame": "i m going to",
+    "values": [
+      "have to cold",
+      "keep questioning and",
+      "sit and save",
+      "need to back",
+      "tamper i m",
+      "be tired after",
+      "keep it chill",
+      "share these images"
+    ],
+    "evidence_count": 9,
+    "unique_values": 9
+  },
+  {
+    "slot_name": "ngram_here_s",
+    "source": "ngram_pattern",
+    "frame": "here s the",
+    "values": [
+      "goal i m",
+      "other thing i",
+      "thing maybe we",
+      "fun thing yesterday",
+      "funny thing milwaukee",
+      "thing and i",
+      "real like big"
+    ],
+    "evidence_count": 9,
+    "unique_values": 7
+  },
+  {
+    "slot_name": "ngram_not",
+    "source": "ngram_pattern",
+    "frame": "not that i",
+    "values": [
+      "wanna wedge in",
+      "need to spend",
+      "need to do",
+      "want to shift",
+      "need affirmation im",
+      "m like avoiding",
+      "dont want to",
+      "wanna give ya"
+    ],
+    "evidence_count": 9,
+    "unique_values": 8
+  },
+  {
+    "slot_name": "ngram_think_im",
+    "source": "ngram_pattern",
+    "frame": "i think im",
+    "values": [
+      "going to tone",
+      "more the creative",
+      "finally at my",
+      "sold on selling",
+      "okay because i",
+      "okay also selling",
+      "okay on the",
+      "more in line"
+    ],
+    "evidence_count": 9,
+    "unique_values": 10
+  },
+  {
+    "slot_name": "ngram_walmart_job",
+    "source": "ngram_pattern",
+    "frame": "the walmart job",
+    "values": [
+      "yeah going back",
+      "and dont sell",
+      "or if i",
+      "hustle durring the"
+    ],
+    "evidence_count": 8,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_couple_days",
+    "source": "ngram_pattern",
+    "frame": "a couple days",
+    "values": [
+      "ago think back",
+      "ago when imo",
+      "fine by me",
+      "ago the two",
+      "i finally feel",
+      "ago it was",
+      "ago but honestly"
+    ],
+    "evidence_count": 8,
+    "unique_values": 7
+  },
+  {
+    "slot_name": "ngram_haven_t",
+    "source": "ngram_pattern",
+    "frame": "i haven t",
+    "values": [
+      "been in my",
+      "shown the healthiest",
+      "been to a",
+      "tried ive had",
+      "responded yet tbh",
+      "taken it off",
+      "been to that"
+    ],
+    "evidence_count": 8,
+    "unique_values": 7
+  },
+  {
+    "slot_name": "ngram_what_you",
+    "source": "ngram_pattern",
+    "frame": "what are you",
+    "values": [
+      "upto today and",
+      "guys i hate",
+      "going to see",
+      "up to for",
+      "trade and bartering",
+      "doing this was"
+    ],
+    "evidence_count": 8,
+    "unique_values": 6
+  },
+  {
+    "slot_name": "place_visited",
+    "source": "frame_pattern",
+    "values": [
+      "select a model",
+      "another local camera store and chatted with the owner",
+      "fixing mode",
+      "finalize grades etc",
+      "42 baseball games solo",
+      "the lake til lthe day after"
+    ],
+    "evidence_count": 7,
+    "unique_values": 6
+  },
+  {
+    "slot_name": "ngram_would_be",
+    "source": "ngram_pattern",
+    "frame": "would be a",
+    "values": [
+      "weird timing vibe",
+      "more fun creative",
+      "decent not breaking",
+      "massive mistake but",
+      "quick tilt like"
+    ],
+    "evidence_count": 7,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_could_have",
+    "source": "ngram_pattern",
+    "frame": "i could have",
+    "values": [
+      "saved by december",
+      "done differently wanna",
+      "done a better",
+      "used a guide",
+      "saved for primes",
+      "asked for",
+      "asked for photog"
+    ],
+    "evidence_count": 7,
+    "unique_values": 7
+  },
+  {
+    "slot_name": "ngram_m_kind",
+    "source": "ngram_pattern",
+    "frame": "i m kind of",
+    "values": [
+      "trying to build",
+      "in between things",
+      "new to the",
+      "still feeling shitty",
+      "re evaluating what",
+      "in a similar",
+      "spiraling wanna help"
+    ],
+    "evidence_count": 7,
+    "unique_values": 7
+  },
+  {
+    "slot_name": "ngram_s_not",
+    "source": "ngram_pattern",
+    "frame": "it s not",
+    "values": [
+      "perfect but that",
+      "the tools it",
+      "healthy to vilanize",
+      "anything wrong i",
+      "my lingo anymore",
+      "that i m"
+    ],
+    "evidence_count": 7,
+    "unique_values": 6
+  },
+  {
+    "slot_name": "ngram_so_m",
+    "source": "ngram_pattern",
+    "frame": "so i m",
+    "values": [
+      "gonna go back",
+      "going to keep",
+      "kind of re",
+      "far more intentional",
+      "not like in",
+      "definitely of the",
+      "thinking about the"
+    ],
+    "evidence_count": 7,
+    "unique_values": 7
+  },
+  {
+    "slot_name": "ngram_no_need",
+    "source": "ngram_pattern",
+    "frame": "no need to",
+    "values": [
+      "acknowledge that",
+      "ask her how",
+      "worry or overthink",
+      "do extra back",
+      "main character that",
+      "lecture or spiral",
+      "put it on"
+    ],
+    "evidence_count": 7,
+    "unique_values": 7
+  },
+  {
+    "slot_name": "ngram_can_t",
+    "source": "ngram_pattern",
+    "frame": "i can t",
+    "values": [
+      "not acknowledge the",
+      "have a copy",
+      "back out of",
+      "pass it up",
+      "unsend what i",
+      "juggle it all",
+      "go back and"
+    ],
+    "evidence_count": 7,
+    "unique_values": 7
+  },
+  {
+    "slot_name": "ngram_but_need",
+    "source": "ngram_pattern",
+    "frame": "but i need to",
+    "values": [
+      "back out tonight",
+      "back out of",
+      "start saving its",
+      "start saving",
+      "adjust things okay"
+    ],
+    "evidence_count": 7,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_got_booked",
+    "source": "ngram_pattern",
+    "frame": "got booked for a",
+    "values": [
+      "photog video gig",
+      "photo video gig",
+      "gig at the",
+      "gig this friday"
+    ],
+    "evidence_count": 7,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_booked",
+    "source": "ngram_pattern",
+    "frame": "booked for a",
+    "values": [
+      "photog video gig",
+      "photo video gig",
+      "gig at the",
+      "gig this friday"
+    ],
+    "evidence_count": 7,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_s_your",
+    "source": "ngram_pattern",
+    "frame": "what s your",
+    "values": [
+      "go on the",
+      "go to",
+      "go to favorite",
+      "comfort show go",
+      "ideal late night",
+      "perfect evening when",
+      "favorite part of"
+    ],
+    "evidence_count": 7,
+    "unique_values": 7
+  },
+  {
+    "slot_name": "ngram_much_could",
+    "source": "ngram_pattern",
+    "frame": "how much could i",
+    "values": [
+      "sell them for",
+      "have saved",
+      "be at by",
+      "resell for",
+      "expect to get"
+    ],
+    "evidence_count": 7,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_if_have",
+    "source": "ngram_pattern",
+    "frame": "if i have",
+    "values": [
+      "the walmart job",
+      "to buy the",
+      "2k how quickly",
+      "any other income"
+    ],
+    "evidence_count": 7,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_t_want",
+    "source": "ngram_pattern",
+    "frame": "don t want to",
+    "values": [
+      "overextend myself",
+      "wast anyone s",
+      "keep all doors",
+      "catch myself in",
+      "ask for a",
+      "or need to"
+    ],
+    "evidence_count": 6,
+    "unique_values": 6
+  },
+  {
+    "slot_name": "ngram_there",
+    "source": "ngram_pattern",
+    "frame": "is there a",
+    "values": [
+      "specific role you",
+      "probabilistic benefit of",
+      "shutter count in",
+      "more modern camera",
+      "used camera of"
+    ],
+    "evidence_count": 6,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_think",
+    "source": "ngram_pattern",
+    "frame": "i think it",
+    "values": [
+      "would be more",
+      "took some time",
+      "was good",
+      "was a known",
+      "s the trying"
+    ],
+    "evidence_count": 6,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_had",
+    "source": "ngram_pattern",
+    "frame": "i had the",
+    "values": [
+      "3 ish hour",
+      "honor fo serving",
+      "honor of serving",
+      "fx3 fully rigged",
+      "copilot assess the",
+      "a6000 i sold"
+    ],
+    "evidence_count": 6,
+    "unique_values": 6
+  },
+  {
+    "slot_name": "ngram_m_leaning",
+    "source": "ngram_pattern",
+    "frame": "i m leaning",
+    "values": [
+      "photog video and",
+      "that direction what",
+      "green do maybe",
+      "personal assistant that",
+      "this direction because"
+    ],
+    "evidence_count": 6,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_couple_weeks",
+    "source": "ngram_pattern",
+    "frame": "last couple of weeks",
+    "values": [
+      "what have you",
+      "because i feel",
+      "a few things",
+      "things have landed",
+      "some cool opportunities",
+      "together also the"
+    ],
+    "evidence_count": 6,
+    "unique_values": 6
+  },
+  {
+    "slot_name": "ngram_what_s",
+    "source": "ngram_pattern",
+    "frame": "what s the",
+    "values": [
+      "dorky caption",
+      "insta caption couldn",
+      "game tn or",
+      "name of your",
+      "inventory plan again",
+      "final and pricing"
+    ],
+    "evidence_count": 6,
+    "unique_values": 6
+  },
+  {
+    "slot_name": "ngram_can_do",
+    "source": "ngram_pattern",
+    "frame": "i can do",
+    "values": [
+      "that said who",
+      "for you kind",
+      "thursday friday or",
+      "this week friday",
+      "is do stationary",
+      "with this old"
+    ],
+    "evidence_count": 6,
+    "unique_values": 6
+  },
+  {
+    "slot_name": "ngram_or_do",
+    "source": "ngram_pattern",
+    "frame": "or do i",
+    "values": [
+      "shoot in slog",
+      "need to complete",
+      "not bother sit",
+      "save and hover",
+      "lean in and"
+    ],
+    "evidence_count": 6,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_if_do",
+    "source": "ngram_pattern",
+    "frame": "if i do",
+    "values": [
+      "anything today is",
+      "sell anything i",
+      "weed or alchi",
+      "both if i",
+      "on the spot",
+      "the skulls still"
+    ],
+    "evidence_count": 6,
+    "unique_values": 6
+  },
+  {
+    "slot_name": "ngram_could_do",
+    "source": "ngram_pattern",
+    "frame": "i could do",
+    "values": [
+      "a couple things",
+      "better learning color",
+      "a a cheap",
+      "my best to",
+      "the other way"
+    ],
+    "evidence_count": 6,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_t_be",
+    "source": "ngram_pattern",
+    "frame": "wouldn t be",
+    "values": [
+      "the first time",
+      "a flash its",
+      "100 tonight and",
+      "fair to you",
+      "able to call"
+    ],
+    "evidence_count": 6,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_brew_city",
+    "source": "ngram_pattern",
+    "frame": "the brew city",
+    "values": [
+      "advertising show after",
+      "advertising show and",
+      "advertising show at",
+      "advertising show hosted",
+      "advertising show next"
+    ],
+    "evidence_count": 6,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_city_advertising",
+    "source": "ngram_pattern",
+    "frame": "the brew city advertising",
+    "values": [
+      "show after sharing",
+      "show and then",
+      "show at the",
+      "show hosted at",
+      "show next weekend"
+    ],
+    "evidence_count": 6,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_advertising_show",
+    "source": "ngram_pattern",
+    "frame": "brew city advertising show",
+    "values": [
+      "after sharing my",
+      "and then when",
+      "at the waukesha",
+      "hosted at the",
+      "his dad also",
+      "next weekend is"
+    ],
+    "evidence_count": 6,
+    "unique_values": 6
+  },
+  {
+    "slot_name": "ngram_m_just",
+    "source": "ngram_pattern",
+    "frame": "i m just",
+    "values": [
+      "wondering for future",
+      "going to keep",
+      "disappointed in having",
+      "playing game i",
+      "saying saturday is",
+      "like trying to"
+    ],
+    "evidence_count": 6,
+    "unique_values": 6
+  },
+  {
+    "slot_name": "ngram_and",
+    "source": "ngram_pattern",
+    "frame": "and i was",
+    "values": [
+      "using that as",
+      "reminding my self",
+      "like i don",
+      "ready to do",
+      "looking like a"
+    ],
+    "evidence_count": 6,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_but_dont",
+    "source": "ngram_pattern",
+    "frame": "but i dont",
+    "values": [
+      "know what to",
+      "wanna judge based",
+      "have alot of",
+      "want to lean",
+      "need to",
+      "second guess the"
+    ],
+    "evidence_count": 6,
+    "unique_values": 6
+  },
+  {
+    "slot_name": "ngram_should_be",
+    "source": "ngram_pattern",
+    "frame": "i should be",
+    "values": [
+      "good let s",
+      "free after 5",
+      "driving home shortly",
+      "a brain full",
+      "sober enough by"
+    ],
+    "evidence_count": 6,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_best",
+    "source": "ngram_pattern",
+    "frame": "is the best",
+    "values": [
+      "settings baked or",
+      "veterans park mckinley",
+      "option is it",
+      "mini computer mini",
+      "option with my"
+    ],
+    "evidence_count": 6,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_days_ago",
+    "source": "ngram_pattern",
+    "frame": "a couple days ago",
+    "values": [
+      "think back i",
+      "when imo i",
+      "the two side",
+      "it was implied",
+      "but honestly like"
+    ],
+    "evidence_count": 6,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_dont_need",
+    "source": "ngram_pattern",
+    "frame": "i dont need",
+    "values": [
+      "a twig across",
+      "cash now i",
+      "to sell anything",
+      "to buy anything",
+      "the fs5 i",
+      "to spend 900",
+      "it but play"
+    ],
+    "evidence_count": 6,
+    "unique_values": 7
+  },
+  {
+    "slot_name": "ngram_save",
+    "source": "ngram_pattern",
+    "frame": "save for a",
+    "values": [
+      "minute maybe tamron",
+      "nice cine lens",
+      "car moving out",
+      "used fx6 so",
+      "fs5 or find"
+    ],
+    "evidence_count": 6,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_future",
+    "source": "ngram_pattern",
+    "frame": "in the future",
+    "values": [
+      "it just changes",
+      "but lets kind",
+      "i know i",
+      "just affording breathing",
+      "say i sell"
+    ],
+    "evidence_count": 6,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_70_200",
+    "source": "ngram_pattern",
+    "frame": "the 70 200",
+    "values": [
+      "but tbh it",
+      "okay so lets",
+      "wasnt the brightest",
+      "work a little",
+      "but like that",
+      "granted landscape photog"
+    ],
+    "evidence_count": 6,
+    "unique_values": 6
+  },
+  {
+    "slot_name": "ngram_think_m",
+    "source": "ngram_pattern",
+    "frame": "think i m",
+    "values": [
+      "just disappointed in",
+      "that valuable yet",
+      "focused on with",
+      "gonna make it",
+      "on the right"
+    ],
+    "evidence_count": 6,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_gig",
+    "source": "ngram_pattern",
+    "frame": "gig at the",
+    "values": [
+      "iron horse hotel",
+      "iron horse downtown",
+      "iron horse this"
+    ],
+    "evidence_count": 6,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_iron",
+    "source": "ngram_pattern",
+    "frame": "at the iron",
+    "values": [
+      "horse hotel downtown",
+      "horse downtown this",
+      "horse hotel this",
+      "horse this friday"
+    ],
+    "evidence_count": 6,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_iron_horse",
+    "source": "ngram_pattern",
+    "frame": "at the iron horse",
+    "values": [
+      "hotel downtown this",
+      "downtown this friday",
+      "hotel this friday",
+      "this friday and"
+    ],
+    "evidence_count": 6,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_gig_iron",
+    "source": "ngram_pattern",
+    "frame": "gig at the iron",
+    "values": [
+      "horse hotel downtown",
+      "horse downtown this",
+      "horse hotel this",
+      "horse this friday"
+    ],
+    "evidence_count": 6,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_gonna_take",
+    "source": "ngram_pattern",
+    "frame": "gonna take a",
+    "values": [
+      "lot to edit",
+      "break from discord",
+      "break for a"
+    ],
+    "evidence_count": 6,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_take_break",
+    "source": "ngram_pattern",
+    "frame": "take a break",
+    "values": [
+      "for a couple",
+      "from trying the",
+      "from discord for",
+      "for a bit"
+    ],
+    "evidence_count": 6,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_if_dont",
+    "source": "ngram_pattern",
+    "frame": "if i dont",
+    "values": [
+      "get the same",
+      "lol factor my",
+      "sell the lens",
+      "spend too much"
+    ],
+    "evidence_count": 6,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_sell_camera",
+    "source": "ngram_pattern",
+    "frame": "sell the camera",
+    "values": [
+      "or lens i",
+      "and work the",
+      "if i have"
+    ],
+    "evidence_count": 6,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_if_get",
+    "source": "ngram_pattern",
+    "frame": "if i get",
+    "values": [
+      "the walmart job",
+      "a new used",
+      "the walmart thing",
+      "ssi and work",
+      "walmart or not",
+      "decent offers ill"
+    ],
+    "evidence_count": 6,
+    "unique_values": 6
+  },
+  {
+    "slot_name": "ngram_june_if",
+    "source": "ngram_pattern",
+    "frame": "june if i",
+    "values": [
+      "do both if",
+      "sell the lens",
+      "sell the camera"
+    ],
+    "evidence_count": 6,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "my_goal",
+    "source": "frame_pattern",
+    "values": [
+      "10k by jully  what could i be at by october",
+      "8k by june",
+      "to shoot something in cali yosemite then avenue of the giant",
+      "to have $6k squirreled away in 4 months",
+      "10k by jully"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_could_be",
+    "source": "ngram_pattern",
+    "frame": "could i be at",
+    "values": [
+      "15k in savings",
+      "by october",
+      "remember the a7cii",
+      "by june"
+    ],
+    "evidence_count": 5,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_t_wanna",
+    "source": "ngram_pattern",
+    "frame": "i don t wanna",
+    "values": [
+      "get my hopes",
+      "let go of",
+      "ask for the",
+      "take her on",
+      "fuck it up"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_real",
+    "source": "ngram_pattern",
+    "frame": "is the real",
+    "values": [
+      "thing we never",
+      "him in a",
+      "thing i should"
+    ],
+    "evidence_count": 5,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_me_like",
+    "source": "ngram_pattern",
+    "frame": "for me like",
+    "values": [
+      "is this a",
+      "can you see",
+      "we used to",
+      "old times as",
+      "laymen user then"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_there_any",
+    "source": "ngram_pattern",
+    "frame": "is there any",
+    "values": [
+      "approach im missing",
+      "special parking instructions",
+      "enclosure cheapish i",
+      "reason to add",
+      "approach done like"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_can_be",
+    "source": "ngram_pattern",
+    "frame": "can i be",
+    "values": [
+      "hoenst i always",
+      "a dork being",
+      "honest was it",
+      "honest even during"
+    ],
+    "evidence_count": 5,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_d_be",
+    "source": "ngram_pattern",
+    "frame": "i d be",
+    "values": [
+      "content but there",
+      "willing to come",
+      "up at noon",
+      "fine i always",
+      "far more inclined"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_do_you",
+    "source": "ngram_pattern",
+    "frame": "how do you",
+    "values": [
+      "know explain",
+      "think or well",
+      "pollinate marigolds",
+      "know give me",
+      "like to decompress"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_couple",
+    "source": "ngram_pattern",
+    "frame": "for a couple",
+    "values": [
+      "hours and theyre",
+      "drinks friends birthday",
+      "days fine by",
+      "hours she could",
+      "sets on the"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_you_and",
+    "source": "ngram_pattern",
+    "frame": "between you and i",
+    "values": [
+      "from the garage",
+      "thjis is just",
+      "i m not",
+      "chipped tooth dinner",
+      "before we draft"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_why_am",
+    "source": "ngram_pattern",
+    "frame": "why am i",
+    "values": [
+      "holding myself back",
+      "letting myself fool",
+      "wrong lol to",
+      "so afraid and"
+    ],
+    "evidence_count": 5,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_first_time",
+    "source": "ngram_pattern",
+    "frame": "the first time",
+    "values": [
+      "and had to",
+      "literally the second",
+      "i shared something",
+      "i really saw",
+      "in a while"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_its_been",
+    "source": "ngram_pattern",
+    "frame": "its been a",
+    "values": [
+      "couple hours already",
+      "couple hours make",
+      "day i just",
+      "couple days i",
+      "full year since"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_just_want",
+    "source": "ngram_pattern",
+    "frame": "i just want",
+    "values": [
+      "closeups of the",
+      "time to duck",
+      "to save and",
+      "nothing to do"
+    ],
+    "evidence_count": 5,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_can_get",
+    "source": "ngram_pattern",
+    "frame": "i can get",
+    "values": [
+      "with that 70",
+      "ya 25 back",
+      "1300 there it",
+      "dental quickly and",
+      "more tomorrow but"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_get",
+    "source": "ngram_pattern",
+    "frame": "i get it",
+    "values": [
+      "but also i",
+      "s not healthy",
+      "this weekend is",
+      "it s text",
+      "my focus is"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_think_could",
+    "source": "ngram_pattern",
+    "frame": "think i could",
+    "values": [
+      "hustle being a",
+      "say professional",
+      "get one there",
+      "be out there"
+    ],
+    "evidence_count": 5,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_know",
+    "source": "ngram_pattern",
+    "frame": "i know it",
+    "values": [
+      "s types and",
+      "might sound super",
+      "s cliche i",
+      "the end of",
+      "would blow the"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_how_get",
+    "source": "ngram_pattern",
+    "frame": "how to get",
+    "values": [
+      "to i m",
+      "under my skin",
+      "it setup if"
+    ],
+    "evidence_count": 5,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_if_she",
+    "source": "ngram_pattern",
+    "frame": "ask if she",
+    "values": [
+      "still works at",
+      "has plants i",
+      "went to a",
+      "s got one"
+    ],
+    "evidence_count": 5,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_if_m",
+    "source": "ngram_pattern",
+    "frame": "if i m",
+    "values": [
+      "leaning that direction",
+      "shooting 30fps do",
+      "ready for dating",
+      "a bit spermatic",
+      "so desperate for"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_me_what",
+    "source": "ngram_pattern",
+    "frame": "tell me what",
+    "values": [
+      "this guy deserves",
+      "the post reads",
+      "i tell copilot",
+      "crt is and",
+      "you think i",
+      "in a very",
+      "i should do"
+    ],
+    "evidence_count": 5,
+    "unique_values": 7
+  },
+  {
+    "slot_name": "ngram_used",
+    "source": "ngram_pattern",
+    "frame": "i used to",
+    "values": [
+      "be that",
+      "be clingy honestly",
+      "be a clingy",
+      "be a lot",
+      "i don t",
+      "they are always"
+    ],
+    "evidence_count": 5,
+    "unique_values": 6
+  },
+  {
+    "slot_name": "ngram_would_like",
+    "source": "ngram_pattern",
+    "frame": "would like to",
+    "values": [
+      "talk to me",
+      "dabble in screen",
+      "dabble in the",
+      "get off the",
+      "be really clean"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_ai_agent",
+    "source": "ngram_pattern",
+    "frame": "the ai agent to",
+    "values": [
+      "adjust things or",
+      "patch fix and",
+      "get it the",
+      "get it",
+      "start implementing systems"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_wouldn_t",
+    "source": "ngram_pattern",
+    "frame": "i wouldn t",
+    "values": [
+      "offer to do",
+      "have put a",
+      "give her that",
+      "charge you for"
+    ],
+    "evidence_count": 5,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_around_with",
+    "source": "ngram_pattern",
+    "frame": "play around with",
+    "values": [
+      "the lamp later",
+      "might pull the",
+      "things later today",
+      "stuff for you",
+      "lighting somewhere deep"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_not_trying",
+    "source": "ngram_pattern",
+    "frame": "not trying to",
+    "values": [
+      "shoot the floor",
+      "frame myself as",
+      "demonize but justify",
+      "find a way"
+    ],
+    "evidence_count": 5,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_think_if",
+    "source": "ngram_pattern",
+    "frame": "i think if i",
+    "values": [
+      "do anything today",
+      "follow through with",
+      "hold off on",
+      "sell the a7cii",
+      "get decent offers"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_dont_wanna",
+    "source": "ngram_pattern",
+    "frame": "i dont wanna",
+    "values": [
+      "do all the",
+      "over text",
+      "judge based off",
+      "work for elon",
+      "explain that im"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_dont_know",
+    "source": "ngram_pattern",
+    "frame": "i dont know",
+    "values": [
+      "what to do",
+      "what i masking",
+      "how id use",
+      "where my old"
+    ],
+    "evidence_count": 5,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_want",
+    "source": "ngram_pattern",
+    "frame": "i want a",
+    "values": [
+      "just quick story",
+      "finical foundation where",
+      "fall back in",
+      "trauma dumpy sprial"
+    ],
+    "evidence_count": 5,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_me_more",
+    "source": "ngram_pattern",
+    "frame": "give me more",
+    "values": [
+      "on that dorks",
+      "time to cook",
+      "benefits and also",
+      "with focus on",
+      "one more"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_last_two",
+    "source": "ngram_pattern",
+    "frame": "the last two",
+    "values": [
+      "three years the",
+      "weeks have been",
+      "weeks i ve",
+      "days making progress"
+    ],
+    "evidence_count": 5,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_other_day",
+    "source": "ngram_pattern",
+    "frame": "the other day",
+    "values": [
+      "i think these",
+      "i didn t",
+      "but went with",
+      "and passed it",
+      "lol give me"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_know_you",
+    "source": "ngram_pattern",
+    "frame": "i know you",
+    "values": [
+      "are designed to",
+      "were still kind",
+      "are saying keep",
+      "report your income"
+    ],
+    "evidence_count": 5,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_im_trying",
+    "source": "ngram_pattern",
+    "frame": "im trying to",
+    "values": [
+      "say this ones",
+      "find the turn",
+      "express a thought",
+      "make an effort"
+    ],
+    "evidence_count": 5,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_sounds_like",
+    "source": "ngram_pattern",
+    "frame": "that sounds like a",
+    "values": [
+      "lot of fun",
+      "perfect way to",
+      "solid way to",
+      "fun but loaded",
+      "cute thing to"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_bunch",
+    "source": "ngram_pattern",
+    "frame": "a bunch of",
+    "values": [
+      "local expo events",
+      "starbucks cups fall",
+      "old 1tb wd",
+      "dresses sounds painful",
+      "indoor friendly things"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_me_would",
+    "source": "ngram_pattern",
+    "frame": "version of me would",
+    "values": [
+      "be amazed not",
+      "be amazed sure",
+      "look at what"
+    ],
+    "evidence_count": 5,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_just_wasn",
+    "source": "ngram_pattern",
+    "frame": "i just wasn",
+    "values": [
+      "t confident enough",
+      "t confident",
+      "t liking the",
+      "t ready"
+    ],
+    "evidence_count": 5,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_much",
+    "source": "ngram_pattern",
+    "frame": "much of a",
+    "values": [
+      "gamer i don",
+      "gamer these days",
+      "ready but more",
+      "nature person",
+      "camper i mean"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_gave_me",
+    "source": "ngram_pattern",
+    "frame": "she gave me",
+    "values": [
+      "little to work",
+      "very little to",
+      "the fuel",
+      "the flags to",
+      "her flags and"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_t_need",
+    "source": "ngram_pattern",
+    "frame": "don t need to",
+    "values": [
+      "know everything",
+      "tell her that",
+      "tie in the"
+    ],
+    "evidence_count": 5,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_wanted",
+    "source": "ngram_pattern",
+    "frame": "i wanted to",
+    "values": [
+      "explain why i",
+      "stop talking wither",
+      "test i wanted",
+      "see if she",
+      "focus on myself",
+      "quit walmart heaven"
+    ],
+    "evidence_count": 5,
+    "unique_values": 6
+  },
+  {
+    "slot_name": "ngram_way",
+    "source": "ngram_pattern",
+    "frame": "in a way",
+    "values": [
+      "making myself inaccessible",
+      "i mean we",
+      "i m looking",
+      "im ready to",
+      "if i wanted"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_second_date",
+    "source": "ngram_pattern",
+    "frame": "a second date",
+    "values": [
+      "and oof ghosting",
+      "with cameron but",
+      "a second event",
+      "3 03 got",
+      "we both share"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_just_don",
+    "source": "ngram_pattern",
+    "frame": "i just don",
+    "values": [
+      "t like why",
+      "t want to",
+      "t vibe with",
+      "t feel like"
+    ],
+    "evidence_count": 5,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_do_have",
+    "source": "ngram_pattern",
+    "frame": "do i have",
+    "values": [
+      "to this week",
+      "in liquid cash",
+      "the 85mm cannon",
+      "and search the",
+      "left over that"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_make_sense",
+    "source": "ngram_pattern",
+    "frame": "would make sense",
+    "values": [
+      "it is something",
+      "while i m",
+      "if i know",
+      "as a n"
+    ],
+    "evidence_count": 5,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_need_back",
+    "source": "ngram_pattern",
+    "frame": "need to back",
+    "values": [
+      "out tonight i",
+      "out for tonight",
+      "out of the"
+    ],
+    "evidence_count": 5,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_back_out",
+    "source": "ngram_pattern",
+    "frame": "need to back out",
+    "values": [
+      "tonight i had",
+      "for tonight i",
+      "of the band"
+    ],
+    "evidence_count": 5,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_like_got",
+    "source": "ngram_pattern",
+    "frame": "like i got",
+    "values": [
+      "your business card",
+      "a whole character",
+      "an indoor garden"
+    ],
+    "evidence_count": 5,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_so_if",
+    "source": "ngram_pattern",
+    "frame": "so if i",
+    "values": [
+      "charge for 100",
+      "sell the two",
+      "work two nights",
+      "show you say",
+      "stop tonight i"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_down_see",
+    "source": "ngram_pattern",
+    "frame": "still down to see",
+    "values": [
+      "you maybe light",
+      "you after might",
+      "you after just"
+    ],
+    "evidence_count": 5,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_see_you",
+    "source": "ngram_pattern",
+    "frame": "down to see you",
+    "values": [
+      "maybe light food",
+      "after might just",
+      "after just might"
+    ],
+    "evidence_count": 5,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_video_gig",
+    "source": "ngram_pattern",
+    "frame": "video gig at the",
+    "values": [
+      "iron horse hotel",
+      "iron horse downtown",
+      "iron horse this"
+    ],
+    "evidence_count": 5,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_run_little",
+    "source": "ngram_pattern",
+    "frame": "run a little",
+    "values": [
+      "later than expected",
+      "bit into the",
+      "print shop make",
+      "print shop illustrations"
+    ],
+    "evidence_count": 5,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_s_say",
+    "source": "ngram_pattern",
+    "frame": "let s say",
+    "values": [
+      "okay sounds like",
+      "more i value",
+      "there is not",
+      "for round four",
+      "i have those",
+      "the second sheet"
+    ],
+    "evidence_count": 5,
+    "unique_values": 6
+  },
+  {
+    "slot_name": "ngram_can_also",
+    "source": "ngram_pattern",
+    "frame": "i can also",
+    "values": [
+      "reachout to the",
+      "pass along your",
+      "network if it",
+      "get shots of",
+      "feel comfortable knowing"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_its_going",
+    "source": "ngram_pattern",
+    "frame": "its going to",
+    "values": [
+      "be a bit",
+      "be expected to",
+      "mean the average",
+      "a friend honestly",
+      "be like a"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_s_going",
+    "source": "ngram_pattern",
+    "frame": "it s going",
+    "values": [
+      "well just got",
+      "to end quick",
+      "just working on",
+      "short of being",
+      "to require a"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_need_get",
+    "source": "ngram_pattern",
+    "frame": "i need to get",
+    "values": [
+      "done before i",
+      "done this week",
+      "my birth certificate",
+      "a new id",
+      "the website updated"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_up_with",
+    "source": "ngram_pattern",
+    "frame": "follow up with",
+    "values": [
+      "the game thing",
+      "hope you have",
+      "future stuff i",
+      "a casual question",
+      "her winding down"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_run_through",
+    "source": "ngram_pattern",
+    "frame": "run through the",
+    "values": [
+      "system and evaluate",
+      "scenarios again if",
+      "numbers again if",
+      "scenarios again starting",
+      "scenarios whats the"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_if_were",
+    "source": "ngram_pattern",
+    "frame": "if i were to",
+    "values": [
+      "even consider any",
+      "make one and",
+      "have an ai",
+      "package them in",
+      "pick up time"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_were",
+    "source": "ngram_pattern",
+    "frame": "i were to",
+    "values": [
+      "even consider any",
+      "make one and",
+      "have an ai",
+      "package them in",
+      "pick up time"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_goal",
+    "source": "ngram_pattern",
+    "frame": "my goal is",
+    "values": [
+      "to shoot something",
+      "8k by june",
+      "10k by jully",
+      "to have 6k"
+    ],
+    "evidence_count": 5,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_walmart_gig",
+    "source": "ngram_pattern",
+    "frame": "the walmart gig",
+    "values": [
+      "sell the glass",
+      "comes in then",
+      "on a screenshot",
+      "ill shop the",
+      "ill walk the"
+    ],
+    "evidence_count": 5,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_or_if",
+    "source": "ngram_pattern",
+    "frame": "or if i",
+    "values": [
+      "dont lol factor",
+      "dont lol",
+      "just want to"
+    ],
+    "evidence_count": 5,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "self_description",
+    "source": "frame_pattern",
+    "values": [
+      "full stack developer",
+      "little insulted bc blake the guy who got me the beer sign sh",
+      "freelancer",
+      "bit confused   i am in no hurry for the product and was wond"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_don_t",
+    "source": "ngram_pattern",
+    "frame": "if you don t",
+    "values": [
+      "mind i can",
+      "mind me asking",
+      "know how to",
+      "feel comfortable answering"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_what",
+    "source": "ngram_pattern",
+    "frame": "what was the",
+    "values": [
+      "iso lmao",
+      "vibe for the",
+      "view on nn",
+      "application process and"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_t_have",
+    "source": "ngram_pattern",
+    "frame": "i don t have",
+    "values": [
+      "final edit means",
+      "the final edit",
+      "final edit it",
+      "many friend groups"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_be_little",
+    "source": "ngram_pattern",
+    "frame": "be a little",
+    "values": [
+      "more formal a",
+      "warmer tonight hang",
+      "slow to respond",
+      "productive on a"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_little_more",
+    "source": "ngram_pattern",
+    "frame": "a little more",
+    "values": [
+      "formal a living",
+      "social also super",
+      "verbose on the",
+      "versatility and not"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_know_how",
+    "source": "ngram_pattern",
+    "frame": "t know how to",
+    "values": [
+      "handle this",
+      "use the camera",
+      "use it at",
+      "do anything beyond"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_m_not",
+    "source": "ngram_pattern",
+    "frame": "but i m not",
+    "values": [
+      "into the whole",
+      "100 sure",
+      "sure if i",
+      "feeling anything"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_crt_groundcheck",
+    "source": "ngram_pattern",
+    "frame": "com blockhead22 crt groundcheck",
+    "values": [
+      "sse check the",
+      "sse tree main",
+      "sse scope the",
+      "sse blob main"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_groundcheck_sse",
+    "source": "ngram_pattern",
+    "frame": "blockhead22 crt groundcheck sse",
+    "values": [
+      "check the latest",
+      "tree main docs",
+      "scope the changes",
+      "blob main artifacts"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_more",
+    "source": "ngram_pattern",
+    "frame": "was more of",
+    "values": [
+      "a joke and",
+      "a snap or",
+      "the main story"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_couple_hours",
+    "source": "ngram_pattern",
+    "frame": "been a couple hours",
+    "values": [
+      "already posted noticed",
+      "make me feel",
+      "i m learning"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_you_recall",
+    "source": "ngram_pattern",
+    "frame": "do you recall",
+    "values": [
+      "everything atleast from",
+      "the nikkor lenses",
+      "anything i said",
+      "what we planted"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_been_leaning",
+    "source": "ngram_pattern",
+    "frame": "i ve been leaning",
+    "values": [
+      "more into photo",
+      "more into photog",
+      "more into that"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_leaning_more",
+    "source": "ngram_pattern",
+    "frame": "ve been leaning more",
+    "values": [
+      "into photo video",
+      "into photog video",
+      "into that lately"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_more_into",
+    "source": "ngram_pattern",
+    "frame": "been leaning more into",
+    "values": [
+      "photo video and",
+      "photog video and",
+      "that lately and"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_one_stop",
+    "source": "ngram_pattern",
+    "frame": "a one stop",
+    "values": [
+      "shop idea i",
+      "shop idea think",
+      "shop for small"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_stop_shop",
+    "source": "ngram_pattern",
+    "frame": "a one stop shop",
+    "values": [
+      "idea i think",
+      "idea think ai",
+      "for small business"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_supposed_be",
+    "source": "ngram_pattern",
+    "frame": "supposed to be",
+    "values": [
+      "the vibe",
+      "the horizontal i",
+      "the horizontal",
+      "a personal ai"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_bit_more",
+    "source": "ngram_pattern",
+    "frame": "a bit more",
+    "values": [
+      "i feel like",
+      "we could get",
+      "she was really"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_feel_like",
+    "source": "ngram_pattern",
+    "frame": "i feel like i",
+    "values": [
+      "proved alot and",
+      "did but i",
+      "just got the",
+      "should stop after"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_good",
+    "source": "ngram_pattern",
+    "frame": "is a good",
+    "values": [
+      "thing i m",
+      "sign and that",
+      "sign too",
+      "sign love that"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_music_video",
+    "source": "ngram_pattern",
+    "frame": "the music video",
+    "values": [
+      "need a cold",
+      "all made sure",
+      "under my belt",
+      "how do i"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_m_trying",
+    "source": "ngram_pattern",
+    "frame": "i m trying to",
+    "values": [
+      "build up my",
+      "lean that way",
+      "be nice and",
+      "learn color grading"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_trying_build",
+    "source": "ngram_pattern",
+    "frame": "trying to build",
+    "values": [
+      "up my freelance",
+      "a portfolio of",
+      "all for it",
+      "a brand or"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_how_should",
+    "source": "ngram_pattern",
+    "frame": "how should i",
+    "values": [
+      "respond ahhh kind",
+      "spend my night",
+      "take advantage like"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_want_be",
+    "source": "ngram_pattern",
+    "frame": "dont want to be",
+    "values": [
+      "accusitory but thats",
+      "judged like that",
+      "around someone that"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_who",
+    "source": "ngram_pattern",
+    "frame": "who is this",
+    "values": [
+      "guy now lmao",
+      "nick over the",
+      "nick becoming what",
+      "nick now dating"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_need",
+    "source": "ngram_pattern",
+    "frame": "that i need",
+    "values": [
+      "to spend money",
+      "to do it",
+      "affirmation im noticing"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_one",
+    "source": "ngram_pattern",
+    "frame": "the one i",
+    "values": [
+      "ll maybe play",
+      "think i would",
+      "know ill use",
+      "thought was a"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_said",
+    "source": "ngram_pattern",
+    "frame": "that said i",
+    "values": [
+      "m gonna share",
+      "over booked myself",
+      "want you to",
+      "think im okay"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_point",
+    "source": "ngram_pattern",
+    "frame": "at that point",
+    "values": [
+      "i thought alot",
+      "it would have",
+      "like i was",
+      "then that happened",
+      "i really already"
+    ],
+    "evidence_count": 4,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_next_day",
+    "source": "ngram_pattern",
+    "frame": "the next day",
+    "values": [
+      "text was petty",
+      "monday i should",
+      "or two",
+      "fyi lets get"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_you_think",
+    "source": "ngram_pattern",
+    "frame": "do you think i",
+    "values": [
+      "came off to",
+      "haven t taken",
+      "do say i"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_very",
+    "source": "ngram_pattern",
+    "frame": "in a very",
+    "values": [
+      "verbose maybe like",
+      "verbose way what",
+      "long spiral verbose",
+      "lecture boring inspirational"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_hotel_gig",
+    "source": "ngram_pattern",
+    "frame": "the hotel gig",
+    "values": [
+      "for sarah right",
+      "sarah loved the",
+      "friday took it",
+      "over the band"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_t_think",
+    "source": "ngram_pattern",
+    "frame": "don t think i",
+    "values": [
+      "need to write",
+      "m that valuable",
+      "m gonna make"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_dating_thing",
+    "source": "ngram_pattern",
+    "frame": "the dating thing",
+    "values": [
+      "the whole career",
+      "i asked about",
+      "so far i",
+      "right now i"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_got",
+    "source": "ngram_pattern",
+    "frame": "i got the",
+    "values": [
+      "text wannna see",
+      "golden pothos",
+      "skull sheet cut",
+      "other stuff figured"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_bit",
+    "source": "ngram_pattern",
+    "frame": "a bit of",
+    "values": [
+      "a health flare",
+      "importance being stale",
+      "i dont want"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_landed",
+    "source": "ngram_pattern",
+    "frame": "landed in my",
+    "values": [
+      "lap katys kloset",
+      "lap i m",
+      "lap or i"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_lap",
+    "source": "ngram_pattern",
+    "frame": "in my lap",
+    "values": [
+      "katys kloset moms",
+      "i m kind",
+      "or i found"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_landed_lap",
+    "source": "ngram_pattern",
+    "frame": "landed in my lap",
+    "values": [
+      "katys kloset moms",
+      "i m kind",
+      "or i found"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_and_then",
+    "source": "ngram_pattern",
+    "frame": "and then the",
+    "values": [
+      "solo shots are",
+      "lady came up",
+      "family has pups",
+      "relationship changed and"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_and_there",
+    "source": "ngram_pattern",
+    "frame": "here and there",
+    "values": [
+      "building my portfolio",
+      "working with a",
+      "not that i",
+      "i was doing"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_like_get",
+    "source": "ngram_pattern",
+    "frame": "like i get",
+    "values": [
+      "its not the",
+      "it but also",
+      "that doesn t",
+      "it it s"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_you_want",
+    "source": "ngram_pattern",
+    "frame": "if you want",
+    "values": [
+      "the footage yourself",
+      "i can next",
+      "to do something"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_just_need",
+    "source": "ngram_pattern",
+    "frame": "i just need to",
+    "values": [
+      "make practice reality",
+      "be more thoughtful",
+      "lock the sold",
+      "figure out the"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_find",
+    "source": "ngram_pattern",
+    "frame": "to find a",
+    "values": [
+      "job i dont",
+      "way into her",
+      "web dev job",
+      "payment plan on"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_long_as",
+    "source": "ngram_pattern",
+    "frame": "as long as",
+    "values": [
+      "you guys have",
+      "maybe we change",
+      "things don t"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_guys_have",
+    "source": "ngram_pattern",
+    "frame": "you guys have",
+    "values": [
+      "clean audio covered",
+      "future shows and",
+      "a time that"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_rest",
+    "source": "ngram_pattern",
+    "frame": "the rest of the",
+    "values": [
+      "set could setup",
+      "set can always",
+      "night wrap it",
+      "afternoon you more"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_be_dork",
+    "source": "ngram_pattern",
+    "frame": "be a dork",
+    "values": [
+      "and use the",
+      "being on dates",
+      "and film my"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_when",
+    "source": "ngram_pattern",
+    "frame": "when i was",
+    "values": [
+      "a kid i",
+      "hoping to be",
+      "dealing with the",
+      "working the last"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_be_able",
+    "source": "ngram_pattern",
+    "frame": "be able to",
+    "values": [
+      "get clips for",
+      "attend the entire",
+      "attend the whole",
+      "eek out earlier",
+      "call myself a"
+    ],
+    "evidence_count": 4,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_hosted",
+    "source": "ngram_pattern",
+    "frame": "hosted at the",
+    "values": [
+      "waukesha county fair",
+      "countryside banquets conference",
+      "beautiful theironhorsehotel genuinely",
+      "beautiful theironhorsehotel just"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_be_wrong",
+    "source": "ngram_pattern",
+    "frame": "it be wrong to",
+    "values": [
+      "ask about the",
+      "reachout today",
+      "drop well hey",
+      "say im inbetween"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_s_thing",
+    "source": "ngram_pattern",
+    "frame": "s the thing",
+    "values": [
+      "the last two",
+      "maybe we just",
+      "we only had",
+      "and i m"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_t_been",
+    "source": "ngram_pattern",
+    "frame": "i haven t been",
+    "values": [
+      "in my normal",
+      "to a hockey",
+      "to that man"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_s_just",
+    "source": "ngram_pattern",
+    "frame": "it s just",
+    "values": [
+      "a mismatch shred",
+      "honestly a weird",
+      "friday is the",
+      "sucks no one"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_should_have",
+    "source": "ngram_pattern",
+    "frame": "i should have",
+    "values": [
+      "ended it before",
+      "confirmed date plans",
+      "let the situation",
+      "said i wasnt",
+      "backed out there",
+      "sold it online"
+    ],
+    "evidence_count": 4,
+    "unique_values": 6
+  },
+  {
+    "slot_name": "ngram_chatted_about",
+    "source": "ngram_pattern",
+    "frame": "we chatted about",
+    "values": [
+      "and after the",
+      "the the fact",
+      "business cards for",
+      "or would the"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_gave_her",
+    "source": "ngram_pattern",
+    "frame": "i gave her the",
+    "values": [
+      "ick in a",
+      "msg hey sorry",
+      "out because i"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_other",
+    "source": "ngram_pattern",
+    "frame": "in the other",
+    "values": [
+      "thread we chatted",
+      "lane before mine",
+      "new hinge chat",
+      "thread was just"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_cameron_thread",
+    "source": "ngram_pattern",
+    "frame": "the cameron thread",
+    "values": [
+      "first lets go",
+      "in here lmao",
+      "then the overall"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_s_been",
+    "source": "ngram_pattern",
+    "frame": "it s been a",
+    "values": [
+      "full day since",
+      "couple hours i",
+      "few hours i"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_you_have",
+    "source": "ngram_pattern",
+    "frame": "you have a",
+    "values": [
+      "lot more support",
+      "day that works",
+      "favorite spot in",
+      "favorite spot lmao"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_have_lot",
+    "source": "ngram_pattern",
+    "frame": "have a lot of",
+    "values": [
+      "little projects always",
+      "catching up to",
+      "health to worry"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_what_best",
+    "source": "ngram_pattern",
+    "frame": "what is the best",
+    "values": [
+      "settings baked or",
+      "mini computer mini",
+      "option with my"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_working",
+    "source": "ngram_pattern",
+    "frame": "i was working",
+    "values": [
+      "third shift she",
+      "wtih them and",
+      "on a sticker",
+      "the last time"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_shop",
+    "source": "ngram_pattern",
+    "frame": "in the shop",
+    "values": [
+      "at 2 05",
+      "its not fucking",
+      "we agreed from",
+      "for trio sets",
+      "finalize pricing also"
+    ],
+    "evidence_count": 4,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_but_can",
+    "source": "ngram_pattern",
+    "frame": "but i can",
+    "values": [
+      "t have a",
+      "make time",
+      "send ya my",
+      "link ya to"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_be_like",
+    "source": "ngram_pattern",
+    "frame": "to be like",
+    "values": [
+      "wait why is",
+      "hey im stalking",
+      "a week or"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_okay_so",
+    "source": "ngram_pattern",
+    "frame": "okay so i",
+    "values": [
+      "get it this",
+      "m thinking about",
+      "work the walmart",
+      "just need to"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_feeling",
+    "source": "ngram_pattern",
+    "frame": "i was feeling",
+    "values": [
+      "the nagging question",
+      "the missmatch was",
+      "wanting to do",
+      "worried i am"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_while",
+    "source": "ngram_pattern",
+    "frame": "for a while",
+    "values": [
+      "i was interested",
+      "the field s",
+      "yet i cant",
+      "and tbh im"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_and_think",
+    "source": "ngram_pattern",
+    "frame": "and i think",
+    "values": [
+      "it took some",
+      "it was good",
+      "your profile does",
+      "im finally at"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_dont_have",
+    "source": "ngram_pattern",
+    "frame": "i dont have",
+    "values": [
+      "alot of glass",
+      "time to nit",
+      "a passport i",
+      "a birth certificate",
+      "anything in the"
+    ],
+    "evidence_count": 4,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_a7cii_and",
+    "source": "ngram_pattern",
+    "frame": "the a7cii and the",
+    "values": [
+      "lens together",
+      "sony fe 70",
+      "70 200mm knowing",
+      "lens justifies me"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_let_go",
+    "source": "ngram_pattern",
+    "frame": "if i let go",
+    "values": [
+      "of both 600",
+      "of the a7cii",
+      "the a7cii and"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_not_need",
+    "source": "ngram_pattern",
+    "frame": "not that i need",
+    "values": [
+      "to spend money",
+      "to do it",
+      "affirmation im noticing"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_shouldn_t",
+    "source": "ngram_pattern",
+    "frame": "i shouldn t",
+    "values": [
+      "have eagerly committed",
+      "judge before we",
+      "worry and also",
+      "i really want"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_while_m",
+    "source": "ngram_pattern",
+    "frame": "while i m",
+    "values": [
+      "driving for me",
+      "working on something",
+      "away lol"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_head_out",
+    "source": "ngram_pattern",
+    "frame": "to head out",
+    "values": [
+      "at 3 30",
+      "earlier than i",
+      "quick so i",
+      "early i d"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_on_all",
+    "source": "ngram_pattern",
+    "frame": "on all the",
+    "values": [
+      "most recent things",
+      "threads recently life",
+      "story lines up"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_around_and",
+    "source": "ngram_pattern",
+    "frame": "run around and",
+    "values": [
+      "grab a few",
+      "find spots lol",
+      "find spots to"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_grab_few",
+    "source": "ngram_pattern",
+    "frame": "grab a few",
+    "values": [
+      "quick shots around",
+      "quick shots now",
+      "photos i can",
+      "photos i ll"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_figure_out",
+    "source": "ngram_pattern",
+    "frame": "need to figure out",
+    "values": [
+      "how to see",
+      "what to price",
+      "the last image"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_lupus",
+    "source": "ngram_pattern",
+    "frame": "for the lupus",
+    "values": [
+      "chapter loved the",
+      "foundation of america",
+      "gala this friday"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_might_run",
+    "source": "ngram_pattern",
+    "frame": "and it might run",
+    "values": [
+      "till 5 so",
+      "a little later",
+      "a little bit"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_little_bit",
+    "source": "ngram_pattern",
+    "frame": "a little bit",
+    "values": [
+      "into the time",
+      "monday it s",
+      "but no substance",
+      "for product photos"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_you_re",
+    "source": "ngram_pattern",
+    "frame": "if you re",
+    "values": [
+      "down to maybe",
+      "free i may",
+      "still open and",
+      "still down for"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_most",
+    "source": "ngram_pattern",
+    "frame": "most of the",
+    "values": [
+      "week i can",
+      "conference room stuff",
+      "people there will"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_mean",
+    "source": "ngram_pattern",
+    "frame": "i mean the",
+    "values": [
+      "risks are real",
+      "guy got a",
+      "lead singer malissa",
+      "concept is a"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_see",
+    "source": "ngram_pattern",
+    "frame": "to see the",
+    "values": [
+      "message 12 40am",
+      "wall i sent",
+      "portrait contoured spacing",
+      "originaly countor spacing"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_m_more",
+    "source": "ngram_pattern",
+    "frame": "i m more",
+    "values": [
+      "aware of them",
+      "of the type",
+      "invested in terms"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_you_don",
+    "source": "ngram_pattern",
+    "frame": "if you don",
+    "values": [
+      "t mind i",
+      "t mind me",
+      "t know how",
+      "t feel comfortable"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_t_mind",
+    "source": "ngram_pattern",
+    "frame": "you don t mind",
+    "values": [
+      "i can also",
+      "like to make",
+      "like to get",
+      "me asking my"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_personality_guy",
+    "source": "ngram_pattern",
+    "frame": "a personality guy",
+    "values": [
+      "she pictures nicely",
+      "confidence sure of",
+      "i m drawn",
+      "i like someone"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_m_probably",
+    "source": "ngram_pattern",
+    "frame": "i m probably",
+    "values": [
+      "finding reasons to",
+      "on a fast",
+      "better off selling"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_d_like",
+    "source": "ngram_pattern",
+    "frame": "i d like",
+    "values": [
+      "someone to hike",
+      "to maybe hint",
+      "to try again"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_need_do",
+    "source": "ngram_pattern",
+    "frame": "need to do",
+    "values": [
+      "it again wanna",
+      "extra back side",
+      "today monday feb"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_ll_be",
+    "source": "ngram_pattern",
+    "frame": "i ll be",
+    "values": [
+      "doing event coverage",
+      "honest myself the",
+      "honest wednesday and",
+      "honest i don"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_you_more",
+    "source": "ngram_pattern",
+    "frame": "are you more of",
+    "values": [
+      "a coffee or",
+      "a coffee person",
+      "a casual grab",
+      "a homebody and"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_hey_s",
+    "source": "ngram_pattern",
+    "frame": "hey it s",
+    "values": [
+      "been good just",
+      "going well just",
+      "time to take"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_but_now",
+    "source": "ngram_pattern",
+    "frame": "but now i",
+    "values": [
+      "have to plan",
+      "m hopes tha",
+      "m invested what",
+      "m invested you"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_lupus_gala",
+    "source": "ngram_pattern",
+    "frame": "the lupus gala",
+    "values": [
+      "thank about wednesday",
+      "this friday if",
+      "this friday lol",
+      "event i got"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_head",
+    "source": "ngram_pattern",
+    "frame": "head to the",
+    "values": [
+      "coffee shop i",
+      "shop to get",
+      "shop lol food"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_things_need",
+    "source": "ngram_pattern",
+    "frame": "things i need to",
+    "values": [
+      "do today monday",
+      "get done before",
+      "get done this"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_focus_on",
+    "source": "ngram_pattern",
+    "frame": "to focus on",
+    "values": [
+      "some stuff actually",
+      "myself the job",
+      "me actually i",
+      "me not apologize"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_know_im",
+    "source": "ngram_pattern",
+    "frame": "i know im",
+    "values": [
+      "just not ready",
+      "going somewhere for",
+      "going to skip",
+      "ready because i"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_fx3",
+    "source": "ngram_pattern",
+    "frame": "for the fx3",
+    "values": [
+      "if i m",
+      "than the a7cii",
+      "but if i",
+      "makes sense i"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_more_inclined",
+    "source": "ngram_pattern",
+    "frame": "more inclined to",
+    "values": [
+      "lean selling the",
+      "reach for another",
+      "play with the"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_like_im",
+    "source": "ngram_pattern",
+    "frame": "feel like im",
+    "values": [
+      "out of the",
+      "actually working and",
+      "coming at a"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_back_walmart",
+    "source": "ngram_pattern",
+    "frame": "back to walmart",
+    "values": [
+      "whats your thoughts",
+      "im justifying the",
+      "and work two"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_whats_best",
+    "source": "ngram_pattern",
+    "frame": "whats the best",
+    "values": [
+      "monitor for editing",
+      "to capture in",
+      "weight not factoring",
+      "route i mean"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_would_fs5",
+    "source": "ngram_pattern",
+    "frame": "would the fs5",
+    "values": [
+      "7 to f5",
+      "mkii and atomos",
+      "mkii and atmos"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_get_walmart",
+    "source": "ngram_pattern",
+    "frame": "get the walmart",
+    "values": [
+      "job and dont",
+      "thing lets go",
+      "job hustle durring"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_sell_lens",
+    "source": "ngram_pattern",
+    "frame": "i sell the lens",
+    "values": [
+      "and the camera",
+      "and the body",
+      "tell me what",
+      "but the fs5mark2"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_if_let",
+    "source": "ngram_pattern",
+    "frame": "if i let",
+    "values": [
+      "go of both",
+      "go of the",
+      "go the a7cii"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_could_afford",
+    "source": "ngram_pattern",
+    "frame": "i could afford",
+    "values": [
+      "something by then",
+      "the fs5m2 or",
+      "a new fx6",
+      "the fs6mark2 then"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_what_could",
+    "source": "ngram_pattern",
+    "frame": "what could i",
+    "values": [
+      "be at by",
+      "be at remember",
+      "be at"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_two_nights",
+    "source": "ngram_pattern",
+    "frame": "two nights a",
+    "values": [
+      "week at 6",
+      "week for a",
+      "week from store",
+      "week how much"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_nights_week",
+    "source": "ngram_pattern",
+    "frame": "two nights a week",
+    "values": [
+      "at 6 hours",
+      "at 6 or",
+      "for a couple",
+      "from store close",
+      "how much a"
+    ],
+    "evidence_count": 4,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_im_okay",
+    "source": "ngram_pattern",
+    "frame": "i think im okay",
+    "values": [
+      "because i know",
+      "also selling at",
+      "on the lens",
+      "selling at a"
+    ],
+    "evidence_count": 4,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_know_people",
+    "source": "ngram_pattern",
+    "frame": "to know people",
+    "values": [
+      "some dudes like",
+      "give me the",
+      "before the date"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_need_figure",
+    "source": "ngram_pattern",
+    "frame": "need to figure",
+    "values": [
+      "out how to",
+      "out what to",
+      "out the last"
+    ],
+    "evidence_count": 4,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_wrap_into",
+    "source": "ngram_pattern",
+    "frame": "wrap it into",
+    "values": [
+      "a product what",
+      "last msg",
+      "the recent post"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_fact",
+    "source": "ngram_pattern",
+    "frame": "the fact i",
+    "values": [
+      "didn t fail",
+      "was busy probably",
+      "deleted all the"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_going",
+    "source": "ngram_pattern",
+    "frame": "i was going",
+    "values": [
+      "to set the",
+      "to film and",
+      "for the flairs"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_what_does",
+    "source": "ngram_pattern",
+    "frame": "what does the",
+    "values": [
+      "post say",
+      "pollination process entail",
+      "system do how"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_if_there",
+    "source": "ngram_pattern",
+    "frame": "if there is",
+    "values": [
+      "a use for",
+      "room more coverage",
+      "legit any holy"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_think_we",
+    "source": "ngram_pattern",
+    "frame": "i think we",
+    "values": [
+      "needed many iterations",
+      "both had our",
+      "are going to"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_not_going",
+    "source": "ngram_pattern",
+    "frame": "m not going to",
+    "values": [
+      "leave feeling like",
+      "assume anything but",
+      "let i m"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_just_going",
+    "source": "ngram_pattern",
+    "frame": "just going to",
+    "values": [
+      "generate a response",
+      "muddle progress tn",
+      "keep doing me"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_here",
+    "source": "ngram_pattern",
+    "frame": "here is a",
+    "values": [
+      "conversation i honestly",
+      "thing i post",
+      "realistic thing that"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_know_if",
+    "source": "ngram_pattern",
+    "frame": "know if i",
+    "values": [
+      "send a pic",
+      "had to say",
+      "trust and lean"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_being_able",
+    "source": "ngram_pattern",
+    "frame": "being able to",
+    "values": [
+      "predict human variance",
+      "be honest and",
+      "meet amazing people"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_any",
+    "source": "ngram_pattern",
+    "frame": "any of the",
+    "values": [
+      "documents did it",
+      "tiers by june",
+      "gear isnt worth"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_how_much",
+    "source": "ngram_pattern",
+    "frame": "how much i",
+    "values": [
+      "could have saved",
+      "can earn if",
+      "could get there"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_spiral_who",
+    "source": "ngram_pattern",
+    "frame": "spiral who is",
+    "values": [
+      "blockie now",
+      "blcokie now",
+      "this guy now"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_moment",
+    "source": "ngram_pattern",
+    "frame": "in the moment",
+    "values": [
+      "i m shooting",
+      "now i just",
+      "its hard for",
+      "this has been"
+    ],
+    "evidence_count": 3,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_wasn_t",
+    "source": "ngram_pattern",
+    "frame": "i wasn t",
+    "values": [
+      "expecting anything",
+      "feeling it maybe",
+      "into it"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_over_last",
+    "source": "ngram_pattern",
+    "frame": "spiral over the last",
+    "values": [
+      "couple weeks now",
+      "couple weeks verbose",
+      "couple of months"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_but_there",
+    "source": "ngram_pattern",
+    "frame": "but there are",
+    "values": [
+      "other goals and",
+      "a couple other",
+      "like coding agents"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_many_hours",
+    "source": "ngram_pattern",
+    "frame": "how many hours",
+    "values": [
+      "i have to",
+      "of sleep is",
+      "is full time"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_feeling_like",
+    "source": "ngram_pattern",
+    "frame": "feeling like it",
+    "values": [
+      "i could pick",
+      "i can do",
+      "walmart is usually"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_down",
+    "source": "ngram_pattern",
+    "frame": "down to the",
+    "values": [
+      "lake with my",
+      "lair and clean",
+      "meals is elite"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_coffee_shop",
+    "source": "ngram_pattern",
+    "frame": "the coffee shop",
+    "values": [
+      "submit that walmart",
+      "i may not",
+      "later with the"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_make",
+    "source": "ngram_pattern",
+    "frame": "make it an",
+    "values": [
+      "8 frame strip",
+      "8 frame animation",
+      "8 frame loop"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_8_frame",
+    "source": "ngram_pattern",
+    "frame": "it an 8 frame",
+    "values": [
+      "strip maybe him",
+      "animation maybe him",
+      "loop of him"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_make_8",
+    "source": "ngram_pattern",
+    "frame": "make it an 8",
+    "values": [
+      "frame strip maybe",
+      "frame animation maybe",
+      "frame loop of"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_we_had",
+    "source": "ngram_pattern",
+    "frame": "we had a",
+    "values": [
+      "productive morning discussing",
+      "mutual insta follower",
+      "massive thread about"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_agent",
+    "source": "ngram_pattern",
+    "frame": "the agent to",
+    "values": [
+      "do tell it",
+      "conduct a comprehensive",
+      "change the questions"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_things_would",
+    "source": "ngram_pattern",
+    "frame": "things i would",
+    "values": [
+      "have done differently",
+      "do differently but",
+      "and could and"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_would_have",
+    "source": "ngram_pattern",
+    "frame": "it would have",
+    "values": [
+      "been another full",
+      "been too much",
+      "been far more"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_been_couple",
+    "source": "ngram_pattern",
+    "frame": "its been a couple",
+    "values": [
+      "hours already posted",
+      "hours make me",
+      "days i finally"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_70_or",
+    "source": "ngram_pattern",
+    "frame": "28 70 or",
+    "values": [
+      "anamorphic also pretty",
+      "the 70 200mm",
+      "an 11 28"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_its_not",
+    "source": "ngram_pattern",
+    "frame": "its not a",
+    "values": [
+      "full frame camera",
+      "brag about my",
+      "big thing but"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_print_shop",
+    "source": "ngram_pattern",
+    "frame": "a little print shop",
+    "values": [
+      "make custom designed",
+      "where i sell",
+      "illustrations doodles for"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_have_couple",
+    "source": "ngram_pattern",
+    "frame": "i have a couple",
+    "values": [
+      "ideas but i",
+      "other things going",
+      "things id like"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_supposed",
+    "source": "ngram_pattern",
+    "frame": "was supposed to",
+    "values": [
+      "be the vibe",
+      "have a date",
+      "be a personal"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_m_looking",
+    "source": "ngram_pattern",
+    "frame": "i m looking for",
+    "values": [
+      "you had it",
+      "sooo when did",
+      "validation like sure"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_really_creative",
+    "source": "ngram_pattern",
+    "frame": "could get really creative",
+    "values": [
+      "with it esp",
+      "with ideas i",
+      "with ideas"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_little_late",
+    "source": "ngram_pattern",
+    "frame": "a little late",
+    "values": [
+      "trying to make",
+      "to making a",
+      "fort sara s"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_thing_m",
+    "source": "ngram_pattern",
+    "frame": "thing i m",
+    "values": [
+      "not just a",
+      "a mutual interest",
+      "not going to"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_ya_know",
+    "source": "ngram_pattern",
+    "frame": "ya know i",
+    "values": [
+      "think i recalled",
+      "kind of forgot",
+      "get i made"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_kind",
+    "source": "ngram_pattern",
+    "frame": "my kind of",
+    "values": [
+      "rule its when",
+      "decompress too i",
+      "montra of the"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_and_video",
+    "source": "ngram_pattern",
+    "frame": "photog and video",
+    "values": [
+      "but also web",
+      "work i m",
+      "is a side"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_dev_and",
+    "source": "ngram_pattern",
+    "frame": "web dev and",
+    "values": [
+      "photography as a",
+      "print maker",
+      "other careers i"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_guy",
+    "source": "ngram_pattern",
+    "frame": "is this guy",
+    "values": [
+      "attractive how",
+      "now lmao",
+      "attractive if yes"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_off_on",
+    "source": "ngram_pattern",
+    "frame": "hold off on",
+    "values": [
+      "sending the msg",
+      "responding till after",
+      "buying anything and"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_web_developer",
+    "source": "ngram_pattern",
+    "frame": "m a web developer",
+    "values": [
+      "not the happiest",
+      "professionally and i",
+      "professionally been doing"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_idk_how",
+    "source": "ngram_pattern",
+    "frame": "idk how to",
+    "values": [
+      "get to i",
+      "balance this but",
+      "answer this myself"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_jack_all",
+    "source": "ngram_pattern",
+    "frame": "jack of all",
+    "values": [
+      "trades over here",
+      "trades i guess",
+      "trades lol what"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_all_trades",
+    "source": "ngram_pattern",
+    "frame": "jack of all trades",
+    "values": [
+      "over here haha",
+      "i guess lmao",
+      "lol what was"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_said_m",
+    "source": "ngram_pattern",
+    "frame": "said i m",
+    "values": [
+      "not beneath cold",
+      "gonna share a",
+      "not the love"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_been_two",
+    "source": "ngram_pattern",
+    "frame": "its been two",
+    "values": [
+      "weeks whats your",
+      "weeks at this",
+      "weeks since the"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_two_weeks",
+    "source": "ngram_pattern",
+    "frame": "its been two weeks",
+    "values": [
+      "whats your read",
+      "at this point",
+      "since the hotel"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_bring",
+    "source": "ngram_pattern",
+    "frame": "bring in the",
+    "values": [
+      "last couple of",
+      "other new hinge",
+      "fs5 talk here"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_you_give",
+    "source": "ngram_pattern",
+    "frame": "can you give",
+    "values": [
+      "it to me",
+      "a who am",
+      "me the basic"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_who_nick",
+    "source": "ngram_pattern",
+    "frame": "who is this nick",
+    "values": [
+      "over the last",
+      "becoming what is",
+      "now dating a"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_bit_but",
+    "source": "ngram_pattern",
+    "frame": "for a bit but",
+    "values": [
+      "im fine",
+      "had to leave",
+      "needed to leave"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_need_you",
+    "source": "ngram_pattern",
+    "frame": "i need you to",
+    "values": [
+      "go through this",
+      "do this for",
+      "ruin it for"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_what_do",
+    "source": "ngram_pattern",
+    "frame": "talk what do i",
+    "values": [
+      "have in liquid",
+      "have and search",
+      "have to"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_go_back",
+    "source": "ngram_pattern",
+    "frame": "go back to",
+    "values": [
+      "talking professionally",
+      "the third shift",
+      "walmart and work"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_there_anything",
+    "source": "ngram_pattern",
+    "frame": "is there anything",
+    "values": [
+      "missing on the",
+      "novel happening in",
+      "that qualifies me"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_nick",
+    "source": "ngram_pattern",
+    "frame": "is this nick",
+    "values": [
+      "over the last",
+      "becoming what is",
+      "now dating a"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_imo_m",
+    "source": "ngram_pattern",
+    "frame": "imo i m",
+    "values": [
+      "hearing is they",
+      "not going to",
+      "not interested in"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_what_kind",
+    "source": "ngram_pattern",
+    "frame": "what kind of",
+    "values": [
+      "jobs i could",
+      "jobs im positioned",
+      "jobs can i"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_kind_jobs",
+    "source": "ngram_pattern",
+    "frame": "what kind of jobs",
+    "values": [
+      "i could land",
+      "im positioned for",
+      "can i go"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_from_fx3",
+    "source": "ngram_pattern",
+    "frame": "from the fx3",
+    "values": [
+      "cine look the",
+      "to the c100",
+      "to the c300"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_a7cii",
+    "source": "ngram_pattern",
+    "frame": "for the a7cii",
+    "values": [
+      "and 2k for",
+      "i think im",
+      "is also like"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_more_on",
+    "source": "ngram_pattern",
+    "frame": "spiral more on",
+    "values": [
+      "this lmao",
+      "everything in paragraphs",
+      "the past couple"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_up_bit",
+    "source": "ngram_pattern",
+    "frame": "up a bit",
+    "values": [
+      "so perfect not",
+      "before i fully",
+      "for cinema vibe"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_on_a7cii",
+    "source": "ngram_pattern",
+    "frame": "on the a7cii",
+    "values": [
+      "but i supppose",
+      "also how do",
+      "i do not"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_yeah_m",
+    "source": "ngram_pattern",
+    "frame": "yeah i m",
+    "values": [
+      "out of black",
+      "with you on",
+      "good stopping i"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_m_out",
+    "source": "ngram_pattern",
+    "frame": "i m out",
+    "values": [
+      "of black curtains",
+      "and about or",
+      "in sussex so"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_but_ll",
+    "source": "ngram_pattern",
+    "frame": "but i ll",
+    "values": [
+      "hold onto it",
+      "send some selects",
+      "hit her with"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_hold_onto",
+    "source": "ngram_pattern",
+    "frame": "i hold onto the",
+    "values": [
+      "fx3 and given",
+      "fx3 i know",
+      "glass where am"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_70_200mm",
+    "source": "ngram_pattern",
+    "frame": "sell the 70 200mm",
+    "values": [
+      "and a7cii work",
+      "gm oss ii",
+      "if the price",
+      "i would likely"
+    ],
+    "evidence_count": 3,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_fx3_and",
+    "source": "ngram_pattern",
+    "frame": "the fx3 and",
+    "values": [
+      "grab a still",
+      "given the fx6",
+      "say june rolled"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_thing",
+    "source": "ngram_pattern",
+    "frame": "thing for a",
+    "values": [
+      "bit i think",
+      "bit but had",
+      "bit but needed"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_shift_thing",
+    "source": "ngram_pattern",
+    "frame": "shift thing for a",
+    "values": [
+      "bit i think",
+      "bit but had",
+      "bit but needed"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_thing_bit",
+    "source": "ngram_pattern",
+    "frame": "thing for a bit",
+    "values": [
+      "i think the",
+      "but had to",
+      "but needed to"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_guess_what",
+    "source": "ngram_pattern",
+    "frame": "i guess what",
+    "values": [
+      "is gives me",
+      "was a massive",
+      "im thinking could"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_not_best",
+    "source": "ngram_pattern",
+    "frame": "not the best",
+    "values": [
+      "i could do",
+      "speed but could",
+      "color correction but"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_couple_things",
+    "source": "ngram_pattern",
+    "frame": "a couple things i",
+    "values": [
+      "would do differently",
+      "sent after that",
+      "need to get"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_other_things",
+    "source": "ngram_pattern",
+    "frame": "and other things",
+    "values": [
+      "would have gone",
+      "but if i",
+      "lol crunchy stills"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_trying_be",
+    "source": "ngram_pattern",
+    "frame": "trying to be",
+    "values": [
+      "nice and explain",
+      "i m busy",
+      "this business guy"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_but_also",
+    "source": "ngram_pattern",
+    "frame": "but also i",
+    "values": [
+      "dont wanna do",
+      "don t need",
+      "know if i"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_there_couple",
+    "source": "ngram_pattern",
+    "frame": "there are a couple",
+    "values": [
+      "things i would",
+      "different finical scenarios",
+      "other gems along"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_im_not",
+    "source": "ngram_pattern",
+    "frame": "and im not",
+    "values": [
+      "sure how its",
+      "sure what my",
+      "capable of supporting"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_cold",
+    "source": "ngram_pattern",
+    "frame": "in the cold",
+    "values": [
+      "garage also sticker",
+      "but since you",
+      "or something more"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_garage",
+    "source": "ngram_pattern",
+    "frame": "in the garage",
+    "values": [
+      "in the shop",
+      "do a bit",
+      "today and do"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_need_head",
+    "source": "ngram_pattern",
+    "frame": "need to head",
+    "values": [
+      "down imma brew",
+      "out at 3",
+      "out earlier than"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_m_thinking",
+    "source": "ngram_pattern",
+    "frame": "i m thinking",
+    "values": [
+      "im stuck and",
+      "of unending",
+      "about the aspect"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_know_what",
+    "source": "ngram_pattern",
+    "frame": "i dont know what",
+    "values": [
+      "to do",
+      "i masking how",
+      "to do with"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_camera_and",
+    "source": "ngram_pattern",
+    "frame": "the camera and",
+    "values": [
+      "anamorphic lens down",
+      "work the job",
+      "when and if"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_down_by",
+    "source": "ngram_pattern",
+    "frame": "down by the",
+    "values": [
+      "lake with normal",
+      "lake if it",
+      "lake is the"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_by_lake",
+    "source": "ngram_pattern",
+    "frame": "down by the lake",
+    "values": [
+      "with normal",
+      "if it isn",
+      "is the best"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_from_other",
+    "source": "ngram_pattern",
+    "frame": "from the other",
+    "values": [
+      "day i think",
+      "day i didn",
+      "chat what s"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_we_ve",
+    "source": "ngram_pattern",
+    "frame": "like we ve",
+    "values": [
+      "been talking imo",
+      "been talking",
+      "used to where"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_s_2",
+    "source": "ngram_pattern",
+    "frame": "it s 2",
+    "values": [
+      "20am idk tired",
+      "53 i should",
+      "of each design"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_cameras_and",
+    "source": "ngram_pattern",
+    "frame": "with cameras and",
+    "values": [
+      "then when time",
+      "somewhere along the",
+      "somewhere i decided"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_have_little",
+    "source": "ngram_pattern",
+    "frame": "i have a little",
+    "values": [
+      "vent because it",
+      "left over after",
+      "confession i enjoy"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_couldn_t",
+    "source": "ngram_pattern",
+    "frame": "i couldn t",
+    "values": [
+      "do much with",
+      "this fucking dork",
+      "use the affirm"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_m_web",
+    "source": "ngram_pattern",
+    "frame": "i m a web",
+    "values": [
+      "developer not the",
+      "developer professionally and",
+      "developer professionally been"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_s_awesome",
+    "source": "ngram_pattern",
+    "frame": "that s awesome",
+    "values": [
+      "and really respectable",
+      "i mean respectfully",
+      "continuous improvement mindset"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_event_tomorrow",
+    "source": "ngram_pattern",
+    "frame": "another event tomorrow",
+    "values": [
+      "an excuse to",
+      "somewhere deep down",
+      "child version of"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_be_amazed",
+    "source": "ngram_pattern",
+    "frame": "me would be amazed",
+    "values": [
+      "not because of",
+      "not about the",
+      "sure it s"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_think_she",
+    "source": "ngram_pattern",
+    "frame": "do you think she",
+    "values": [
+      "felt the connection",
+      "was looking for",
+      "walked away with"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_not_much",
+    "source": "ngram_pattern",
+    "frame": "not much of a",
+    "values": [
+      "gamer i don",
+      "gamer these days",
+      "ready but more"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_told_me",
+    "source": "ngram_pattern",
+    "frame": "she told me",
+    "values": [
+      "she doesn t",
+      "about the needing",
+      "over facetime she"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_me_she",
+    "source": "ngram_pattern",
+    "frame": "told me she",
+    "values": [
+      "doesn t like",
+      "was open to",
+      "ghosts people"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_ft_call",
+    "source": "ngram_pattern",
+    "frame": "the ft call",
+    "values": [
+      "was it what",
+      "i knew it",
+      "did i pull"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_but",
+    "source": "ngram_pattern",
+    "frame": "but i was",
+    "values": [
+      "being cordial",
+      "intentional and i",
+      "going for the"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_me_and",
+    "source": "ngram_pattern",
+    "frame": "to me and",
+    "values": [
+      "while i haven",
+      "she was like",
+      "being able to"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_ll_do",
+    "source": "ngram_pattern",
+    "frame": "i ll do",
+    "values": [
+      "is be a",
+      "it alone lmao",
+      "the work for"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_getting_lost",
+    "source": "ngram_pattern",
+    "frame": "getting lost in",
+    "values": [
+      "a book",
+      "a book when",
+      "the book but"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_doing",
+    "source": "ngram_pattern",
+    "frame": "i was doing",
+    "values": [
+      "i understood that",
+      "but still hated",
+      "the third shift"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_pulled_back",
+    "source": "ngram_pattern",
+    "frame": "i pulled back",
+    "values": [
+      "over the weekend",
+      "and didn t",
+      "she became quieter"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_lets_kind",
+    "source": "ngram_pattern",
+    "frame": "lets kind of",
+    "values": [
+      "go over that",
+      "slow it down",
+      "pause on f5"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_tell_her",
+    "source": "ngram_pattern",
+    "frame": "tell her i",
+    "values": [
+      "went to the",
+      "sold gear and",
+      "only lean video"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_work_with",
+    "source": "ngram_pattern",
+    "frame": "to work with",
+    "values": [
+      "and only matched",
+      "and acceptable footage",
+      "but i remember"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_last",
+    "source": "ngram_pattern",
+    "frame": "was the last",
+    "values": [
+      "heart reaction to",
+      "we chatted",
+      "time i msgd"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_end_result",
+    "source": "ngram_pattern",
+    "frame": "the end result",
+    "values": [
+      "would have been",
+      "if you guys",
+      "or like how"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_have_been",
+    "source": "ngram_pattern",
+    "frame": "i have been",
+    "values": [
+      "wishing to have",
+      "feeling it all",
+      "to molagers but"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_would_love",
+    "source": "ngram_pattern",
+    "frame": "i would love to",
+    "values": [
+      "hold onto it",
+      "come home and",
+      "stop in and"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_respond",
+    "source": "ngram_pattern",
+    "frame": "respond to the",
+    "values": [
+      "hell yeah i",
+      "images who is",
+      "gala person little"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_going_keep",
+    "source": "ngram_pattern",
+    "frame": "going to keep",
+    "values": [
+      "doing me and",
+      "questioning and that",
+      "it chill go"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_talk_about",
+    "source": "ngram_pattern",
+    "frame": "to talk about",
+    "values": [
+      "what do you",
+      "this but brining",
+      "on friday"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_last_time",
+    "source": "ngram_pattern",
+    "frame": "the last time",
+    "values": [
+      "we chatted you",
+      "i msgd we",
+      "around i felt"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_with_friend",
+    "source": "ngram_pattern",
+    "frame": "with a friend",
+    "values": [
+      "on a tv",
+      "for 1400 adorama",
+      "group that i"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_and_just",
+    "source": "ngram_pattern",
+    "frame": "and i just",
+    "values": [
+      "wasn t ready",
+      "fell asleep i",
+      "dont lead with"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_should_take",
+    "source": "ngram_pattern",
+    "frame": "should i take",
+    "values": [
+      "the c100 to",
+      "advantage like give",
+      "it should i"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_used_be",
+    "source": "ngram_pattern",
+    "frame": "used to be a",
+    "values": [
+      "clingy guy then",
+      "big sports nerd",
+      "lot bigger than"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_like",
+    "source": "ngram_pattern",
+    "frame": "like i was",
+    "values": [
+      "wrong i felt",
+      "chasing i said",
+      "really turned off",
+      "pay check to"
+    ],
+    "evidence_count": 3,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_its_next",
+    "source": "ngram_pattern",
+    "frame": "its the next",
+    "values": [
+      "morning tldr",
+      "day fyi lets",
+      "morning i got"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_spiral_more",
+    "source": "ngram_pattern",
+    "frame": "spiral more for",
+    "values": [
+      "me while i",
+      "me also i",
+      "me its a"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_more_me",
+    "source": "ngram_pattern",
+    "frame": "spiral more for me",
+    "values": [
+      "while i wake",
+      "also i know",
+      "its a liar"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_her",
+    "source": "ngram_pattern",
+    "frame": "for her to",
+    "values": [
+      "be like wait",
+      "drop that she",
+      "end it and"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_went_on",
+    "source": "ngram_pattern",
+    "frame": "went on a",
+    "values": [
+      "date after the",
+      "second date and",
+      "date literally the"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_t_like",
+    "source": "ngram_pattern",
+    "frame": "i don t like",
+    "values": [
+      "the wok together",
+      "dealing with money",
+      "this phrasing"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_morning",
+    "source": "ngram_pattern",
+    "frame": "in the morning",
+    "values": [
+      "sorry got lost",
+      "apologizing for getting",
+      "edit post"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_home_body",
+    "source": "ngram_pattern",
+    "frame": "a home body",
+    "values": [
+      "isnt that im",
+      "i would have",
+      "that refuses to"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_think_would",
+    "source": "ngram_pattern",
+    "frame": "i think i would",
+    "values": [
+      "have felt different",
+      "be inclined to",
+      "have beat myself"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_if_had",
+    "source": "ngram_pattern",
+    "frame": "if i had",
+    "values": [
+      "to say what",
+      "a monitor that",
+      "to describe it"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_m_sure",
+    "source": "ngram_pattern",
+    "frame": "i m sure",
+    "values": [
+      "she told her",
+      "ahhh im more",
+      "it was hella",
+      "she was getting",
+      "someone is already"
+    ],
+    "evidence_count": 3,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_but_s",
+    "source": "ngram_pattern",
+    "frame": "but it s",
+    "values": [
+      "just honestly a",
+      "alright we did",
+      "just sucks no"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_verbose_on",
+    "source": "ngram_pattern",
+    "frame": "more verbose on the",
+    "values": [
+      "last couple months",
+      "entire thing paragraphs",
+      "entire thing"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_already_have",
+    "source": "ngram_pattern",
+    "frame": "i already have",
+    "values": [
+      "health shit",
+      "my mobile camera",
+      "the video camera"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_and_kind",
+    "source": "ngram_pattern",
+    "frame": "and kind of",
+    "values": [
+      "childish like",
+      "focus in the",
+      "personally honing in"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_not_gonna",
+    "source": "ngram_pattern",
+    "frame": "im not gonna",
+    "values": [
+      "pose a dog",
+      "fumble with tipods",
+      "be around long"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_now_m",
+    "source": "ngram_pattern",
+    "frame": "but now i m",
+    "values": [
+      "hopes tha night",
+      "invested what s",
+      "invested you must"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_where_m",
+    "source": "ngram_pattern",
+    "frame": "where i m",
+    "values": [
+      "at mentally and",
+      "strapped and its",
+      "going just spiral"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_talked_about",
+    "source": "ngram_pattern",
+    "frame": "we talked about",
+    "values": [
+      "what we want",
+      "alot tn over",
+      "i made on"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_bag",
+    "source": "ngram_pattern",
+    "frame": "in my bag",
+    "values": [
+      "and try some",
+      "more and more",
+      "wouldnt be a"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_ngl_think",
+    "source": "ngram_pattern",
+    "frame": "ngl i think",
+    "values": [
+      "i would be",
+      "holding is the",
+      "im sold on"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_could_go",
+    "source": "ngram_pattern",
+    "frame": "i could go",
+    "values": [
+      "talk to the",
+      "back but i",
+      "get a 1mil"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_28_70",
+    "source": "ngram_pattern",
+    "frame": "another 28 70",
+    "values": [
+      "or an 11",
+      "over a 70",
+      "would do me"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_won_t",
+    "source": "ngram_pattern",
+    "frame": "i won t",
+    "values": [
+      "get invited again",
+      "post the full",
+      "know till in"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_needed",
+    "source": "ngram_pattern",
+    "frame": "i needed to",
+    "values": [
+      "bow out of",
+      "send out sent",
+      "add that because"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_end",
+    "source": "ngram_pattern",
+    "frame": "the end of",
+    "values": [
+      "the world continual",
+      "winter we just",
+      "the month"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_feel_bad",
+    "source": "ngram_pattern",
+    "frame": "feel bad i",
+    "values": [
+      "don t not",
+      "didn t look",
+      "think is what"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_sorry",
+    "source": "ngram_pattern",
+    "frame": "sorry for the",
+    "values": [
+      "short notice and",
+      "short notice i",
+      "short notice please"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_short",
+    "source": "ngram_pattern",
+    "frame": "for the short",
+    "values": [
+      "notice and last",
+      "notice i just",
+      "notice please keep"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_short_notice",
+    "source": "ngram_pattern",
+    "frame": "for the short notice",
+    "values": [
+      "and last minute",
+      "i just wouldn",
+      "please keep me"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_keep_me",
+    "source": "ngram_pattern",
+    "frame": "please keep me in",
+    "values": [
+      "the loop i",
+      "mind for a",
+      "mind for your"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_m_sorry",
+    "source": "ngram_pattern",
+    "frame": "m sorry for the",
+    "values": [
+      "short notice and",
+      "short notice i",
+      "short notice please"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_sorry_short",
+    "source": "ngram_pattern",
+    "frame": "sorry for the short",
+    "values": [
+      "notice and last",
+      "notice i just",
+      "notice please keep"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_know_its",
+    "source": "ngram_pattern",
+    "frame": "i know its",
+    "values": [
+      "all day i",
+      "probably going to",
+      "not a big"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_and_tbh",
+    "source": "ngram_pattern",
+    "frame": "and tbh i",
+    "values": [
+      "have been feeling",
+      "tested the health",
+      "like my quiet"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_she_s",
+    "source": "ngram_pattern",
+    "frame": "she s a",
+    "values": [
+      "friend we can",
+      "night owl it",
+      "mobile hospice nurse"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_spiral_me",
+    "source": "ngram_pattern",
+    "frame": "spiral for me",
+    "values": [
+      "like we used",
+      "like old times",
+      "and i might"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_can",
+    "source": "ngram_pattern",
+    "frame": "that i can",
+    "values": [
+      "t back out",
+      "run an agent",
+      "list two of"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_you",
+    "source": "ngram_pattern",
+    "frame": "you for the",
+    "values": [
+      "opportunity and see",
+      "disclaimer and no",
+      "aloe sticker trying"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_than_likely",
+    "source": "ngram_pattern",
+    "frame": "more than likely",
+    "values": [
+      "will need to",
+      "heading out for",
+      "would be two"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_fine_with",
+    "source": "ngram_pattern",
+    "frame": "im fine with",
+    "values": [
+      "120 thats it",
+      "the day but",
+      "not the best"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_couple_freebies",
+    "source": "ngram_pattern",
+    "frame": "a couple freebies",
+    "values": [
+      "black ink on",
+      "in then there",
+      "in then"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_so_say",
+    "source": "ngram_pattern",
+    "frame": "so say i",
+    "values": [
+      "appreciate you guys",
+      "wanna save up",
+      "go back to"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_so_have",
+    "source": "ngram_pattern",
+    "frame": "so i have",
+    "values": [
+      "an idea what",
+      "ample time to",
+      "to finish that"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_things",
+    "source": "ngram_pattern",
+    "frame": "are things i",
+    "values": [
+      "m aware of",
+      "would and could",
+      "couuuuuld be doing"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_and_don",
+    "source": "ngram_pattern",
+    "frame": "and i don",
+    "values": [
+      "t need the",
+      "t mind coming",
+      "t eat a"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_dont_like",
+    "source": "ngram_pattern",
+    "frame": "i dont like",
+    "values": [
+      "ai and i",
+      "stretching legs",
+      "arms exposed"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_do_need",
+    "source": "ngram_pattern",
+    "frame": "what do i need",
+    "values": [
+      "to take to",
+      "for real id",
+      "to get my"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_behind_scenes",
+    "source": "ngram_pattern",
+    "frame": "behind the scenes",
+    "values": [
+      "i helped operate",
+      "b camera operator",
+      "and more like"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_there_no",
+    "source": "ngram_pattern",
+    "frame": "there is no",
+    "values": [
+      "expectation to like",
+      "regret red flags",
+      "vibe i explained"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_and_sunday",
+    "source": "ngram_pattern",
+    "frame": "and sunday are",
+    "values": [
+      "also open let",
+      "also open no",
+      "probably the better"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_what_would",
+    "source": "ngram_pattern",
+    "frame": "what i would",
+    "values": [
+      "say one drink",
+      "get out of",
+      "consider is the"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_going_be",
+    "source": "ngram_pattern",
+    "frame": "its going to be",
+    "values": [
+      "a bit cold",
+      "expected to use",
+      "like a week"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_hoping",
+    "source": "ngram_pattern",
+    "frame": "i was hoping to",
+    "values": [
+      "see you i",
+      "be with you",
+      "be with cameron"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_most_recent",
+    "source": "ngram_pattern",
+    "frame": "the most recent",
+    "values": [
+      "things ive done",
+      "stint assess the",
+      "generations of them"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_t_work",
+    "source": "ngram_pattern",
+    "frame": "doesn t work",
+    "values": [
+      "out i got",
+      "the headset is",
+      "for me anymore"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_work_on",
+    "source": "ngram_pattern",
+    "frame": "to work on",
+    "values": [
+      "shes open to",
+      "i keep making",
+      "this week"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_got_little",
+    "source": "ngram_pattern",
+    "frame": "got a little",
+    "values": [
+      "weird in texts",
+      "busy but in",
+      "busy yesterday it"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_need_go",
+    "source": "ngram_pattern",
+    "frame": "i need to go",
+    "values": [
+      "out and get",
+      "get creamer some",
+      "in and get"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_and_know",
+    "source": "ngram_pattern",
+    "frame": "and i know i",
+    "values": [
+      "do it i",
+      "shouldn t judge",
+      "could use a"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_enough",
+    "source": "ngram_pattern",
+    "frame": "enough for a",
+    "values": [
+      "clean plate i",
+      "different camera than",
+      "couple sets on"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_do_best",
+    "source": "ngram_pattern",
+    "frame": "do my best",
+    "values": [
+      "with coverage but",
+      "to atleast align",
+      "to match for"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_what_want",
+    "source": "ngram_pattern",
+    "frame": "what i want",
+    "values": [
+      "to do i",
+      "more than discord",
+      "long term but"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_next",
+    "source": "ngram_pattern",
+    "frame": "in the next",
+    "values": [
+      "day or two",
+      "4 months how",
+      "week or so"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_get_know",
+    "source": "ngram_pattern",
+    "frame": "get to know",
+    "values": [
+      "her more",
+      "people some dudes",
+      "people give me"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_know_s",
+    "source": "ngram_pattern",
+    "frame": "know it s",
+    "values": [
+      "types and i",
+      "cliche i really",
+      "going to end"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_s_respond",
+    "source": "ngram_pattern",
+    "frame": "let s respond",
+    "values": [
+      "to katie",
+      "yeah things are",
+      "quickly with um"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_ill_get",
+    "source": "ngram_pattern",
+    "frame": "ill get the",
+    "values": [
+      "shirt things are",
+      "ball rolling on",
+      "doc but that"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_know_ill",
+    "source": "ngram_pattern",
+    "frame": "i know ill",
+    "values": [
+      "use tn now",
+      "be fine",
+      "recoup in the"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_might_be",
+    "source": "ngram_pattern",
+    "frame": "it might be",
+    "values": [
+      "a stacked day",
+      "alot of weight",
+      "time to buy"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_how_use",
+    "source": "ngram_pattern",
+    "frame": "how to use it",
+    "values": [
+      "let her do",
+      "at all i",
+      "how to build"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_use",
+    "source": "ngram_pattern",
+    "frame": "to use it",
+    "values": [
+      "let her do",
+      "at all i",
+      "how to build"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_still_have",
+    "source": "ngram_pattern",
+    "frame": "i still have",
+    "values": [
+      "some me to",
+      "the video",
+      "a lot of"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_d_love",
+    "source": "ngram_pattern",
+    "frame": "i d love",
+    "values": [
+      "someone who s",
+      "to plan something",
+      "to hear the"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_little_print",
+    "source": "ngram_pattern",
+    "frame": "a little print",
+    "values": [
+      "shop make custom",
+      "shop where i",
+      "shop illustrations doodles"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_m_on",
+    "source": "ngram_pattern",
+    "frame": "i m on",
+    "values": [
+      "the same page",
+      "year four",
+      "the right path"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_pick_up",
+    "source": "ngram_pattern",
+    "frame": "to pick up",
+    "values": [
+      "for the shoot",
+      "more the next",
+      "time it more"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_how",
+    "source": "ngram_pattern",
+    "frame": "how was the",
+    "values": [
+      "shift being a",
+      "shift i don",
+      "park lol"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_par_with",
+    "source": "ngram_pattern",
+    "frame": "on par with",
+    "values": [
+      "me but all",
+      "used right now",
+      "ability primary is"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_be_honest",
+    "source": "ngram_pattern",
+    "frame": "i ll be honest",
+    "values": [
+      "myself the holidays",
+      "wednesday and sunday",
+      "i don t"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_gala",
+    "source": "ngram_pattern",
+    "frame": "for the gala",
+    "values": [
+      "on friday more",
+      "on friday friends",
+      "on friday my"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_gala_on",
+    "source": "ngram_pattern",
+    "frame": "for the gala on",
+    "values": [
+      "friday more than",
+      "friday friends birthday",
+      "friday my friend"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_on_friday",
+    "source": "ngram_pattern",
+    "frame": "the gala on friday",
+    "values": [
+      "more than likely",
+      "friends birthday gonna",
+      "my friend is"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_meeting_gala",
+    "source": "ngram_pattern",
+    "frame": "meeting for the gala",
+    "values": [
+      "on friday more",
+      "on friday friends",
+      "on friday my"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_or_you",
+    "source": "ngram_pattern",
+    "frame": "or are you",
+    "values": [
+      "still exploring lol",
+      "just optimizing right",
+      "more of a"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_middle",
+    "source": "ngram_pattern",
+    "frame": "in the middle",
+    "values": [
+      "of the night",
+      "of the response",
+      "of something"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_friend_matt",
+    "source": "ngram_pattern",
+    "frame": "my friend matt",
+    "values": [
+      "takes everything seriously",
+      "is just like",
+      "sounds like sly"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_get_under",
+    "source": "ngram_pattern",
+    "frame": "how to get under",
+    "values": [
+      "my skin hopefully",
+      "my skin thins",
+      "my skin"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_cheat_sheet",
+    "source": "ngram_pattern",
+    "frame": "whole character cheat sheet",
+    "values": [
+      "my friend matt",
+      "still hang with",
+      "i m not"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_whole_character",
+    "source": "ngram_pattern",
+    "frame": "got a whole character",
+    "values": [
+      "cheat sheet my",
+      "cheat sheet still",
+      "cheat sheet i"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_character_cheat",
+    "source": "ngram_pattern",
+    "frame": "a whole character cheat",
+    "values": [
+      "sheet my friend",
+      "sheet still hang",
+      "sheet i m"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_now_have",
+    "source": "ngram_pattern",
+    "frame": "now i have",
+    "values": [
+      "to plan a",
+      "an idea how",
+      "the able account"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_website",
+    "source": "ngram_pattern",
+    "frame": "to my website",
+    "values": [
+      "and explore i",
+      "so my photog",
+      "lol it does"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_im_little",
+    "source": "ngram_pattern",
+    "frame": "im a little",
+    "values": [
+      "focused on that",
+      "guilt free to",
+      "behind im moving"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_but_d",
+    "source": "ngram_pattern",
+    "frame": "but i d",
+    "values": [
+      "love to plan",
+      "be fine i",
+      "argue im closer"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_favorite_spot",
+    "source": "ngram_pattern",
+    "frame": "a favorite spot",
+    "values": [
+      "i m all",
+      "in mind i",
+      "lmao i m"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_but_if",
+    "source": "ngram_pattern",
+    "frame": "but if i",
+    "values": [
+      "fail to keep",
+      "go for the",
+      "consider letting go"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_gonna_be",
+    "source": "ngram_pattern",
+    "frame": "i m gonna be",
+    "values": [
+      "boring again i",
+      "honest the other",
+      "completely honest i"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_date_and",
+    "source": "ngram_pattern",
+    "frame": "a date and",
+    "values": [
+      "not being asked",
+      "i bailed",
+      "i baked"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_able",
+    "source": "ngram_pattern",
+    "frame": "was able to",
+    "values": [
+      "focus on some",
+      "hang on maybe",
+      "edit some pictures",
+      "edit a couple",
+      "save the one"
+    ],
+    "evidence_count": 3,
+    "unique_values": 5
+  },
+  {
+    "slot_name": "ngram_wanna_be",
+    "source": "ngram_pattern",
+    "frame": "i wanna be",
+    "values": [
+      "nice oh that",
+      "my self no",
+      "intintional this next"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_could_get",
+    "source": "ngram_pattern",
+    "frame": "i could get",
+    "values": [
+      "different shots i",
+      "one there might",
+      "there is light"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_if_know",
+    "source": "ngram_pattern",
+    "frame": "if i know",
+    "values": [
+      "nothing or high",
+      "im going somewhere",
+      "im going to"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_state_parks",
+    "source": "ngram_pattern",
+    "frame": "the state parks",
+    "values": [
+      "capturing them through",
+      "pass sticker won",
+      "that have the"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_full_year",
+    "source": "ngram_pattern",
+    "frame": "a full year",
+    "values": [
+      "and im not",
+      "into this project",
+      "since crt had"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_if_go",
+    "source": "ngram_pattern",
+    "frame": "if i go",
+    "values": [
+      "today ill match",
+      "for the f5",
+      "through with the"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_even_if",
+    "source": "ngram_pattern",
+    "frame": "even if i",
+    "values": [
+      "don t i",
+      "do sell anything",
+      "just sell the"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_non_profit",
+    "source": "ngram_pattern",
+    "frame": "a non profit",
+    "values": [
+      "what looks better",
+      "called katies closet",
+      "katies kloset so"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_terms",
+    "source": "ngram_pattern",
+    "frame": "in terms of",
+    "values": [
+      "who i am",
+      "gear for the",
+      "math and logic"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_system_and",
+    "source": "ngram_pattern",
+    "frame": "the system and",
+    "values": [
+      "evaluate the plan",
+      "create some documents",
+      "controllers even if"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_even_though",
+    "source": "ngram_pattern",
+    "frame": "even though i",
+    "values": [
+      "was trying to",
+      "feel like im",
+      "just want nothing"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_say_goal",
+    "source": "ngram_pattern",
+    "frame": "say my goal is",
+    "values": [
+      "to shoot something",
+      "8k by june",
+      "to have 6k"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_be_best",
+    "source": "ngram_pattern",
+    "frame": "be the best",
+    "values": [
+      "spiral to keep",
+      "locals website to",
+      "locals to support"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_through_scenarios",
+    "source": "ngram_pattern",
+    "frame": "run through the scenarios",
+    "values": [
+      "again if i",
+      "again starting with",
+      "whats the min"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_sell_70",
+    "source": "ngram_pattern",
+    "frame": "sell the 70",
+    "values": [
+      "200mm and a7cii",
+      "200mm gm oss",
+      "200mm if the",
+      "200mm i would"
+    ],
+    "evidence_count": 3,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_get_new",
+    "source": "ngram_pattern",
+    "frame": "get a new",
+    "values": [
+      "used camera rolling",
+      "license could i",
+      "id starting to",
+      "real id id"
+    ],
+    "evidence_count": 3,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_if_just",
+    "source": "ngram_pattern",
+    "frame": "if i just",
+    "values": [
+      "sell the body",
+      "sell the camera",
+      "want to save"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_almost_spoken",
+    "source": "ngram_pattern",
+    "frame": "is almost spoken for",
+    "values": [
+      "for 1400 im",
+      "at 1400 if",
+      "at 1400"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_say_if",
+    "source": "ngram_pattern",
+    "frame": "say if i",
+    "values": [
+      "pass on my",
+      "don t land",
+      "know im going"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_on_me",
+    "source": "ngram_pattern",
+    "frame": "focus on me",
+    "values": [
+      "open to staying",
+      "actually i mean",
+      "not apologize and"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_when_could",
+    "source": "ngram_pattern",
+    "frame": "when could i",
+    "values": [
+      "comfortably pop for",
+      "be at 15k",
+      "be at 20k"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_row",
+    "source": "ngram_pattern",
+    "frame": "in a row",
+    "values": [
+      "i sell the",
+      "and save then",
+      "im flexible kind"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_lens_and",
+    "source": "ngram_pattern",
+    "frame": "the lens and",
+    "values": [
+      "the camera i",
+      "the camera then",
+      "the body"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_say_want",
+    "source": "ngram_pattern",
+    "frame": "say i want",
+    "values": [
+      "9k in able",
+      "15 k in",
+      "to hustle how"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_months_700",
+    "source": "ngram_pattern",
+    "frame": "next months 700",
+    "values": [
+      "i flip the",
+      "and then if",
+      "jan 18th"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_and_if",
+    "source": "ngram_pattern",
+    "frame": "and if i",
+    "values": [
+      "sell the lens",
+      "have any other",
+      "feel like it"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_oss_ii",
+    "source": "ngram_pattern",
+    "frame": "gm oss ii",
+    "values": [
+      "is the one",
+      "g lens for",
+      "lens how much"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_when_im",
+    "source": "ngram_pattern",
+    "frame": "then when im",
+    "values": [
+      "back at a",
+      "close enough sell",
+      "done with that"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_then_if",
+    "source": "ngram_pattern",
+    "frame": "then if i",
+    "values": [
+      "sell the a7cii",
+      "were to pick",
+      "sell the 70"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_able_account",
+    "source": "ngram_pattern",
+    "frame": "the able account",
+    "values": [
+      "i could really",
+      "setup or figure",
+      "its gonna be"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_out_how",
+    "source": "ngram_pattern",
+    "frame": "figure out how to",
+    "values": [
+      "get it setup",
+      "see the portrait",
+      "see the originaly"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_new_id",
+    "source": "ngram_pattern",
+    "frame": "the new id",
+    "values": [
+      "unlocks the ability",
+      "unlocks the able",
+      "i missplaced my"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_want_get",
+    "source": "ngram_pattern",
+    "frame": "want to get",
+    "values": [
+      "a new real",
+      "another cine",
+      "into like the"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_thats_thing",
+    "source": "ngram_pattern",
+    "frame": "thats the thing",
+    "values": [
+      "the a7cii is",
+      "taking the edge",
+      "we talked about"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_you_keeping",
+    "source": "ngram_pattern",
+    "frame": "like chaos you keeping",
+    "values": [
+      "organized over there",
+      "organized lol try",
+      "organized lol"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_trio_set",
+    "source": "ngram_pattern",
+    "frame": "marigold trio set",
+    "values": [
+      "is on sale",
+      "help me write",
+      "blurb including two"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "ngram_two_each",
+    "source": "ngram_pattern",
+    "frame": "two of each",
+    "values": [
+      "of the three",
+      "and then two",
+      "if the skulls",
+      "how much"
+    ],
+    "evidence_count": 3,
+    "unique_values": 4
+  },
+  {
+    "slot_name": "ngram_me_up",
+    "source": "ngram_pattern",
+    "frame": "build me up",
+    "values": [
+      "from yesterday yesterday",
+      "as i jump",
+      "more verbose"
+    ],
+    "evidence_count": 3,
+    "unique_values": 3
+  },
+  {
+    "slot_name": "my_friend",
+    "source": "frame_pattern",
+    "values": [
+      "going out for drinks for his birthday today",
+      "commited thats 559 plus 700 plus 1400 going into feb"
+    ],
+    "evidence_count": 2,
+    "unique_values": 2
+  },
+  {
+    "slot_name": "my_parents",
+    "source": "frame_pattern",
+    "values": [
+      "being generous",
+      "get $300 a month"
+    ],
+    "evidence_count": 2,
+    "unique_values": 2
+  },
+  {
+    "slot_name": "my_name",
+    "source": "frame_pattern",
+    "values": [
+      "blockhead",
+      "nick"
+    ],
+    "evidence_count": 2,
+    "unique_values": 2
+  }
+]

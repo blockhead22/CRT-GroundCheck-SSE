@@ -253,10 +253,16 @@ _GIT_ACTION_RE = re.compile(
 
 
 # Sprint 4 — Commitment / reminder patterns
+# NOTE: "remind me" must exclude recall patterns like "remind me what we did",
+# "remind me about X", "remind me how". Only match creation intent like
+# "remind me to do X", "remind me at 5pm", "remind me tonight".
+# The negative lookahead prevents recall queries from routing to create_commitment.
 _COMMITMENT_RE = re.compile(
-    r"\b(remind\s+me|reminder|set\s+a\s+reminder|schedule|"
-    r"don'?t\s+let\s+me\s+forget|alert\s+me|notify\s+me|"
-    r"remind\s+me\s+to)\b",
+    r"\b("
+    r"remind\s+me\s+(?!what\b|about\b|how\b|when\b|where\b|who\b|if\b|whether\b|of\b|again\b)"
+    r"|reminder\b|set\s+a\s+reminder|schedule\b"
+    r"|don'?t\s+let\s+me\s+forget|alert\s+me|notify\s+me"
+    r")",
     re.IGNORECASE,
 )
 
