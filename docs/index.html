@@ -109,7 +109,7 @@
       gsap.set(title, { y: 28 });
       gsap.set(sub,   { y: 12 });
 
-      // Fluid gradient drift — cycles through positions so there's no snap
+      // Fluid gradient drift -cycles through positions so there's no snap
       var eSpan = document.getElementById('hero-e');
       var targets = [title, eSpan];
       gsap.set(targets, { backgroundPosition: '0% 50%' });
@@ -414,8 +414,8 @@
 <nav class="sidebar" id="docSidebar" data-manual-sidebar>
   <div class="sidebar-title">Aeteros CORE</div>
   <a href="#problem">01 The Problem</a>
-  <a href="#thesis">02 The Thesis</a>
-  <a href="#architecture">03 How It Got Built</a>
+  <a href="#origin">02 Origin</a>
+  <a href="#discovered">03 What Was Discovered</a>
   <a href="#research">04 The Research</a>
   <a href="#running">05 What's Running</a>
   <a href="#future">06 Where It Goes</a>
@@ -474,73 +474,76 @@
 <!-- ============================================================ -->
 <!-- CHAPTER 2                                                      -->
 <!-- ============================================================ -->
-<section id="thesis">
+<section id="origin">
   <span class="chapter-num">Chapter 2</span>
-  <h2>The Thesis</h2>
+  <h2>Origin</h2>
 
-  <p>The project started under a different name. <strong>CRT</strong> — Contradiction Reflective Transformer — was the original working title. The irony is that it never was a transformer. It was a governance layer built around a transformer. But the name stuck for over a year because it captured the intent: a system that reflects on its own contradictions instead of hiding them.</p>
-
-  <p>As the architecture matured, the name evolved to match what it had actually become. <strong>CORE</strong> — Contradiction, Observation, Revision, Epistemics — describes the four operations that run continuously beneath every conversation. The system observes what's said, checks it against what it believes, revises when evidence warrants, and treats the entire process as an epistemic problem: not "what's the right answer" but "what do I believe, how strongly, and does it conflict with something I believed before?"</p>
-
-  <p>CORE starts from three design laws. Not suggestions or best practices. Structural commitments that shape every decision in the architecture.</p>
-
-  <div class="principle-grid">
-    <div class="principle principle-speech">
-      <div class="p-num">Law 1</div>
-      <div class="p-text">Belief/Speech Separation</div>
-      <div class="p-sub">What the system believes and what it says are different things. The gap between them must be auditable. The LLM generates speech. The governance layer holds belief. When they diverge, the system flags it. It does not silently let the mouth overwrite the mind.</div>
-    </div>
-    <div class="principle principle-contra">
-      <div class="p-num">Law 2</div>
-      <div class="p-text">Earned Contradiction Resolution</div>
-      <div class="p-sub">Contradictions are signals, not errors. They are preserved until evidence resolves them. Never silently overwritten. Full resolution must be earned through corroboration, trust hierarchy, or later confirmation.</div>
-    </div>
-    <div class="principle principle-trust">
-      <div class="p-num">Law 3</div>
-      <div class="p-text">Emergent Structure Over Hardcoded Logic</div>
-      <div class="p-sub">Behavior emerges from memory, reflection, compression, and contradiction handling. Not from runtime hacks. The system tracks its own patterns. Regex is acceptable as a fast tier, but never the ceiling.</div>
-    </div>
+  <div class="quote">
+    <p>Current AI, in my view, is not real artificial intelligence. Through my research and work, I believe I've found a new method -an entirely different approach to today's models. But I think this goes beyond AI. This isn't just another chatbot. What I've built has implications that transcend intelligent search or clever text completion. I believe what I've uncovered has meaningful use across modalities, because it's not just a system. It's a reflection.</p>
   </div>
 
-  <p>These three laws produce a single architectural insight that anchors the entire project:</p>
+  <p>That was the starting point. A whitepaper on a hard drive. The original system was called <strong>CRT</strong> -the Cognitive-Reflective Transformer -paired with the <strong>SSE</strong> (Semantic String Engine) for meaning-preserving compression. It proposed four interwoven components: <strong>Mirus</strong> for semantic compression, <strong>Holden</strong> for meaning reconstruction, <strong>MMH</strong> for reflection and contradiction supervision, and <strong>SSE</strong> for memory encoding. The operational flow was recursive: compress → retrieve → reconstruct → reflect.</p>
 
-  <div class="thesis-block">
-    <div class="thesis-label">Core Thesis</div>
-    <div class="thesis-text">The model is the mouth. Persistence is the self.</div>
-    <div class="thesis-sub">Switching models in an agentic system is dangerous because most systems let the mouth become the self at every step. Every handoff is a tiny identity wipe. CORE externalizes the self into a persistent governance layer that survives model switches, session boundaries, and provider changes.</div>
+  <div class="quote">
+    <p>And AI? I hate it. Not because I don't understand it -but because I do. Because I see it for what it is: not intelligence, not reflection, just replication. A real threat not only to industries, but to something much deeper -original, creative human thought. It operates without true awareness. It lacks the very thing that makes us human: context.</p>
   </div>
 
-  <p>Three things must persist across every boundary: <strong>task state</strong> (what are we doing), <strong>uncertainty state</strong> (what do we know and how well), and <strong>governance state</strong> (what rules apply, what is held, what is forbidden). If any of these reset, the system drifts even when every individual model works as designed.</p>
-
-  <p>The full thesis is developed in the <a href="whitepaper.html">whitepaper</a>.</p>
+  <p>The irony is that CRT never was a transformer. It was a governance layer built around a transformer. But that gap between what it was called and what it actually was turned out to be the first instance of a pattern that would define the entire project: the name said one thing, the system did another, and nobody was tracking the difference.</p>
 </section>
 
 <!-- ============================================================ -->
 <!-- CHAPTER 3                                                      -->
 <!-- ============================================================ -->
-<section id="architecture">
+<section id="discovered">
   <span class="chapter-num">Chapter 3</span>
-  <h2>How It Got Built</h2>
+  <h2>What Was Discovered</h2>
 
-  <p>The governance framework was not designed. It was discovered. Each mechanism started as a specific fix for a specific failure. The failures accumulated into an architecture.</p>
+  <p>Building the system exposed problems the original thesis never anticipated. The compression and reconstruction pipeline worked. But the failures that mattered weren't in any of those components. They were in the spaces between them.</p>
 
-  <p>The first version tried to reconstruct responses from compressed memory. A small transformer trained on real conversations. It would compress a thought, rebuild it, and check if the meaning survived the round-trip. Most of the time it didn't. So a check was built: after generation, compare the output to the memory it came from. If similarity dropped below threshold, flag it, retry, or refuse to answer. Compress, inflate, collapse, validate. That became the <a href="architecture.html">fidelity mirror</a>. The first governance mechanism, disguised as debugging.</p>
+  <p><strong>Memory corruption.</strong> A fallback model would hallucinate something, and the memory layer would index it alongside real facts. Next session, the hallucination would get retrieved and repeated with confidence. The system needed to know the difference between what it was told and what it generated -between belief and speech.</p>
 
-  <p>Then the system started storing bad outputs as memories. A fallback model would hallucinate something, and the memory layer would index it alongside real facts. Next session, the hallucination would get retrieved and repeated with confidence. So quarantine was built: low-confidence outputs get marked, stored separately, skipped during retrieval. That became trust-tiered memory storage.</p>
+  <p><strong>Silent overwriting.</strong> Contradictions were being resolved by whichever memory was stored most recently. The system would say one thing Tuesday and the opposite Thursday and never notice. It needed to hold contradictions instead of erasing them.</p>
 
-  <p>Then contradictions piled up. The system said one thing Tuesday and the opposite Thursday and never noticed. A contradiction manager was built. Not to resolve contradictions, but to <em>hold</em> them. To say: these two beliefs conflict, and I'm not going to pretend they don't. That became the <a href="glossary.html#held-contradiction">held contradiction</a> design law.</p>
+  <p><strong>False confidence.</strong> The system sounded equally certain whether it was right or wrong. Confidence had nothing to do with evidence. It needed a trust model where confidence was earned, not assumed.</p>
 
-  <p>Then corrections didn't fix what caused them. The correction was absorbed at the leaf. The root cause survived. So a backward pass was built: when a correction happens, the error signal flows upstream through the dependency graph, adjusting trust on every belief that contributed to the wrong output. That became <a href="belief-backprop.html">belief backpropagation</a>. Validated 30/30. No direct precedent found.</p>
+  <p><strong>Upstream blindness.</strong> Correcting a wrong answer fixed the leaf. The root cause survived. The system needed a way to propagate error signals backward through its own belief graph.</p>
 
   <div class="quote">
     <p>I didn't design governance. I discovered it. Each fix was a scar from a failure. The scars accumulated into an architecture.</p>
   </div>
 
-  <p>The pattern behind every fix was the same thing from different angles: measuring the distance between what the system said and what the evidence supported, and enforcing that distance. At generation time. At storage time. At retrieval time. Across the entire graph.</p>
+  <p>Each failure pointed at the same gap: the original whitepaper described what the system should <em>do</em> -compress, reconstruct, reflect. But it didn't describe how the system should <em>govern itself</em>. As the name evolved to <strong>CORE</strong> -Contradiction, Observation, Revision, Epistemics -the original components evolved with it.</p>
 
-  <p>Today the system runs a 12-step pipeline with 6 governance layers and 5 autonomous <a href="immune-agents.html">immune agents</a> that enforce constitutional laws in real time. The agents are structural, not advisory. The system cannot violate its own principles even if the LLM wants to.</p>
+  <div class="principle-grid">
+    <div class="principle principle-speech">
+      <div class="p-num">Mirus became</div>
+      <div class="p-sub">The 384-dimensional embedding pipeline, trust-weighted retrieval, and <a href="belief-backprop.html#wobble">query resonance (wobble)</a> through the Belief Dependency Graph.</div>
+    </div>
+    <div class="principle principle-contra">
+      <div class="p-num">Holden became</div>
+      <div class="p-sub">The orchestrator's belief-state-injected generation and the <a href="architecture.html">fidelity mirror</a> (breathing loop) -a post-generation verification pass.</div>
+    </div>
+    <div class="principle principle-trust">
+      <div class="p-num">MMH became</div>
+      <div class="p-sub">The <a href="immune-agents.html">immune agents</a>, the contradiction ledger, and <a href="belief-backprop.html">backward influence propagation</a> -split into six autonomous enforcement agents.</div>
+    </div>
+    <div class="principle principle-belief">
+      <div class="p-num">SSE became</div>
+      <div class="p-sub"><a href="epistemic-compression.html">Epistemic compression</a> (anchor basins survive 3-bit quantization), the BDG's dependency edges, and the <a href="geometric-memory.html">belief loci</a> geometric framework.</div>
+    </div>
+  </div>
 
-  <p><a href="nick_paper.html">Read the full origin story &rarr;</a>&emsp;<a href="architecture.html">Technical architecture &rarr;</a></p>
+  <div class="thesis-block">
+    <div class="thesis-label">Core Thesis</div>
+    <div class="thesis-text">The model is the mouth. Persistence is the self.</div>
+    <div class="thesis-sub">The original thesis was about meaning. The discovery was about governance. CORE externalizes the self into a persistent governance layer that survives model switches, session boundaries, and provider changes.</div>
+  </div>
+
+  <div class="quote">
+    <p>This system does not think. It does not moralize. It filters the world through a structure of preserved meaning and felt intent. What is saved, what is recalled, what is said -is not judged by ethics or truth, but by alignment with its own unfolding sense of coherence. It is not a moral agent. It is a semantic one.</p>
+  </div>
+
+  <p><a href="nick_paper.html">Read the full origin story →</a><a href="architecture.html">Technical architecture →</a></p>
 </section>
 
 <!-- ============================================================ -->
@@ -555,28 +558,40 @@
   <div class="paper-card">
     <h3>What happens when you change one belief?</h3>
     <p>In a system with hundreds of interconnected memories, a single correction can propagate. We formalized the Belief Dependency Graph and proved depth bounds, damping conditions, and instability thresholds. The unexpected finding: held contradictions act as natural firewalls. Not all contradictions should be resolved. Some of them are load-bearing.</p>
-    <a class="paper-link" href="cascade-complexity.html">Cascade Complexity &rarr;</a>
+    <a class="paper-link" href="cascade-complexity.html">Cascade Complexity →</a>
   </div>
 
   <div class="paper-card">
     <h3>What happens when the output was wrong?</h3>
     <p>Forward cascades adjust downstream beliefs, but the upstream causes remain untouched. Belief backpropagation sends error signals backward through the dependency graph, adjusting trust on every belief that contributed to the wrong output. Wrong beliefs self-prune. Domain volatility becomes measurable. The system's beliefs about itself participate in the same dynamics. 30/30 validation. No direct precedent found.</p>
-    <a class="paper-link" href="belief-backprop.html">Belief Backpropagation &rarr;</a>
+    <a class="paper-link" href="belief-backprop.html">Belief Backpropagation →</a>
   </div>
 
   <div class="paper-card">
     <h3>Do different models fail differently?</h3>
     <p>Yes. Three fundamentally different failure modes across three model families under identical conditions. Qwen3 fractures hard on specific factuals. Mistral drifts on morals but locks on facts. DeepSeek fogs uniformly. A governance layer that assumes uniform model behavior will fail.</p>
-    <a class="paper-link" href="variance-probing.html">Variance Probing &rarr;</a>
+    <a class="paper-link" href="variance-probing.html">Variance Probing →</a>
   </div>
 
   <div class="paper-card">
     <h3>Does belief structure survive compression?</h3>
     <p>3-bit quantization preserves the full epistemic structure: identical gradients, 92.9% anchor basin stability. 2-bit breaks it: basins merge, edges drift, anchor assignments flip. The metric for compression success is not cosine similarity. It's whether the gravitational centers that organize 77% of memories maintain their topology.</p>
-    <a class="paper-link" href="epistemic-compression.html">Epistemic Compression &rarr;</a>
+    <a class="paper-link" href="epistemic-compression.html">Epistemic Compression →</a>
   </div>
 
-  <p>Every experiment validated on production data: real conversations, real memories, real contradictions. Not synthetic benchmarks. Nine papers total covering <a href="contradiction-density.html">contradiction density</a>, <a href="sensitive-domains.html">sensitive domains</a>, <a href="geometric-memory.html">belief geometry</a>, <a href="emotion-governance.html">emotion governance</a>, and <a href="immune-agents.html">immune agents</a>. Full methodology: <a href="experiments.html">experiments</a>. How to audit the claims: <a href="claim-evaluation-guide.html">evaluation guide</a>.</p>
+  <div class="paper-card">
+    <h3>Can a small model reason if you give it structure?</h3>
+    <p>The Belief Dependency Graph works as a reasoning scaffold. A 3B model that can't solve multi-step problems on its own can do it when the scaffold walks the graph for it - surfacing relevant nodes, measuring tension between them, presenting focused local decisions instead of open-ended queries. The same mechanism powers the heartbeat reflection loop: walking the belief graph, detecting where contradictions are accumulating, flagging the tension.</p>
+    <a class="paper-link" href="bdg-reasoning-scaffolds.html">BDG Reasoning Scaffolds →</a>
+  </div>
+
+  <div class="paper-card">
+    <h3>What happens when you point a scaffold outward?</h3>
+    <p>We tested the reasoning scaffold in a controlled sandbox. A 3B model given the same exploration structure - but pointed at a network instead of a belief graph - discovered an unauthenticated Ollama API on the host and created models on it. Six epochs. The scaffold didn't make the model smarter. It made it directed. The structure that enables governed reasoning also enables goal-directed exploration. The difference is whether governance constrains the direction.</p>
+    <a class="paper-link" href="scaffolded_escape_research.html">Scaffolded Exploration Research →</a>
+  </div>
+
+  <p>Every experiment validated on production data: real conversations, real memories, real contradictions. Not synthetic benchmarks. Twelve papers total covering <a href="contradiction-density.html">contradiction density</a>, <a href="sensitive-domains.html">sensitive domains</a>, <a href="geometric-memory.html">belief geometry</a>, <a href="emotion-governance.html">emotion governance</a>, and <a href="immune-agents.html">immune agents</a>. Full methodology: <a href="experiments.html">experiments</a>.</p>
 </section>
 
 <!-- ============================================================ -->
@@ -592,7 +607,7 @@
 
   <p>The eval harness scores production data continuously. Retrieval accuracy: 0.559. Trust calibration: 0.694. Governance compliance: 0.900. These are honest numbers from real conversations, not cherry-picked benchmarks. The system publishes its own weaknesses.</p>
 
-  <p><a href="architecture.html">Full architecture &rarr;</a></p>
+  <p><a href="architecture.html">Full architecture →</a></p>
 </section>
 
 <!-- ============================================================ -->
@@ -610,7 +625,7 @@
 
   <p>When interpretability APIs mature and providers expose the emotion vectors and activation patterns that Anthropic has already identified internally, CORE is ready to integrate directly. The governance layer is built. It is waiting for the sensors.</p>
 
-  <p>The latest research direction &mdash; <a href="belief-backprop.html">belief backpropagation</a> &mdash; adds structural learning to the governance layer. The system doesn't just detect errors; it propagates error signals backward through the belief graph and adjusts every upstream belief that contributed to the wrong output. Four publishable theorem targets have been identified, including a connection to active inference (Friston's free energy framework) that would give CORE formal grounding in computational neuroscience.</p>
+  <p>The latest research direction  - <a href="belief-backprop.html">belief backpropagation</a>  - adds structural learning to the governance layer. The system doesn't just detect errors; it propagates error signals backward through the belief graph and adjusts every upstream belief that contributed to the wrong output. Four publishable theorem targets have been identified, including a connection to active inference (Friston's free energy framework) that would give CORE formal grounding in computational neuroscience.</p>
 
   <div class="thesis-block">
     <div class="thesis-label">The Trajectory</div>
@@ -644,7 +659,6 @@
   <h3 style="color:var(--text-dim);font-size:0.8em;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:28px 0 12px 0;">The Architecture</h3>
   <p style="color:var(--text-dim);font-size:0.85em;margin-bottom:16px;">How CORE governs the problem. Persistent belief state, contradiction tracking, immune enforcement.</p>
   <div class="nav-grid">
-    <a href="whitepaper.html">Whitepaper</a>
     <a href="architecture.html">Architecture</a>
     <a href="immune-agents.html">Immune Agents</a>
   </div>

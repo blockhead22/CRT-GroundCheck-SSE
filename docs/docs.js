@@ -20,7 +20,6 @@
     { href: 'scaffolded_escape_research.html', label: 'Scaffolded Escape', group: 'Evidence' },
     { href: 'labs.html',                   label: 'Labs',                   group: 'Evidence' },
     // Architecture (how CORE works)
-    { href: 'whitepaper.html',             label: 'Whitepaper',             group: 'Architecture' },
     { href: 'architecture.html',           label: 'Architecture',           group: 'Architecture' },
     { href: 'immune-agents.html',          label: 'Immune Agents',          group: 'Architecture' },
     // Theory (formal foundations)
