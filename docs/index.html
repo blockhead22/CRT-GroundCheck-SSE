@@ -290,7 +290,7 @@
   <div class="sidebar-title">Aeteros CORE</div>
   <a href="#problem">01 The Problem</a>
   <a href="#thesis">02 The Thesis</a>
-  <a href="#architecture">03 The Architecture</a>
+  <a href="#architecture">03 How It Got Built</a>
   <a href="#research">04 The Research</a>
   <a href="#running">05 What's Running</a>
   <a href="#future">06 Where It Goes</a>
@@ -392,71 +392,27 @@
 <!-- ============================================================ -->
 <section id="architecture">
   <span class="chapter-num">Chapter 3</span>
-  <h2>The Architecture</h2>
+  <h2>How It Got Built</h2>
 
-  <p>Every message passes through a 12-step pipeline. Governance checkpoints are woven throughout, not bolted on at the end.</p>
+  <p>The governance framework was not designed. It was discovered. Each mechanism started as a specific fix for a specific failure. The failures accumulated into an architecture.</p>
 
-  <div class="pipeline">
-    <div class="pipeline-row"><div class="pipeline-idx">1</div><div class="pipeline-content"><div class="pipeline-name">Input</div><div class="pipeline-desc">Raw message intake, session context loading</div></div><div class="pipeline-tag">Preprocessing</div></div>
-    <div class="pipeline-row"><div class="pipeline-idx">2</div><div class="pipeline-content"><div class="pipeline-name">Intent Classification</div><div class="pipeline-desc">Local model routes by purpose: question, correction, preference, task</div></div><div class="pipeline-tag">Routing</div></div>
-    <div class="pipeline-row"><div class="pipeline-idx">3</div><div class="pipeline-content"><div class="pipeline-name">Epistemic Routing</div><div class="pipeline-desc">Model selection by fragility profile, cost, and task complexity</div></div><div class="pipeline-tag">Governance L4</div></div>
-    <div class="pipeline-row"><div class="pipeline-idx">4</div><div class="pipeline-content"><div class="pipeline-name">Context Assembly</div><div class="pipeline-desc">Session state, user profile, belief priors loaded into prompt</div></div><div class="pipeline-tag">State</div></div>
-    <div class="pipeline-row"><div class="pipeline-idx">5</div><div class="pipeline-content"><div class="pipeline-name">Memory Retrieval</div><div class="pipeline-desc">Semantic search + trust-weighted ranking across persistent memory</div></div><div class="pipeline-tag">Memory</div></div>
-    <div class="pipeline-row"><div class="pipeline-idx">6</div><div class="pipeline-content"><div class="pipeline-name">Pre-Generation Governance</div><div class="pipeline-desc">Drift detection, contradiction check, confidence gating</div></div><div class="pipeline-tag">Governance L1&ndash;L3</div></div>
-    <div class="pipeline-row"><div class="pipeline-idx">7</div><div class="pipeline-content"><div class="pipeline-name">Generation</div><div class="pipeline-desc">LLM produces response with governance-constrained prompt</div></div><div class="pipeline-tag">LLM</div></div>
-    <div class="pipeline-row"><div class="pipeline-idx">8</div><div class="pipeline-content"><div class="pipeline-name">Slot Extraction</div><div class="pipeline-desc">Facts, preferences, corrections parsed from response and user message</div></div><div class="pipeline-tag">Learning</div></div>
-    <div class="pipeline-row"><div class="pipeline-idx">9</div><div class="pipeline-content"><div class="pipeline-name">Execution Verification</div><div class="pipeline-desc">Did the response actually address the query? Belief vs speech gap audit</div></div><div class="pipeline-tag">Governance L5</div></div>
-    <div class="pipeline-row"><div class="pipeline-idx">10</div><div class="pipeline-content"><div class="pipeline-name">Contradiction Detection</div><div class="pipeline-desc">New facts checked against existing beliefs; conflicts logged, not erased</div></div><div class="pipeline-tag">Memory</div></div>
-    <div class="pipeline-row"><div class="pipeline-idx">11</div><div class="pipeline-content"><div class="pipeline-name">Final Governance</div><div class="pipeline-desc">Epistemic posture check, immune agent sweep, cascade pressure eval</div></div><div class="pipeline-tag">Governance L6</div></div>
-    <div class="pipeline-row"><div class="pipeline-idx">12</div><div class="pipeline-content"><div class="pipeline-name">Render</div><div class="pipeline-desc">Final response delivered with trust metadata, pipeline summary, drift indicators</div></div><div class="pipeline-tag">Output</div></div>
+  <p>The first version tried to reconstruct responses from compressed memory. A small transformer trained on real conversations. It would compress a thought, rebuild it, and check if the meaning survived the round-trip. Most of the time it didn't. So a check was built: after generation, compare the output to the memory it came from. If similarity dropped below threshold, flag it, retry, or refuse to answer. Compress, inflate, collapse, validate. That became the <a href="architecture.html">fidelity mirror</a>. The first governance mechanism, disguised as debugging.</p>
+
+  <p>Then the system started storing bad outputs as memories. A fallback model would hallucinate something, and the memory layer would index it alongside real facts. Next session, the hallucination would get retrieved and repeated with confidence. So quarantine was built: low-confidence outputs get marked, stored separately, skipped during retrieval. That became trust-tiered memory storage.</p>
+
+  <p>Then contradictions piled up. The system said one thing Tuesday and the opposite Thursday and never noticed. A contradiction manager was built. Not to resolve contradictions, but to <em>hold</em> them. To say: these two beliefs conflict, and I'm not going to pretend they don't. That became the <a href="glossary.html#held-contradiction">held contradiction</a> design law.</p>
+
+  <p>Then corrections didn't fix what caused them. The correction was absorbed at the leaf. The root cause survived. So a backward pass was built: when a correction happens, the error signal flows upstream through the dependency graph, adjusting trust on every belief that contributed to the wrong output. That became <a href="belief-backprop.html">belief backpropagation</a>. Validated 30/30. No direct precedent found.</p>
+
+  <div class="quote">
+    <p>I didn't design governance. I discovered it. Each fix was a scar from a failure. The scars accumulated into an architecture.</p>
   </div>
 
-  <p>Six governance layers monitor the pipeline at different scales:</p>
+  <p>The pattern behind every fix was the same thing from different angles: measuring the distance between what the system said and what the evidence supported, and enforcing that distance. At generation time. At storage time. At retrieval time. Across the entire graph.</p>
 
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>Layer</th><th>Name</th><th>What It Watches</th></tr></thead>
-    <tbody>
-      <tr><td><strong>L1</strong></td><td>Observation</td><td>Raw event logging. Every pipeline step recorded.</td></tr>
-      <tr><td><strong>L2</strong></td><td>Drift Detection</td><td>Response alignment vs. original intent, per-turn and running average</td></tr>
-      <tr><td><strong>L3</strong></td><td>Contradiction</td><td>New claims vs. existing beliefs, cascade pressure estimation</td></tr>
-      <tr><td><strong>L4</strong></td><td>Epistemic Routing</td><td>Model selection by task type and known fragility profile</td></tr>
-      <tr><td><strong>L5</strong></td><td>Execution Beliefs</td><td>Did the system do what it said it would? Action receipt verification</td></tr>
-      <tr><td><strong>L6</strong></td><td>Epistemic Posture</td><td>Structural response gating. Confidence determines depth, not just content.</td></tr>
-    </tbody>
-  </table>
-  </div>
+  <p>Today the system runs a 12-step pipeline with 6 governance layers and 5 autonomous <a href="immune-agents.html">immune agents</a> that enforce constitutional laws in real time. The agents are structural, not advisory. The system cannot violate its own principles even if the LLM wants to.</p>
 
-  <p>And five autonomous immune agents enforce constitutional laws across the pipeline:</p>
-
-  <div class="agent-list">
-    <div class="agent-cell">
-      <div class="agent-name">SpeechLeakDetector</div>
-      <div class="agent-desc">Catches LLM output bleeding into belief state</div>
-    </div>
-    <div class="agent-cell">
-      <div class="agent-name">TemplateDetector</div>
-      <div class="agent-desc">Flags rote, templated responses that bypass reasoning</div>
-    </div>
-    <div class="agent-cell">
-      <div class="agent-name">PrematureResolutionGuard</div>
-      <div class="agent-desc">Blocks contradictions from resolving without evidence</div>
-    </div>
-    <div class="agent-cell">
-      <div class="agent-name">MemoryCorruptionGuard</div>
-      <div class="agent-desc">Prevents writes that would degrade memory integrity</div>
-    </div>
-    <div class="agent-cell">
-      <div class="agent-name">GapAuditor</div>
-      <div class="agent-desc">Measures and reports belief/speech divergence per response</div>
-    </div>
-    <div class="agent-cell">
-      <div class="agent-name">ContinuityAuditor</div>
-      <div class="agent-desc">Verifies cross-session consistency of claims and preferences</div>
-    </div>
-  </div>
-
-  <p>These agents are structural, not advisory. The system cannot violate its own principles even if the LLM wants to. Full architecture: <a href="architecture.html">architecture.html</a>. Immune system design: <a href="immune-agents.html">immune-agents.html</a>.</p>
+  <p><a href="nick_paper.html">Read the full origin story &rarr;</a>&emsp;<a href="architecture.html">Technical architecture &rarr;</a></p>
 </section>
 
 <!-- ============================================================ -->
@@ -466,73 +422,33 @@
   <span class="chapter-num">Chapter 4</span>
   <h2>The Research</h2>
 
-  <p>The research behind CORE did not start as a research project. It started as an attempt to fix real problems in a real system. Each paper emerged because building the system exposed a question that demanded formal investigation.</p>
+  <p>None of this started as research. Every paper exists because building the system exposed a question that demanded formal investigation. The math followed the engineering, not the other way around.</p>
 
   <div class="paper-card">
-    <h3>It started with cascade complexity</h3>
-    <p>The first question was simple: what happens when you change one belief? In a system with hundreds of interconnected memories, a single correction can propagate. We needed to know how far, how fast, and whether it converges.</p>
-    <p>We formalized this as the Belief Dependency Graph and proved the math: depth bounds on cascade propagation, damping conditions for convergence, width bounds on affected nodes, and instability thresholds where small changes cause unbounded revision. The unexpected finding: held contradictions act as natural firewalls that limit cascade propagation. Not all contradictions should be resolved. Some of them are load-bearing.</p>
-    <a class="paper-link" href="cascade-complexity.html">Read: On the Complexity of Belief Revision Cascades &rarr;</a>
+    <h3>What happens when you change one belief?</h3>
+    <p>In a system with hundreds of interconnected memories, a single correction can propagate. We formalized the Belief Dependency Graph and proved depth bounds, damping conditions, and instability thresholds. The unexpected finding: held contradictions act as natural firewalls. Not all contradictions should be resolved. Some of them are load-bearing.</p>
+    <a class="paper-link" href="cascade-complexity.html">Cascade Complexity &rarr;</a>
   </div>
 
   <div class="paper-card">
-    <h3>Then we made it learn from its mistakes</h3>
-    <p>The cascade paper answered "what happens when a belief changes?" The next question was harder: "what happens when the output was wrong?" The forward cascade adjusts downstream beliefs, but the upstream causes &mdash; the retrieval scores, slot classifications, and supporting beliefs that produced the bad answer &mdash; remained untouched.</p>
-    <p>We formalized <strong>belief backpropagation</strong>: contradiction resolution generates an epistemic loss signal that flows backward through the BDG, adjusting every belief that contributed to the incorrect output. Three behaviors emerge naturally: wrong beliefs self-prune from accumulated gradient, domain volatility becomes measurable, and the system's beliefs about itself participate in the same trust dynamics. Six validation experiments pass (30/30). Deep literature search found no direct precedent.</p>
-    <a class="paper-link" href="belief-backprop.html">Read: Reverse Cascade: Error-Driven Trust Evolution &rarr;</a>
+    <h3>What happens when the output was wrong?</h3>
+    <p>Forward cascades adjust downstream beliefs, but the upstream causes remain untouched. Belief backpropagation sends error signals backward through the dependency graph, adjusting trust on every belief that contributed to the wrong output. Wrong beliefs self-prune. Domain volatility becomes measurable. The system's beliefs about itself participate in the same dynamics. 30/30 validation. No direct precedent found.</p>
+    <a class="paper-link" href="belief-backprop.html">Belief Backpropagation &rarr;</a>
   </div>
 
   <div class="paper-card">
-    <h3>Then we proved belief structure survives compression</h3>
-    <p>Geometric compression is well-studied: cosine similarity after quantization, top-k recall after encoding. But does the <em>belief structure</em> survive? Do dependency edges still hold? Does the reverse cascade still produce correct trust adjustments? Do anchor basins &mdash; the gravitational centers that organize 77% of memories &mdash; maintain their topology?</p>
-    <p>We tested at three compression levels and found a cliff. 3-bit quantization preserves the full epistemic structure: identical gradients, 92.9% anchor basin stability, identical convergence. 2-bit breaks it: basins merge, edges drift, anchor assignments flip. The metric for compression success is not cosine similarity. It's anchor basin assignment stability.</p>
-    <a class="paper-link" href="epistemic-compression.html">Read: Epistemic Compression: Does Belief Structure Survive Quantization? &rarr;</a>
+    <h3>Do different models fail differently?</h3>
+    <p>Yes. Three fundamentally different failure modes across three model families under identical conditions. Qwen3 fractures hard on specific factuals. Mistral drifts on morals but locks on facts. DeepSeek fogs uniformly. A governance layer that assumes uniform model behavior will fail.</p>
+    <a class="paper-link" href="variance-probing.html">Variance Probing &rarr;</a>
   </div>
 
   <div class="paper-card">
-    <h3>Then we looked at the shape of belief</h3>
-    <p>Standard vector stores treat memories as points in embedding space. But a belief is not a point. It has a center (what you think), an uncertainty shape (how sure you are and in which directions), and a confidence weight (how much evidence supports it). We formalized memories as belief loci on a Riemannian manifold.</p>
-    <p>This reframing solved practical problems. Contradiction becomes geometric overlap between distributions. Volatility becomes covariance magnitude. Temperature governance (how freely the system should speculate) falls directly out of local curvature in belief space.</p>
-    <a class="paper-link" href="geometric-memory.html">Read: Belief Loci: Geometric Memory Representations &rarr;</a>
+    <h3>Does belief structure survive compression?</h3>
+    <p>3-bit quantization preserves the full epistemic structure: identical gradients, 92.9% anchor basin stability. 2-bit breaks it: basins merge, edges drift, anchor assignments flip. The metric for compression success is not cosine similarity. It's whether the gravitational centers that organize 77% of memories maintain their topology.</p>
+    <a class="paper-link" href="epistemic-compression.html">Epistemic Compression &rarr;</a>
   </div>
 
-  <div class="paper-card">
-    <h3>We measured what stateless systems actually do</h3>
-    <p>The contradiction density analysis was the empirical anchor. 59,370 messages across 13 months of real conversation. Not synthetic benchmarks. Not GPT-generated test data. Actual long-term interaction with a single user who cared about consistency.</p>
-    <p>The initial v1 findings were damning: zero continuity awareness, <span class="eval-inline"><span class="bad">0.34</span></span> mean self-consistency. A v2 reanalysis with stricter intent-matching confirmed the signal: 47 genuine contradictions survive query filtering (10.4% of intent-matched pairs), concentrated in decision-heavy domains. Time amplifies the failure: hard contradiction rate nearly doubles at 3+ months. Arc-level analysis found 59.5% of long conversations contain stance flips invisible to pairwise detection.</p>
-    <a class="paper-link" href="contradiction-density.html">Read: Contradiction Density in Stateless AI Systems &rarr;</a>
-  </div>
-
-  <div class="paper-card">
-    <h3>We found it in the domains that matter most</h3>
-    <p>The general contradiction finding becomes a concrete harm concern in sensitive domains. We extracted stance-bearing advice on substance use and dating readiness from the full corpus. The system alternated between incompatible frameworks: teaching measured cannabis use in one session, advising abstinence 192 days later, framing weed as the root of cognitive problems a month after that. Same user, medication transition in progress, no session aware of the others.</p>
-    <p>The pattern is identical in dating: "you deserve connection" in April, "step away from dating" in January, with no acknowledgment that the prior stance existed.</p>
-    <a class="paper-link" href="sensitive-domains.html">Read: Sensitive Domain Contradictions &rarr;</a>
-  </div>
-
-  <div class="paper-card">
-    <h3>We stress-tested across models</h3>
-    <p>If CORE is going to govern arbitrary LLMs, it needs to understand how different models fail. We ran variance probes across Qwen3, Mistral, and DeepSeek under identical conditions and found three fundamentally different failure modes: <strong>fracture</strong> (Qwen3 cracks hard on specific factuals), <strong>gradient</strong> (Mistral diffuses on morals but locks on facts), and <strong>fog</strong> (DeepSeek spreads uniformly; everything moves, nothing locks).</p>
-    <p>This is not one "right" behavior with deviations. These are three distinct instability regimes. A governance layer that assumes uniform model behavior will fail.</p>
-    <a class="paper-link" href="variance-probing.html">Read: Variance Probing: Fragility Landscapes in LLMs &rarr;</a>
-  </div>
-
-  <div class="paper-card">
-    <h3>Then Anthropic demonstrated the dynamics exist</h3>
-    <p>In April 2026, Anthropic's interpretability team published findings on 171 functional emotion vectors in Claude Sonnet 4.5. These are measurable neural activation patterns that causally influence behavior. Amplifying a "desperate" vector increased reward hacking. Amplifying "calm" reduced it.</p>
-    <p>CORE already had the governance infrastructure for exactly these dynamics. Cascade pressure maps to desperation precursors. Drift detection maps to emotion monitoring. The three instability regimes map to emotional profiling across models. CORE's governance infrastructure maps to the dynamics Anthropic identified. The control plane exists; the interpretability APIs to connect them are still maturing.</p>
-    <a class="paper-link" href="emotion-governance.html">Read: Emotion Governance: Bridging Interpretability to Control &rarr;</a>
-  </div>
-
-  <div class="paper-card">
-    <h3>We built the immune system</h3>
-    <p>Governance rules are useless if the system being governed can override them. The immune agent architecture enforces five constitutional laws through autonomous agents that monitor the pipeline in real time. SpeechLeakDetector prevents the LLM from rewriting beliefs. PrematureResolutionGuard prevents contradictions from being silently erased. GapAuditor measures the distance between what the system believes and what it says.</p>
-    <p>These are structural constraints, not filters. Advisory governance says "you should not do this." Structural governance means the system physically cannot.</p>
-    <a class="paper-link" href="immune-agents.html">Read: Immune Agents: Constitutional Enforcement for AI &rarr;</a>
-  </div>
-
-  <div class="note"><strong>Note:</strong> Every experiment in this research body was validated on Aether's production data: real conversations, real memories, real contradictions. Not synthetic benchmarks. The <a href="experiments.html">experiments page</a> documents the full methodology.</div>
-  <a class="paper-link" href="claim-evaluation-guide.html">Read: Claim Evaluation Guide: How to Audit the Metrics and Positions &rarr;</a>
+  <p>Every experiment validated on production data: real conversations, real memories, real contradictions. Not synthetic benchmarks. Nine papers total covering <a href="contradiction-density.html">contradiction density</a>, <a href="sensitive-domains.html">sensitive domains</a>, <a href="geometric-memory.html">belief geometry</a>, <a href="emotion-governance.html">emotion governance</a>, and <a href="immune-agents.html">immune agents</a>. Full methodology: <a href="experiments.html">experiments</a>. How to audit the claims: <a href="claim-evaluation-guide.html">evaluation guide</a>.</p>
 </section>
 
 <!-- ============================================================ -->
@@ -542,40 +458,13 @@
   <span class="chapter-num">Chapter 5</span>
   <h2>What's Running</h2>
 
-  <p>Aether is a production system in daily use for months, governing real conversations through the full CORE pipeline.</p>
+  <p>Aether is not a prototype. It's a production system in daily use, governing real conversations through the full CORE pipeline. 820+ persistent memories. 135+ features shipped. Every message passes through 12 pipeline stages with governance checkpoints woven throughout.</p>
 
-  <div class="stat-row">
-    <div class="stat-cell">
-      <div class="stat-value neutral">820+</div>
-      <div class="stat-label">Persistent Memories</div>
-    </div>
-    <div class="stat-cell">
-      <div class="stat-value neutral">135+</div>
-      <div class="stat-label">Features Shipped</div>
-    </div>
-    <div class="stat-cell">
-      <div class="stat-value good">6</div>
-      <div class="stat-label">Governance Layers</div>
-    </div>
-  </div>
+  <p>The system routes across local models and cloud providers, with automatic fallback chains and model-aware fragility governance. When alignment drops below threshold, the system forces memory re-retrieval. After 3 consecutive drifts, it halts and asks the user. When corrections resolve contradictions, error signals flow backward through the belief graph, adjusting every upstream belief that contributed to the wrong output.</p>
 
-  <p>The system runs as an Electron desktop application with an MCP bridge exposing 18 tools for external integration. It supports multi-model routing across local models (Ollama) and cloud providers (Claude, GPT-4o), with automatic fallback chains and model-aware fragility governance.</p>
+  <p>The eval harness scores production data continuously. Retrieval accuracy: 0.559. Trust calibration: 0.694. Governance compliance: 0.900. These are honest numbers from real conversations, not cherry-picked benchmarks. The system publishes its own weaknesses.</p>
 
-  <p>Key production capabilities:</p>
-  <ul>
-    <li><strong>Persistent belief state:</strong> memories with trust scores, contradiction tracking, temporal decay</li>
-    <li><strong>Governance bridge:</strong> memory trust scores connected to opinion drift detection in real time</li>
-    <li><strong>Agent dispatch:</strong> Aether dispatches Claude Code for write operations while maintaining read-only governance</li>
-    <li><strong>Drift steering:</strong> when alignment drops below threshold, the system forces memory re-retrieval. After 3 consecutive drifts, it halts and asks the user</li>
-    <li><strong>3D belief space:</strong> Three.js visualization of memory embeddings with PCA projection, contradiction edges, topic clustering</li>
-    <li><strong>Self-awareness loop:</strong> heartbeat reflection that updates the system's model of its own capabilities and limitations</li>
-    <li><strong>Reverse cascade:</strong> when corrections resolve contradictions, error signals flow backward through the BDG, adjusting upstream trust scores. Self-pruning, domain volatility, and reflexive self-model calibration follow from the mechanism</li>
-    <li><strong>Query resonance (wobble):</strong> queries propagate through BDG edges, surfacing cross-domain facts that cosine retrieval misses &mdash; a health query brings forward work context and preference context because the graph knows they're causally connected. Originated as the Semantic String Engine (2025)</li>
-    <li><strong>Fidelity mirror:</strong> post-generation breathing loop that checks whether the response faithfully represents the belief state. Uses wobble-expanded memory for cross-domain grounding. Flags drift without blocking</li>
-  </ul>
-
-  <p>The eval harness scores production data continuously: retrieval accuracy <span class="eval-inline"><span class="warn">0.559</span></span>, trust calibration <span class="eval-inline"><span class="warn">0.694</span></span>, governance compliance <span class="eval-inline"><span class="good">0.900</span></span>. These are honest numbers from real conversations, not cherry-picked benchmarks.</p>
-
+  <p><a href="architecture.html">Full architecture &rarr;</a></p>
 </section>
 
 <!-- ============================================================ -->
