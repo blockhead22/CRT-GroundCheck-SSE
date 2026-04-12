@@ -2474,6 +2474,31 @@ class CRTMemorySystem:
         except Exception as _bdg_err:
             print(f"[BDG] add_memory failed (non-blocking): {_bdg_err}")
 
+        # Notify GravityBridge of new memory (topology + salience update)
+        try:
+            from personal_agent._gravity_singleton import get_gravity_bridge
+            _gravity = get_gravity_bridge()
+            if _gravity is not None:
+                _gravity_result = _gravity.on_memory_stored({
+                    "memory_id": memory.memory_id,
+                    "text": memory.text,
+                    "confidence": memory.confidence,
+                    "trust": memory.trust,
+                    "domain_tags": memory.domain_tags or [],
+                    "belnap_state": memory.belnap_state,
+                    "contradiction_count": memory.contradiction_count,
+                    "kind": kind,
+                    "timestamp": memory.timestamp,
+                })
+                if _gravity_result.get("salience_triggered"):
+                    logger.info(
+                        "[GRAVITY] Salience: %s (delta=%.3f)",
+                        _gravity_result["salience_reason"],
+                        _gravity_result["gravity_delta"],
+                    )
+        except Exception as _grav_err:
+            logger.debug("[GRAVITY] on_memory_stored failed (non-blocking): %s", _grav_err)
+
         return memory
 
     # ========================================================================

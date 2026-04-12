@@ -4116,6 +4116,17 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                     _bp_dynamic.append(_bp_ctx)
             except Exception:
                 pass
+            # Gravity topology
+            try:
+                from personal_agent._gravity_singleton import get_gravity_bridge
+                _gravity = get_gravity_bridge()
+                if _gravity is not None:
+                    _grav_sec = _gravity.prompt_section(max_rooms=8)
+                    if _grav_sec:
+                        _bp_dynamic.append(_grav_sec)
+            except Exception:
+                pass
+
             _bp_system = _bp_build(dynamic_parts=_bp_dynamic)
 
             _bp_answer = None
@@ -4568,6 +4579,17 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                         _dynamic_parts.append(_ctx_summary)
                 except Exception as _ctx_err:
                     _safe_print(f"[CONTEXT_FEED] injection failed: {_ctx_err}")
+
+                # Gravity topology — belief structure awareness
+                try:
+                    from personal_agent._gravity_singleton import get_gravity_bridge
+                    _gravity = get_gravity_bridge()
+                    if _gravity is not None:
+                        _gravity_section = _gravity.prompt_section(max_rooms=8)
+                        if _gravity_section:
+                            _dynamic_parts.append(_gravity_section)
+                except Exception as _grav_prompt_err:
+                    pass  # Non-blocking
 
                 _pc_system = build_system_prompt(dynamic_parts=_dynamic_parts)
 
