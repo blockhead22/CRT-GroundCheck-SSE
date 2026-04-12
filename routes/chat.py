@@ -7720,14 +7720,66 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                 break
                     except Exception:
                         pass
+                    # ── Fidelity mirror on agent loop response (Bug #9) ──
+                    _al_gates_passed = True
+                    _al_fidelity_meta = {}
+                    try:
+                        from personal_agent.fidelity_mirror import check_fidelity as _al_check_fidelity
+                        _al_fm_mems = []
+                        if _al_engine:
+                            try:
+                                _al_fm_results = _al_engine.memory.retrieve_memories(req.message[:500], k=8)
+                                _al_fm_mems = [
+                                    {"text": m.text[:300], "trust": m.trust, "memory_id": m.memory_id}
+                                    for m, _ in _al_fm_results
+                                ]
+                            except Exception:
+                                pass
+                        _al_fidelity = _al_check_fidelity(
+                            response=_al_answer,
+                            query=req.message,
+                            memories=_al_fm_mems,
+                        )
+                        _al_fidelity_meta = {
+                            "belief_fidelity": _al_fidelity.belief_fidelity,
+                            "request_alignment": _al_fidelity.request_alignment,
+                            "factual_grounding": _al_fidelity.factual_grounding,
+                            "composite": _al_fidelity.composite,
+                            "passed": _al_fidelity.passed,
+                        }
+                        if not _al_fidelity.passed:
+                            _al_gates_passed = False
+                            _fm_findings = []
+                            if _al_fidelity.belief_fidelity < 0.2:
+                                _fm_findings.append("I may not be drawing on what I know about you")
+                            if _al_fidelity.request_alignment < 0.2:
+                                _fm_findings.append("I may not be directly answering your question")
+                            if _al_fidelity.factual_grounding < 0.1:
+                                _fm_findings.append("my claims aren't well-grounded in stored facts")
+                            if _fm_findings:
+                                _hedge = (
+                                    "**Heads up:** " + ", and ".join(_fm_findings) + ". "
+                                    "Take this with lower confidence.\n\n---\n\n"
+                                )
+                                _al_answer = _hedge + _al_answer
+                                _safe_print(f"[FIDELITY_ENFORCEMENT] Agent loop hedged ({len(_fm_findings)} findings)")
+                            yield _sse({"type": "epistemic_event", "content": f"Fidelity check failed", "metadata": {"event": "fidelity_fail", **_al_fidelity_meta}})
+                    except Exception as _al_fm_err:
+                        _safe_print(f"[FIDELITY_MIRROR] Agent loop skipped: {_al_fm_err}")
+
+                    # Expose retrieved memories for UI (matches legacy path's retrieved_memories key)
+                    _al_retrieved_mems = getattr(_loop, "retrieved_memories", [])
+
                     _done_meta_al = {
                         "tool_calls": _al_steps,
                         "agent_loop": True,
                         "tools_executed": _tools_executed,
                         "response_type": "task",
-                        "gates_passed": True,
+                        "gates_passed": _al_gates_passed,
                         "generation_source": _al_generation_source,
                         "belief_confidence": round(_al_belief, 3),
+                        "fidelity_mirror": _al_fidelity_meta,
+                        "retrieved_memories": _al_retrieved_mems,
                     }
                     if _governed_task:
                         _governed_task = _session_db.complete_governed_task(str(_governed_task["task_id"]), _al_answer) or _governed_task

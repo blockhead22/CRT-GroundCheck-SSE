@@ -1145,6 +1145,10 @@ class CRTEnhancedRAG:
                     # Boost by 50% for domain match
                     score = score * 1.5
                     logger.debug(f"[DOMAIN_BOOST] Memory '{mem.text[:40]}...' boosted for domains {domain_overlap}")
+                elif not domain_overlap and "general" not in set(mem_domains):
+                    # Penalize hard domain mismatch (e.g. career memory in programming conversation)
+                    score = score * 0.4
+                    logger.debug(f"[DOMAIN_PENALTY] Memory '{mem.text[:40]}...' penalized (domains {set(mem_domains)} vs query {set(relevant_domains)})")
 
             # Topic-aware boost: memories cited in prior responses on the same topic
             if _topic_memory_ids and mem.memory_id in _topic_memory_ids:

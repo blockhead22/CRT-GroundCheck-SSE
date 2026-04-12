@@ -766,6 +766,23 @@ def run_orchestrator(
                     runtime.safe_print(
                         f"[FIDELITY_MIRROR] FAILED composite={_fidelity.composite:.3f}"
                     )
+                    # Enforcement: hedge the response with disclosure (Bug #9 fix)
+                    _fm_findings = []
+                    if _fidelity.belief_fidelity < 0.2:
+                        _fm_findings.append("I may not be drawing on what I know about you")
+                    if _fidelity.request_alignment < 0.2:
+                        _fm_findings.append("I may not be directly answering your question")
+                    if _fidelity.factual_grounding < 0.1:
+                        _fm_findings.append("my claims aren't well-grounded in stored facts")
+                    if _fm_findings:
+                        _hedge = (
+                            "**Heads up:** " + ", and ".join(_fm_findings) + ". "
+                            "Take this with lower confidence.\n\n---\n\n"
+                        )
+                        accumulated_answer = _hedge + accumulated_answer
+                        runtime.safe_print(
+                            f"[FIDELITY_ENFORCEMENT] Hedged response ({len(_fm_findings)} findings)"
+                        )
                     # Emit a fidelity warning event for the frontend
                     yield runtime.emit({
                         "type": "epistemic_event",

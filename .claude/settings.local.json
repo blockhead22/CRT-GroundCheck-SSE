@@ -45,7 +45,8 @@
       "WebFetch(domain:claude.com)",
       "WebFetch(domain:red.anthropic.com)",
       "WebFetch(domain:www-cdn.anthropic.com)",
-      "WebFetch(domain:api.github.com)"
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:clearthis.page)"
     ]
   }
 }

@@ -659,17 +659,36 @@ class AgentToolLoop:
                     think_content = extract_think_content(text_content)
                     clean_text = strip_thinking_tags(text_content)
 
-                    # Unwrap JSON-wrapped responses from models like gemma3
-                    # that sometimes return {"response": "actual text"} instead of plain text
-                    if clean_text.strip().startswith('{"response"'):
+                    # Unwrap JSON-wrapped responses from models that return structured
+                    # objects instead of plain text (gemma3 {"response": ...},
+                    # orchestrator-style {"action": "respond", "message": ...}, etc.)
+                    _stripped = clean_text.strip()
+                    if _stripped.startswith("{"):
                         try:
                             import json as _json_unwrap
-                            _parsed = _json_unwrap.loads(clean_text.strip())
-                            if isinstance(_parsed, dict) and "response" in _parsed:
-                                clean_text = str(_parsed["response"])
-                                print("[AGENT_LOOP_DEBUG] Unwrapped JSON-wrapped response from model")
+                            _parsed = _json_unwrap.loads(_stripped)
+                            if isinstance(_parsed, dict):
+                                if "message" in _parsed:
+                                    clean_text = str(_parsed["message"])
+                                    print("[AGENT_LOOP_DEBUG] Unwrapped JSON 'message' field from model")
+                                elif "response" in _parsed:
+                                    clean_text = str(_parsed["response"])
+                                    print("[AGENT_LOOP_DEBUG] Unwrapped JSON 'response' field from model")
                         except Exception:
                             pass  # Not valid JSON, keep original
+                    # Also handle markdown code-fenced JSON (```json { ... } ```)
+                    elif "```" in _stripped:
+                        import re as _re_unwrap
+                        _fence_match = _re_unwrap.search(r'```(?:json)?\s*\n?(.*?)\n?\s*```', _stripped, _re_unwrap.DOTALL)
+                        if _fence_match:
+                            try:
+                                import json as _json_unwrap2
+                                _parsed = _json_unwrap2.loads(_fence_match.group(1).strip())
+                                if isinstance(_parsed, dict):
+                                    clean_text = str(_parsed.get("message") or _parsed.get("response") or clean_text)
+                                    print("[AGENT_LOOP_DEBUG] Unwrapped code-fenced JSON from model")
+                            except Exception:
+                                pass
 
                     if think_content and self.show_thinking:
                         yield {
@@ -1165,6 +1184,38 @@ class AgentToolLoop:
                         _ctx = build_context_summary(thread_id=thread_id, memory_db_path=_db_path)
                     if _ctx:
                         system_content += _ctx
+            except Exception:
+                pass
+
+        # Query-specific memory retrieval — guarantees grounding (fixes #6 + #8)
+        # Legacy path always retrieves; agent loop left it to LLM tool choice.
+        # Now we pre-inject relevant memories so the model starts grounded.
+        # Results stored on self.retrieved_memories for UI/SSE emission.
+        self.retrieved_memories = []
+        if self.engine and message:
+            try:
+                from personal_agent.crt_memory import sanitize_memory_for_prompt as _sanitize
+                _retrieved = self.engine.retrieve(message, k=5)
+                if _retrieved:
+                    _mem_lines = ["\n\n## Relevant memories for this query (trust-weighted):"]
+                    for _mem, _score in _retrieved:
+                        _text = _sanitize((_mem.text or "").strip()[:200])
+                        if _text:
+                            _trust = getattr(_mem, "trust", 0)
+                            _mem_lines.append(f"- [trust:{_trust:.2f}] {_text}")
+                            self.retrieved_memories.append({
+                                "text": (_mem.text or "").strip()[:300],
+                                "trust": _trust,
+                                "memory_id": getattr(_mem, "memory_id", ""),
+                                "similarity": round(_score, 3),
+                            })
+                    if len(_mem_lines) > 1:
+                        system_content += "\n".join(_mem_lines)
+                    self.retrieval_count = len(self.retrieved_memories)
+                    self.retrieval_avg_trust = (
+                        sum(m["trust"] for m in self.retrieved_memories) / len(self.retrieved_memories)
+                        if self.retrieved_memories else 0.0
+                    )
             except Exception:
                 pass
 

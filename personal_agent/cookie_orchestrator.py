@@ -293,6 +293,7 @@ class ClaudeCliBrain(BrainProvider):
                 encoding="utf-8",
                 errors="replace",
                 timeout=self._timeout,
+                cwd=os.path.expanduser("~"),  # neutral cwd — prevents Claude CLI from loading project memory
             )
             elapsed = (time.perf_counter() - t0) * 1000
             if proc.returncode != 0:
