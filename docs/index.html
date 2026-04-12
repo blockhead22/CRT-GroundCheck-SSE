@@ -7,8 +7,59 @@
 <link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="theme.css">
 <style>
-  /* Index-specific overrides (base.css handles everything else) */
+  /* Index-specific overrides */
   .hero { min-height: 90vh; }
+
+  /* ── Cinematic orbs ── */
+  .hero-orbs {
+    position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0;
+  }
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+  .orb-1 { width: 600px; height: 600px; background: radial-gradient(circle, rgba(99,102,241,0.55) 0%, transparent 70%);  top: -10%; left: -5%; }
+  .orb-2 { width: 500px; height: 500px; background: radial-gradient(circle, rgba(192,86,252,0.45) 0%, transparent 70%);  top: 20%; right: -8%; }
+  .orb-3 { width: 400px; height: 400px; background: radial-gradient(circle, rgba(236,72,153,0.35) 0%, transparent 70%);  bottom: -5%; left: 30%; }
+  .orb-4 { width: 300px; height: 300px; background: radial-gradient(circle, rgba(59,130,246,0.3)  0%, transparent 70%);  top: 50%; left: 10%; }
+
+  /* ── Animated gradient title ── */
+  #hero-title {
+    font-size: clamp(3.2em, 7vw, 5.5em);
+    letter-spacing: 0.05em;
+    margin-bottom: 0.2em;
+    font-weight: 800;
+    text-transform: uppercase;
+    background: linear-gradient(100deg, #fff 0%, #818cf8 20%, #c084fc 40%, #f472b6 60%, #818cf8 80%, #fff 100%);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    opacity: 0;
+    will-change: background-position, opacity;
+  }
+  /* E span: mirror the same gradient so background-clip works on inline-block */
+  #hero-title #hero-e {
+    display: inline-block;
+    transform: skewX(23deg);
+    margin: 0 -0.05em;
+    background: linear-gradient(100deg, #fff 0%, #818cf8 20%, #c084fc 40%, #f472b6 60%, #818cf8 80%, #fff 100%);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    will-change: background-position;
+  }
+  #hero-sub {
+    opacity: 0;
+    will-change: opacity, transform;
+  }
+  #hero-cue {
+    opacity: 0;
+  }
 </style>
 </head>
 <body>
@@ -17,11 +68,92 @@
 
 <!-- ===== HERO ===== -->
 <div class="hero">
-  <div class="hero-inner" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
-    <h1 style="font-size:clamp(3.2em,7vw,5.5em);letter-spacing:0.05em;margin-bottom:0.2em;font-weight:800;text-transform:uppercase;"><span class="grad">[A<span style="display:inline-block;transform:skewX(23deg);margin:0 -0.05em;-webkit-text-fill-color:#a78bfa;">E</span>TEROS]</span></h1>
-    <p class="sub" style="font-size:clamp(0.9em,1.8vw,1.2em);letter-spacing:0.45em;text-transform:uppercase;font-family:var(--mono);opacity:0.45;margin-bottom:0;width:100%;text-align:center;">AI that remembers what it believes.</p>
+  <!-- animated orbs -->
+  <div class="hero-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-4"></div>
   </div>
-  <div class="scroll-cue" style="opacity:0.2;font-size:0.55em;letter-spacing:3px;">&#9660;</div>
+
+  <div class="hero-inner" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
+    <h1 id="hero-title">A<span id="hero-e">E</span>TEROS</h1>
+    <p id="hero-sub" class="sub" style="font-size:clamp(0.9em,1.8vw,1.2em);letter-spacing:0.45em;text-transform:uppercase;font-family:var(--mono);opacity:0;margin-bottom:0;width:100%;text-align:center;">AI that remembers what it believes.</p>
+  </div>
+  <div id="hero-cue" class="scroll-cue" style="font-size:0.55em;letter-spacing:3px;">&#9660;</div>
+
+  <script>
+  (function() {
+    function initHero() {
+      var title = document.getElementById('hero-title');
+      var sub   = document.getElementById('hero-sub');
+      var cue   = document.getElementById('hero-cue');
+      var orbs  = document.querySelectorAll('.orb');
+
+      // Entrance timeline
+      var tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+      // Orbs bloom in staggered
+      tl.to(orbs[0], { opacity: 1, duration: 2.2, ease: 'power2.out' }, 0)
+        .to(orbs[1], { opacity: 1, duration: 2.0, ease: 'power2.out' }, 0.3)
+        .to(orbs[2], { opacity: 1, duration: 1.8, ease: 'power2.out' }, 0.6)
+        .to(orbs[3], { opacity: 1, duration: 1.6, ease: 'power2.out' }, 0.9)
+        // Title fades + rises in
+        .to(title, { opacity: 1, y: 0, duration: 1.1, ease: 'expo.out' }, 0.4)
+        // Sub appears
+        .to(sub,   { opacity: 0.45, y: 0, duration: 0.9, ease: 'power2.out' }, 1.0)
+        // Scroll cue
+        .to(cue,   { opacity: 0.2, duration: 0.6 }, 1.6);
+
+      // Set starting y offsets
+      gsap.set(title, { y: 28 });
+      gsap.set(sub,   { y: 12 });
+
+      // Fluid gradient drift — cycles through positions so there's no snap
+      var eSpan = document.getElementById('hero-e');
+      var targets = [title, eSpan];
+      gsap.set(targets, { backgroundPosition: '0% 50%' });
+      var sweep = gsap.timeline({ repeat: -1 });
+      sweep
+        .to(targets, { backgroundPosition: '100% 50%', duration: 4,   ease: 'sine.inOut' })
+        .to(targets, { backgroundPosition: '100% 0%',  duration: 3,   ease: 'sine.inOut' })
+        .to(targets, { backgroundPosition: '0% 0%',    duration: 4,   ease: 'sine.inOut' })
+        .to(targets, { backgroundPosition: '0% 100%',  duration: 3,   ease: 'sine.inOut' })
+        .to(targets, { backgroundPosition: '100% 100%',duration: 4,   ease: 'sine.inOut' })
+        .to(targets, { backgroundPosition: '0% 50%',   duration: 3.5, ease: 'sine.inOut' });
+
+      // Orbs float independently
+      var floats = [
+        { el: orbs[0], x: 40,  y: -30, dur: 14 },
+        { el: orbs[1], x: -35, y: 25,  dur: 17 },
+        { el: orbs[2], x: 25,  y: 40,  dur: 12 },
+        { el: orbs[3], x: -20, y: -35, dur: 19 },
+      ];
+      floats.forEach(function(f) {
+        gsap.to(f.el, {
+          x: f.x, y: f.y,
+          duration: f.dur,
+          ease: 'sine.inOut',
+          repeat: -1,
+          yoyo: true
+        });
+      });
+
+      // Parallax orbs on mouse move
+      document.addEventListener('mousemove', function(e) {
+        var mx = (e.clientX / window.innerWidth  - 0.5) * 2;
+        var my = (e.clientY / window.innerHeight - 0.5) * 2;
+        gsap.to(orbs[0], { x: mx * 30,  y: my * 20,  duration: 1.8, ease: 'power1.out', overwrite: 'auto' });
+        gsap.to(orbs[1], { x: mx * -25, y: my * 18,  duration: 2.0, ease: 'power1.out', overwrite: 'auto' });
+        gsap.to(orbs[2], { x: mx * 20,  y: my * -15, duration: 1.6, ease: 'power1.out', overwrite: 'auto' });
+        gsap.to(orbs[3], { x: mx * -15, y: my * 25,  duration: 2.2, ease: 'power1.out', overwrite: 'auto' });
+      });
+    }
+
+    if (window.gsap) { initHero(); }
+    else { (window.__gsapCallbacks = window.__gsapCallbacks || []).push(initHero); }
+  })();
+  </script>
 </div>
 
 <script>

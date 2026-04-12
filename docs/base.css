@@ -26,7 +26,7 @@
   --sans: 'Inter', system-ui, -apple-system, sans-serif;
   --mono: 'IBM Plex Mono', 'Consolas', monospace;
   /* Hero accents */
-  --hero-bg: linear-gradient(160deg, #060814 0%, #0c1228 30%, #1a0e2e 60%, #0d1a3a 100%);
+  --hero-bg: linear-gradient(160deg, #020408 0%, #060c18 30%, #0e0718 60%, #050e1e 100%);
   --hero-grad1: rgba(99,102,241,0.08);
   --hero-grad2: rgba(236,72,153,0.06);
   --hero-grad3: rgba(59,130,246,0.05);
@@ -143,11 +143,14 @@ pre, code {
     radial-gradient(ellipse at 30% 50%, var(--hero-grad1) 0%, transparent 50%),
     radial-gradient(ellipse at 70% 30%, var(--hero-grad2) 0%, transparent 50%),
     radial-gradient(ellipse at 50% 80%, var(--hero-grad3) 0%, transparent 50%);
-  animation: heroDrift 20s ease-in-out infinite alternate;
+  animation: heroDrift 14s ease-in-out infinite alternate;
 }
 @keyframes heroDrift {
-  0% { transform: translate(0,0) rotate(0deg); }
-  100% { transform: translate(-2%,1%) rotate(1deg); }
+  0%   { transform: translate(0%,   0%)  rotate(0deg)    scale(1);    }
+  25%  { transform: translate(-4%, -3%)  rotate(1.5deg)  scale(1.04); }
+  50%  { transform: translate(3%,   4%)  rotate(-1deg)   scale(1.02); }
+  75%  { transform: translate(-2%,  5%)  rotate(2deg)    scale(1.05); }
+  100% { transform: translate(4%,  -2%)  rotate(-1.5deg) scale(1.03); }
 }
 .hero-inner {
   position: relative;

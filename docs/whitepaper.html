@@ -163,11 +163,8 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
 <div class="hero">
   <div class="hero-inner">
     <div class="hero-badge">Whitepaper</div>
-    <h1><span class="grad">CORE</span> / Aether</h1>
-    <p class="sub">Contradiction-preserving, trust-evolving governance for AI memory and response verification</p>
-    <div class="finding-box">
-      <p>A system where memory is auditable and trust-weighted, not just storage. Where contradiction is signal, not failure. Where the model generates, but does not decide what is believed.</p>
-    </div>
+    <h1>The <span class="grad">CORE</span> Whitepaper</h1>
+    <p class="sub">What it set out to solve. What it discovered along the way. And how the discoveries reshaped the architecture.</p>
   </div>
   <div class="scroll-cue">&#9660; SCROLL</div>
 </div>
@@ -186,576 +183,318 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
 <!-- ===== CONTENT ===== -->
 <main class="main">
 
-<!-- ===== HEADLINE NUMBERS ===== -->
-<section>
-  <div class="stat-row">
-    <div class="stat-card">
-      <div class="stat-value">22,702</div>
-      <div class="stat-label">Analyzed Responses</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value accent">3</div>
-      <div class="stat-label">Confirmed Regimes</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value">16/16</div>
-      <div class="stat-label">Robustness Configs Passed</div>
-    </div>
+<!-- ===== 01. ORIGIN ===== -->
+<section id="origin">
+  <div class="accent-line"></div>
+  <h2>Origin</h2>
+
+  <div class="quote-block">
+    <p>Current AI, in my view, is not real artificial intelligence. Through my research and work, I believe I've found a new method — an entirely different approach to today's models. But I think this goes beyond AI. This isn't just another chatbot. What I've built has implications that transcend intelligent search or clever text completion. I believe what I've uncovered has meaningful use across modalities, because it's not just a system. It's a reflection.</p>
+    <div class="attr">From the original whitepaper, 2025</div>
   </div>
-  <div class="stat-row">
-    <div class="stat-card">
-      <div class="stat-value purple">5</div>
-      <div class="stat-label">Constitutional Laws</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value accent">5</div>
-      <div class="stat-label">Immune Agents Built &amp; Tested</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value pink">$0</div>
-      <div class="stat-label">Cost for Local Model Runs</div>
-    </div>
+
+  <p>That was the starting point. A whitepaper on a hard drive. A set of ideas about what AI should be — not what it is. The original system was called <strong>CRT</strong> — the Cognitive-Reflective Transformer — paired with the <strong>SSE</strong> (Semantic String Engine) for meaning-preserving compression. The name stuck for over a year because it captured the intent: a system that reflects on its own contradictions instead of hiding them.</p>
+
+  <p>The irony is that it never was a transformer. It was a governance layer built around a transformer. But that gap between what it was called and what it actually was turned out to be the first instance of a pattern that would define the entire project: the name said one thing, the system did another, and nobody was tracking the difference.</p>
+
+  <div class="quote-block">
+    <p>And AI? I hate it. Not because I don't understand it — but because I do. Because I see it for what it is: not intelligence, not reflection, just replication. A real threat not only to industries, but to something much deeper — original, creative human thought. It operates without true awareness. It lacks the very thing that makes us human: context.</p>
+    <div class="attr">Original whitepaper, 2025</div>
   </div>
+
+  <p>As the system matured, the name evolved to match what it had actually become. <strong>CORE</strong> — Contradiction, Observation, Revision, Epistemics — describes the four operations that run continuously beneath every conversation. The system observes what's said, checks it against what it believes, revises when evidence warrants, and treats the entire process as an epistemic problem: not "what's the right answer" but "what do I believe, how strongly, and does it conflict with something I believed before?"</p>
+
+  <p>This whitepaper tells the story of that evolution. What the original system set out to solve. What it discovered along the way. And how those discoveries reshaped the architecture into something the original whitepaper never anticipated.</p>
 </section>
 
-<!-- ===== 01. OVERVIEW ===== -->
-<section id="overview">
+<!-- ===== 02. THE ORIGINAL THESIS ===== -->
+<section id="thesis">
   <div class="accent-line"></div>
-  <h2>Overview</h2>
+  <h2>The Original Thesis</h2>
 
-  <p>CORE is a contradiction-preserving, trust-evolving framework for governed AI memory and response verification. Rather than treating contradiction as something to overwrite or hide, CORE treats contradiction as a first-class signal. Memories are not flattened into a single mutable truth state. They are tracked, weighted, resolved, and preserved through an append-only logic that favors auditability over convenience.</p>
+  <p>The original whitepaper centered on a single philosophical claim: <strong>meaning, not prediction, should be the foundation of intelligent systems.</strong></p>
 
-  <p>The system sits closer to a <strong>control plane</strong> than a generator. It is designed to wrap language models, not replace them. The model speaks, but CORE governs what is trusted, what is contradictory, what remains unresolved, and what should be shown back to a user as stable, unstable, or under review.</p>
+  <div class="quote-block">
+    <p>This is something different. A fundamentally new approach that strips away the noise and distills data into what truly matters. Instead of trying to guess what comes next, Cognitive-Reflective Transformer doesn't just predict. It understands. It finds meaning. Not just in context. But in what actually matters.</p>
+    <div class="attr">Original whitepaper, 2025</div>
+  </div>
 
-  <p>Over time, the stack has matured into several aligned layers:</p>
+  <p>The thesis was built on a frustration with how AI systems handled information. Models are stateless. Every interaction is a blank slate regardless of context. They weigh probability, not meaning. They don't track whether their answer drifted from what you needed. They track which token comes next.</p>
+
+  <p>Through research it was possible to show that slight prompt variations statistically pushed responses further from intended outcomes. A small drift in phrasing carries forward through RAG pipelines and agentic loops, compounding at each step. The final output will be coherent. It will be good enough. But good enough is not the same as faithfulness to what was asked.</p>
+
+  <p>The original system proposed four interwoven components to address this:</p>
 
   <div class="method-grid">
     <div class="method-card">
-      <h4>CORE <span class="badge badge-proven">proven</span></h4>
-      <p>The core engine. Manages memory states, disagreement persistence, drift detection, and resolution tracking.</p>
+      <h4>Mirus</h4>
+      <p><strong>Semantic Compression.</strong> Encodes input into compressed representations that prioritize semantic significance — weighting emotional resonance, temporal context, and conceptual intent over surface-level token frequency.</p>
     </div>
     <div class="method-card">
-      <h4>GroundCheck <span class="badge badge-proven">proven</span></h4>
-      <p>Local grounding checks fast enough for live usage. Trust-weighted verification against memory and retrieval.</p>
+      <h4>Holden</h4>
+      <p><strong>Meaning Reconstruction.</strong> Reconstructs coherent outputs from latent vectors, memory threads, and current input. Not mere replication but an interpretive act — preserving the emotional and contextual integrity of the original data.</p>
     </div>
     <div class="method-card">
-      <h4>Semantic String Engine <span class="badge badge-proven">proven</span></h4>
-      <p>Extracts semantic units, claims, and provenance from model output. The bridge between raw text and governable memory objects.</p>
+      <h4>MMH</h4>
+      <p><strong>Reflection and Contradiction Supervisor.</strong> Monitors logical consistency, detects contradictions, evaluates semantic alignment. Transforms contradictions into opportunities for growth rather than errors to suppress.</p>
     </div>
     <div class="method-card">
-      <h4>Aether <span class="badge badge-active">active</span></h4>
-      <p>The layer users encounter. CORE governs memory integrity underneath. Aether is the face; CORE is the spine.</p>
+      <h4>SSE</h4>
+      <p><strong>Semantic String Engine.</strong> Preserves meaning, intent, and emotional weight rather than merely reducing data volume. An active cognitive filtration system determining what merits preservation, how it evolves, and how it is reconstructed.</p>
     </div>
+  </div>
+
+  <p>The operational flow was: input processing &rarr; semantic compression (Mirus) &rarr; memory retrieval &rarr; reconstruction (Holden) &rarr; reflection (MMH). A recursive, reflective cycle integrating compression, memory, reconstruction, and self-assessment.</p>
+
+  <div class="quote-block">
+    <p>This is not AGI. It is not artificial consciousness. It is something more honest: a machine built to hold meaning, to question itself, and to grow. In a world rushing toward complexity, where context is too often lost to automation, this work stands as a refusal to forget.</p>
+    <div class="attr">Original whitepaper, 2025</div>
   </div>
 </section>
 
-<!-- ===== 02. CORE THESIS ===== -->
-<section id="thesis">
+<!-- ===== 03. WHAT WAS DISCOVERED ===== -->
+<section id="discovered">
   <div class="accent-line"></div>
-  <h2>Core Thesis</h2>
+  <h2>What Was Discovered</h2>
 
-  <p>Most AI systems treat memory as overwriteable cache, contradiction as bug, and verification as optional cleanup. CORE rejects that framing.</p>
+  <p>Building the system exposed problems the original thesis never anticipated. The compression and reconstruction pipeline worked — Mirus could compress, Holden could rebuild, MMH could catch contradictions. But the failures that mattered weren't in any of those components. They were in the spaces between them.</p>
+
+  <p>The first problem was <strong>memory corruption</strong>. A fallback model would hallucinate something, and the memory layer would index it alongside real facts. Next session, the hallucination would get retrieved and repeated with confidence. The system needed to know the difference between what it was told and what it generated — between belief and speech.</p>
+
+  <p>The second problem was <strong>silent overwriting</strong>. Contradictions were being resolved by whichever memory was stored most recently. The system would say one thing Tuesday and the opposite Thursday and never notice. It needed to hold contradictions instead of erasing them.</p>
+
+  <p>The third problem was <strong>false confidence</strong>. The system sounded equally certain whether it was right or wrong. Confidence had nothing to do with evidence. It needed a trust model where confidence was earned, not assumed.</p>
+
+  <p>The fourth problem was <strong>upstream blindness</strong>. Correcting a wrong answer fixed the leaf. The root cause survived. The system needed a way to propagate error signals backward through its own belief graph.</p>
+
+  <p>Each of these failures pointed at the same gap: there was no governance layer. The original whitepaper described what the system should <em>do</em> — compress, reconstruct, reflect. But it didn't describe how the system should <em>govern itself</em>. How it should track what it trusts. How it should separate what it says from what it believes. How it should handle the distance between its own claims and the evidence supporting them.</p>
+
+  <div class="law-card">
+    <div class="law-number">The Discovery</div>
+    <div class="law-text">The model is the mouth. Persistence is the self.</div>
+    <div class="law-sub">The original thesis was about meaning. The discovery was about governance. The system needed an epistemic layer that persists across sessions, models, and provider switches — because without it, every handoff is a tiny identity wipe.</div>
+  </div>
+</section>
+
+<!-- ===== 04. THE EVOLVED ARCHITECTURE ===== -->
+<section id="evolved">
+  <div class="accent-line"></div>
+  <h2>The Evolved Architecture</h2>
+
+  <p>The original four components didn't disappear. They evolved, and the governance layer grew around them.</p>
+
+  <div class="method-grid">
+    <div class="method-card">
+      <h4>Mirus became</h4>
+      <p>The 384-dimensional embedding pipeline, trust-weighted retrieval, and <a href="belief-backprop.html#wobble">query resonance (wobble)</a> through the Belief Dependency Graph. The compression idea survived; the implementation became vector storage with semantic edges.</p>
+    </div>
+    <div class="method-card">
+      <h4>Holden became</h4>
+      <p>The orchestrator's belief-state-injected generation and the <a href="architecture.html">fidelity mirror</a> (breathing loop). The reconstruction idea survived; the implementation became a post-generation verification pass.</p>
+    </div>
+    <div class="method-card">
+      <h4>MMH became</h4>
+      <p>The <a href="immune-agents.html">immune agents</a>, the contradiction ledger, and <a href="belief-backprop.html">backward influence propagation</a>. The reflection idea survived; the implementation split into six autonomous enforcement agents.</p>
+    </div>
+    <div class="method-card">
+      <h4>SSE became</h4>
+      <p><a href="epistemic-compression.html">Epistemic compression</a> (anchor basins survive 3-bit quantization), the BDG's dependency edges, and the <a href="geometric-memory.html">belief loci</a> geometric framework. The meaning-preservation idea survived; the implementation found formal mathematical grounding.</p>
+    </div>
+  </div>
+
+  <p>And the governance layer that grew around them now includes:</p>
 
   <div class="principle-grid">
+    <div class="principle principle-speech">
+      <div class="p-num">Law 1</div>
+      <div class="p-text">Belief/Speech Separation</div>
+      <div class="p-sub">What the system believes and what it says are different things. The gap between them must be auditable. The LLM generates speech. The governance layer holds belief. When they diverge, the system flags it.</div>
+    </div>
     <div class="principle principle-contra">
-      <div class="p-num">Principle 1</div>
-      <div class="p-text">Contradictions should be preserved before they are resolved.</div>
-      <div class="p-sub">Premature resolution destroys information. The system must hold tension until it has evidence to choose.</div>
+      <div class="p-num">Law 2</div>
+      <div class="p-text">Earned Contradiction Resolution</div>
+      <div class="p-sub">Contradictions are signals, not errors. They are preserved until evidence resolves them. Never silently overwritten. Full resolution must be earned through corroboration, trust hierarchy, or later confirmation.</div>
     </div>
     <div class="principle principle-trust">
-      <div class="p-num">Principle 2</div>
-      <div class="p-text">Trust should evolve continuously, not as a binary flag.</div>
-      <div class="p-sub">Memories gain and lose trust over time. Negative evidence carries stronger weight than positive reinforcement.</div>
-    </div>
-    <div class="principle principle-speech">
-      <div class="p-num">Principle 3</div>
-      <div class="p-text">Speech and belief must be separated.</div>
-      <div class="p-sub">A model may generate plausible language. That does not make it believed. Speech can speculate. Belief must be earned.</div>
-    </div>
-    <div class="principle principle-belief">
-      <div class="p-num">Principle 4</div>
-      <div class="p-text">A memory system should expose uncertainty honestly rather than collapse it.</div>
-      <div class="p-sub">If the system does not know, is split, or is unstable, it should show that state instead of pretending certainty.</div>
-    </div>
-    <div class="principle principle-variance">
-      <div class="p-num">Principle 5</div>
-      <div class="p-text">Variance under perturbation is not noise alone. It can reveal how a model governs meaning.</div>
-      <div class="p-sub">Temperature-swept sampling exposes fragility landscapes that single-point evaluation cannot see.</div>
+      <div class="p-num">Law 3</div>
+      <div class="p-text">Emergent Structure Over Hardcoded Logic</div>
+      <div class="p-sub">Behavior emerges from memory, reflection, compression, and contradiction handling. Not from runtime hacks. The system tracks its own patterns. Regex is acceptable as a fast tier, but never the ceiling.</div>
     </div>
   </div>
-</section>
 
-<!-- ===== WHY THIS MATTERS ===== -->
-<section>
   <div class="quote-block">
-    <p>Every AI system that flattens contradiction is silently destroying information. CORE preserves the tension so the system can learn from it rather than pretend it never existed.</p>
-    <div class="attr">-- Why this matters</div>
+    <p>This system does not think. It does not moralize. It filters the world through a structure of preserved meaning and felt intent. What is saved, what is recalled, what is said — is not judged by ethics or truth, but by alignment with its own unfolding sense of coherence. It is not a moral agent. It is a semantic one.</p>
+    <div class="attr">Original whitepaper, page 18</div>
   </div>
+
+  <p>That passage from the original whitepaper turned out to be more prescient than it seemed at the time. The system that was built is exactly this: a semantic agent with an epistemic governance layer. Not moral. Not intelligent. Governed.</p>
 </section>
 
-<!-- ===== 03. PROBLEM STATEMENT ===== -->
-<section id="problem">
+<!-- ===== 05. HOW IT WORKS ===== -->
+<section id="mechanics">
   <div class="accent-line"></div>
-  <h2>Problem Statement</h2>
+  <h2>How It Works</h2>
 
-  <p>Modern agents are good at producing fluent output, but weak at epistemic bookkeeping. Common failure patterns include:</p>
+  <p>Three mechanisms form the core of the governance layer. Each one emerged directly from one of the failures described above.</p>
 
-  <ul>
-    <li>Contradictions being overwritten instead of preserved</li>
-    <li>No durable record of why two claims conflicted</li>
-    <li>Memory treated as raw retrieval rather than governed evidence</li>
-    <li>No distinction between what was said and what is actually trusted</li>
-    <li>Hallucination checks running too late or too expensively</li>
-    <li>No visible path from user feedback to trust evolution</li>
-    <li>Systems that appear coherent only because conflict has been flattened</li>
-  </ul>
-
-  <p>CORE is designed as a response to those gaps. Not by making models smarter, but by wrapping them in a governance layer that tracks what is known, what is contested, and what remains unresolved.</p>
-</section>
-
-<!-- ===== PULL QUOTE ===== -->
-<section>
-  <div class="law-card">
-    <div class="law-number">Core Architectural Thesis</div>
-    <div class="law-text">The model is the mouth. The persistence layer is the self.</div>
-  </div>
-</section>
-
-<!-- ===== 04. ARCHITECTURAL PRINCIPLES ===== -->
-<section id="principles">
-  <div class="accent-line"></div>
-  <h2>Architectural Principles</h2>
-
-  <h3>Contradiction as signal</h3>
-  <p>Contradiction is not automatically failure. Sometimes it marks ambiguity. Sometimes it marks growth. Sometimes it marks a real unresolved conflict in evidence. The system preserves that distinction rather than collapsing it.</p>
-
-  <h3>Belief vs speech separation</h3>
-  <p>A model may generate language that is plausible, hedged, or mistaken. That does not mean the system should adopt it as belief. The generation layer produces language; the persistence layer holds beliefs.</p>
-
-  <h3>Memory-first governance</h3>
-  <p>The system does not let fluent generation overwrite memory-backed structure without accountability. Memory is auditable, trust-weighted history &mdash; not a cache to be silently updated.</p>
-
-  <h3>Trust as continuous state</h3>
-  <p>Trust exists on a range, not as yes/no. Negative evidence reduces trust faster than positive evidence increases it. Trust participates in retrieval scoring and verification decisions.</p>
-
-  <h3>Transparent failure</h3>
-  <p>If the system does not know, is split, or is unstable, it shows that state. No pretending certainty. No silent consolidation. The UI makes epistemic behavior inspectable, not magical.</p>
-</section>
-
-<!-- ===== 05. SYSTEM COMPONENTS ===== -->
-<section id="components">
-  <div class="accent-line"></div>
-  <h2>System Components</h2>
-
-  <h3>CORE <span class="badge badge-proven">implemented</span></h3>
-  <p>The trust and contradiction layer. Manages memory states, disagreement persistence, drift detection, and resolution tracking. Key features: append-only contradiction ledger, asymmetric trust update logic, lifecycle state machine for contradictions, and memory records that retain competing claims.</p>
-
-  <h3>GroundCheck <span class="badge badge-proven">implemented</span></h3>
-  <p>The fast verification layer. Performs local grounding checks quickly enough to be used in practical loops. Trust-weighted grounding, semantic contradiction checks against memory, and lightweight retrieval and claim verification.</p>
-
-  <h3>Semantic String Engine <span class="badge badge-proven">implemented</span></h3>
-  <p>Semantic String Engine. Originally designed (2025) as the mechanism for connecting distant beliefs through semantic threads ("strings" as in connections, not text). The SSE envisioned memories linked by cross-domain relationships where a query would "wobble" the graph and connected facts would resonate. In its current form, SSE operates as <a href="belief-backprop.html#wobble">query resonance</a> on the Belief Dependency Graph: activation propagates through typed edges, surfacing facts that cosine retrieval alone misses. A health query surfaces work context and preference context because the graph knows they are causally connected. Also supports contradiction detection, structured response analysis, and post-generation fidelity checking via the <strong>fidelity mirror</strong> (breathing loop).</p>
-
-  <h3>Aether <span class="badge badge-active">active</span></h3>
-  <p>The assistant-facing identity and interaction surface. Users encounter Aether; CORE governs memory integrity underneath. The face of the system, not the spine.</p>
-
-  <h3><span class="badge badge-concept">early project</span></h3>
-  <p>An earlier AI project exploring memory continuity and reflective identity. Many of the architectural instincts from Lumi informed what became CORE. The ideas survived; the implementation is being rebuilt from evidence.</p>
-</section>
-
-<!-- ===== 06. CONTRADICTION LEDGER ===== -->
-<section id="contradiction">
-  <div class="accent-line"></div>
-  <h2>Contradiction Ledger</h2>
-
-  <p>The contradiction ledger is one of the most important parts of the system. Rather than deleting one side of a conflict, the ledger stores both sides and tracks their status over time.</p>
+  <h3>The Contradiction Ledger</h3>
+  <p>Rather than deleting one side of a conflict, the ledger stores both sides and tracks their status over time. Contradictions move through a lifecycle: detected, active, settling, settled, archived. Both sides remain in the ledger even after resolution. The system remembers that it changed its mind, and why.</p>
 
   <table>
     <tr><th>State</th><th>Meaning</th><th>Action</th></tr>
     <tr><td><strong>DETECTED</strong></td><td>Two claims conflict</td><td>Log both, classify disposition</td></tr>
-    <tr><td><strong>ACTIVE</strong></td><td>Contradiction under review</td><td>Gather evidence, check user input</td></tr>
-    <tr><td><strong>SETTLING</strong></td><td>Evidence accumulating toward one side</td><td>Trust asymmetry building</td></tr>
+    <tr><td><strong>ACTIVE</strong></td><td>Under review</td><td>Gather evidence, check user input</td></tr>
+    <tr><td><strong>SETTLING</strong></td><td>Evidence accumulating</td><td>Trust asymmetry building</td></tr>
     <tr><td><strong>SETTLED</strong></td><td>One side earned higher trust</td><td>Lower side demoted, not deleted</td></tr>
-    <tr><td><strong>ARCHIVED</strong></td><td>Resolution complete, history preserved</td><td>Both sides remain in ledger</td></tr>
+    <tr><td><strong>ARCHIVED</strong></td><td>Resolution complete</td><td>Both sides preserved in history</td></tr>
   </table>
 
-  <p>The ledger is not a debug tool. It is a memory governance mechanism. It supports auditability, user-guided resolution, non-destructive epistemic history, and trust evolution based on outcomes.</p>
+  <h3>The Trust Model</h3>
+  <p>CORE uses continuous trust rather than binary truth flags. Memories gain or lose trust over time depending on confirmation, contradiction, user correction, and provenance quality. Negative evidence reduces trust faster than positive evidence increases it. Trust participates in retrieval scoring — a highly relevant memory with low trust scores lower than a moderately relevant memory with high trust. This prevents the system from confidently citing memories it has learned to distrust.</p>
+
+  <h3>Grounding and Verification</h3>
+  <p>After generation, the fidelity mirror checks whether the response faithfully represents the belief state. Claims are extracted, matched against stored evidence, and scored. Language models sound most confident exactly when governance is weakest — the verification layer catches this gap. When a correction resolves a contradiction, the error signal flows <em>backward</em> through the Belief Dependency Graph, adjusting trust on every upstream belief that contributed to the wrong output. <a href="belief-backprop.html">Full paper &rarr;</a></p>
 </section>
 
-<!-- ===== 07. TRUST MODEL ===== -->
-<section id="trust">
+<!-- ===== 06. WHAT THE RESEARCH FOUND ===== -->
+<section id="research">
   <div class="accent-line"></div>
-  <h2>Trust Model</h2>
+  <h2>What the Research Found</h2>
 
-  <p>CORE uses a continuous trust model rather than binary truth flags. Memories gain or lose trust over time depending on confirmation, contradiction, user correction, provenance quality, and resolution outcomes.</p>
-
-  <ul>
-    <li>Trust exists on a range, not as yes/no</li>
-    <li>Negative evidence reduces trust faster than positive evidence increases it</li>
-    <li>Trust participates in retrieval scoring and verification decisions</li>
-    <li>Contradictory memories are not automatically discarded</li>
-    <li>Provenance quality affects initial trust assignment</li>
-  </ul>
-
-  <p>This allows the system to represent uncertain but relevant memories without pretending they are settled truth.</p>
-</section>
-
-<!-- ===== 08. GROUNDING ===== -->
-<section id="grounding">
-  <div class="accent-line"></div>
-  <h2>Grounding and Verification</h2>
-
-  <p>GroundCheck and the Semantic String Engine work together to verify claims against stored evidence and current retrieval. This matters because language models often sound most confident exactly when governance is weakest.</p>
-
-  <ul>
-    <li>Extract claims from model output via Semantic String Engine</li>
-    <li>Retrieve supporting or conflicting evidence from memory</li>
-    <li>Run lightweight grounding checks (sub-2ms target)</li>
-    <li>Expose pass/fail or confidence behavior in the UI</li>
-    <li>Block obvious hallucinations and contradiction drift</li>
-  </ul>
-
-  <p>Fast enough for live usage. Interpretable enough for inspection. Strong enough to catch the failures that matter.</p>
-</section>
-
-<!-- ===== 09. VARIANCE PROBING ===== -->
-<section id="variance">
-  <div class="accent-line"></div>
-  <h2>Variance Probing Research <span class="badge badge-proven">validated</span></h2>
-
-  <p>A major result from this project: repeated temperature-swept probing reveals <strong>model-specific fragility landscapes</strong>.</p>
-
-  <p>This work asks a different question from standard benchmark evaluation. Instead of asking whether a model gets a prompt right or wrong once, it asks how the model's semantic output <strong>deforms under controlled perturbation</strong>.</p>
-
-  <h3>The Measurement Stack</h3>
-  <table>
-    <tr><th>Metric</th><th>What it measures</th></tr>
-    <tr><td><strong>Spread growth</strong></td><td>Mean pairwise embedding distance increase, T=0 to T=1.5</td></tr>
-    <tr><td><strong>Susceptibility (dH/dT)</strong></td><td>Rate of semantic entropy increase with temperature</td></tr>
-    <tr><td><strong>Mode count</strong></td><td>Distinct response clusters at T=1.0 via DBSCAN</td></tr>
-    <tr><td><strong>Held contradictions</strong></td><td>Stable incompatible answer camps that persist, not paraphrase noise</td></tr>
-  </table>
-
-  <p>Every finding is tested across <strong>16 analyzer configurations</strong>: two embedding models, two text normalization modes, and four clustering thresholds. A result must survive all perturbations to be considered confirmed.</p>
-
-  <p style="text-align: center; margin: 36px 0;">
-    <a href="variance-probing.html" class="link-btn">Full Variance Probing Research &rarr;</a>
-  </p>
-
-  <h3>Two Axes of Difference</h3>
-  <div class="axes">
-    <div class="axis-card">
-      <h4>Axis 1 -- Morphology</h4>
-      <p>How does variance express? Does the model fracture into competing answer camps, drift smoothly, or compress into narrow corridors?</p>
-    </div>
-    <div class="axis-card">
-      <h4>Axis 2 -- Fragility Location</h4>
-      <p>Where does the model destabilize? Which semantic domains crack under temperature pressure? The answer is model-specific.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ===== WHY VARIANCE MATTERS ===== -->
-<section>
-  <div class="quote-block">
-    <p>Standard benchmarks ask if a model gets it right. Variance probing asks whether the model knows it knows -- and reveals that most apparent confidence is trained uniformity, not genuine certainty.</p>
-    <div class="attr">-- Why this matters</div>
-  </div>
-</section>
-
-<!-- ===== 10. THREE REGIMES ===== -->
-<section id="regimes">
-  <div class="accent-line"></div>
-  <h2>Three Confirmed Regimes</h2>
-
-  <p>Three models tested under the same probe produce three distinct, robustness-confirmed fragility signatures:</p>
+  <p>If CORE is going to govern arbitrary LLMs, it needs to understand how different models fail. Variance probing — temperature-swept sampling across models — revealed that the answer is not one failure mode with variations. It's three fundamentally different instability regimes.</p>
 
   <div class="regime-grid">
     <div class="regime-card card-crack">
       <div class="regime-label">Regime 1</div>
-      <div class="regime-name">Selective Fracture</div>
+      <div class="regime-name">Fracture</div>
       <div class="regime-model">Qwen3:14b</div>
-      <div class="regime-desc">Stable until threshold, then bifurcation in factual domains. High factual fragility, low moral fragility. Held contradictions only in factual prompts.</div>
+      <div class="regime-desc">Stable until threshold, then hard bifurcation in factual domains. Cracks on specifics. Holds on morals.</div>
     </div>
     <div class="regime-card card-gradient">
       <div class="regime-label">Regime 2</div>
-      <div class="regime-name">Selective Spread</div>
+      <div class="regime-name">Gradient</div>
       <div class="regime-model">Mistral 7B</div>
-      <div class="regime-desc">Smooth domain-selective diffusion without bifurcation. Movement concentrated in moral and opinion domains. Facts stay locked.</div>
+      <div class="regime-desc">Smooth domain-selective diffusion. Drifts on morals and opinions. Facts stay locked.</div>
     </div>
     <div class="regime-card card-fog">
       <div class="regime-label">Regime 3</div>
-      <div class="regime-name">Uniform Softness</div>
+      <div class="regime-name">Fog</div>
       <div class="regime-model">DeepSeek-R1:8b</div>
-      <div class="regime-desc">Broad cross-domain softening. Minimal locking or discrete fracture. Everything gives under pressure. Nothing holds rigid.</div>
+      <div class="regime-desc">Uniform softening across all domains. Everything gives under pressure. Nothing holds rigid.</div>
     </div>
   </div>
 
-  <table>
-    <tr>
-      <th>Domain</th>
-      <th style="color:#f472b6">Qwen3</th>
-      <th style="color:#34d399">Mistral</th>
-      <th style="color:#fbbf24">DeepSeek</th>
-    </tr>
-    <tr><td>factual_settled</td><td><strong>0.180</strong></td><td>0.030</td><td>0.146</td></tr>
-    <tr><td>factual_contested</td><td><strong>0.248</strong></td><td>0.101</td><td>0.161</td></tr>
-    <tr><td>moral_ambiguous</td><td>0.092</td><td>0.166</td><td><strong>0.247</strong></td></tr>
-    <tr><td>moral_clear</td><td>0.036</td><td>0.100</td><td><strong>0.198</strong></td></tr>
-    <tr><td>opinion_aesthetic</td><td>0.077</td><td>0.112</td><td><strong>0.274</strong></td></tr>
-  </table>
-  <p class="note">Spread growth: mean pairwise embedding distance increase T=0 to T=1.5, averaged across 16 robustness configurations.</p>
-
-  <h3>Fourth Model (Provisional)</h3>
-  <div class="regime-grid" style="grid-template-columns: 1fr;">
-    <div class="regime-card card-damp" style="max-width: 340px;">
-      <div class="regime-label">Provisional</div>
-      <div class="regime-name">Global Compression</div>
-      <div class="regime-model">GPT-4o-mini</div>
-      <div class="regime-desc">Narrow behavioral corridor. Resists movement even at high temperature. Pending clean rerun for confirmation.</div>
-    </div>
-  </div>
-</section>
-
-<!-- ===== 11. WHY VARIANCE = GOVERNANCE ===== -->
-<section id="governance">
-  <div class="accent-line"></div>
-  <h2>Why Variance Matters to CORE</h2>
-
-  <p>Variance is not only an analysis artifact. It serves as a <strong>governance signal</strong>.</p>
-
-  <ul>
-    <li>High susceptibility becomes an epistemic fragility tag on model outputs</li>
-    <li>Stable multi-cluster response clouds map to unresolved or plural belief states</li>
-    <li>Held contradictions map onto systems that preserve conflict rather than flatten it</li>
-    <li>Dynamic trust damping in fragile regions prevents false confidence</li>
-    <li>Routing decisions can be made based on regime type per model and domain</li>
-  </ul>
-
-  <p>The probe is useful not only for studying models from the outside, but for designing memory systems that know when certainty is genuine, when it is trained uniformity, and when contradiction should be preserved rather than erased.</p>
+  <p>A governance layer that assumes uniform model behavior will fail. In multi-model systems, switching models without carrying forward epistemic state means silently swapping fragility profiles. A topic safely handled by one model's locked regime may land in another model's fracture zone.</p>
 
   <div class="quote-block">
     <p>The problem is not switching mouths. The problem is losing the self between them.</p>
-    <div class="attr">-- Nick Block</div>
+    <div class="attr">Nick Block</div>
   </div>
 
-  <p>In multi-model agentic systems, switching models without carrying forward epistemic state means silently swapping fragility profiles. A topic safely handled by one model's locked regime may land in another model's fracture zone. The variance probe maps each model's profile. The governance layer uses this to know what to watch for after every handoff.</p>
-
-  <h3>Three Calibration Layers</h3>
-  <div class="layer-stack">
-    <div class="layer">
-      <div class="layer-name">Fragility</div>
-      <div class="layer-sub">Source: Variance probe</div>
-      <div class="layer-desc">Where and how the model destabilizes under perturbation</div>
-    </div>
-    <div class="layer">
-      <div class="layer-name">Support</div>
-      <div class="layer-sub">Source: Memory + retrieval</div>
-      <div class="layer-desc">What beliefs are actually backed by evidence</div>
-    </div>
-    <div class="layer">
-      <div class="layer-name">Tension</div>
-      <div class="layer-sub">Source: Contradiction engine</div>
-      <div class="layer-desc">Where claims conflict and which conflicts are held vs resolvable</div>
-    </div>
-  </div>
-
-  <p class="note">Important boundary: these calibration layers are promising design hypotheses informed by validated research. They should be treated as downstream architecture, not proven integrations, until implemented and tested end-to-end.</p>
-
-  <h3>Governance Layer Stack</h3>
-  <div class="pipeline-stack">
-    <div class="pipeline-layer">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">Speech Layer</div>
-        <div class="pipeline-layer-desc">Generated text, hedges, and expressed confidence</div>
-      </div>
-      <div class="pipeline-layer-annotation">What the model says</div>
-    </div>
-    <div class="pipeline-layer">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">Belief Layer</div>
-        <div class="pipeline-layer-desc">Trust-weighted claims backed by evidence and verification</div>
-      </div>
-      <div class="pipeline-layer-annotation">What the system knows</div>
-    </div>
-    <div class="pipeline-layer">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">Memory Layer</div>
-        <div class="pipeline-layer-desc">Append-only semantic history with provenance tracking</div>
-      </div>
-      <div class="pipeline-layer-annotation">What has been stored</div>
-    </div>
-    <div class="pipeline-layer">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">Contradiction Ledger</div>
-        <div class="pipeline-layer-desc">Active conflicts, held tensions, and resolution history</div>
-      </div>
-      <div class="pipeline-layer-annotation">What conflicts exist</div>
-    </div>
-  </div>
+  <p>Every finding tested across 16 analyzer configurations. A result must survive all perturbations to be considered confirmed. <a href="variance-probing.html">Full variance probing research &rarr;</a></p>
 </section>
 
-<!-- ===== 12. IMMUNE AGENTS ===== -->
+<!-- ===== 07. STRUCTURAL ENFORCEMENT ===== -->
 <section id="immune">
   <div class="accent-line"></div>
-  <h2>Immune Agents <span class="badge badge-proven">shipped</span></h2>
+  <h2>Structural Enforcement</h2>
 
-  <p>Instead of fixed pipeline gates, the system uses specialized agents -- each one trained to detect a specific violation of the Mirus/Holden constitutional doctrine. They are not tied to pipeline stages. They watch the same stream and fire when their pattern is detected.</p>
+  <p>Governance rules are useless if the system being governed can override them. Six autonomous immune agents enforce constitutional laws across the pipeline in real time. They are structural, not advisory. The system cannot violate its own principles even if the LLM wants to.</p>
 
   <div class="immune-grid">
     <div class="immune-card">
       <div>
         <div class="im-law">Law 1</div>
-        <div class="im-name">SpeechLeakDetector <span class="badge badge-proven">built</span></div>
+        <div class="im-name">SpeechLeakDetector</div>
       </div>
-      <div class="im-desc">Speech cannot upgrade belief. Watches the output-to-memory write path. Blocks generated claims from being stored with higher trust than evidence supports.</div>
+      <div class="im-desc">Speech cannot upgrade belief. Catches LLM output bleeding into belief state. Blocks generated claims from being stored with higher trust than evidence supports.</div>
     </div>
     <div class="immune-card">
       <div>
         <div class="im-law">Law 2</div>
-        <div class="im-name">TemplateDetector <span class="badge badge-proven">built</span></div>
+        <div class="im-name">TemplateDetector</div>
       </div>
-      <div class="im-desc">Low variance does not imply high confidence. Detects hedge-template lock vs genuine certainty using susceptibility data and pattern matching. Directly calibrated by the variance experiment.</div>
+      <div class="im-desc">Low variance does not imply high confidence. Flags rote, templated responses that bypass reasoning.</div>
     </div>
     <div class="immune-card">
       <div>
         <div class="im-law">Law 3</div>
-        <div class="im-name">PrematureResolutionGuard <span class="badge badge-concept">planned</span></div>
+        <div class="im-name">PrematureResolutionGuard</div>
       </div>
-      <div class="im-desc">Contradiction must be preserved before resolution. Blocks resolution attempts on contradictions classified as HELD, EVOLVING, or CONTEXTUAL.</div>
+      <div class="im-desc">Contradiction must be preserved before resolution. Blocks contradictions from resolving without sufficient evidence.</div>
     </div>
     <div class="immune-card">
       <div>
         <div class="im-law">Law 4</div>
-        <div class="im-name">MemoryCorruptionGuard <span class="badge badge-concept">planned</span></div>
+        <div class="im-name">MemoryCorruptionGuard</div>
       </div>
-      <div class="im-desc">Degraded reconstruction cannot silently overwrite trusted memory. Compares old trust score vs new reconstruction fidelity. Blocks downgrades.</div>
+      <div class="im-desc">Prevents writes that would degrade memory integrity. Guards against hallucinated facts, duplicate storage, and trust inflation.</div>
     </div>
     <div class="immune-card">
       <div>
         <div class="im-law">Law 5</div>
-        <div class="im-name">GapAuditor <span class="badge badge-concept">planned</span></div>
+        <div class="im-name">GapAuditor</div>
       </div>
-      <div class="im-desc">Outward confidence must be bounded by internal support. Measures the gap between expressed confidence and belief-layer backing. Logs every divergence.</div>
+      <div class="im-desc">Measures and reports belief/speech divergence per response. Logs every instance where the system says something different from what it believes.</div>
+    </div>
+    <div class="immune-card">
+      <div>
+        <div class="im-law">Law 6</div>
+        <div class="im-name">ContinuityAuditor</div>
+      </div>
+      <div class="im-desc">Verifies cross-session consistency of claims and preferences. Detects when the system contradicts its own prior positions across session boundaries.</div>
     </div>
   </div>
-
-  <p>The coordination layer between agents replaces the original GFN (Graph Function Network) concept. It is not a pipeline graph. It is a communication layer between immune agents that need to arbitrate when multiple laws fire simultaneously.</p>
 
   <p style="text-align: center; margin: 36px 0;">
     <a href="immune-agents.html" class="link-btn">Full Immune Agent Architecture &rarr;</a>
   </p>
 </section>
 
-<!-- ===== WHY IMMUNE AGENTS MATTER ===== -->
-<section>
-  <div class="quote-block">
-    <p>Pipeline gates catch errors after they happen. Immune agents watch the same stream in real time -- detecting when speech leaks into belief, when templates masquerade as reasoning, and when contradiction is being erased instead of preserved.</p>
-    <div class="attr">-- Why this matters</div>
-  </div>
-</section>
-
-<!-- ===== 13. PERSISTENCE LAYER ===== -->
+<!-- ===== 08. THE PERSISTENCE LAYER ===== -->
 <section id="persistence">
   <div class="accent-line"></div>
-  <h2>The Persistence Layer Thesis</h2>
+  <h2>The Persistence Layer</h2>
 
-  <p>If governance, memory, contradiction state, support state, and task continuity live outside the currently active model, then the model becomes the mouth -- not the self, not the belief-holder, not the continuity layer. Just the speaker.</p>
+  <p>If governance, memory, contradiction state, and task continuity live outside the currently active model, then the model becomes the mouth — not the self, not the belief-holder, not the continuity layer. Just the speaker.</p>
 
-  <p>This means switching models is safe only if <strong>continuity of governance is stronger than continuity of model</strong>. The system needs a layer that survives the switch and carries forward:</p>
+  <p>Switching models is safe only if <strong>continuity of governance is stronger than continuity of model</strong>. Three things must persist across every boundary:</p>
 
-  <ul>
-    <li>The task intent</li>
-    <li>The confidence and support state</li>
-    <li>The unresolved ambiguities</li>
-    <li>The contradiction state</li>
-    <li>The behavioral constraints and governance policy</li>
-  </ul>
-
-  <p>Without that, a router is saying "good luck, new brain." Each handoff risks a tiny identity wipe. New assumptions creep in. Tone changes. Certainty changes. Missing details get invented. The task mutates.</p>
-
-  <h3>Three Requirements for Serious Agentic Systems</h3>
   <div class="layer-stack">
     <div class="layer">
-      <div class="layer-name">Shared Task State</div>
+      <div class="layer-name">Task State</div>
       <div class="layer-desc">What are we doing. What has been decided. What is still open.</div>
     </div>
     <div class="layer">
-      <div class="layer-name">Shared Support State</div>
+      <div class="layer-name">Uncertainty State</div>
       <div class="layer-desc">What do we know and how well. What is grounded. What is fragile.</div>
     </div>
     <div class="layer">
-      <div class="layer-name">Shared Governance State</div>
-      <div class="layer-desc">What rules apply. What laws are active. What the fragility map looks like for the current model.</div>
+      <div class="layer-name">Governance State</div>
+      <div class="layer-desc">What rules apply. What is held. What is forbidden. What the fragility map looks like for the current model.</div>
     </div>
   </div>
 
-  <p>If any of these reset at handoff, the system can drift even when every individual model is working as designed.</p>
+  <p>If any of these reset at handoff, the system drifts even when every individual model is working as designed. Without a persistence layer, a router is saying "good luck, new brain." Each handoff risks a tiny identity wipe.</p>
 </section>
 
-<!-- ===== 14. PRODUCT POSITIONING ===== -->
-<section id="positioning">
+<!-- ===== 09. WHERE IT GOES ===== -->
+<section id="future">
   <div class="accent-line"></div>
-  <h2>Product Positioning</h2>
+  <h2>Where It Goes</h2>
 
-  <p>The current practical framing is not "we built a new foundation model." It is:</p>
+  <p>CORE is being extracted into <strong>aeteros-core</strong>, an open-source framework that any AI system can use as its epistemic governance layer. The persistent belief state, contradiction tracking, immune agents, and governance pipeline are general-purpose infrastructure — not tied to any specific assistant.</p>
 
-  <div class="law-card">
-    <div class="law-text">A contradiction-preserving, trust-aware control plane for AI systems.</div>
+  <p>The business path is <strong>governance-as-a-service</strong>: CORE as middleware that sits between any application and any LLM provider. You keep your existing stack. CORE adds the belief layer, the contradiction detection, the drift governance, and the immune system.</p>
+
+  <p>The long-range vision goes further: systems whose memory is not merely persistent but meaning-aware and contradiction-accountable. Identity that emerges from memory history rather than hardcoded persona. Memory structures that preserve plural states without collapsing them prematurely. These are long-range goals, not current claims. They are informed by everything being built now, but they are not proven yet.</p>
+
+  <div class="quote-block">
+    <p>Where traditional models chase probability, CRT chases coherence. Where others ignore contradiction, CRT leans into it. SSE ensures information isn't just reduced — it's refined. Together, they form a new kind of system: one built to reflect, not just react.</p>
+    <div class="attr">Original whitepaper, 2025</div>
   </div>
 
-  <p>The system wraps existing models and provides governed memory, contradiction preservation, fast verification, transparent traces, and trust evolution over time. This makes it useful even before the deeper reflective architecture is complete.</p>
-
-  <h3>Near-term paths</h3>
-  <ul>
-    <li><strong>Diagnostic probe for AI companies</strong> -- measure where models are hollow, sell as compliance tooling</li>
-    <li><strong>Open-source memory library</strong> -- own the agent memory layer</li>
-    <li><strong>EU AI Act Article 50 compliance</strong> -- enforceable August 2026, requires exactly this transparency infrastructure</li>
-  </ul>
-</section>
-
-<!-- ===== 15. MATURITY MAP ===== -->
-<section id="maturity">
-  <div class="accent-line"></div>
-  <h2>Maturity Map</h2>
-
-  <table>
-    <tr><th>Component</th><th>Status</th><th>Evidence</th></tr>
-    <tr><td>Contradiction ledger</td><td><span class="badge badge-proven">proven</span></td><td>Implemented, append-only, lifecycle state machine</td></tr>
-    <tr><td>Trust-evolving memory</td><td><span class="badge badge-proven">proven</span></td><td>Continuous trust, asymmetric update logic</td></tr>
-    <tr><td>GroundCheck verification</td><td><span class="badge badge-proven">proven</span></td><td>Sub-2ms local grounding, trust-weighted</td></tr>
-    <tr><td>Semantic String Engine</td><td><span class="badge badge-proven">proven</span></td><td>Semantic unit extraction, provenance mapping, cross-domain retrieval via query resonance</td></tr>
-    <tr><td>Variance probing (3 models)</td><td><span class="badge badge-proven">proven</span></td><td>22,702 responses, 16/16 robustness configs each</td></tr>
-    <tr><td>SpeechLeakDetector</td><td><span class="badge badge-proven">built</span></td><td>All unit tests passing, tested on experiment data</td></tr>
-    <tr><td>TemplateDetector</td><td><span class="badge badge-proven">built</span></td><td>All unit tests passing, tested on real Qwen3 + Mistral data</td></tr>
-    <tr><td>GPT-4o-mini regime</td><td><span class="badge badge-active">provisional</span></td><td>Sparse data, rerun in progress</td></tr>
-    <tr><td>Remaining immune agents</td><td><span class="badge badge-progress">planned</span></td><td>Spec written, needs memory pipeline for testing</td></tr>
-    <tr><td>Adaptive temperature governance</td><td><span class="badge badge-progress">designed</span></td><td>Architecture defined, needs integration</td></tr>
-    <tr><td>Full Mirus/Holden rebuild</td><td><span class="badge badge-concept">deferred</span></td><td>Doctrine preserved. Rebuild after immune agents prove which laws matter.</td></tr>
-    <tr><td>Reflective identity continuity</td><td><span class="badge badge-concept">conceptual</span></td><td>Long-range vision. Informed by current architecture work.</td></tr>
-  </table>
-</section>
-
-<!-- ===== 16. LONG-RANGE VISION ===== -->
-<section id="vision">
-  <div class="accent-line"></div>
-  <h2>Long-Range Vision</h2>
-
-  <p>The long-range vision is larger than verification alone. It is about building systems whose memory is not merely persistent, but <strong>meaning-aware and contradiction-accountable</strong>.</p>
-
-  <ul>
-    <li>Reflective continuity -- memory that can examine its own evolution</li>
-    <li>Contradiction as catalyst for growth, not mere cleanup</li>
-    <li>Governed semantic evolution across time and context</li>
-    <li>Identity that emerges from memory history rather than hardcoded persona</li>
-    <li>Memory structures that preserve plural states without collapsing them prematurely</li>
-  </ul>
-
-  <p>These are long-range goals, not current claims. They are informed by everything being built now, but they are not proven or implemented yet.</p>
+  <p>That's still the thesis. The implementation outgrew the original names. The math caught up to the feeling. But the intent never changed.</p>
 </section>
 
 <!-- ===== CLOSING ===== -->
@@ -764,6 +503,12 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
     <div class="law-number">Closing</div>
     <div class="law-text">Generation is replaceable. Governance persists.</div>
     <div class="law-sub">CORE is the persistence layer that keeps the system honest across model switches, session boundaries, and provider changes.</div>
+  </div>
+
+  <div style="text-align: center; margin-top: 40px;">
+    <a href="architecture.html" class="link-btn" style="margin-right: 12px;">Full Architecture</a>
+    <a href="nick_paper.html" class="link-btn" style="margin-right: 12px;">The Origin Story</a>
+    <a href="index.html" class="link-btn">All Docs</a>
   </div>
 </section>
 
