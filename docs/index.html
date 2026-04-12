@@ -17,18 +17,11 @@
 
 <!-- ===== HERO ===== -->
 <div class="hero">
-  <div class="hero-inner">
-    <h1 style="font-size:clamp(2.8em,6vw,4.5em);letter-spacing:-0.02em;margin-bottom:0.15em;"><span class="grad">Aeteros</span></h1>
-    <p class="sub" style="font-size:clamp(1em,2vw,1.35em);letter-spacing:0.12em;text-transform:uppercase;font-family:var(--mono);opacity:0.55;margin-bottom:0;">AI driven by meaning.</p>
-
-    <!-- Hero viz: belief/speech divergence monitor -->
-    <div id="belief-speech-viz" style="margin-top:56px;max-width:820px;margin-left:auto;margin-right:auto;position:relative;">
-      <svg id="bs-svg" viewBox="0 0 820 300" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;" aria-hidden="true"></svg>
-    </div>
-
-    <p class="byline" style="margin-top:36px;opacity:0.35;">Nick Block &bull; 2026</p>
+  <div class="hero-inner" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
+    <h1 style="font-size:clamp(3.2em,7vw,5.5em);letter-spacing:0.05em;margin-bottom:0.2em;font-weight:800;text-transform:uppercase;"><span class="grad">[A<span style="display:inline-block;transform:skewX(23deg);margin:0 -0.05em;-webkit-text-fill-color:#a78bfa;">E</span>TEROS]</span></h1>
+    <p class="sub" style="font-size:clamp(0.9em,1.8vw,1.2em);letter-spacing:0.45em;text-transform:uppercase;font-family:var(--mono);opacity:0.45;margin-bottom:0;width:100%;text-align:center;">AI that remembers what it believes.</p>
   </div>
-  <div class="scroll-cue" style="opacity:0.25;font-size:0.6em;letter-spacing:3px;">&#9660;</div>
+  <div class="scroll-cue" style="opacity:0.2;font-size:0.55em;letter-spacing:3px;">&#9660;</div>
 </div>
 
 <script>
@@ -294,7 +287,6 @@
   <a href="#research">04 The Research</a>
   <a href="#running">05 What's Running</a>
   <a href="#future">06 Where It Goes</a>
-  <a href="#builder">07 The Builder</a>
   <a href="#papers">Papers</a>
   <div class="sidebar-spacer"></div>
   <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme">
@@ -354,7 +346,11 @@
   <span class="chapter-num">Chapter 2</span>
   <h2>The Thesis</h2>
 
-  <p>CORE starts from three design laws. These are not suggestions or best practices. They are structural commitments that shape every decision in the architecture.</p>
+  <p>The project started under a different name. <strong>CRT</strong> — Contradiction Reflective Transformer — was the original working title. The irony is that it never was a transformer. It was a governance layer built around a transformer. But the name stuck for over a year because it captured the intent: a system that reflects on its own contradictions instead of hiding them.</p>
+
+  <p>As the architecture matured, the name evolved to match what it had actually become. <strong>CORE</strong> — Contradiction, Observation, Revision, Epistemics — describes the four operations that run continuously beneath every conversation. The system observes what's said, checks it against what it believes, revises when evidence warrants, and treats the entire process as an epistemic problem: not "what's the right answer" but "what do I believe, how strongly, and does it conflict with something I believed before?"</p>
+
+  <p>CORE starts from three design laws. Not suggestions or best practices. Structural commitments that shape every decision in the architecture.</p>
 
   <div class="principle-grid">
     <div class="principle principle-speech">
@@ -491,26 +487,6 @@
   </div>
 </section>
 
-<!-- ============================================================ -->
-<!-- CHAPTER 7                                                      -->
-<!-- ============================================================ -->
-<section id="builder">
-  <span class="chapter-num">Chapter 7</span>
-  <h2>The Builder</h2>
-
-  <p>Nick Block. Freelance developer. Not an ML researcher. Not from a lab. Sole builder of CORE and Aeteros.</p>
-
-  <p>This project exists because of a habit of asking "why do things have to be this way?" Why do AI assistants forget everything between sessions? Why do they resolve contradictions by silently overwriting? Why does confidence have nothing to do with evidence? Each question led to a design decision, and the design decisions accumulated into an architecture.</p>
-
-  <p>The system is tested through real daily use, not benchmarks. When Aether argued that trust scores were theater, that the system was "laundering vibes into decimals," that was a real conversation that led to real architectural changes. When the gap auditor flagged Aether's own description of its auditor (belief score <span class="eval-inline"><span class="bad">0.15</span></span>, speech confidence <span class="eval-inline"><span class="warn">0.50</span></span>, gap <span class="eval-inline"><span class="bad">0.35</span></span>), the system had caught itself inflating confidence about its own mechanisms.</p>
-
-  <div class="quote">
-    <p>I challenged and asked questions. Always asked why do things have to be as is.</p>
-    <div class="attr">Nick Block</div>
-  </div>
-
-  <p>135+ features shipped. 9 research papers. 191 agent runs logged. Built and tested by a single developer over 12+ months of daily use.</p>
-</section>
 
 <!-- ============================================================ -->
 <!-- PAPERS NAV                                                     -->
@@ -552,12 +528,11 @@
   </div>
 
   <h3 style="color:var(--text-dim);font-size:0.8em;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:28px 0 12px 0;">Reference</h3>
-  <p style="color:var(--text-dim);font-size:0.85em;margin-bottom:16px;">How to validate the claims, why the work matters, and what everything means.</p>
+  <p style="color:var(--text-dim);font-size:0.85em;margin-bottom:16px;">Glossary, project context, and the full origin story.</p>
   <div class="nav-grid">
-    <a href="claim-evaluation-guide.html">Research Guide</a>
-    <a href="why-this-matters.html">Why This Should Exist</a>
     <a href="glossary.html">Glossary</a>
     <a href="about.html">About Aeteros</a>
+    <a href="nick_paper.html">Personal Narrative</a>
   </div>
 </section>
 </main>

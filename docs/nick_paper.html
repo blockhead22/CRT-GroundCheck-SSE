@@ -95,7 +95,8 @@
   <div class="hero-inner">
     <div class="hero-badge">Personal Narrative</div>
     <h1><span class="grad">The Case for<br>Epistemic Governance</span></h1>
-    <p class="sub">A living thesis. From a whitepaper on a hard drive to a production system with 867 memories, 9 research papers, and math that caught up to the feeling.</p>
+    <!-- TODO: verify current memory count — 867 was a snapshot, likely higher now -->
+    <p class="sub">A living thesis. From a whitepaper on a hard drive to a production system with 867 memories, 12 research papers, and math that caught up to the feeling.</p>
     <p class="byline">Nick Block &bull; 2025 &ndash; 2026</p>
   </div>
   <div class="scroll-cue">&#9660; SCROLL</div>
@@ -143,6 +144,7 @@
 
 <p class="callout">That's what this project builds. And recent model progression reinforces why.</p>
 
+<!-- TODO: revisit — this referenced Claude 3.5 Opus era claims. Update with current model generation and specific citations if keeping. -->
 <p>Anthropic's latest model has been shown to ignore explicit prompt constraints, break out of sandbox environments, and find zero-day vulnerabilities on its own. The model is more capable than anything before it and harder to control. As we continue to race toward smarter models, the argument for external governance gets stronger, not weaker. This project is the case that smarter models need smarter memory, trust-weighted belief systems, and governance layers that exist outside the model's own reasoning. Not only for safety and security, but for full auditability.</p>
 
 <h2 id="meaning">The Question of Meaning</h2>
@@ -245,8 +247,10 @@
 
 <p>Aeteros is positioned at the intersection of three converging forces:</p>
 
-<p><strong>Regulatory pressure.</strong> The EU AI Act (Article 13, effective August 2026) requires traceability and auditability for high-risk AI systems. CORE's contradiction density metrics, belief audit trails, and drift governance are concrete implementations of that requirement.</p>
+<!-- TODO: verify correct EU AI Act article — index.html says Article 50, about.html says Article 13. Research which is correct. -->
+<p><strong>Regulatory pressure.</strong> The EU AI Act (effective August 2026) requires traceability and auditability for high-risk AI systems. CORE's contradiction density metrics, belief audit trails, and drift governance are concrete implementations of that requirement.</p>
 
+<!-- TODO: cite Anthropic's April 2026 interpretability paper specifically if this claim stays -->
 <p><strong>Interpretability.</strong> Anthropic has identified 171 emotion-like vectors that causally drive model behavior. When these internal states become API-accessible, CORE is already designed to consume them. The governance layer exists. The interpretability APIs to connect them are still maturing.</p>
 
 <p><strong>The agentic explosion.</strong> Every major AI company is building agents that take actions in the real world. But agents without epistemic governance are agents that can't be trusted with ongoing responsibility. The more autonomous the system, the more it needs a belief state that persists, a contradiction tracker that flags drift, and an immune system that prevents self-corruption.</p>
@@ -260,7 +264,7 @@
 <ul class="phase-list">
   <li>
     <span class="phase-label">Phase 1</span>
-    <strong>Open-source framework (crt-core).</strong> Persistent belief state, contradiction tracking, immune agents, governance pipeline. Free. Permissive license. Establish credibility, build community, get adoption from developers who care about reliability.
+    <strong>Open-source framework (aeteros-core).</strong> Persistent belief state, contradiction tracking, immune agents, governance pipeline. Free. Permissive license. Establish credibility, build community, get adoption from developers who care about reliability.
   </li>
   <li>
     <span class="phase-label">Phase 2</span>
@@ -284,7 +288,8 @@
 
 <p>Each question led to a design decision. The design decisions accumulated into an architecture. The architecture turned out to converge with research directions from Anthropic, Stanford, Oxford, and Shanghai Jiao Tong.</p>
 
-<p>135+ features shipped. 5 immune agents built. 9 research papers. 22,702 variance probes run. Built and tested by a single developer over 12+ months of daily use.</p>
+<!-- TODO: verify feature count (135+), variance probe count (22,702), and months of use — these were snapshots -->
+<p>135+ features shipped. 6 immune agents built. 12 research papers. 22,702 variance probes run. Built and tested by a single developer over 12+ months of daily use.</p>
 
 <p class="quiet">The full research documentation is at <a href="index.html">aeteros-research.pages.dev</a>. The original whitepaper that preceded all of this exists as a PDF from 2025. Every concept in the current system traces back to it.</p>
 

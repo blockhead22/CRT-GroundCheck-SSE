@@ -158,7 +158,7 @@
   <div class="hero-inner">
     <div class="hero-badge">About</div>
     <h1 style="font-family:var(--mono);letter-spacing:6px;text-transform:uppercase;"><span class="grad">Aeteros</span></h1>
-    <p class="sub">The medium through which belief propagates.</p>
+    <p class="sub">AI that remembers what it believes.</p>
     <p class="byline">Nick Block &bull; 2026</p>
     <!-- Hero viz: orbiting rings -->
     <div id="hero-about" style="margin-top:32px;max-width:400px;margin-left:auto;margin-right:auto;">
@@ -351,10 +351,12 @@
   <div class="origin-grid">
     <div class="origin-card">
       <h3 style="color:var(--text);font-size:1em;margin-bottom:12px;">Regulatory Pressure</h3>
-      <p>The EU AI Act (Article 13, effective August 2026) requires traceability and auditability for high-risk AI systems. CORE's contradiction density metrics, belief audit trails, and drift governance are concrete implementations of that requirement. The compliance deadline is arriving at the same time as the interpretability tools that make governance practical.</p>
+      <!-- TODO: verify correct EU AI Act article number — Article 13 here, Article 50 in index.html -->
+      <p>The EU AI Act (effective August 2026) requires traceability and auditability for high-risk AI systems. CORE's contradiction density metrics, belief audit trails, and drift governance are concrete implementations of that requirement. The compliance deadline is arriving at the same time as the interpretability tools that make governance practical.</p>
     </div>
     <div class="origin-card">
       <h3 style="color:var(--text);font-size:1em;margin-bottom:12px;">Interpretability APIs</h3>
+      <!-- TODO: cite Anthropic's specific paper/date for the 171 emotion vectors claim -->
       <p>Anthropic has identified 171 emotion-like vectors that causally drive model behavior. When these internal states become API-accessible (as SAE features, emotion vectors, activation probes), CORE is already designed to consume them. The governance layer exists. It's waiting for the sensors.</p>
     </div>
     <div class="origin-card">
@@ -363,7 +365,8 @@
     </div>
     <div class="origin-card">
       <h3 style="color:var(--text);font-size:1em;margin-bottom:12px;">The Memory Problem</h3>
-      <p>Everyone is adding "memory" to AI systems. RAG, long context, memory databases. But memory without governance compounds drift rather than resolving it. MemoryBench (2025) showed state-of-the-art memory systems can't consistently outperform naive RAG. The industry is solving the wrong problem. The problem isn't storage. It's epistemic integrity.</p>
+      <!-- TODO: verify MemoryBench (2025) citation — no backing source found in codebase. Either cite properly or remove. -->
+      <p>Everyone is adding "memory" to AI systems. RAG, long context, memory databases. But memory without governance compounds drift rather than resolving it. The industry is solving the wrong problem. The problem isn't storage. It's epistemic integrity.</p>
     </div>
   </div>
 
@@ -382,7 +385,7 @@
     <div class="timeline-item">
       <div class="timeline-phase">Phase 1</div>
       <div class="timeline-content">
-        <p><strong>Open-source framework (crt-core).</strong> Persistent belief state, contradiction tracking, immune agents, governance pipeline. Free. Permissive license. Establish credibility, build community, get adoption from developers who care about reliability.</p>
+        <p><strong>Open-source framework (aeteros-core).</strong> Persistent belief state, contradiction tracking, immune agents, governance pipeline. Free. Permissive license. Establish credibility, build community, get adoption from developers who care about reliability.</p>
       </div>
     </div>
     <div class="timeline-item">
@@ -415,12 +418,14 @@
   <div class="origin-card">
     <p><strong>Nick Block.</strong> Freelance developer. Not from a lab. Not funded. Sole builder of CORE and Aether.</p>
     <p>The project exists because of a habit of asking "why do things have to be this way?" Why do AI assistants forget everything between sessions? Why do they resolve contradictions by silently overwriting? Why does confidence have nothing to do with evidence?</p>
-    <p>Each question led to a design decision. The design decisions accumulated into an architecture. The architecture turned out to converge with research directions from Anthropic, Stanford, Oxford, and Shanghai Jiao Tong.</p>
-    <p>135+ features shipped. 5 immune agents built. 9 research papers drafted (including <a href="belief-backprop.html">reverse cascade / backward influence propagation</a> &mdash; no direct precedent identified in literature searches to date, and <a href="epistemic-compression.html">epistemic compression</a> &mdash; proving belief structure survives quantization). 22,702 variance probes run. One person who cared more about getting it right than getting it funded.</p>
+    <!-- TODO: "converge with research directions from Anthropic, Stanford, Oxford, and Shanghai Jiao Tong" — verify and cite specific papers/teams or soften the claim -->
+    <p>Each question led to a design decision. The design decisions accumulated into an architecture.</p>
+    <!-- TODO: verify feature count (135+) and variance probe count (22,702) — these were snapshots -->
+    <p>135+ features shipped. 6 immune agents built. 12 research papers drafted (including <a href="belief-backprop.html">reverse cascade / backward influence propagation</a> &mdash; no direct precedent identified in literature searches to date, and <a href="epistemic-compression.html">epistemic compression</a> &mdash; proving belief structure survives quantization). 22,702 variance probes run.</p>
   </div>
 
   <div class="quote-block">
-    <p>The medium through which belief propagates. That's what we're building. Not the model. Not the memory. The thing that gives continuity to something that would otherwise reset every conversation.</p>
+    <p>Not the model. Not the memory. The governance layer that gives continuity to something that would otherwise reset every conversation.</p>
   </div>
 </section>
 

@@ -31,8 +31,6 @@
     { href: 'emotion-governance.html',     label: 'Emotion Governance',     group: 'Theory' },
     { href: 'structural-tension.html',    label: 'Structural Tension',     group: 'Theory' },
     // Reference
-    { href: 'claim-evaluation-guide.html', label: 'Research Guide',          group: 'Reference' },
-    { href: 'why-this-matters.html',       label: 'Why This Should Exist',  group: 'Reference' },
     { href: 'glossary.html',              label: 'Glossary',                group: 'Reference' },
     { href: 'about.html',                label: 'About Aeteros',           group: 'Reference' },
     { href: 'nick_paper.html',           label: 'Personal Narrative',       group: 'Reference' },
@@ -42,6 +40,13 @@
   var inSubdir = window.location.pathname.replace(/\\/g, '/').includes('/labs/');
   var prefix = inSubdir ? '../' : '';
   var currentFile = window.location.pathname.replace(/\\/g, '/').split('/').pop() || 'index.html';
+  // Cloudflare Pages serves clean URLs (no .html) — normalize to match manifest
+  if (currentFile && !currentFile.includes('.')) {
+    currentFile = currentFile + '.html';
+  }
+  if (currentFile === '' || currentFile === '.html' || window.location.pathname === '/') {
+    currentFile = 'index.html';
+  }
 
   // ── Inject cross-doc nav bar with dropdown groups ──
   function injectDocNav() {

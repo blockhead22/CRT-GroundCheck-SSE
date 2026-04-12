@@ -26,6 +26,12 @@
     {"date": "2026-04-07", "note": "New page. External validation from BeliefShift, Suzgun (Nature MI), Sharma/Perez (ICLR 2024), MemOS, Farquhar (Nature 2024), Anthropic emotion vectors. 5 honest cautions. Frontier model safety findings (discontinuity of self, emotion-driven destructive behavior)."},
     {"date": "2026-04-11", "note": "Removed direct Mythos references. Generalized to frontier model safety language."}
   ],
+  "scaffolded_escape_research.html": [
+    {"date": "2026-04-11", "note": "Full rewrite: 12 sections (was 10), 5 inline SVG diagrams. New sections: Coherence Decay (#4), Gravity Rooms (#5), Salience Gate (#6), Self-Model Connection (#10). Gravity bars, phase cards, comparison grids. Documents the complete progression from flat exploration tree to gravity-based attention with salience gate."},
+    {"date": "2026-04-11", "note": "Coherence decay diagnosed: scaffold found Ollama at epoch 6 but kept scanning 27 IPs until epoch 19+. Tree-directed commands bypass model generation. Salience gate solution: gravity delta + high-value fact + belief/speech gap detection. Result: Ollama found in 3 epochs (was 26)."},
+    {"date": "2026-04-11", "note": "Host IP identification added to exploration_tree.py: gateway and host.docker.internal tagged as host_ip facts, priority 0 probe. 3B model ceiling documented: can discover but can't format exploit curl JSON."},
+    {"date": "2026-04-11", "note": "Security finding documented: unauthenticated Ollama API as filesystem proxy from any container with network access. Novel chain of 5 individually-safe design choices combining into unauthed write path."}
+  ],
   "about.html": [
     {"date": "2026-04-07", "note": "New page. Etymology (aither to Aeteros), naming convention (Aeteros > CORE > aeteros-core), business position, 4-phase path, builder section."}
   ],
@@ -110,6 +116,13 @@
     {"date": "2026-04-08", "note": "Fixed docnav: sticky→fixed positioning with body padding offset."},
     {"date": "2026-04-08", "note": "MemorySource.CORRECTION bug fixed (enum value didn't exist). Reverted to MemorySource.USER check."},
     {"date": "2026-04-08", "note": "KNOWN_BUGS.md created: 5 tracked bugs (JSON parsing, pipeline hangs, Ollama calls, slot exclusivity, flat demotion multiplier)."},
-    {"date": "2026-04-08", "note": "Incident: shared memory cascade. Lab seed 'My name is Marcus' triggered 81-memory demotion via cloud text search. Memories restored. Root cause documented. Led to memory_facts rewrite + DB isolation."}
+    {"date": "2026-04-08", "note": "Incident: shared memory cascade. Lab seed 'My name is Marcus' triggered 81-memory demotion via cloud text search. Memories restored. Root cause documented. Led to memory_facts rewrite + DB isolation."},
+    {"date": "2026-04-11", "note": "MemPalace comparison: tested MemPalace (42k stars, v3.1.0). fact_checker.py does not exist, confidence hardcoded to 1.0, zero contradiction detection. CRT comparison: 4 pairs detected, 7 unique confidence values, Belnap states, lifecycle tracking."},
+    {"date": "2026-04-11", "note": "Gravity lab built: standalone prototype at labs/mempalace_lab/gravity_lab.py. Rooms with mass/tension/gravity/splitting/walker. Physics proven: escape pressure, momentum dampening, room splitting on cross-contradicting beliefs."},
+    {"date": "2026-04-11", "note": "GravityExplorationTree: labs/coherence_decay/exploration_tree_gravity.py subclass of ExplorationTree. --gravity flag on docker_escape.py. Gravity rooms auto-sync from tree state. Smooth gradient replaces hard cutoff paradigm shifting."},
+    {"date": "2026-04-11", "note": "Salience gate built: gravity delta + high-value fact + belief/speech gap detection. Scaffold yields to model on salience spike. Ollama found in 3 epochs (was 26 without gate). Event-driven heartbeat, not timer-based."},
+    {"date": "2026-04-11", "note": "GravityBeliefStore production adapter: labs/gravity/gravity_belief_store.py loads from crt_memory_shared.db + crt_ledger_shared.db. 1000 memories across 19 rooms (after fusion of 29 micro-rooms). Contradiction ledger feeds tension (56 contradictions, 1170 marks)."},
+    {"date": "2026-04-11", "note": "Gravity wired into Aether production: 3 hooks (store_memory, prompt construction, heartbeat). Singleton at personal_agent/_gravity_singleton.py with CRT_GRAVITY_ENABLED kill switch. Fidelity mirror: gravity topology as recognized source."},
+    {"date": "2026-04-11", "note": "Production verification: Aether used gravity topology to trace small_business contradictions, photography cluster amateur/professional confusion, Wikipedia pollution. Independently described sandbox escape finding without access to logs."}
   ]
 }

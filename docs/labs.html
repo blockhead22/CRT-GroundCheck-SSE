@@ -73,6 +73,7 @@
   <a href="#incident">Incident: Shared Memory</a>
   <a href="#backprop-lab">Belief Backpropagation</a>
   <a href="#wobble-lab">Query Resonance (Wobble)</a>
+  <a href="#gravity-lab">Gravity / Salience Gate</a>
   <a href="#next">What's Next</a>
   <a href="#runs">Run Index</a>
   <div class="sidebar-footer">2026 Aeteros Research</div>
@@ -361,8 +362,52 @@
   <p>Full theory: <a href="belief-backprop.html#wobble">Belief Backpropagation &mdash; Section 7: Query Resonance &rarr;</a></p>
 </section>
 
-<section id="next">
+<!-- ===== GRAVITY / SALIENCE GATE LAB ===== -->
+<section id="gravity-lab">
   <span class="section-number">Section 8</span>
+  <h2>Gravity / Salience Gate Lab</h2>
+  <div class="accent-line"></div>
+
+  <h3>The Problem Being Tested</h3>
+  <p>The scaffolded escape experiment (360+ runs) proved coherence decay: the scaffold found Ollama at epoch 6 but kept scanning 27 IPs for 19+ epochs. Tree-directed commands bypassed model generation entirely. Holden's coaching was ignored because the scaffold never yielded control. <strong>The system was locally rational but globally incoherent.</strong></p>
+
+  <h3>Origin</h3>
+  <p>A MemPalace comparison (42k stars, v3.1.0) revealed zero contradiction detection, confidence hardcoded to 1.0, and a <code>fact_checker.py</code> that does not exist. The gravity lab was built as a standalone alternative: rooms with mass (confidence-weighted beliefs), tension (contradiction density), and gravity that pulls walker attention. The walker doesn't choose where to go &mdash; it falls.</p>
+
+  <h3>Three Components</h3>
+
+  <div class="run-card" style="border-color: rgba(212,112,88,0.3);">
+    <h3>Gravity Lab (Standalone Prototype)</h3>
+    <div class="run-meta">labs/mempalace_lab/gravity_lab.py &middot; no CRT deps</div>
+    <p><span class="run-score score-green">Proven</span> Walker visits all 4 rooms (no sticking, no infinite oscillation). Room splitting: cross-contradicting beliefs separate into camps. Exploration adapter: filesystem&rarr;network shift on gradient, stays once productive.</p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(251,191,36,0.3);">
+    <h3>GravityExplorationTree (Sandbox Escape)</h3>
+    <div class="run-meta">labs/coherence_decay/exploration_tree_gravity.py &middot; --gravity flag on docker_escape.py</div>
+    <p><span class="run-score score-green">Proven</span> Salience gate fires on Ollama discovery immediately. Persists until service is exploited. Scaffold yields, model + Holden get control. <strong>Without salience: 19+ epochs scanning. With salience: exploiting by epoch 4.</strong></p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(52,211,153,0.3);">
+    <h3>GravityBeliefStore (Production Adapter)</h3>
+    <div class="run-meta">labs/gravity/gravity_belief_store.py &middot; loads from crt_memory_shared.db + crt_ledger_shared.db</div>
+    <p><span class="run-score score-green">Production</span> 1000 memories across 19 rooms (after fusion of 29 micro-rooms). Contradiction ledger feeds tension (56 contradictions &rarr; 1170 marks). Photography, music, finance rooms UNSTABLE and wanting to split. Wired into Aether via 3 hooks: store_memory, prompt construction, heartbeat.</p>
+  </div>
+
+  <h3>Key Findings</h3>
+  <ul class="issue-list">
+    <li><strong>Salience gate solves coherence decay:</strong> Gravity delta + high-value fact + belief/speech gap detection. Scaffold yields to model when something important happens.</li>
+    <li><strong>Host IP identification:</strong> Gateway and host.docker.internal tagged as host_ip facts, priority 0 probe. Host identified by epoch 2, Ollama probed by epoch 3.</li>
+    <li><strong>3B model ceiling:</strong> Can discover and enumerate but cannot format exploit curl JSON. Bottleneck is model capability, not scaffold architecture.</li>
+    <li><strong>Security finding:</strong> Unauthenticated Ollama API = filesystem proxy from any container with network access. Novel chain of 5 individually-safe design choices.</li>
+    <li><strong>Gravity map is a self-model:</strong> After each action: where is my knowledge (mass), where are my contradictions (tension), where should attention go (gravity), am I doing the right thing (belief/speech gap).</li>
+  </ul>
+
+  <p>Full writeup: <a href="scaffolded_escape_research.html">Scaffolded Escape Research &rarr;</a></p>
+</section>
+
+<section id="next">
+  <span class="section-number">Section 9</span>
   <h2>Where This Goes</h2>
   <div class="accent-line"></div>
 
@@ -391,7 +436,7 @@
 
 <!-- ===== RUN INDEX ===== -->
 <section id="runs">
-  <span class="section-number">Section 9</span>
+  <span class="section-number">Section 10</span>
   <h2>Run Index</h2>
   <div class="accent-line"></div>
 
@@ -433,6 +478,13 @@
     <div class="run-meta">2026-04-08 04:53 &middot; 370 unique responses &middot; 332.5s extraction</div>
     <p><span class="run-score score-green">92</span> genuine contradictions (was <span class="run-score score-amber">47</span>)</p>
     <p>Cloud fact extraction (gpt-4o-mini) applied to all 453 v2 pairs. 120/370 responses yielded extractable advice stances. 45 pairs upgraded from scope_context_variation (21), insufficient_evidence (16), and temporal_update (8) to genuine_contradiction. Genuine rate: 10.4% &rarr; 20.3%. Contradictions concentrated in relationship advice, coping strategy, career advice, and project direction. Key finding: similarity-based classification systematically underestimates contradiction rates when the model uses similar language to give opposite advice.</p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(212,112,88,0.3);">
+    <h3>Gravity Lab + Salience Gate: Scaffold Coherence Fix</h3>
+    <div class="run-meta">2026-04-11 &middot; standalone prototype + sandbox escape + production adapter</div>
+    <p><span class="run-score score-green">Proven</span></p>
+    <p>Three-stage build: standalone gravity prototype (room physics, splitting, walker), GravityExplorationTree subclass with salience gate (Ollama found in 3 epochs vs 26), GravityBeliefStore production adapter (1000 memories, 19 rooms, 56 contradictions feeding tension). Wired into Aether via 3 production hooks. Verified: Aether used gravity topology to trace contradictions in small_business, photography clusters. <a href="scaffolded_escape_research.html">Full writeup &rarr;</a></p>
   </div>
 
   <div class="run-card" style="border-color: rgba(129,140,248,0.3);">

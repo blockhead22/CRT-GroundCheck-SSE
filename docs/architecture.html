@@ -147,7 +147,8 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <h1>How <span class="grad">CORE</span> Is Actually<br>Implemented</h1>
     <p class="sub">From whitepaper theory to running system: 6 governance layers, 10 transformations, real pipeline flow, agent dispatch, self-awareness loop, and drift governance</p>
     <div class="finding-box">
-      <p>This document maps every theoretical concept from the <strong>CORE whitepaper</strong> to its actual implementation. Every claim is backed by a module, every principle by running code. The system processes ~22,500 responses across 3 model families with full epistemic governance.</p>
+      <!-- TODO: verify "~22,500 responses across 3 model families" — no supporting evidence found in codebase -->
+      <p>This document maps every theoretical concept from the <strong>CORE whitepaper</strong> to its actual implementation. Every claim is backed by a module, every principle by running code.</p>
     </div>
     <!-- Hero viz: pipeline flow -->
     <div id="hero-pipeline" style="margin-top:28px;max-width:600px;margin-left:auto;margin-right:auto;">
@@ -286,12 +287,13 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
       <div class="stat-label">CORE Transformations</div>
     </div>
     <div class="stat-card">
-      <div class="stat-value green">5</div>
+      <div class="stat-value green">6</div>
       <div class="stat-label">Immune Agents</div>
     </div>
   </div>
   <div class="stat-row">
     <div class="stat-card">
+      <!-- TODO: verify MCP tool count — code shows ~6 @mcp.tool() registrations, not 18. Was 18 including sub-tools? -->
       <div class="stat-value pink">18</div>
       <div class="stat-label">MCP Tools Exposed</div>
     </div>
@@ -756,33 +758,39 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <span class="section-number">Section 9</span>
   <h2>Immune Agents</h2>
 
-  <p>Five constitutional agents wrap pipeline boundaries. They inspect inputs and outputs, emit verdicts (SAFE, FLAG, HEDGE, ESCALATE), but <strong>never silently modify</strong> content. The governance layer acts on verdicts; the agents only observe.</p>
+  <!-- TODO: this entire section was rewritten to match actual code. The old names (Mirus, Holden, Sentinel, Drift Monitor, Trust Auditor) were conceptual — the implemented agents have different names and roles. Verify descriptions against immune_agents/ source. -->
+  <p>Six constitutional agents wrap pipeline boundaries. They inspect inputs and outputs, emit verdicts (SAFE, FLAG, HEDGE, ESCALATE), but <strong>never silently modify</strong> content. The governance layer acts on verdicts; the agents only observe.</p>
 
   <div class="principle-grid">
     <div class="principle principle-trust">
       <div class="p-num">Agent 1</div>
-      <div class="p-text">Mirus: Input Boundary</div>
-      <div class="p-sub">Inspects incoming user messages at the pipeline entry. Flags potential injection, topic shifts, and ambiguous corrections before they reach memory.</div>
+      <div class="p-text">SpeechLeakDetector</div>
+      <div class="p-sub">Catches LLM output bleeding into belief state. Prevents the model's generated speech from being stored as trusted belief without evidence.</div>
     </div>
     <div class="principle principle-speech">
       <div class="p-num">Agent 2</div>
-      <div class="p-text">Holden: Reconstruction Gate</div>
-      <div class="p-sub">Guards the generation output. Enforces alignment with memory intent (&theta;=0.5) and memory content (&theta;=0.38). Hedges when evidence is insufficient rather than hallucinating.</div>
+      <div class="p-text">TemplateDetector</div>
+      <div class="p-sub">Flags rote, templated responses that bypass reasoning. Detects when the model is pattern-matching rather than engaging with the actual query.</div>
     </div>
     <div class="principle principle-belief">
       <div class="p-num">Agent 3</div>
-      <div class="p-text">Sentinel: Contradiction Boundary</div>
-      <div class="p-sub">Monitors contradiction detection and resolution. Ensures auto-resolution only occurs with overwhelming evidence. Flags suspicious resolution patterns.</div>
+      <div class="p-text">PrematureResolutionGuard</div>
+      <div class="p-sub">Blocks contradictions from resolving without sufficient evidence. Ensures auto-resolution only occurs with overwhelming corroboration.</div>
     </div>
     <div class="principle principle-variance">
       <div class="p-num">Agent 4</div>
-      <div class="p-text">Drift Monitor</div>
-      <div class="p-sub">Continuously measures alignment between generation direction and user objective. Feeds Rules 1 and 2 of drift governance.</div>
+      <div class="p-text">MemoryCorruptionGuard</div>
+      <div class="p-sub">Prevents writes that would degrade memory integrity. Guards against hallucinated facts, duplicate storage, and trust inflation.</div>
     </div>
     <div class="principle principle-contra">
       <div class="p-num">Agent 5</div>
-      <div class="p-text">Trust Auditor</div>
-      <div class="p-sub">Monitors trust evolution across the memory system. Flags sudden trust shifts, unreinforced memories approaching floor, and anomalous decay patterns.</div>
+      <div class="p-text">GapAuditor</div>
+      <div class="p-sub">Measures and reports belief/speech divergence per response. Logs every instance where the system says something different from what it believes.</div>
+    </div>
+    <div class="principle principle-speech">
+      <div class="p-num">Agent 6</div>
+      <div class="p-text">ContinuityAuditor</div>
+      <div class="p-sub">Verifies cross-session consistency of claims and preferences. Detects when the system contradicts its own prior positions across session boundaries.</div>
     </div>
   </div>
 </section>
@@ -850,6 +858,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <h3>The Problem: Single-Value Slots</h3>
   <p>The current slot model treats belief slots as single-value fields: <code>favorite_drink = orange juice</code>. When a new value arrives (<code>favorite_drink = water</code>), the system should detect the conflict, record the transition, and adjust trust. Instead, it stored both values as independent memories with no connection between them.</p>
 
+  <!-- TODO: verify line number — crt_rag.py is 10K+ lines, this reference may have shifted -->
   <p>The detection code exists (line 6620+ in <code>crt_rag.py</code>). The slot extraction works correctly; both <code>favorite_drink = orange juice</code> and <code>favorite_drink = actually water</code> are properly extracted. But one of the intermediate gates (ML detector or CRTMath paraphrase check) is suppressing the flag before it reaches the ledger. Debug instrumentation has been added to identify which gate.</p>
 
   <h3>The Deeper Issue: People Live in Contradiction</h3>
