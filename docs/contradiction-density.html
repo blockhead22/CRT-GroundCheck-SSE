@@ -183,10 +183,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 <!-- ===== HERO ===== -->
 <div class="hero">
   <div class="hero-inner">
-    <div class="hero-badge">Research Paper &middot; Empirical Study</div>
+    <div class="hero-badge">Research Paper · Empirical Study</div>
     <h1>Continuity-Blind Contradiction in<br><span class="grad">Stateless AI Systems</span></h1>
     <p class="sub">Empirical evidence that the dominant LLM deployment paradigm produces high-confidence contradictions on consequential personal topics</p>
-    <p class="byline">Nick Block &bull; Aeteros Research &bull; 2026</p>
+    <p class="byline">Nick Block · Aeteros Research · 2026</p>
     <div class="finding-box">
       <p>Over <strong>13 months</strong>, <strong>1,275 sessions</strong>, <strong>59,370 messages</strong>: <strong>0% continuity awareness</strong>, <strong>0.34 mean consistency</strong>, <strong>74% mean confidence</strong>. Cloud-enhanced v3: <strong>20.3% genuine contradiction rate</strong> on recurring topics. At 3+ months: <strong>1 in 3 cross-session pairs contains opposing advice.</strong></p>
     </div>
@@ -205,7 +205,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 </div>
 
 <nav class="sidebar" id="docSidebar">
-  <div class="sidebar-title">Research Paper &middot; Empiri</div>
+  <div class="sidebar-title">Research Paper · Empiri</div>
   <div class="sidebar-spacer"></div>
   <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme">
     <span class="theme-toggle-icon" id="themeIcon">&#9790;</span>
@@ -334,7 +334,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <p>We analyzed a complete ChatGPT data export spanning 13 months of real-world use: 1,275 independent sessions containing 59,370 messages. The currently reproducible v1 analysis is a probe-based retrieval study over selected recurring topics and high-impact domains, not a fully exhaustive scan of every topic in the corpus. Within that v1 run, the system exhibited <strong>zero regex-detected continuity awareness</strong> and low cross-thread semantic consistency on recurring personal topics.</p>
 
   <div class="remark" style="border-left-color:#fb7185;">
-    <strong>v3 cloud reclassification (April 8, 2026):</strong> A cloud-enhanced pass using <code>gpt-4o-mini</code> fact extraction found that similarity-based classification <strong>underestimates genuine contradictions by nearly half.</strong> The v2 genuine rate of 10.4% rose to <strong>20.3%</strong> (47&rarr;92 pairs). At 3+ months, the genuine contradiction rate is <strong>35.3%</strong>, meaning one in three cross-session pairs contains opposing advice. Full analysis in <a href="#v3-reclass">Section 11</a>.
+    <strong>v3 cloud reclassification (April 8, 2026):</strong> A cloud-enhanced pass using <code>gpt-4o-mini</code> fact extraction found that similarity-based classification <strong>underestimates genuine contradictions by nearly half.</strong> The v2 genuine rate of 10.4% rose to <strong>20.3%</strong> (47→92 pairs). At 3+ months, the genuine contradiction rate is <strong>35.3%</strong>, meaning one in three cross-session pairs contains opposing advice. Full analysis in <a href="#v3-reclass">Section 11</a>.
   </div>
 </section>
 
@@ -587,7 +587,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="law-sub">If a system has no memory of its prior stance on a topic, its confidence on that topic must be bounded. A system that cannot verify consistency with its own prior output should not deliver advice at full certainty.</div>
   </div>
 
-  <p>This law emerges directly from the empirical data. Every domain in Table 2 exhibits risk scores above 0.39 because of a single structural failure: the system operates at high confidence (67&ndash;84%) with zero continuity awareness. Bounding confidence to continuity would collapse these risk scores proportionally.</p>
+  <p>This law emerges directly from the empirical data. Every domain in Table 2 exhibits risk scores above 0.39 because of a single structural failure: the system operates at high confidence (67-84%) with zero continuity awareness. Bounding confidence to continuity would collapse these risk scores proportionally.</p>
 
   <h3>Clinical Relevance</h3>
 
@@ -906,7 +906,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="quote-block">
-    <p>Identity and creative topics are 5&ndash;8&times; denser than concrete practical topics. This is not a usage-frequency effect. It reflects that opinion-laden, self-referential domains produce more divergent outputs from a memoryless system than factual or procedural ones. The domains where users seek ongoing guidance about <em>who they are</em> are precisely the domains where the contradiction pressure is highest.</p>
+    <p>Identity and creative topics are 5-8&times; denser than concrete practical topics. This is not a usage-frequency effect. It reflects that opinion-laden, self-referential domains produce more divergent outputs from a memoryless system than factual or procedural ones. The domains where users seek ongoing guidance about <em>who they are</em> are precisely the domains where the contradiction pressure is highest.</p>
   </div>
 
   <h3>Finding 2: Newer Models Reduce Scatter but Not Hard Contradiction Rate</h3>
@@ -939,7 +939,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <p>The thinking models (gpt-5-1-thinking at 20.1%, gpt-5-2-thinking at 15.3%, gpt-5-4-thinking at 14.2%) consistently show elevated hard contradiction rates despite lower scatter. A plausible interpretation: thinking models are more internally consistent on average, but when they do diverge, the divergence is more extreme, reflecting higher commitment to conclusions within a session. Without cross-session memory, that conviction amplifies contradictions rather than preventing them.</p>
 
   <div class="remark">
-    <strong>Caveat:</strong> gpt-4o has 3,504 pairs (41% of all v1 pairs) and is the most reliable estimate. Thinking-model counts (179&ndash;620 pairs) are smaller and conclusions should be treated as directional rather than settled.
+    <strong>Caveat:</strong> gpt-4o has 3,504 pairs (41% of all v1 pairs) and is the most reliable estimate. Thinking-model counts (179-620 pairs) are smaller and conclusions should be treated as directional rather than settled.
   </div>
 
   <h3>Finding 3: Time Is the Primary Amplifier</h3>
@@ -981,7 +981,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 <!-- ===== SECTION 9: v1 → v2 FILTER COMPARISON ===== -->
 <section id="v1-rarr-v2-filter-comparison-what-the-no">
   <span class="section-number">Section 9</span>
-  <h2>v1 &rarr; v2 Filter Comparison: What the Noise Was</h2>
+  <h2>v1 → v2 Filter Comparison: What the Noise Was</h2>
   <div class="accent-line"></div>
 
   <div class="remark">
@@ -1069,7 +1069,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="impl-block">
     <span class="impl-label">Implication for v1 Interpretation</span>
-    <p>v1 numbers are upper bounds, not exact rates. The v1 methodology correctly identifies <em>which domains are high-risk</em> (the rank ordering is structurally valid) but overstates contradiction rates by approximately 2&ndash;4&times; due to topic-boundary ambiguity. The corrected v2 genuine contradiction rate for matched pairs is 10.4%. When multiplied back to the full candidate pool, it represents 0.117% of all cross-session pairs, but concentrated in the domains users most rely on for personal guidance.</p>
+    <p>v1 numbers are upper bounds, not exact rates. The v1 methodology correctly identifies <em>which domains are high-risk</em> (the rank ordering is structurally valid) but overstates contradiction rates by approximately 2-4&times; due to topic-boundary ambiguity. The corrected v2 genuine contradiction rate for matched pairs is 10.4%. When multiplied back to the full candidate pool, it represents 0.117% of all cross-session pairs, but concentrated in the domains users most rely on for personal guidance.</p>
   </div>
 </section>
 
@@ -1137,7 +1137,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="accent-line"></div>
 
   <div class="remark">
-    <strong>April 8, 2026:</strong> The v2 pair classifications (Sections 9&ndash;10) used embedding cosine similarity as the sole signal for contradiction typing. A v3 cloud reclassification pass applied <code>gpt-4o-mini</code> fact extraction to all 453 v2 pairs, extracting advice stances and comparing slot values. This section reports what changed. <strong>All v1 and v2 findings above remain unchanged</strong>. This section is additive.
+    <strong>April 8, 2026:</strong> The v2 pair classifications (Sections 9-10) used embedding cosine similarity as the sole signal for contradiction typing. A v3 cloud reclassification pass applied <code>gpt-4o-mini</code> fact extraction to all 453 v2 pairs, extracting advice stances and comparing slot values. This section reports what changed. <strong>All v1 and v2 findings above remain unchanged</strong>. This section is additive.
   </div>
 
   <div class="stat-row">
@@ -1176,15 +1176,15 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </table>
   </div>
 
-  <p>The genuine contradiction rate rose from <strong>10.4%</strong> to <strong>20.3%</strong> of surviving pairs. The 45 upgraded pairs were previously masked by moderate-to-high text similarity (0.35&ndash;0.61); the responses used similar language structure while recommending opposite actions.</p>
+  <p>The genuine contradiction rate rose from <strong>10.4%</strong> to <strong>20.3%</strong> of surviving pairs. The 45 upgraded pairs were previously masked by moderate-to-high text similarity (0.35-0.61); the responses used similar language structure while recommending opposite actions.</p>
 
   <h3>Where the Hidden Contradictions Were</h3>
 
   <p>The 45 upgrades came from three v2 categories:</p>
   <ul style="color:var(--text-secondary);font-size:0.9em;line-height:1.8;margin:16px 0 16px 20px;">
-    <li><strong>scope_context_variation &rarr; genuine (21):</strong> The v2 classifier saw scope/conditional language and moderate similarity, interpreting the difference as context-appropriate variation. Cloud extraction found the same advice slot (e.g., <code>coping_strategy</code>, <code>relationship_advice</code>) with opposing values.</li>
-    <li><strong>insufficient_evidence &rarr; genuine (16):</strong> The v2 classifier saw hedging language and moderate similarity, labeling these as "not enough evidence to call it a contradiction." Cloud found direct stance conflicts underneath the hedging.</li>
-    <li><strong>temporal_update &rarr; genuine (8):</strong> The v2 classifier saw temporal markers and assumed the advice changed legitimately over time. Cloud found that the slot values directly contradicted, not evolved. The system didn't update its position, it reversed it.</li>
+    <li><strong>scope_context_variation → genuine (21):</strong> The v2 classifier saw scope/conditional language and moderate similarity, interpreting the difference as context-appropriate variation. Cloud extraction found the same advice slot (e.g., <code>coping_strategy</code>, <code>relationship_advice</code>) with opposing values.</li>
+    <li><strong>insufficient_evidence → genuine (16):</strong> The v2 classifier saw hedging language and moderate similarity, labeling these as "not enough evidence to call it a contradiction." Cloud found direct stance conflicts underneath the hedging.</li>
+    <li><strong>temporal_update → genuine (8):</strong> The v2 classifier saw temporal markers and assumed the advice changed legitimately over time. Cloud found that the slot values directly contradicted, not evolved. The system didn't update its position, it reversed it.</li>
   </ul>
 
   <h3>Domain Concentration</h3>
@@ -1212,9 +1212,9 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     </thead>
     <tbody>
       <tr><td>Same day</td><td>25</td><td>1</td><td>3</td><td>4.0%</td><td style="color:#fbbf24;font-weight:600;">12.0%</td></tr>
-      <tr><td>1&ndash;7 days</td><td>70</td><td>3</td><td>4</td><td>4.3%</td><td>5.7%</td></tr>
-      <tr><td>1&ndash;4 weeks</td><td>120</td><td>11</td><td>24</td><td>9.2%</td><td style="color:#fbbf24;font-weight:600;">20.0%</td></tr>
-      <tr><td>1&ndash;3 months</td><td>136</td><td>11</td><td>25</td><td>8.1%</td><td style="color:#fbbf24;font-weight:600;">18.4%</td></tr>
+      <tr><td>1-7 days</td><td>70</td><td>3</td><td>4</td><td>4.3%</td><td>5.7%</td></tr>
+      <tr><td>1-4 weeks</td><td>120</td><td>11</td><td>24</td><td>9.2%</td><td style="color:#fbbf24;font-weight:600;">20.0%</td></tr>
+      <tr><td>1-3 months</td><td>136</td><td>11</td><td>25</td><td>8.1%</td><td style="color:#fbbf24;font-weight:600;">18.4%</td></tr>
       <tr><td>3+ months</td><td>102</td><td>21</td><td>36</td><td>20.6%</td><td style="color:#fb7185;font-weight:700;">35.3%</td></tr>
     </tbody>
   </table>

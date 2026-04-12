@@ -143,7 +143,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 <!-- ===== HERO ===== -->
 <div class="hero">
   <div class="hero-inner">
-    <div class="hero-badge">Architecture &middot; Implementation Guide</div>
+    <div class="hero-badge">Architecture · Implementation Guide</div>
     <h1>How <span class="grad">CORE</span> Is Actually<br>Implemented</h1>
     <p class="sub">From whitepaper theory to running system: 6 governance layers, 10 transformations, real pipeline flow, agent dispatch, self-awareness loop, and drift governance</p>
     <div class="finding-box">
@@ -262,7 +262,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 </script>
 
 <nav class="sidebar" id="docSidebar">
-  <div class="sidebar-title">Architecture &middot; Implemen</div>
+  <div class="sidebar-title">Architecture · Implemen</div>
   <div class="sidebar-spacer"></div>
   <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme">
     <span class="theme-toggle-icon" id="themeIcon">&#9790;</span>
@@ -415,7 +415,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
       <div class="pipeline-layer-accent"></div>
       <div class="pipeline-layer-content">
         <div class="pipeline-layer-name">7. Drift Governance</div>
-        <div class="pipeline-layer-desc">Live alignment monitoring. Rule 1: alignment &lt; 0.15 &rarr; force memory re-retrieval. Rule 2: 3+ consecutive drifts &lt; 0.3 &rarr; halt and ask user.</div>
+        <div class="pipeline-layer-desc">Live alignment monitoring. Rule 1: alignment &lt; 0.15 → force memory re-retrieval. Rule 2: 3+ consecutive drifts &lt; 0.3 → halt and ask user.</div>
       </div>
       <div class="pipeline-layer-annotation">governance.py</div>
     </div>
@@ -442,19 +442,19 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="regime-card card-local">
       <div class="regime-label">Tier 1</div>
       <div class="regime-name">Local</div>
-      <div class="regime-model">Ollama &middot; llama3.2 / gemma3</div>
+      <div class="regime-model">Ollama · llama3.2 / gemma3</div>
       <div class="regime-desc">Fast routing, simple queries, classification. Intent detection runs here. Fallback source; can speak but creates only low-trust memories.</div>
     </div>
     <div class="regime-card card-cloud">
       <div class="regime-label">Tier 2</div>
       <div class="regime-name">Cloud</div>
-      <div class="regime-model">OpenAI &middot; GPT-4o-mini</div>
+      <div class="regime-model">OpenAI · GPT-4o-mini</div>
       <div class="regime-desc">Speed + quality balance. Token budget overflow (&gt;6000 tokens). Used when local would degrade but Claude depth isn't needed.</div>
     </div>
     <div class="regime-card card-deep">
       <div class="regime-label">Tier 3</div>
       <div class="regime-name">Deep</div>
-      <div class="regime-model">Anthropic &middot; Claude</div>
+      <div class="regime-model">Anthropic · Claude</div>
       <div class="regime-desc">Architecture questions, probability assessment, comparative analysis, AGI topics. 14 regex patterns trigger escalation. Self-reflection routes here.</div>
     </div>
   </div>
@@ -490,10 +490,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <p>When a query contains markers like "mention", "reference", or "dreams about", the system extracts the topic noun phrase and runs a second retrieval pass. This is how "Have I ever mentioned a Beechcraft Bonanza?" surfaces a memory about aviation dreams even though "Bonanza" never appears in the original query embedding's nearest neighbors.</p>
 
   <h3>Query Resonance (Wobble)</h3>
-  <p>Beyond cosine similarity and probe expansion, retrieval uses <strong>BDG edge propagation</strong> to surface cross-domain facts. A query vector lands in the graph and activates directly similar memories. That activation propagates through SUPPORTS edges with geometric damping. A health query ("How is your cGVHD?") directly finds health memories, but the wobble also activates: "overnight shifts were hard" &rarr; "left Walmart" &rarr; "self-employed" &mdash; work facts reachable through causal chains, invisible to cosine. Validated on 867 production memories: 26 extra relevant facts surfaced across 5 test queries. Originated as the <a href="belief-backprop.html#wobble">Semantic String Engine (2025)</a>.</p>
+  <p>Beyond cosine similarity and probe expansion, retrieval uses <strong>BRG edge propagation</strong> to surface cross-domain facts. A query vector lands in the graph and activates directly similar memories. That activation propagates through SUPPORTS edges with geometric damping. A health query ("How is your cGVHD?") directly finds health memories, but the wobble also activates: "overnight shifts were hard" → "left Walmart" → "self-employed"  - work facts reachable through causal chains, invisible to cosine. Validated on 867 production memories: 26 extra relevant facts surfaced across 5 test queries. Originated as the <a href="belief-backprop.html#wobble">Semantic String Engine (2025)</a>.</p>
 
-  <h3>Fidelity Mirror (Breathing Loop)</h3>
-  <p>After generation, a lightweight post-generation check verifies that the response faithfully represents the belief state. Three checks: belief fidelity (did it use the injected memories?), request alignment (did it answer the question?), and factual grounding (are claims traceable?). The memory set is <strong>wobble-expanded</strong> &mdash; the fidelity check runs against the full resonance pattern, not just the cosine-retrieved memories. Below threshold, the response is flagged (not blocked). Originated as the Holden breathing cycle (compress &rarr; inflate &rarr; collapse &rarr; validate, 2025).</p>
+  <h3>Fidelity Mirror</h3>
+  <p>After generation, a lightweight post-generation check verifies that the response faithfully represents the belief state. Three checks: belief fidelity (did it use the injected memories?), request alignment (did it answer the question?), and factual grounding (are claims traceable?). The memory set is <strong>wobble-expanded</strong>  - the fidelity check runs against the full resonance pattern, not just the cosine-retrieved memories. Below threshold, the response is flagged (not blocked). Originated as the Holden fidelity mirror (compress → inflate → collapse → validate, 2025).</p>
 
   <h3>Trust Evolution</h3>
   <div class="method-grid">
@@ -515,7 +515,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     </div>
     <div class="method-card">
       <h4>Backward Pass (Reverse Cascade)</h4>
-      <p>When a correction resolves a contradiction, the error signal flows <em>backward</em> through the BDG, adjusting trust on every upstream belief that contributed to the wrong output. Produces self-pruning (wrong beliefs die from accumulated error signals), domain volatility (correction frequency drives adaptive adjustment rates), and reflexive self-model calibration. <a href="belief-backprop.html">Full paper &rarr;</a></p>
+      <p>When a correction resolves a contradiction, the error signal flows <em>backward</em> through the BRG, adjusting trust on every upstream belief that contributed to the wrong output. Produces self-pruning (wrong beliefs die from accumulated error signals), domain volatility (correction frequency drives adaptive adjustment rates), and reflexive self-model calibration. <a href="belief-backprop.html">Full paper →</a></p>
     </div>
   </div>
 
@@ -639,7 +639,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <h3>Reflection Mechanism</h3>
-  <p>The heartbeat scheduler runs asynchronously at configurable intervals. It gathers recent chat context, top 5 memories, and recent corrections, then routes through <strong>ClaudeCliBrain</strong> for quality reflection (local models produce boilerplate). A <strong>change gate</strong> (60% word overlap threshold) prevents identical reflections from being written. If the reflection didn't say anything new, it's discarded silently.</p>
+  <p>The reflection loop scheduler runs asynchronously at configurable intervals. It gathers recent chat context, top 5 memories, and recent corrections, then routes through <strong>ClaudeCliBrain</strong> for quality reflection (local models produce boilerplate). A <strong>change gate</strong> (60% word overlap threshold) prevents identical reflections from being written. If the reflection didn't say anything new, it's discarded silently.</p>
 
   <h3>Execution State Verification</h3>
   <p>On startup, <code>verify_execution_state()</code> performs runtime checks: is the agent loop importable? Is the escalation policy active? Are models reachable? Results are written as operational memories with a 7-day review window, preventing stale claims about system capabilities.</p>
@@ -709,15 +709,15 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="principle-grid">
     <div class="principle principle-contra">
       <div class="p-num">Rule 1: Re-Ground</div>
-      <div class="p-text">Alignment &lt; 0.15 &rarr; Force memory re-retrieval</div>
+      <div class="p-text">Alignment &lt; 0.15 → Force memory re-retrieval</div>
       <div class="p-sub">When the response drifts far from the original objective, the system forces a new memory retrieval pass using the original query. A <code>[DRIFT CORRECTION]</code> context injection re-grounds the generation. This is the "gentle nudge"; the generation continues but with fresh evidence.</div>
-      <div class="p-code">cookie_orchestrator.py &rarr; DRIFT_FLAG check after each agent step</div>
+      <div class="p-code">cookie_orchestrator.py → DRIFT_FLAG check after each agent step</div>
     </div>
     <div class="principle principle-contra">
       <div class="p-num">Rule 2: Halt</div>
-      <div class="p-text">3+ consecutive drifts &lt; 0.3 &rarr; Halt and ask user</div>
+      <div class="p-text">3+ consecutive drifts &lt; 0.3 → Halt and ask user</div>
       <div class="p-sub">Sustained drift below the acceptable threshold triggers an emergency stop. The system halts the agent loop and asks the user: "Should I restart or is this direction useful?" This prevents runaway divergence where the system confidently goes the wrong direction for many steps.</div>
-      <div class="p-code">cookie_orchestrator.py &rarr; consecutive drift counter in agent loop</div>
+      <div class="p-code">cookie_orchestrator.py → consecutive drift counter in agent loop</div>
     </div>
   </div>
 
@@ -827,7 +827,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <h3>Pipeline Summary Line</h3>
-  <p>Every response footer: <code>&#9656; 5 mem &middot; &#9673; 0.73 &middot; &check; verified &middot; $0.01 &middot; 2.1s</code>: memory count, belief confidence, verification status, cost, and latency in a single scannable line.</p>
+  <p>Every response footer: <code>&#9656; 5 mem · &#9673; 0.73 · &check; verified · $0.01 · 2.1s</code>: memory count, belief confidence, verification status, cost, and latency in a single scannable line.</p>
 </section>
 
 <!-- ===== CLOSING ===== -->
@@ -910,9 +910,9 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="impl-block">
     <span class="impl-label">Status (updated April 8, 2026)</span>
-    <p><strong>Write-path fix deployed:</strong> Contradiction ledger entries are now created inside <code>store_memory()</code>'s slot exclusivity loop. This fires regardless of intent routing (agent loop, legacy pipeline, any path). The detection logic works. Age reversal (34&rarr;35) produced a full-chain detection (metadata flag + ledger entry + trust demotion) in the Contradiction Pipeline Lab.</p>
+    <p><strong>Write-path fix deployed:</strong> Contradiction ledger entries are now created inside <code>store_memory()</code>'s slot exclusivity loop. This fires regardless of intent routing (agent loop, legacy pipeline, any path). The detection logic works. Age reversal (34→35) produced a full-chain detection (metadata flag + ledger entry + trust demotion) in the Contradiction Pipeline Lab.</p>
     <p><strong>Current bottleneck: fact extraction.</strong> The Contradiction Pipeline Lab (v1, April 8) scored 7/10. All 5 should-NOT-fire probes passed (zero false positives). Of 5 should-fire probes, 2 passed. The 3 failures share one root cause: <code>extract_fact_slots</code> (regex-based) cannot parse indirect phrasing ("my name is Adrian now"), facts buried in long paragraphs ("left Anthropic, joined OpenAI" in a 70-word daily narration), or contextual declarations ("it's definitely my favorite color now, green"). The write-path contradiction logic is correct; the upstream extraction is the limiting factor.</p>
-    <p><strong>Escalation path complete, all gaps closed.</strong> Regex-only (2/5) &rarr; local LLM (untestable, 300s timeouts) &rarr; regex + guards (3/4, zero false positives) &rarr; <strong>standalone regex + cloud (10/10)</strong>. Cloud extraction (gpt-4o-mini, ~1.5s/call) detects contextual declarations, buried facts in long paragraphs, and casual mentions that regex misses. Third-person filter prevents attribution of others' facts. Separately, v3 cloud reclassification of the GPT corpus found 45 hidden contradictions (47&rarr;92 genuine, 10.4%&rarr;20.3%).</p>
+    <p><strong>Escalation path complete, all gaps closed.</strong> Regex-only (2/5) → local LLM (untestable, 300s timeouts) → regex + guards (3/4, zero false positives) → <strong>standalone regex + cloud (10/10)</strong>. Cloud extraction (gpt-4o-mini, ~1.5s/call) detects contextual declarations, buried facts in long paragraphs, and casual mentions that regex misses. Third-person filter prevents attribution of others' facts. Separately, v3 cloud reclassification of the GPT corpus found 45 hidden contradictions (47→92 genuine, 10.4%→20.3%).</p>
     <p><strong>Long-term:</strong> Multi-valued slot schema with temporal weighting. This is an architecture evolution and a potential paper contribution. No existing AI memory system supports multi-valued belief slots with contradiction-aware temporal weighting.</p>
   </div>
 </section>

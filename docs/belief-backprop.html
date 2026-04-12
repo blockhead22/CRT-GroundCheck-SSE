@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Belief Backpropagation: Error-Driven Trust Evolution | Aeteros Research</title>
+<title>Backward Influence Propagation: Error-Driven Trust Evolution | Aeteros Research</title>
 <script>
 MathJax = {
   tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']], tags: 'ams' },
@@ -146,15 +146,15 @@ MathJax = {
 <!-- ===== HERO ===== -->
 <div class="hero">
   <div class="hero-inner">
-    <div class="hero-badge">Research Paper &middot; Belief Backpropagation</div>
-    <h1>Belief Backpropagation:<br><span class="grad">Error-Driven Trust Evolution</span><br>in Epistemic Memory Systems</h1>
-    <p class="sub">When the output is wrong, which beliefs caused it? Backward error propagation through the Belief Dependency Graph.</p>
-    <p class="byline">Nick Block &bull; Aeteros Research &bull; April 2026</p>
+    <div class="hero-badge">Research Paper</div>
+    <h1>Backward Influence Propagation:<br><span class="grad">Error-Driven Trust Evolution</span><br>in Epistemic Memory Systems</h1>
+    <p class="sub">When the output is wrong, which beliefs caused it? Backward influence propagation through the Belief Relationship Graph.</p>
+    <p class="byline">Nick Block · Aeteros Research · April 2026</p>
     <div class="finding-box">
-      <p>We introduce <strong>belief backpropagation</strong> &mdash; a framework where contradiction resolution generates an error signal that flows backward through the Belief Dependency Graph (BDG), adjusting trust scores on every belief that contributed to the incorrect output. The mechanism is damped influence propagation on a weighted directed graph (the directional analogy to neural backprop, not the calculus). Three behaviors follow: <strong>self-pruning</strong> of persistently wrong beliefs, <strong>domain-specific volatility measurement</strong>, and <strong>reflexive self-model calibration</strong>. All six validation experiments pass (30/30). No direct precedent identified in literature searches to date.</p>
+      <p>We introduce <strong>backward influence propagation</strong> - a framework where contradiction resolution generates an error signal that flows backward through the Belief Relationship Graph (BRG), adjusting trust scores on every belief that contributed to the incorrect output. The mechanism is damped influence propagation on a weighted directed graph, not gradient-based computation. Three behaviors follow: <strong>self-pruning</strong> of persistently wrong beliefs, <strong>domain-specific volatility measurement</strong>, and <strong>reflexive self-model calibration</strong>. All six validation experiments pass (30/30). No direct precedent identified in literature searches to date.</p>
     </div>
 
-    <!-- Interactive BDG Visualizer -->
+    <!-- Interactive BRG Visualizer -->
     <div class="hero-viz" style="margin-top:24px;">
       <div class="hero-viz-ctrl">
         <button id="bpCorrect" style="background:rgba(251,113,133,0.2);color:#fb7185;border:1px solid rgba(251,113,133,0.3);border-radius:6px;padding:4px 12px;font-family:var(--mono);font-size:0.75em;cursor:pointer;">Correct wrong job claim</button>
@@ -465,17 +465,17 @@ MathJax = {
   <h2>The Problem: Forward-Only Cascades</h2>
   <div class="accent-line"></div>
 
-  <p>The CORE Belief Dependency Graph supports <strong>forward cascades</strong>: when a belief changes, downstream dependents update via damped propagation (Theorem 4.3, <a href="cascade-complexity.html">Cascade Complexity</a>). This answers: <em>if I change my mind about X, what else should change?</em></p>
+  <p>The CORE Belief Relationship Graph supports <strong>forward cascades</strong>: when a belief changes, downstream dependents update via damped propagation (Theorem 4.3, <a href="cascade-complexity.html">Cascade Complexity</a>). This answers: <em>if I change my mind about X, what else should change?</em></p>
 
-  <p>But it cannot answer the inverse: <strong>my output was wrong &mdash; what beliefs caused that, and how should they adjust?</strong></p>
+  <p>But it cannot answer the inverse: <strong>my output was wrong  - what beliefs caused that, and how should they adjust?</strong></p>
 
   <h3>The Design Studio Problem</h3>
 
   <p>Concrete production failure:</p>
 
   <ol>
-    <li>Memory stored: &ldquo;Nick works at a design studio downtown&rdquo; (trust = 0.73)</li>
-    <li>User corrects: &ldquo;I do not work at a design studio&rdquo; (trust = 0.70)</li>
+    <li>Memory stored: "Nick works at a design studio downtown" (trust = 0.73)</li>
+    <li>User corrects: "I do not work at a design studio" (trust = 0.70)</li>
     <li>System stores the correction but the original memory persists at 0.507</li>
     <li>Next query: system retrieves the wrong memory and repeats the error</li>
     <li>User corrects again. Original memory barely moves.</li>
@@ -518,7 +518,7 @@ MathJax = {
         <div class="pipeline-layer-name">Forward Pass</div>
         <div class="pipeline-layer-desc">Input flows through layers to produce output</div>
       </div>
-      <div class="pipeline-layer-annotation">Query &rarr; retrieval &rarr; generation</div>
+      <div class="pipeline-layer-annotation">Query → retrieval → generation</div>
     </div>
     <div class="pipeline-layer">
       <div class="pipeline-layer-accent"></div>
@@ -543,7 +543,7 @@ MathJax = {
 
   <h3>The Epistemic Loss Function</h3>
 
-  <p>When a contradiction resolves &mdash; through user correction, accumulated evidence, or explicit resolution &mdash; the resolution event generates an <strong>epistemic loss</strong>:</p>
+  <p>When a contradiction resolves  - through user correction, accumulated evidence, or explicit resolution  - the resolution event generates an <strong>epistemic loss</strong>:</p>
 
   <div class="proof-block">
     <span class="proof-label">Definition: Epistemic Loss</span>
@@ -555,7 +555,7 @@ MathJax = {
 
   <h3>Gradient Computation Per Edge</h3>
 
-  <p>For each dependency edge \(A \to B\) in the BDG, the backward gradient is:</p>
+  <p>For each dependency edge \(A \to B\) in the BRG, the backward gradient is:</p>
 
   <div class="proof-block">
     <span class="proof-label">Definition: Backward Gradient</span>
@@ -581,7 +581,7 @@ MathJax = {
     <div class="principle principle-backward">
       <div class="p-num">Layer 3</div>
       <div class="p-text">Slot Classification</div>
-      <div class="p-sub">If the slot classifier tagged &ldquo;employer&rdquo; when it shouldn't have, its accuracy metric tracks the error.</div>
+      <div class="p-sub">If the slot classifier tagged "employer" when it shouldn't have, its accuracy metric tracks the error.</div>
     </div>
     <div class="principle principle-backward">
       <div class="p-num">Layer 4</div>
@@ -608,12 +608,12 @@ MathJax = {
     <div class="principle principle-volatility">
       <div class="p-num">Emergent Behavior 2</div>
       <div class="p-text">Domain Volatility</div>
-      <div class="p-sub">If a node or cluster keeps getting corrected, that fluctuation has a measurable frequency. High-volatility domains get lower assertion confidence, more frequent verification, higher adjustment rates (corrections take effect faster), and self-model awareness. The system doesn't need a rule saying &ldquo;be careful about employment.&rdquo; It measures that employment has been corrected 3 times in 48 hours while name has been stable for weeks. The caution emerges from the data.</div>
+      <div class="p-sub">If a node or cluster keeps getting corrected, that fluctuation has a measurable frequency. High-volatility domains get lower assertion confidence, more frequent verification, higher adjustment rates (corrections take effect faster), and self-model awareness. The system doesn't need a rule saying "be careful about employment." It measures that employment has been corrected 3 times in 48 hours while name has been stable for weeks. The caution emerges from the data.</div>
     </div>
     <div class="principle principle-self">
       <div class="p-num">Emergent Behavior 3</div>
       <div class="p-text">Reflexive Self-Model</div>
-      <div class="p-sub">The system's beliefs about itself &mdash; &ldquo;I am reliable on employment facts,&rdquo; &ldquo;my confidence tracks my accuracy&rdquo; &mdash; are nodes in the BDG like any other belief. When the backward pass adjusts beliefs, it adjusts self-model beliefs too. The system becomes cautious about employment specifically because employment has been wrong, not because a rule told it to hedge. This is personality as a consequence of epistemic history.</div>
+      <div class="p-sub">The system's beliefs about itself  - "I am reliable on employment facts," "my confidence tracks my accuracy"  - are nodes in the BRG like any other belief. When the backward pass adjusts beliefs, it adjusts self-model beliefs too. The system becomes cautious about employment specifically because employment has been wrong, not because a rule told it to hedge. This is personality as a consequence of epistemic history.</div>
     </div>
   </div>
 
@@ -631,17 +631,17 @@ MathJax = {
   <h2>Experimental Results</h2>
   <div class="accent-line"></div>
 
-  <p>All experiments run standalone against constructed BDGs. No backend, no LLM calls. Pure graph math. <strong>30/30 checks passed.</strong></p>
+  <p>All experiments run standalone against constructed BRGs. No backend, no LLM calls. Pure graph math. <strong>30/30 checks passed.</strong></p>
 
   <div class="result-card" style="border-color: rgba(192,132,252,0.3);">
     <h3>Lab 1: Backward Pass Mechanics</h3>
-    <div class="result-meta">5 nodes, 5 edges &middot; Graph: A &rarr; B &rarr; C &rarr; D (corrected), E &rarr; C</div>
+    <div class="result-meta">5 nodes, 5 edges · Graph: A → B → C → D (corrected), E → C</div>
     <p><span class="score-badge score-green">8/8</span> Gradient decays with depth: C(1.04) &gt; B(0.66) &gt; E(0.58) &gt; A(0.47). CONTRADICTS edges correctly skipped. Damping matches Theorem 4.3.</p>
   </div>
 
   <div class="result-card" style="border-color: rgba(251,113,133,0.3);">
     <h3>Lab 2: Design Studio Problem</h3>
-    <div class="result-meta">Production bug reproduction &middot; 4 nodes with 3 upstream supporters</div>
+    <div class="result-meta">Production bug reproduction · 4 nodes with 3 upstream supporters</div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Method</th><th>Corrections</th><th>Upstream Erosion</th></tr></thead>
@@ -651,13 +651,13 @@ MathJax = {
         </tbody>
       </table>
     </div>
-    <p><span class="score-badge score-green">5/5</span> Both kill the leaf in 2 corrections, but backprop also erodes upstream: retrieval_boost 0.70&rarr;0.25, slot_classifier 0.75&rarr;0.36, old_conversation 0.50&rarr;0.17. The retrieval system that boosted the wrong memory <strong>learned</strong>.</p>
+    <p><span class="score-badge score-green">5/5</span> Both kill the leaf in 2 corrections, but backprop also erodes upstream: retrieval_boost 0.70→0.25, slot_classifier 0.75→0.36, old_conversation 0.50→0.17. The retrieval system that boosted the wrong memory <strong>learned</strong>.</p>
   </div>
 
   <div class="result-card" style="border-color: rgba(244,114,182,0.3);">
     <h3>Lab 3: Self-Pruning Emergence</h3>
-    <div class="result-meta">20 beliefs (5 wrong, 15 correct) &middot; 3 correction cycles</div>
-    <p><span class="score-badge score-green">3/3</span> All 5 wrong beliefs self-pruned (0.70 &rarr; 0.30 &rarr; 0.09). Unconnected correct beliefs: <strong>0.0 delta</strong>. Connected supporters received expected gradient (they vouched for wrong beliefs; their credibility should adjust).</p>
+    <div class="result-meta">20 beliefs (5 wrong, 15 correct) · 3 correction cycles</div>
+    <p><span class="score-badge score-green">3/3</span> All 5 wrong beliefs self-pruned (0.70 → 0.30 → 0.09). Unconnected correct beliefs: <strong>0.0 delta</strong>. Connected supporters received expected gradient (they vouched for wrong beliefs; their credibility should adjust).</p>
   </div>
 
   <div class="result-card" style="border-color: rgba(251,191,36,0.3);">
@@ -678,7 +678,7 @@ MathJax = {
 
   <div class="result-card" style="border-color: rgba(129,140,248,0.3);">
     <h3>Lab 5: Bidirectional Convergence</h3>
-    <div class="result-meta">30 nodes, 50 edges &middot; 15 corrections applied</div>
+    <div class="result-meta">30 nodes, 50 edges · 15 corrections applied</div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Metric</th><th>Value</th></tr></thead>
@@ -690,19 +690,19 @@ MathJax = {
         </tbody>
       </table>
     </div>
-    <p><span class="score-badge score-green">3/3</span> System converges. Same corrections in reversed order produce nearly identical final state. Contraction ratio 0.13 &mdash; well below 1.0.</p>
+    <p><span class="score-badge score-green">3/3</span> System converges. Same corrections in reversed order produce nearly identical final state. Contraction ratio 0.13  - well below 1.0.</p>
   </div>
 
   <div class="result-card" style="border-color: rgba(52,211,153,0.3);">
     <h3>Lab 6: Reflexive Self-Model</h3>
-    <div class="result-meta">3 self-model beliefs + 3 world beliefs &middot; 3 employment corrections</div>
+    <div class="result-meta">3 self-model beliefs + 3 world beliefs · 3 employment corrections</div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Self-Model Belief</th><th>Before</th><th>After</th><th>Delta</th></tr></thead>
         <tbody>
-          <tr><td>&ldquo;I am reliable on employment facts&rdquo;</td><td>0.800</td><td>0.347</td><td><strong>&minus;0.453</strong></td></tr>
-          <tr><td>&ldquo;My confidence tracks my accuracy&rdquo;</td><td>0.700</td><td>0.376</td><td><strong>&minus;0.324</strong></td></tr>
-          <tr><td>&ldquo;I am reliable on identity facts&rdquo;</td><td>0.800</td><td>0.800</td><td><strong>0.000</strong></td></tr>
+          <tr><td>"I am reliable on employment facts"</td><td>0.800</td><td>0.347</td><td><strong>&minus;0.453</strong></td></tr>
+          <tr><td>"My confidence tracks my accuracy"</td><td>0.700</td><td>0.376</td><td><strong>&minus;0.324</strong></td></tr>
+          <tr><td>"I am reliable on identity facts"</td><td>0.800</td><td>0.800</td><td><strong>0.000</strong></td></tr>
         </tbody>
       </table>
     </div>
@@ -776,12 +776,12 @@ MathJax = {
     <div class="principle" style="border-left-color:#c084fc;">
       <div class="p-num">Theorem Target 2</div>
       <div class="p-text">Self-Referential Belief Nodes</div>
-      <div class="p-sub">Self-model beliefs converging under the same dynamics as world-beliefs. Highest novelty &mdash; no direct precedent identified in literature searches to date. Current limitation: self-model edges are manually configured. Full claim requires automatic edge discovery from correction patterns and wobble co-activation history.</div>
+      <div class="p-sub">Self-model beliefs converging under the same dynamics as world-beliefs. Highest novelty  - no direct precedent identified in literature searches to date. Current limitation: self-model edges are manually configured. Full claim requires automatic edge discovery from correction patterns and wobble co-activation history.</div>
     </div>
     <div class="principle" style="border-left-color:#34d399;">
       <div class="p-num">Theorem Target 3</div>
       <div class="p-text">AGM Unification</div>
-      <div class="p-sub">Recent work proved backprop can be viewed as AGM revision (ML &rarr; epistemics). CORE proves the inverse: AGM revision can use backpropagation (epistemics &rarr; ML). Combined result: they're the same thing.</div>
+      <div class="p-sub">Recent work proved backprop can be viewed as AGM revision (ML → epistemics). CORE proves the inverse: AGM revision can use backpropagation (epistemics → ML). Combined result: they're the same thing.</div>
     </div>
     <div class="principle" style="border-left-color:#fbbf24;">
       <div class="p-num">Theorem Target 4</div>
@@ -803,7 +803,7 @@ MathJax = {
 
   <h3>The Mechanism</h3>
 
-  <p>A query vector \(q\) lands in the BDG. Every node receives direct activation from cosine similarity. Then resonance propagates through SUPPORTS edges:</p>
+  <p>A query vector \(q\) lands in the BRG. Every node receives direct activation from cosine similarity. Then resonance propagates through SUPPORTS edges:</p>
 
   <div class="proof-block">
     <span class="proof-label">Definition: Query Resonance</span>
@@ -817,20 +817,20 @@ MathJax = {
 
   <h3>What Wobble Finds That Cosine Misses</h3>
 
-  <p>Tested on 867 production memories. A health query (&ldquo;How is your cGVHD?&rdquo;) directly resonates with health memories (cosine). But the wobble also surfaces:</p>
+  <p>Tested on 867 production memories. A health query ("How is your cGVHD?") directly resonates with health memories (cosine). But the wobble also surfaces:</p>
 
   <div class="table-wrap">
     <table>
       <thead><tr><th>Memory</th><th>Direct Cosine</th><th>Edge-Propagated</th><th>Path</th></tr></thead>
       <tbody>
-        <tr><td>&ldquo;I left Walmart a year ago&rdquo;</td><td>~0</td><td>0.161</td><td>cGVHD &rarr; overnight hard &rarr; left Walmart</td></tr>
-        <tr><td>&ldquo;I'm self-employed&rdquo;</td><td>~0</td><td>0.090</td><td>&hellip; &rarr; left Walmart &rarr; self-employed</td></tr>
-        <tr><td>&ldquo;Orange is leukemia awareness&rdquo;</td><td>~0</td><td>0.069</td><td>leukemia &rarr; awareness &rarr; orange</td></tr>
+        <tr><td>"I left Walmart a year ago"</td><td>~0</td><td>0.161</td><td>cGVHD → overnight hard → left Walmart</td></tr>
+        <tr><td>"I'm self-employed"</td><td>~0</td><td>0.090</td><td>&hellip; → left Walmart → self-employed</td></tr>
+        <tr><td>"Orange is leukemia awareness"</td><td>~0</td><td>0.069</td><td>leukemia → awareness → orange</td></tr>
       </tbody>
     </table>
   </div>
 
-  <p>A health query pulls forward work facts and preference facts because the BDG knows they're causally connected. The system doesn't need separate retrieval calls per domain. One query, one resonance pattern, full cross-domain context.</p>
+  <p>A health query pulls forward work facts and preference facts because the BRG knows they're causally connected. The system doesn't need separate retrieval calls per domain. One query, one resonance pattern, full cross-domain context.</p>
 
   <h3>Three Resonance Patterns</h3>
 
@@ -854,9 +854,9 @@ MathJax = {
 
   <h3>Origin: Semantic String Engine (2025)</h3>
 
-  <p>This mechanism was first attempted as the <strong>Semantic String Engine (SSE)</strong> in Nick Block's original Mirus/Holden architecture (2025). The SSE treated memories as connected by &ldquo;strings&rdquo; &mdash; not text strings, but semantic threads linking distant beliefs into meaning. A <code>QuantumMemoryBreather</code> class implemented probabilistic retrieval with three states: confident collapse (random from high pool), weak breathing (best guess, flagged), and refusal (silence below 0.5). The architecture was sound but limited by 10D PCA vectors and flat cosine similarity. The BDG provides the graph structure the SSE was reaching for.</p>
+  <p>This mechanism was first attempted as the <strong>Semantic String Engine (SSE)</strong> in Nick Block's original Mirus/Holden architecture (2025). The SSE treated memories as connected by "strings"  - not text strings, but semantic threads linking distant beliefs into meaning. A <code>QuantumMemoryBreather</code> class implemented probabilistic retrieval with three states: confident collapse (random from high pool), weak breathing (best guess, flagged), and refusal (silence below 0.5). The architecture was sound but limited by 10D PCA vectors and flat cosine similarity. The BRG provides the graph structure the SSE was reaching for.</p>
 
-  <div class="remark"><strong>Lab results:</strong> 10/10 wobble checks passed. Wobble surfaces memories cosine misses (Lab 13). Pattern classification distinguishes confident/scattered/unknown (Lab 14). Health query brings forward work and preference facts through edges (Lab 15). Wobble survives 3-bit compression &mdash; 7/8 top memories preserved, 89% edge-propagated facts maintained (Lab 16). Production validation on 867 memories confirms cross-domain strings exist (Labs 17&ndash;20).</div>
+  <div class="remark"><strong>Lab results:</strong> 10/10 wobble checks passed. Wobble surfaces memories cosine misses (Lab 13). Pattern classification distinguishes confident/scattered/unknown (Lab 14). Health query brings forward work and preference facts through edges (Lab 15). Wobble survives 3-bit compression  - 7/8 top memories preserved, 89% edge-propagated facts maintained (Lab 16). Production validation on 867 memories confirms cross-domain strings exist (Labs 17-20).</div>
 </section>
 
 <!-- ============================================================ -->
@@ -871,13 +871,13 @@ MathJax = {
     <table>
       <thead><tr><th>CORE Concept</th><th>Reverse Cascade Connection</th></tr></thead>
       <tbody>
-        <tr><td>Forward cascade (Theorems 4.1&ndash;4.2)</td><td>Belief changes propagate to dependents</td></tr>
+        <tr><td>Forward cascade (Theorems 4.1-4.2)</td><td>Belief changes propagate to dependents</td></tr>
         <tr><td>Damping convergence (Theorem 4.3)</td><td>Bounds both forward and backward passes</td></tr>
         <tr><td>Contradiction-as-signal</td><td>Contradictions are the loss function</td></tr>
         <tr><td>Belief/speech gap</td><td>Measurable through self-model nodes</td></tr>
         <tr><td>Three regimes (fracture/gradient/fog)</td><td>Model volatility is orthogonal to memory volatility</td></tr>
         <tr><td>Earned trust</td><td>Trust is adjusted by error signal, not by rule</td></tr>
-        <tr><td>Held contradiction</td><td>Some contradictions have low loss &mdash; the gradient is small, so they persist naturally</td></tr>
+        <tr><td>Held contradiction</td><td>Some contradictions have low loss  - the gradient is small, so they persist naturally</td></tr>
       </tbody>
     </table>
   </div>
@@ -891,7 +891,7 @@ MathJax = {
   <div class="impl-block">
     <span class="impl-label">Implementation</span>
     <p>Engine: <code>papers/belief_backpropagation/backprop_engine.py</code><br>
-    BDG backward pass: <code>personal_agent/memory_graph.py:propagate_backward()</code><br>
+    BRG backward pass: <code>personal_agent/memory_graph.py:propagate_backward()</code><br>
     Experiments: <code>papers/belief_backpropagation/experiments.py</code><br>
     Theory paper: <code>papers/belief_backpropagation/belief_backprop.md</code></p>
   </div>

@@ -324,7 +324,7 @@ th {
     <h1><span class="grad">Immune</span> Agents</h1>
     <p class="sub">Constitutional enforcement for AI memory and belief governance</p>
     <div class="finding-box">
-      <p>Five laws. Five specialized agents. Each watches for a specific failure pattern in the belief-speech pipeline. <strong>None are tied to a pipeline stage.</strong> They all watch the same stream.</p>
+      <p>Six laws. Six specialized agents. Each watches for a specific failure pattern in the belief-speech pipeline. <strong>None are tied to a pipeline stage.</strong> They all watch the same stream.</p>
     </div>
     <!-- Hero viz: shield formation -->
     <div id="hero-shield" style="margin-top:24px;max-width:400px;margin-left:auto;margin-right:auto;">
@@ -468,11 +468,11 @@ th {
 <section>
   <div class="stat-row">
     <div class="stat-card">
-      <div class="stat-value accent">5</div>
+      <div class="stat-value accent">6</div>
       <div class="stat-label">Constitutional Laws</div>
     </div>
     <div class="stat-card">
-      <div class="stat-value accent">5</div>
+      <div class="stat-value accent">6</div>
       <div class="stat-label">Immune Agents</div>
     </div>
     <div class="stat-card">
@@ -520,7 +520,7 @@ th {
 <!-- ===== 2. THE FIVE LAWS ===== -->
 <section>
   <div class="accent-line"></div>
-  <h2>The Five Laws</h2>
+  <h2>The Six Laws</h2>
 
   <p>Each law addresses a specific failure mode in AI memory and belief governance. Each has a dedicated agent that enforces it.</p>
 
@@ -797,10 +797,36 @@ th {
     </div>
   </div>
 
+  <div class="agent-card law-5" style="box-shadow: inset 3px 0 0 #60a5fa;">
+    <div class="agent-header">
+      <span class="agent-number" style="color:#60a5fa;">Law 6</span>
+      <span class="agent-title">Cross-Session Consistency Must Be Verifiable</span>
+      <span class="badge badge-proven">built</span>
+    </div>
+    <div class="agent-name">ContinuityAuditor</div>
+    <div class="agent-principle">Claims and preferences must remain consistent across session boundaries. When the system contradicts its own prior positions, the violation is detected and logged - not silently accepted.</div>
+
+    <div class="agent-detail">
+      <div class="agent-grid">
+        <div class="agent-grid-item">
+          <h6>Watches</h6>
+          <p>New claims and preference assertions compared against existing memory. Operates at session boundaries and during memory retrieval.</p>
+        </div>
+        <div class="agent-grid-item">
+          <h6>Fires When</h6>
+          <p>A new assertion conflicts with an existing memory from a prior session. The contradiction is logged to the ledger rather than silently overwriting the old position.</p>
+        </div>
+      </div>
+
+      <h5>The Session Boundary Problem</h5>
+      <p>Most contradiction detection operates within a session. ContinuityAuditor catches the contradictions that span sessions - the ones that are invisible to pairwise comparison within a single conversation. This is the same failure mode documented in the continuity-blind analysis: 93% of stance flips span 3+ turns across session boundaries.</p>
+    </div>
+  </div>
+
   <div class="law-card-hero">
     <div class="law-number">Constitutional Doctrine</div>
-    <div class="law-text">Five laws. Not a pipeline configuration.</div>
-    <div class="law-sub">These five laws define what the system must never allow, regardless of which model is speaking.</div>
+    <div class="law-text">Six laws. Not a pipeline configuration.</div>
+    <div class="law-sub">These six laws define what the system must never allow, regardless of which model is speaking.</div>
   </div>
 </section>
 
@@ -809,7 +835,7 @@ th {
   <div class="accent-line"></div>
   <h2>The Coordination Layer</h2>
 
-  <p>All five agents watch the same stream. They are independent but their firings interact. The coordination layer handles simultaneous triggers.</p>
+  <p>All six agents watch the same stream. They are independent but their firings interact. The coordination layer handles simultaneous triggers.</p>
 
   <div class="coord-grid">
     <div class="coord-card coord-escalate">
@@ -838,11 +864,11 @@ th {
   <div class="flow-diagram">
     <div class="flow-row">
       <div class="flow-node">Model Output</div>
-      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-arrow">→</div>
       <div class="flow-node flow-node-watch">Agent Stream</div>
-      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-arrow">→</div>
       <div class="flow-node flow-node-active">Coordination Layer</div>
-      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-arrow">→</div>
       <div class="flow-node">Verdict</div>
     </div>
     <div style="margin-top: 12px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
@@ -1251,11 +1277,11 @@ th {
   <h2>Summary</h2>
   <div class="accent-line"></div>
 
-  <p>Advisory governance tells a system what it should not do. Structural governance makes it physically impossible. The immune agent architecture implements structural governance through five autonomous agents that monitor the CORE pipeline in real time, each enforcing a specific constitutional law.</p>
+  <p>Advisory governance tells a system what it should not do. Structural governance makes it physically impossible. The immune agent architecture implements structural governance through six autonomous agents that monitor the CORE pipeline in real time, each enforcing a specific constitutional law.</p>
 
   <p>The architecture was validated against a robustness sweep across three model families. Each model fails differently (Qwen3 fractures on factuals, Mistral drifts on morals, DeepSeek fogs uniformly), and governance that assumes uniform failure will miss model-specific violations. The two-axis taxonomy (failure mode vs. detection method) maps each agent to the failure regimes it is designed to catch.</p>
 
-  <p>All five agents are built and unit-tested. The coordination layer runs. The remaining work is integration testing against the live contradiction and memory pipelines, held-out validation on blinded prompts, and agent ablation studies to measure which constraints carry the most weight.</p>
+  <p>All six agents are built and unit-tested. The coordination layer runs. The remaining work is integration testing against the live contradiction and memory pipelines, held-out validation on blinded prompts, and agent ablation studies to measure which constraints carry the most weight.</p>
 </section>
 
 </main>

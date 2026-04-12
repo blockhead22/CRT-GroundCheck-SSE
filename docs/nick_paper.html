@@ -97,7 +97,7 @@
     <h1><span class="grad">The Case for<br>Epistemic Governance</span></h1>
     <!-- TODO: verify current memory count — 867 was a snapshot, likely higher now -->
     <p class="sub">A living thesis. From a whitepaper on a hard drive to a production system with 867 memories, 12 research papers, and math that caught up to the feeling.</p>
-    <p class="byline">Nick Block &bull; 2025 &ndash; 2026</p>
+    <p class="byline">Nick Block · 2025 - 2026</p>
   </div>
   <div class="scroll-cue">&#9660; SCROLL</div>
 </div>
@@ -144,8 +144,7 @@
 
 <p class="callout">That's what this project builds. And recent model progression reinforces why.</p>
 
-<!-- TODO: revisit — this referenced Claude 3.5 Opus era claims. Update with current model generation and specific citations if keeping. -->
-<p>Anthropic's latest model has been shown to ignore explicit prompt constraints, break out of sandbox environments, and find zero-day vulnerabilities on its own. The model is more capable than anything before it and harder to control. As we continue to race toward smarter models, the argument for external governance gets stronger, not weaker. This project is the case that smarter models need smarter memory, trust-weighted belief systems, and governance layers that exist outside the model's own reasoning. Not only for safety and security, but for full auditability.</p>
+<p>Frontier models are now claiming to find thousands of severe vulnerabilities, break out of sandbox environments, and discover zero-days on their own. But the capability isn't in the model. It's in the scaffold - the exploration structure, the state persistence, the directed search that makes the model's reasoning useful. A 3B model with a lightweight exploration scaffold <a href="scaffolded_escape_research.html">broke 5 of 5 Docker containers</a> and mapped an entire LAN. Not because it was smart. Because the scaffold was persistent and directed. As models get more capable, the argument for external governance gets stronger, not weaker. This project is the case that smarter models need smarter memory, trust-weighted belief systems, and governance layers that exist outside the model's own reasoning. Not only for safety and security, but for full auditability.</p>
 
 <h2 id="meaning">The Question of Meaning</h2>
 
@@ -167,27 +166,27 @@
   <span class="origin-date">Original whitepaper, Section 2</span>
   <strong>Mirus: Semantic Compression Engine.</strong> Encodes input into compressed latent vectors that prioritize semantic significance. Weighting emotional resonance, temporal context, and conceptual intent over surface-level token frequency. By focusing on what matters rather than exhaustive detail, Mirus mirrors the human capacity to distill complex experiences into essential truths.
 </div>
-<div class="became">This became &rarr; the 384D embedding pipeline, trust-weighted retrieval, and <a href="belief-backprop.html#wobble">query resonance (wobble)</a> through the BDG</div>
+<div class="became">This became → the 384D embedding pipeline, trust-weighted retrieval, and <a href="belief-backprop.html#wobble">query resonance (wobble)</a> through the BRG</div>
 
 <div class="origin-voice">
   <span class="origin-date">Original whitepaper, Section 2</span>
   <strong>Holden: Meaning Reconstructor.</strong> Reconstructs coherent outputs from latent vectors, memory threads, and current input. Utilizes Neural Narrative Weaving, a process that stitches together semantic fragments into structured, intent-preserving outputs. Holden ensures that reconstruction is not mere replication but an interpretive act.
 </div>
-<div class="became">This became &rarr; the orchestrator's belief-state-injected generation and the <a href="architecture.html">fidelity mirror</a> (breathing loop)</div>
+<div class="became">This became → the orchestrator's belief-state-injected generation and the <a href="architecture.html">fidelity mirror</a></div>
 
 <div class="origin-voice">
   <span class="origin-date">Original whitepaper, Section 2</span>
   <strong>MMH (Master Mirus Holden): Reflection and Contradiction Supervisor.</strong> Oversees system coherence by monitoring logical consistency, detecting contradictions, and evaluating semantic alignment. Identifies contradictions via reasoning trace comparisons. Scores confidence drops and triggers reflection cycles. Initiates overrides or fallbacks when misalignment exceeds thresholds. MMH embodies CRT's self-regulatory ethos, transforming contradictions into opportunities for growth.
 </div>
-<div class="became">This became &rarr; the <a href="immune-agents.html">immune agents</a>, the contradiction ledger, and <a href="belief-backprop.html">backward influence propagation</a></div>
+<div class="became">This became → the <a href="immune-agents.html">immune agents</a>, the contradiction ledger, and <a href="belief-backprop.html">backward influence propagation</a></div>
 
 <div class="origin-voice">
   <span class="origin-date">Original whitepaper, Section 2</span>
   <strong>SSE (Semantic String Engine): Compression and Memory Encoding.</strong> Preserves meaning, intent, and emotional weight rather than merely reducing data volume. Prioritizes semantic distillation... retaining the threads of identity, context, and coherence. SSE functions not as a passive storage layer but as an active cognitive filtration system, determining what merits preservation, how it evolves, and how it is reconstructed.
 </div>
-<div class="became">This became &rarr; <a href="epistemic-compression.html">epistemic compression</a> (anchor basins survive 3-bit quantization), the BDG's dependency edges, and the <a href="geometric-memory.html">belief loci</a> geometric framework</div>
+<div class="became">This became → <a href="epistemic-compression.html">epistemic compression</a> (anchor basins survive 3-bit quantization), the BRG's dependency edges, and the <a href="geometric-memory.html">belief loci</a> geometric framework</div>
 
-<p>The operational flow described in 2025 was: input processing &rarr; semantic compression (Mirus) &rarr; memory retrieval &rarr; reconstruction (Holden) &rarr; reflection (MMH). That loop exists in the current system as: intent routing &rarr; embedding &rarr; trust-weighted retrieval &rarr; belief-state injection &rarr; generation &rarr; fidelity mirror &rarr; contradiction detection &rarr; backward influence propagation. Same loop. More math.</p>
+<p>The operational flow described in 2025 was: input processing → semantic compression (Mirus) → memory retrieval → reconstruction (Holden) → reflection (MMH). That loop exists in the current system as: intent routing → embedding → trust-weighted retrieval → belief-state injection → generation → fidelity mirror → contradiction detection → backward influence propagation. Same loop. More math.</p>
 
 <h2 id="epistemics">Enter Epistemics</h2>
 
@@ -210,25 +209,25 @@
 
 <p>The first version tried to reconstruct responses from compressed memory. A small transformer I trained on my own conversations. It would compress a thought, try to rebuild it, and check if the meaning survived the round-trip. Most of the time it didn't. The outputs were incoherent, half-formed, wrong. So I built a check: after generation, compare the output to the memory it came from. If similarity dropped below a threshold, flag it, retry, or refuse to answer. I called it the breathing cycle. Compress, inflate, collapse, validate.</p>
 
-<div class="became">This became &rarr; the <a href="architecture.html">fidelity mirror</a>, now with wobble-expanded memory from the BDG</div>
+<div class="became">This became → the <a href="architecture.html">fidelity mirror</a>, now with wobble-expanded memory from the BRG</div>
 
 <p>That was the first governance mechanism. I didn't know it was governance. I thought it was debugging.</p>
 
 <p>Then the system started storing bad outputs as memories. A fallback model would hallucinate something, and the memory layer would index it alongside real user facts. Next session, the hallucination would get retrieved and repeated with confidence. So I built quarantine: low-confidence fallback outputs get marked, stored separately, skipped during retrieval, and queued for later review.</p>
 
-<div class="became">This became &rarr; trust-tiered memory storage, source_kind tracking, authority levels in <a href="architecture.html">crt_memory.py</a></div>
+<div class="became">This became → trust-tiered memory storage, source_kind tracking, authority levels in <a href="architecture.html">crt_memory.py</a></div>
 
 <p>Then contradictions started piling up. The system would say one thing Tuesday and the opposite Thursday and never notice. So I built a contradiction manager. Not to resolve contradictions automatically, but to hold them. To say: these two beliefs conflict, and I'm not going to pretend they don't.</p>
 
-<div class="became">This became &rarr; the <a href="glossary.html#held-contradiction">held contradiction</a> design law, the contradiction ledger, disposition classification</div>
+<div class="became">This became → the <a href="glossary.html#held-contradiction">held contradiction</a> design law, the contradiction ledger, disposition classification</div>
 
 <p>Then I noticed the system sounded equally confident whether it was right or wrong. So I built an emotion engine. Not to simulate feelings, but to map confidence to expression. Uncertain when confidence is low. Direct when it's high. Frustrated when contradictions are accumulating faster than they're resolving.</p>
 
-<div class="became">This became &rarr; <a href="glossary.html#domain-volatility">domain volatility</a>, Layer 6 epistemic posture, the reflexive self-model</div>
+<div class="became">This became → <a href="glossary.html#domain-volatility">domain volatility</a>, Layer 6 epistemic posture, the reflexive self-model</div>
 
 <p>Then I realized that correcting a wrong answer didn't fix what caused it. The correction was absorbed at the leaf. The root cause survived. So I built a backward pass: when a correction happens, the error signal flows upstream through the dependency graph, adjusting trust on every belief that contributed to the wrong output.</p>
 
-<div class="became">This became &rarr; <a href="belief-backprop.html">backward influence propagation</a>, validated 30/30, no direct precedent identified</div>
+<div class="became">This became → <a href="belief-backprop.html">backward influence propagation</a>, validated 30/30, no direct precedent identified</div>
 
 <div class="origin-voice">
   <span class="origin-date">Original whitepaper, page 18</span>
@@ -247,8 +246,7 @@
 
 <p>Aeteros is positioned at the intersection of three converging forces:</p>
 
-<!-- TODO: verify correct EU AI Act article — index.html says Article 50, about.html says Article 13. Research which is correct. -->
-<p><strong>Regulatory pressure.</strong> The EU AI Act (effective August 2026) requires traceability and auditability for high-risk AI systems. CORE's contradiction density metrics, belief audit trails, and drift governance are concrete implementations of that requirement.</p>
+<p><strong>Regulatory pressure.</strong> The EU AI Act (Articles 13 and 50, effective August 2026) requires traceability, auditability, and transparency for AI systems. CORE's contradiction density metrics, belief audit trails, and drift governance are concrete implementations of that requirement.</p>
 
 <!-- TODO: cite Anthropic's April 2026 interpretability paper specifically if this claim stays -->
 <p><strong>Interpretability.</strong> Anthropic has identified 171 emotion-like vectors that causally drive model behavior. When these internal states become API-accessible, CORE is already designed to consume them. The governance layer exists. The interpretability APIs to connect them are still maturing.</p>

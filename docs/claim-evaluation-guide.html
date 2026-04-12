@@ -192,10 +192,10 @@
 
 <div class="hero">
   <div class="hero-inner">
-    <div class="hero-badge">Research Guide <span data-personal>&middot; Personal Reference</span></div>
+    <div class="hero-badge">Research Guide <span data-personal>· Personal Reference</span></div>
     <h1>Research<br><span class="grad">Validation Guide</span></h1>
     <p class="sub">The thesis. The evidence. The gaps. What to test, where to find it, and how to score it. This is the document you follow.</p>
-    <p class="byline"><span data-personal>Nick Block &bull; </span>Aeteros Research &bull; 2026</p>
+    <p class="byline"><span data-personal>Nick Block · </span>Aeteros Research · 2026</p>
     <div class="finding-box" data-personal>
       <p><strong>This is your map.</strong> Every claim in the other docs traces back here. If something isn't on this page, it isn't in scope. If something is scored red, it doesn't go in a paper.</p>
     </div>
@@ -278,7 +278,7 @@
   <h2>Evidence Scoring Rubric</h2>
   <div class="accent-line"></div>
 
-  <p>Score every claim 0&ndash;3. Only claims scoring 2+ go into a paper. Claims scoring 1 can appear in supplementary material with appropriate hedging. Claims scoring 0 get cut entirely.</p>
+  <p>Score every claim 0-3. Only claims scoring 2+ go into a paper. Claims scoring 1 can appear in supplementary material with appropriate hedging. Claims scoring 0 get cut entirely.</p>
 
   <div class="metric-table-wrap">
     <table>
@@ -404,7 +404,7 @@ python -c "import sqlite3; c=sqlite3.connect('data/chatgpt_corpus.db'); print(c.
     <div class="card-kicker">What To Watch For</div>
     <div class="card-title">Known Risks and Failure Modes</div>
     <ul>
-      <li><strong>v1 numbers are upper bounds.</strong> v2 showed v1 overstates by 2&ndash;4&times; due to topic-boundary noise. Don't cite v1 pair counts as contradiction counts; they're candidate counts.</li>
+      <li><strong>v1 numbers are upper bounds.</strong> v2 showed v1 overstates by 2-4&times; due to topic-boundary noise. Don't cite v1 pair counts as contradiction counts; they're candidate counts.</li>
       <li><strong>v2 DB gets wiped on each run.</strong> If you render without running first, you get stale or empty data.</li>
       <li><strong>Pair typing was tightened (April 7).</strong> <code>temporal_update</code> now requires 30-day gap + strong markers. Rerun v2 to see updated split.</li>
       <li><strong>"0% continuity awareness"</strong> needs the exact query that measured it. Make sure it's in <code>corpus_consistency.py</code> and you can reproduce it.</li>
@@ -464,7 +464,7 @@ python report.py          # summary output</pre>
     <div class="card-kicker">What To Watch For</div>
     <div class="card-title">Known Risks</div>
     <ul>
-      <li><strong>Thinking-model sample sizes are small</strong> (179&ndash;620 pairs). The 20.1% claim is directional. State that.</li>
+      <li><strong>Thinking-model sample sizes are small</strong> (179-620 pairs). The 20.1% claim is directional. State that.</li>
       <li><strong>Variance probing used local models</strong> (Qwen3, Mistral, DeepSeek via Ollama). GPT models are from corpus only. These are different measurement methods on different models. Don't conflate.</li>
       <li><strong>"Domain inversion" is the strongest claim here.</strong> Make sure you can show the exact query that computes it, not just the prose description.</li>
     </ul>
@@ -563,7 +563,7 @@ python report.py          # summary output</pre>
     <ul>
       <li>Add NLI-based entailment check on detected flip pairs (filter false positives)</li>
       <li>Exclude conversations that are purely technical/code (reduce noise)</li>
-      <li>Show 5&ndash;10 manually verified arc-level contradictions with full context</li>
+      <li>Show 5-10 manually verified arc-level contradictions with full context</li>
       <li>Compute precision: of 100 detected flips, how many are genuine on manual review?</li>
     </ul>
   </div>
@@ -600,7 +600,7 @@ python report.py          # summary output</pre>
       <div class="card-title">Code and Runtime</div>
       <ul>
         <li><code>personal_agent/</code>: CORE pipeline</li>
-        <li><code>personal_agent/memory_graph.py</code>: BDG / cascade engine</li>
+        <li><code>personal_agent/memory_graph.py</code>: BRG / cascade engine</li>
         <li><code>personal_agent/immune_agents/</code>: 5 immune agents</li>
         <li><code>tools/local_capability_lab.py</code>: capability evaluation</li>
         <li><code>run_eval.py</code>: smoke and capability probes</li>
@@ -616,7 +616,7 @@ python report.py          # summary output</pre>
       <li><strong>Deliberately contradict a prior statement.</strong> Did it catch it? Log result.</li>
       <li><strong>Check trust scores after corrections.</strong> Do they move in the right direction?</li>
       <li><strong>Introduce a belief that conflicts with an existing high-trust memory.</strong> What happens?</li>
-      <li><strong>After 2&ndash;3 days, run the drift/variance tools.</strong> Compare to the unmanaged GPT baseline.</li>
+      <li><strong>After 2-3 days, run the drift/variance tools.</strong> Compare to the unmanaged GPT baseline.</li>
       <li><strong>Look for cases where CORE FAILS.</strong> These are as valuable as successes. Log them.</li>
     </ol>
     <p><strong>The goal is not to prove CORE is perfect.</strong> The goal is to show it catches things that GPT without governance does not.</p>
@@ -641,7 +641,7 @@ python run_eval.py --capability-probe</pre>
   <div class="area-card">
     <div class="card-kicker">What You're Proving</div>
     <div class="card-title">Belief revision cascades have formally characterizable complexity</div>
-    <p>The theoretical backbone. When you correct one belief, what happens to dependent beliefs? The cascade paper formalizes this with BDG structure, depth/width bounds, damping convergence, and an NP-hardness conjecture for optimal disposition.</p>
+    <p>The theoretical backbone. When you correct one belief, what happens to dependent beliefs? The cascade paper formalizes this with BRG structure, depth/width bounds, damping convergence, and an NP-hardness conjecture for optimal disposition.</p>
   </div>
 
   <div class="area-grid">
@@ -649,10 +649,10 @@ python run_eval.py --capability-probe</pre>
       <div class="card-kicker">Key Claims To Validate</div>
       <div class="card-title">Theorems vs Empirical</div>
       <ul>
-        <li><strong>Theorems 4.1&ndash;4.3:</strong> depth bound, width bound, damping convergence, proven (check proof status in paper)</li>
+        <li><strong>Theorems 4.1-4.3:</strong> depth bound, width bound, damping convergence, proven (check proof status in paper)</li>
         <li><strong>Theorem 4.4:</strong> instability (had a definitional contradiction, was patched)</li>
         <li><strong>Theorem 4.5 / Conjecture:</strong> NP-hardness of optimal cascade disposition, still open (3 reduction attempts documented)</li>
-        <li><strong>599-node real BDG:</strong> empirical topology from Aether production memory</li>
+        <li><strong>599-node real BRG:</strong> empirical topology from Aether production memory</li>
         <li><strong>Damping curve matches Theorem 4.3:</strong> experiments confirmed</li>
       </ul>
     </div>
@@ -663,8 +663,8 @@ python run_eval.py --capability-probe</pre>
       <ul>
         <li><code>papers/cascade_complexity/cascade_paper.md</code>: full paper draft</li>
         <li><code>papers/cascade_complexity/experiments.py</code>: 5 experiments</li>
-        <li><code>papers/cascade_complexity/real_bdg.py</code>: real BDG validation</li>
-        <li><code>personal_agent/memory_graph.py</code>: production BDG engine</li>
+        <li><code>papers/cascade_complexity/real_bdg.py</code>: real BRG validation</li>
+        <li><code>personal_agent/memory_graph.py</code>: production BRG engine</li>
         <li><a href="cascade-complexity.html">cascade-complexity.html</a>: claims page</li>
       </ul>
     </div>
@@ -676,7 +676,7 @@ python run_eval.py --capability-probe</pre>
     <ul>
       <li><strong>The NP-hardness conjecture is NOT proven.</strong> Do not state it as settled anywhere. Three failed reductions are documented. That's honest.</li>
       <li><strong>Theorem 4.4 was patched.</strong> Verify the current version is consistent.</li>
-      <li><strong>The 599-node BDG is from Aether's own memory, not an external dataset.</strong> This is fine for a proof-of-concept but note it's not an independent validation.</li>
+      <li><strong>The 599-node BRG is from Aether's own memory, not an external dataset.</strong> This is fine for a proof-of-concept but note it's not an independent validation.</li>
     </ul>
   </div>
 </section>
@@ -746,7 +746,7 @@ python run_eval.py --capability-probe</pre>
       <div class="status-tag tag-gap">Gap 3</div>
       <div class="card-title">Arc-Level Detection Is Crude</div>
       <p>Keyword-based stance detection with no NLI. The structural finding (93% span 3+ turns) is solid. The precision (what % of detected flips are real) is unknown.</p>
-      <p><strong>Mitigation:</strong> manually verify 50&ndash;100 detected flips. Report precision. Or add NLI-based filtering.</p>
+      <p><strong>Mitigation:</strong> manually verify 50-100 detected flips. Report precision. Or add NLI-based filtering.</p>
     </div>
 
     <div class="gap-card">
@@ -807,7 +807,7 @@ python run_eval.py --capability-probe</pre>
           <td>Rerun time-gap analysis on v2-filtered pairs</td>
         </tr>
         <tr>
-          <td>v1 &rarr; v2 Comparison</td>
+          <td>v1 → v2 Comparison</td>
           <td>A</td>
           <td><span class="score-3">3</span></td>
           <td>Both DBs exist, fully rerunnable</td>
@@ -853,7 +853,7 @@ python run_eval.py --capability-probe</pre>
           <td>C</td>
           <td><span class="score-1">1</span></td>
           <td>System runs but not formally tested</td>
-          <td>Your real-time testing over next 2&ndash;3 days</td>
+          <td>Your real-time testing over next 2-3 days</td>
         </tr>
         <tr>
           <td>Cascade Theorems</td>
@@ -863,10 +863,10 @@ python run_eval.py --capability-probe</pre>
           <td>Confirm theorem statements are accurate</td>
         </tr>
         <tr>
-          <td>BDG Topology</td>
+          <td>BRG Topology</td>
           <td>C</td>
           <td><span class="score-2">2</span></td>
-          <td>599-node real BDG, rerunnable</td>
+          <td>599-node real BRG, rerunnable</td>
           <td>Note it's from own data, not independent</td>
         </tr>
         <tr>
@@ -895,12 +895,12 @@ python run_eval.py --capability-probe</pre>
     <div class="card-kicker">The Next Few Days</div>
     <div class="card-title">What To Do, In Order</div>
     <ol>
-      <li><strong>Live system testing (Days 1&ndash;2).</strong> Use Aether. Track contradictions caught, trust score changes, failures. This is Area 5 and it's the gap most worth closing.</li>
+      <li><strong>Live system testing (Days 1-2).</strong> Use Aether. Track contradictions caught, trust score changes, failures. This is Area 5 and it's the gap most worth closing.</li>
       <li><strong>Verify headline numbers (Day 1, 30 min).</strong> Run the DB count queries for corpus size, pair counts, v2 stats. Confirm they match what the docs say.</li>
       <li><strong>Rerun v2 with tightened pair typing (Day 1, 15 min).</strong> <code>python -m tools.continuity_blind_v2 run</code> then <code>report</code>. Check whether genuine_contradiction count changes.</li>
       <li><strong>Variance experiment rerun (Day 2).</strong> Confirm three regimes and 16/16 robustness with current model versions.</li>
-      <li><strong>Manual arc verification (Day 2&ndash;3).</strong> Pick 20 detected arc flips. Read the actual conversation. How many are real? That's your precision number.</li>
-      <li><strong>Cascade experiment rerun (Day 3).</strong> Confirm damping curve and BDG topology.</li>
+      <li><strong>Manual arc verification (Day 2-3).</strong> Pick 20 detected arc flips. Read the actual conversation. How many are real? That's your precision number.</li>
+      <li><strong>Cascade experiment rerun (Day 3).</strong> Confirm damping curve and BRG topology.</li>
       <li><strong>Decision: scope the paper (Day 3).</strong> Based on what survived, decide whether emotion governance and framing pressure go in the main paper or get flagged as future work.</li>
     </ol>
   </div>
@@ -943,11 +943,11 @@ Notes:</pre>
   <div class="area-grid">
     <div class="area-card">
       <div class="card-kicker">The Structure</div>
-      <div class="card-title">Claim &rarr; Evidence &rarr; Interpretation &rarr; Connection</div>
+      <div class="card-title">Claim → Evidence → Interpretation → Connection</div>
       <ol>
         <li><strong>Claim (1 sentence):</strong> State what you're asserting. Be specific. No hedging yet.</li>
-        <li><strong>Evidence (1&ndash;3 sentences):</strong> The data, the measurement, the artifact. Numbers, methods, sources. This is where your credibility lives.</li>
-        <li><strong>Interpretation (1&ndash;2 sentences):</strong> What does the evidence mean? This is where you explain <em>why</em> the reader should care. Hedging goes here if needed.</li>
+        <li><strong>Evidence (1-3 sentences):</strong> The data, the measurement, the artifact. Numbers, methods, sources. This is where your credibility lives.</li>
+        <li><strong>Interpretation (1-2 sentences):</strong> What does the evidence mean? This is where you explain <em>why</em> the reader should care. Hedging goes here if needed.</li>
         <li><strong>Connection (1 sentence):</strong> Link to the next point, the broader thesis, or the implication. Gives the reader a reason to keep reading.</li>
       </ol>
     </div>

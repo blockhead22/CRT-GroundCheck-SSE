@@ -97,12 +97,12 @@ MathJax = {
 <!-- ===== HERO ===== -->
 <div class="hero">
   <div class="hero-inner">
-    <div class="hero-badge">Research Paper &middot; Epistemic Compression</div>
+    <div class="hero-badge">Research Paper · Epistemic Compression</div>
     <h1>Epistemic Compression:<br><span class="grad">Does Belief Structure</span><br>Survive Quantization?</h1>
     <p class="sub">Vector compression preserves geometry. But does it preserve the beliefs?</p>
-    <p class="byline">Nick Block &bull; Aeteros Research &bull; April 2026</p>
+    <p class="byline">Nick Block · Aeteros Research · April 2026</p>
     <div class="finding-box">
-      <p>Geometric compression (cosine similarity, top-k recall) is well-studied. But <strong>epistemic compression</strong> &mdash; whether the belief dependency graph, cascade paths, backward gradients, anchor basins, and self-pruning behavior survive quantization &mdash; has never been tested. We run six experiments at three compression levels and find: <strong>3-bit quantization fully preserves epistemic structure</strong> (identical gradients, identical convergence, 92.9% anchor basin stability). <strong>2-bit breaks it</strong> (71.4% anchor stability, 0.14 edge drift). There is a cliff between geometric preservation and epistemic preservation, and we found it.</p>
+      <p>Geometric compression (cosine similarity, top-k recall) is well-studied. But <strong>epistemic compression</strong>  - whether the belief dependency graph, cascade paths, backward gradients, anchor basins, and self-pruning behavior survive quantization  - has never been tested. We run six experiments at three compression levels and find: <strong>3-bit quantization fully preserves epistemic structure</strong> (identical gradients, identical convergence, 92.9% anchor basin stability). <strong>2-bit breaks it</strong> (71.4% anchor stability, 0.14 edge drift). There is a cliff between geometric preservation and epistemic preservation, and we found it.</p>
     </div>
 
     <div class="stat-row" style="margin-top:24px;">
@@ -159,9 +159,9 @@ MathJax = {
 
   <p>A belief system is not a set of vectors. It is a graph of dependencies, contradictions, trust scores, cascade paths, and anchor basins. Two vectors can be close in cosine distance and say opposite things. "I work at a design studio" and "I don't work at a design studio" are cosine-similar but epistemically contradictory.</p>
 
-  <p>If we compress the vectors and the cosine similarity is 0.98, we know the geometry is preserved. But do the dependency edges still hold? Does backward error propagation still produce the correct gradients? Do wrong beliefs still self-prune? Do the anchor basins &mdash; the gravitational centers of the belief space &mdash; maintain their structure?</p>
+  <p>If we compress the vectors and the cosine similarity is 0.98, we know the geometry is preserved. But do the dependency edges still hold? Does backward error propagation still produce the correct gradients? Do wrong beliefs still self-prune? Do the anchor basins  - the gravitational centers of the belief space  - maintain their structure?</p>
 
-  <div class="remark">Geometric compression is well-studied. Epistemic compression &mdash; whether the belief structure survives quantization &mdash; is, to our knowledge, untested in prior work.</div>
+  <div class="remark">Geometric compression is well-studied. Epistemic compression  - whether the belief structure survives quantization  - is, to our knowledge, untested in prior work.</div>
 </section>
 
 <!-- ============================================================ -->
@@ -172,7 +172,7 @@ MathJax = {
   <h2>The Gap Between Geometry and Epistemics</h2>
   <div class="accent-line"></div>
 
-  <p>Prior compression experiments on this system (556&ndash;711 production memories) established:</p>
+  <p>Prior compression experiments on this system (556-711 production memories) established:</p>
 
   <div class="table-wrap">
     <table>
@@ -186,18 +186,18 @@ MathJax = {
     </table>
   </div>
 
-  <p>These numbers look good. But they measure <em>geometric</em> preservation &mdash; did the vectors stay close? They do not measure:</p>
+  <p>These numbers look good. But they measure <em>geometric</em> preservation  - did the vectors stay close? They do not measure:</p>
 
   <div class="principle-grid">
     <div class="principle" style="border-left-color:#c084fc;">
       <div class="p-num">Epistemic Property 1</div>
       <div class="p-text">Edge Preservation</div>
-      <div class="p-sub">Do SUPPORTS and CONTRADICTS edges in the BDG still represent valid relationships after the vectors shift?</div>
+      <div class="p-sub">Do SUPPORTS and CONTRADICTS edges in the BRG still represent valid relationships after the vectors shift?</div>
     </div>
     <div class="principle" style="border-left-color:#818cf8;">
       <div class="p-num">Epistemic Property 2</div>
       <div class="p-text">Gradient Preservation</div>
-      <div class="p-sub">Does <a href="belief-backprop.html">belief backpropagation</a> produce the same error gradients on compressed vectors?</div>
+      <div class="p-sub">Does <a href="belief-backprop.html">backward influence propagation</a> produce the same error gradients on compressed vectors?</div>
     </div>
     <div class="principle" style="border-left-color:#f472b6;">
       <div class="p-num">Epistemic Property 3</div>
@@ -227,7 +227,7 @@ MathJax = {
   <h2>Method</h2>
   <div class="accent-line"></div>
 
-  <p>We construct a 17-node BDG modeled on production data: identity anchors (name, health), preference contradictions (orange vs green, coffee vs never-coffee), a wrong belief with three upstream supporters (the design studio problem), and self-model nodes. 15 typed edges with known weights.</p>
+  <p>We construct a 17-node BRG modeled on production data: identity anchors (name, health), preference contradictions (orange vs green, coffee vs never-coffee), a wrong belief with three upstream supporters (the design studio problem), and self-model nodes. 15 typed edges with known weights.</p>
 
   <p>We build this graph three times, each with the same topology but different vector precision:</p>
 
@@ -258,26 +258,26 @@ MathJax = {
 
   <div class="result-card" style="border-color: rgba(52,211,153,0.3);">
     <h3>Lab 8: Edge Preservation</h3>
-    <div class="result-meta">15 edges &middot; 3-bit quantization</div>
+    <div class="result-meta">15 edges · 3-bit quantization</div>
     <p><span class="score-badge score-green">3/3</span> Edge sets identical. Mean similarity drift <strong>0.015</strong>, max <strong>0.031</strong>. All SUPPORTS relationships remain semantically valid after compression.</p>
   </div>
 
   <div class="result-card" style="border-color: rgba(52,211,153,0.3);">
     <h3>Lab 9: Gradient Preservation</h3>
-    <div class="result-meta">Backward pass from design_studio correction &middot; Loss = 1.023</div>
+    <div class="result-meta">Backward pass from design_studio correction · Loss = 1.023</div>
     <p><span class="score-badge score-green">2/2</span> Same 4 nodes affected. Gradient difference: <strong>0.000000</strong> across all nodes. This is expected by design: gradients flow through edge weights and damping constants, which are stored independently of the vectors. The result confirms the architecture separates epistemic mechanics (topology-dependent) from retrieval mechanics (geometry-dependent).</p>
   </div>
 
   <div class="result-card" style="border-color: rgba(52,211,153,0.3);">
     <h3>Lab 10: Self-Pruning</h3>
-    <div class="result-meta">Design studio belief &middot; 4 correction cycles</div>
+    <div class="result-meta">Design studio belief · 4 correction cycles</div>
     <p><span class="score-badge score-green">2/2</span> Both full-precision and 3-bit compressed: design_studio trust reaches <strong>0.050</strong> after 3 corrections. Identical pruning trajectory. Wrong beliefs die the same way regardless of vector precision.</p>
   </div>
 
   <div class="result-card" style="border-color: rgba(52,211,153,0.3);">
     <h3>Lab 11: Anchor Basin Stability</h3>
-    <div class="result-meta">3 anchors (name, leukemia, orange) &middot; 14 non-anchor memories</div>
-    <p><span class="score-badge score-green">2/2</span> <strong>92.9%</strong> of non-anchor memories keep the same nearest anchor after 3-bit compression. All 7 anchor-satellite similarity pairs within 0.05 drift. One flip: <code>left_walmart</code> shifted from identity basin to health basin &mdash; an employment fact sitting at the boundary between two semantic poles.</p>
+    <div class="result-meta">3 anchors (name, leukemia, orange) · 14 non-anchor memories</div>
+    <p><span class="score-badge score-green">2/2</span> <strong>92.9%</strong> of non-anchor memories keep the same nearest anchor after 3-bit compression. All 7 anchor-satellite similarity pairs within 0.05 drift. One flip: <code>left_walmart</code> shifted from identity basin to health basin  - an employment fact sitting at the boundary between two semantic poles.</p>
   </div>
 
   <div class="result-card" style="border-color: rgba(52,211,153,0.3);">
@@ -289,15 +289,15 @@ MathJax = {
   <div class="law-card">
     <div class="law-number">Key Finding</div>
     <div class="law-text">Epistemic mechanics and retrieval mechanics have different compression sensitivities.</div>
-    <div class="law-sub">Trust propagation (forward cascade, backward influence) depends on edge weights and damping &mdash; topology, not geometry. These survive any compression level. Retrieval, contradiction detection, and domain classification depend on vector proximity &mdash; geometry. These break at 2-bit. The architecture naturally separates what is compressible from what is not.</div>
+    <div class="law-sub">Trust propagation (forward cascade, backward influence) depends on edge weights and damping  - topology, not geometry. These survive any compression level. Retrieval, contradiction detection, and domain classification depend on vector proximity  - geometry. These break at 2-bit. The architecture naturally separates what is compressible from what is not.</div>
   </div>
 
   <h3>Stress Test: Where It Breaks</h3>
 
   <div class="result-card" style="border-color: rgba(251,113,133,0.3);">
     <h3>2-bit Quantization: Epistemic Degradation</h3>
-    <div class="result-meta">Same graph, 4-level quantization &middot; Cosine 0.870</div>
-    <p><span class="score-badge score-red">0/4</span> Mean edge drift <strong>0.042</strong> (2.8x worse than 3-bit). Max edge drift <strong>0.141</strong> &mdash; exceeds the 0.10 safety threshold. <strong>4 anchor flips</strong> out of 14 non-anchors (71.4% stability). The gravitational basins start merging. Employment facts migrate between identity and health basins. Preferences drift toward identity. The belief space loses its structure.</p>
+    <div class="result-meta">Same graph, 4-level quantization · Cosine 0.870</div>
+    <p><span class="score-badge score-red">0/4</span> Mean edge drift <strong>0.042</strong> (2.8x worse than 3-bit). Max edge drift <strong>0.141</strong>  - exceeds the 0.10 safety threshold. <strong>4 anchor flips</strong> out of 14 non-anchors (71.4% stability). The gravitational basins start merging. Employment facts migrate between identity and health basins. Preferences drift toward identity. The belief space loses its structure.</p>
   </div>
 
   <div class="result-card" style="border-color: rgba(52,211,153,0.3);">
@@ -505,9 +505,9 @@ MathJax = {
     <strong>Note:</strong> Gradients, self-pruning, and convergence are preserved even at 2-bit because they depend on graph topology (edge weights, damping constants), not vector geometry. The things that break are the <em>semantic</em> properties: which memories belong to which domain, which anchor they orbit, whether a SUPPORTS edge still represents semantic proximity. The topology survives. The semantics of the topology degrade.
   </div>
 
-  <p>This has direct production implications. The <a href="belief-backprop.html">belief backpropagation</a> mechanism is safe under compression because it is topology-dependent. But retrieval (which anchor basin does this query land in?), contradiction detection (are these two memories semantically opposed?), and domain classification (which volatility bucket does this correction go in?) are geometry-dependent and will fail at 2-bit.</p>
+  <p>This has direct production implications. The <a href="belief-backprop.html">backward influence propagation</a> mechanism is safe under compression because it is topology-dependent. But retrieval (which anchor basin does this query land in?), contradiction detection (are these two memories semantically opposed?), and domain classification (which volatility bucket does this correction go in?) are geometry-dependent and will fail at 2-bit.</p>
 
-  <p><strong><a href="belief-backprop.html#wobble">Query resonance (wobble)</a></strong> &mdash; where activation propagates through BDG edges to surface cross-domain facts &mdash; was separately validated under compression: 7/8 top wobble memories preserved at 3-bit, 89% of edge-propagated facts maintained. The wobble pattern is topology-dependent (like gradients), so it survives the same compression that preserves the BDG. The <a href="geometric-memory.html">belief loci geometry</a> defines the anchor basins that organize this topology.</p>
+  <p><strong><a href="belief-backprop.html#wobble">Query resonance (wobble)</a></strong>  - where activation propagates through BRG edges to surface cross-domain facts  - was separately validated under compression: 7/8 top wobble memories preserved at 3-bit, 89% of edge-propagated facts maintained. The wobble pattern is topology-dependent (like gradients), so it survives the same compression that preserves the BRG. The <a href="geometric-memory.html">belief loci geometry</a> defines the anchor basins that organize this topology.</p>
 </section>
 
 <!-- ============================================================ -->
@@ -522,7 +522,7 @@ MathJax = {
     <div class="principle" style="border-left-color:#34d399;">
       <div class="p-num">Implication 1</div>
       <div class="p-text">CogniMap Strategy Is Validated</div>
-      <div class="p-sub">The trust-weighted compression strategy &mdash; anchors at full precision, low-trust memories at PCA-96 &mdash; is epistemically safe. Anchors maintain their gravitational structure. Low-trust memories compressed via PCA-96 show perfect preservation (100% basin stability). The 6.5x compression ratio from the CogniMap experiments carries no epistemic cost.</div>
+      <div class="p-sub">The trust-weighted compression strategy  - anchors at full precision, low-trust memories at PCA-96  - is epistemically safe. Anchors maintain their gravitational structure. Low-trust memories compressed via PCA-96 show perfect preservation (100% basin stability). The 6.5x compression ratio from the CogniMap experiments carries no epistemic cost.</div>
     </div>
     <div class="principle" style="border-left-color:#818cf8;">
       <div class="p-num">Implication 2</div>
@@ -532,7 +532,7 @@ MathJax = {
     <div class="principle" style="border-left-color:#c084fc;">
       <div class="p-num">Implication 3</div>
       <div class="p-text">Trust Propagation Is Compression-Immune (By Design)</div>
-      <div class="p-sub">The backward influence pass produces identical results at every compression level because edge weights are stored independently of vectors. This is a consequence of the architecture, not a surprising discovery &mdash; but it confirms that the design correctly separates topology-dependent operations (trust propagation) from geometry-dependent operations (retrieval). The entire trust evolution mechanism works on compressed memory with zero degradation.</div>
+      <div class="p-sub">The backward influence pass produces identical results at every compression level because edge weights are stored independently of vectors. This is a consequence of the architecture, not a surprising discovery  - but it confirms that the design correctly separates topology-dependent operations (trust propagation) from geometry-dependent operations (retrieval). The entire trust evolution mechanism works on compressed memory with zero degradation.</div>
     </div>
     <div class="principle" style="border-left-color:#fbbf24;">
       <div class="p-num">Implication 4</div>
@@ -542,7 +542,7 @@ MathJax = {
     <div class="principle" style="border-left-color:#fb7185;">
       <div class="p-num">Implication 5</div>
       <div class="p-text">Cosine Similarity Is Insufficient</div>
-      <div class="p-sub">2-bit achieves 0.87 cosine similarity &mdash; a number that looks acceptable by standard compression metrics. But the belief structure is degraded: 4 anchor flips, 0.14 edge drift, basins merging. <strong>Cosine similarity does not measure epistemic preservation.</strong> A new metric is needed: anchor basin assignment stability, which directly measures whether the belief topology survives.</div>
+      <div class="p-sub">2-bit achieves 0.87 cosine similarity  - a number that looks acceptable by standard compression metrics. But the belief structure is degraded: 4 anchor flips, 0.14 edge drift, basins merging. <strong>Cosine similarity does not measure epistemic preservation.</strong> A new metric is needed: anchor basin assignment stability, which directly measures whether the belief topology survives.</div>
     </div>
   </div>
 
@@ -556,7 +556,7 @@ MathJax = {
     <span class="impl-label">Implementation</span>
     <p>Experiments: <code>papers/belief_backpropagation/compressed_epistemic_lab.py</code><br>
     Backprop engine: <code>papers/belief_backpropagation/backprop_engine.py</code><br>
-    BDG backward pass: <code>personal_agent/memory_graph.py:propagate_backward()</code><br>
+    BRG backward pass: <code>personal_agent/memory_graph.py:propagate_backward()</code><br>
     Compression baselines: <code>compression_lab/</code><br>
     Anchor clustering analysis (production): <code>workspace/anchor_cluster_analysis.py</code></p>
   </div>

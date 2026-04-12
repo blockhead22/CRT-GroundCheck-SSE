@@ -136,6 +136,15 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   /* MathJax sizing */
   .MathJax { font-size: 1em !important; }
+
+  /* Belief Loci SVG labels */
+  .bl-label { fill: #d0d4e8; font-size: 10px; font-family: monospace; text-anchor: middle; }
+  .bl-trust { fill: rgba(148,163,184,0.6); font-size: 8px; font-family: monospace; text-anchor: middle; }
+  .bl-contra { fill: #f472b6; font-size: 9px; font-family: monospace; text-anchor: middle; letter-spacing: 1px; }
+  .bl-axis { fill: rgba(148,163,184,0.3); font-size: 8px; font-family: monospace; letter-spacing: 1px; }
+  .bl-stats { font-family: monospace; font-size: 0.78em; color: rgba(148,163,184,0.5); margin-top: 8px; }
+  .bl-replay { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 4px 12px; font-family: monospace; font-size: 0.75em; color: rgba(148,163,184,0.5); cursor: pointer; margin-top: 6px; }
+  .bl-replay:hover { border-color: rgba(129,140,248,0.3); color: #818cf8; }
 </style>
 <link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="theme.css">
@@ -146,17 +155,17 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 <!-- ===== HERO ===== -->
 <div class="hero">
   <div class="hero-inner">
-    <div class="hero-badge">Research Paper &middot; Theory</div>
+    <div class="hero-badge">Research Paper</div>
     <h1>Memories as<br><span class='grad'>Belief Loci</span><br>in Semantic Space</h1>
     <p class="sub">A geometric framework for AI memory where uncertainty is structure, not noise</p>
-    <p class="byline">Nick Block &bull; Aeteros Research &bull; 2026</p>
+    <p class="byline">Nick Block · Aeteros Research · 2026</p>
     <div class="finding-box">
       <p>Memory items modeled as <strong>belief loci</strong> with center (semantic embedding), covariance (uncertainty shape), and confidence (contribution weight). Contradiction becomes <strong>geometric overlap</strong>. Volatility becomes <strong>covariance expansion</strong>. Temperature governance derived from locus parameters. The key insight: LLM response variance at temperature sweep directly produces locus parameters, no conversion needed. The experimental output <em>is</em> the belief.</p>
     </div>
 
     <!-- Belief Loci Animation -->
-    <div class="hero-loci" id="bl-root">
-      <svg id="bl-svg" viewBox="0 0 620 280" xmlns="http://www.w3.org/2000/svg">
+    <div class="hero-loci" id="bl-root" style="margin-top:40px;">
+      <svg id="bl-svg" viewBox="0 0 720 320" xmlns="http://www.w3.org/2000/svg" style="max-width:720px;">
         <defs>
           <radialGradient id="bl-gradA"><stop offset="0%" stop-color="#34d399" stop-opacity="0.9"/><stop offset="100%" stop-color="#34d399" stop-opacity="0"/></radialGradient>
           <radialGradient id="bl-gradB"><stop offset="0%" stop-color="#60a5fa" stop-opacity="0.9"/><stop offset="100%" stop-color="#60a5fa" stop-opacity="0"/></radialGradient>
@@ -164,35 +173,35 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
           <radialGradient id="bl-gradOverlap"><stop offset="0%" stop-color="#f472b6" stop-opacity="0.35"/><stop offset="100%" stop-color="#f472b6" stop-opacity="0"/></radialGradient>
         </defs>
         <!-- grid -->
-        <g id="bl-grid" opacity="0.15">
-          <line x1="60" y1="30" x2="60" y2="240" stroke="#3a3f5c" stroke-width="0.5"/>
-          <line x1="170" y1="30" x2="170" y2="240" stroke="#3a3f5c" stroke-width="0.5"/>
-          <line x1="280" y1="30" x2="280" y2="240" stroke="#3a3f5c" stroke-width="0.5"/>
-          <line x1="390" y1="30" x2="390" y2="240" stroke="#3a3f5c" stroke-width="0.5"/>
-          <line x1="500" y1="30" x2="500" y2="240" stroke="#3a3f5c" stroke-width="0.5"/>
-          <line x1="60" y1="70" x2="560" y2="70" stroke="#3a3f5c" stroke-width="0.5"/>
-          <line x1="60" y1="135" x2="560" y2="135" stroke="#3a3f5c" stroke-width="0.5"/>
-          <line x1="60" y1="200" x2="560" y2="200" stroke="#3a3f5c" stroke-width="0.5"/>
+        <g id="bl-grid" opacity="0.1">
+          <line x1="80" y1="30" x2="80" y2="270" stroke="#3a3f5c" stroke-width="0.5"/>
+          <line x1="210" y1="30" x2="210" y2="270" stroke="#3a3f5c" stroke-width="0.5"/>
+          <line x1="340" y1="30" x2="340" y2="270" stroke="#3a3f5c" stroke-width="0.5"/>
+          <line x1="470" y1="30" x2="470" y2="270" stroke="#3a3f5c" stroke-width="0.5"/>
+          <line x1="600" y1="30" x2="600" y2="270" stroke="#3a3f5c" stroke-width="0.5"/>
+          <line x1="60" y1="80" x2="660" y2="80" stroke="#3a3f5c" stroke-width="0.5"/>
+          <line x1="60" y1="155" x2="660" y2="155" stroke="#3a3f5c" stroke-width="0.5"/>
+          <line x1="60" y1="230" x2="660" y2="230" stroke="#3a3f5c" stroke-width="0.5"/>
         </g>
-        <text x="310" y="258" class="bl-axis" text-anchor="middle">Semantic Dimension 1</text>
-        <text x="18" y="140" class="bl-axis" text-anchor="middle" transform="rotate(-90,18,140)">Semantic Dim 2</text>
+        <text x="360" y="298" class="bl-axis" text-anchor="middle">semantic dimension 1</text>
+        <text x="18" y="155" class="bl-axis" text-anchor="middle" transform="rotate(-90,18,155)">semantic dim 2</text>
         <!-- overlap (hidden initially) -->
-        <ellipse id="bl-overlap" cx="220" cy="125" rx="0" ry="0" fill="url(#bl-gradOverlap)" opacity="0"/>
+        <ellipse id="bl-overlap" cx="260" cy="150" rx="0" ry="0" fill="url(#bl-gradOverlap)" opacity="0"/>
         <!-- loci -->
-        <circle id="bl-locA" cx="190" cy="125" r="0" fill="url(#bl-gradA)" opacity="0"/>
-        <circle id="bl-locB" cx="400" cy="145" r="0" fill="url(#bl-gradB)" opacity="0"/>
-        <circle id="bl-locC" cx="580" cy="115" r="0" fill="url(#bl-gradC)" opacity="0"/>
+        <circle id="bl-locA" cx="220" cy="150" r="0" fill="url(#bl-gradA)" opacity="0"/>
+        <circle id="bl-locB" cx="480" cy="165" r="0" fill="url(#bl-gradB)" opacity="0"/>
+        <circle id="bl-locC" cx="640" cy="140" r="0" fill="url(#bl-gradC)" opacity="0"/>
         <!-- contradiction line -->
-        <line id="bl-cline" x1="190" y1="125" x2="190" y2="125" stroke="#f472b6" stroke-width="1" stroke-dasharray="4,3" opacity="0"/>
-        <text id="bl-clabel" x="220" y="80" class="bl-contra" opacity="0">contradiction: overlap = 0.73</text>
-        <text id="bl-bolt" x="220" y="105" text-anchor="middle" font-size="14" opacity="0">&#9889;</text>
+        <line id="bl-cline" x1="220" y1="150" x2="220" y2="150" stroke="#f472b6" stroke-width="1" stroke-dasharray="4,3" opacity="0"/>
+        <text id="bl-clabel" x="260" y="90" class="bl-contra" opacity="0">contradiction: overlap = 0.73</text>
+        <text id="bl-bolt" x="260" y="118" text-anchor="middle" font-size="14" opacity="0">&#9889;</text>
         <!-- labels -->
-        <text id="bl-labA" x="190" y="0" class="bl-label" opacity="0">favorite color = orange</text>
-        <text id="bl-trA" x="190" y="0" class="bl-trust" opacity="0">trust: 0.85</text>
-        <text id="bl-labB" x="400" y="0" class="bl-label" opacity="0">likes warm tones</text>
-        <text id="bl-trB" x="400" y="0" class="bl-trust" opacity="0">trust: 0.60</text>
-        <text id="bl-labC" x="580" y="0" class="bl-label" opacity="0">favorite color = green</text>
-        <text id="bl-trC" x="580" y="0" class="bl-trust" opacity="0">trust: 0.70</text>
+        <text id="bl-labA" x="220" y="0" class="bl-label" opacity="0">favorite color = orange</text>
+        <text id="bl-trA" x="220" y="0" class="bl-trust" opacity="0">trust: 0.85</text>
+        <text id="bl-labB" x="480" y="0" class="bl-label" opacity="0">likes warm tones</text>
+        <text id="bl-trB" x="480" y="0" class="bl-trust" opacity="0">trust: 0.60</text>
+        <text id="bl-labC" x="640" y="0" class="bl-label" opacity="0">favorite color = green</text>
+        <text id="bl-trC" x="640" y="0" class="bl-trust" opacity="0">trust: 0.70</text>
       </svg>
       <div style="text-align:center">
         <div class="bl-stats" id="bl-stats" style="opacity:0">
@@ -207,7 +216,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 </div>
 
 <nav class="sidebar" id="docSidebar">
-  <div class="sidebar-title">Research Paper &middot; Theory</div>
+  <div class="sidebar-title">Research Paper · Theory</div>
   <div class="sidebar-spacer"></div>
   <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme">
     <span class="theme-toggle-icon" id="themeIcon">&#9790;</span>
@@ -223,7 +232,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   function lerp(a,b,t){ return a+(b-a)*Math.min(1,Math.max(0,t)); }
   function ease(t){ return t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2); }
 
-  var A = {cx:190,cy:125}, B = {cx:400,cy:145}, C0 = {cx:540,cy:115}, C1 = {cx:260,cy:120};
+  var A = {cx:220,cy:150}, B = {cx:480,cy:165}, C0 = {cx:640,cy:140}, C1 = {cx:300,cy:145};
   var locA,locB,locC,overlap,cline,clabel,bolt;
   var labA,trA,labB,trB,labC,trC,stats,replay;
 
@@ -443,6 +452,39 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <p>with \(\bar{\sigma}_i = (\sigma^a_i + \sigma^b_i) / 2\). The first term captures center divergence weighted by joint uncertainty. The second captures shape mismatch. Both are \(O(d)\) for diagonal loci.</p>
 
+  <!-- Diagram: Contradiction as Geometric Overlap -->
+  <div style="margin:32px auto;max-width:600px;">
+    <svg viewBox="0 0 600 220" style="width:100%;height:auto;display:block;">
+      <defs>
+        <radialGradient id="ov-a"><stop offset="0%" stop-color="#34d399" stop-opacity="0.6"/><stop offset="100%" stop-color="#34d399" stop-opacity="0"/></radialGradient>
+        <radialGradient id="ov-b"><stop offset="0%" stop-color="#f472b6" stop-opacity="0.6"/><stop offset="100%" stop-color="#f472b6" stop-opacity="0"/></radialGradient>
+        <radialGradient id="ov-c"><stop offset="0%" stop-color="#fbbf24" stop-opacity="0.25"/><stop offset="100%" stop-color="#fbbf24" stop-opacity="0"/></radialGradient>
+      </defs>
+      <!-- overlap zone -->
+      <ellipse cx="280" cy="110" rx="50" ry="40" fill="url(#ov-c)"/>
+      <!-- locus A -->
+      <ellipse cx="220" cy="110" rx="100" ry="65" fill="url(#ov-a)" stroke="rgba(52,211,153,0.3)" stroke-width="1"/>
+      <circle cx="220" cy="110" r="3" fill="#34d399"/>
+      <!-- locus B -->
+      <ellipse cx="340" cy="110" rx="85" ry="55" fill="url(#ov-b)" stroke="rgba(244,114,182,0.3)" stroke-width="1"/>
+      <circle cx="340" cy="110" r="3" fill="#f472b6"/>
+      <!-- dashed line between centers -->
+      <line x1="223" y1="110" x2="337" y2="110" stroke="rgba(251,191,36,0.5)" stroke-width="1" stroke-dasharray="4,4"/>
+      <!-- labels -->
+      <text x="220" y="190" text-anchor="middle" fill="#34d399" font-size="10" font-family="monospace" letter-spacing="1">"color = orange"</text>
+      <text x="220" y="203" text-anchor="middle" fill="rgba(52,211,153,0.5)" font-size="8" font-family="monospace">trust: 0.85</text>
+      <text x="340" y="190" text-anchor="middle" fill="#f472b6" font-size="10" font-family="monospace" letter-spacing="1">"color = green"</text>
+      <text x="340" y="203" text-anchor="middle" fill="rgba(244,114,182,0.5)" font-size="8" font-family="monospace">trust: 0.70</text>
+      <text x="280" y="80" text-anchor="middle" fill="#fbbf24" font-size="9" font-family="monospace" letter-spacing="1">overlap = contradiction</text>
+      <!-- no overlap example on right -->
+      <ellipse cx="510" cy="90" rx="55" ry="40" fill="none" stroke="rgba(96,165,250,0.2)" stroke-width="1" stroke-dasharray="3,3"/>
+      <circle cx="510" cy="90" r="2" fill="rgba(96,165,250,0.5)"/>
+      <ellipse cx="510" cy="155" rx="45" ry="30" fill="none" stroke="rgba(192,132,252,0.2)" stroke-width="1" stroke-dasharray="3,3"/>
+      <circle cx="510" cy="155" r="2" fill="rgba(192,132,252,0.5)"/>
+      <text x="510" y="210" text-anchor="middle" fill="rgba(148,163,184,0.4)" font-size="8" font-family="monospace">no overlap = no tension</text>
+    </svg>
+  </div>
+
   <div class="remark">
     <strong>High-dimensional note.</strong> In 384 dimensions, the Bhattacharyya coefficient between any two Gaussians is near-zero due to the curse of dimensionality. The overlap integral is more useful for <em>tracking convergence over time</em> (two loci drifting toward each other) than for static detection. For static contradiction, we use cosine similarity between centers as a topic-relatedness filter, then KL divergence for uncertainty mismatch.
   </div>
@@ -459,6 +501,44 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   \[
   \sigma_i \leftarrow \sigma_i \cdot (1 + \eta'), \qquad \alpha \leftarrow \max(\alpha_{\min}, \alpha - \delta)
   \]
+
+  <!-- Diagram: Trust Evolution - tighten, widen, fade -->
+  <div style="margin:32px auto;max-width:620px;">
+    <svg viewBox="0 0 620 160" style="width:100%;height:auto;display:block;">
+      <defs>
+        <radialGradient id="te-1"><stop offset="0%" stop-color="#818cf8" stop-opacity="0.5"/><stop offset="100%" stop-color="#818cf8" stop-opacity="0"/></radialGradient>
+        <radialGradient id="te-2"><stop offset="0%" stop-color="#34d399" stop-opacity="0.7"/><stop offset="100%" stop-color="#34d399" stop-opacity="0"/></radialGradient>
+        <radialGradient id="te-3"><stop offset="0%" stop-color="#f472b6" stop-opacity="0.4"/><stop offset="100%" stop-color="#f472b6" stop-opacity="0"/></radialGradient>
+        <radialGradient id="te-4"><stop offset="0%" stop-color="#94a3b8" stop-opacity="0.15"/><stop offset="100%" stop-color="#94a3b8" stop-opacity="0"/></radialGradient>
+      </defs>
+      <!-- State 1: uncertain (wide) -->
+      <ellipse cx="90" cy="75" rx="65" ry="50" fill="url(#te-1)" stroke="rgba(129,140,248,0.25)" stroke-width="1"/>
+      <circle cx="90" cy="75" r="2.5" fill="#818cf8"/>
+      <text x="90" y="140" text-anchor="middle" fill="rgba(129,140,248,0.7)" font-size="9" font-family="monospace">uncertain</text>
+      <text x="90" y="152" text-anchor="middle" fill="rgba(129,140,248,0.4)" font-size="7" font-family="monospace">wide covariance</text>
+      <!-- arrow -->
+      <text x="172" y="80" fill="rgba(148,163,184,0.3)" font-size="16">→</text>
+      <!-- State 2: confirmed (tight) -->
+      <ellipse cx="255" cy="75" rx="30" ry="22" fill="url(#te-2)" stroke="rgba(52,211,153,0.35)" stroke-width="1"/>
+      <circle cx="255" cy="75" r="2.5" fill="#34d399"/>
+      <text x="255" y="140" text-anchor="middle" fill="rgba(52,211,153,0.7)" font-size="9" font-family="monospace">confirmed</text>
+      <text x="255" y="152" text-anchor="middle" fill="rgba(52,211,153,0.4)" font-size="7" font-family="monospace">tight covariance</text>
+      <!-- arrow -->
+      <text x="310" y="80" fill="rgba(148,163,184,0.3)" font-size="16">→</text>
+      <!-- State 3: contradicted (expanded) -->
+      <ellipse cx="400" cy="75" rx="70" ry="55" fill="url(#te-3)" stroke="rgba(244,114,182,0.25)" stroke-width="1"/>
+      <circle cx="400" cy="75" r="2.5" fill="#f472b6"/>
+      <text x="400" y="140" text-anchor="middle" fill="rgba(244,114,182,0.7)" font-size="9" font-family="monospace">contradicted</text>
+      <text x="400" y="152" text-anchor="middle" fill="rgba(244,114,182,0.4)" font-size="7" font-family="monospace">expanded covariance</text>
+      <!-- arrow -->
+      <text x="482" y="80" fill="rgba(148,163,184,0.3)" font-size="16">→</text>
+      <!-- State 4: deprecated (faded) -->
+      <ellipse cx="555" cy="75" rx="45" ry="35" fill="url(#te-4)" stroke="rgba(148,163,184,0.1)" stroke-width="1" stroke-dasharray="3,3"/>
+      <circle cx="555" cy="75" r="2" fill="rgba(148,163,184,0.25)"/>
+      <text x="555" y="140" text-anchor="middle" fill="rgba(148,163,184,0.4)" font-size="9" font-family="monospace">deprecated</text>
+      <text x="555" y="152" text-anchor="middle" fill="rgba(148,163,184,0.25)" font-size="7" font-family="monospace">confidence fading</text>
+    </svg>
+  </div>
 
   <h3>3.3 Deprecation as Confidence Fade</h3>
   <p>Old memories do not vanish. Their confidence \(\alpha\) decays toward zero. The distribution remains (the system remembers what it once believed and how uncertain it was), but its contribution weight diminishes. This is softer than deletion: a faded locus can be revived if new evidence re-confirms it.</p>
@@ -495,6 +575,65 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <p>The key insight of this paper: when you probe an LLM on a topic across a range of temperatures and collect the response embeddings, the statistics of those embeddings <em>are</em> the belief locus.</p>
+
+  <!-- Diagram: Variance-to-Locus Pipeline -->
+  <div style="margin:32px auto;max-width:650px;">
+    <svg viewBox="0 0 650 200" style="width:100%;height:auto;display:block;">
+      <defs>
+        <radialGradient id="vl-cloud"><stop offset="0%" stop-color="#818cf8" stop-opacity="0.15"/><stop offset="100%" stop-color="#818cf8" stop-opacity="0"/></radialGradient>
+        <radialGradient id="vl-locus"><stop offset="0%" stop-color="#34d399" stop-opacity="0.6"/><stop offset="100%" stop-color="#34d399" stop-opacity="0"/></radialGradient>
+      </defs>
+      <!-- Step 1: Temperature sweep -->
+      <rect x="20" y="30" width="120" height="140" rx="8" fill="none" stroke="rgba(148,163,184,0.15)" stroke-width="1"/>
+      <text x="80" y="22" text-anchor="middle" fill="rgba(148,163,184,0.5)" font-size="8" font-family="monospace" letter-spacing="1">TEMPERATURE SWEEP</text>
+      <line x1="40" y1="60" x2="40" y2="150" stroke="rgba(148,163,184,0.15)" stroke-width="1"/>
+      <line x1="40" y1="150" x2="120" y2="150" stroke="rgba(148,163,184,0.15)" stroke-width="1"/>
+      <text x="38" y="57" text-anchor="end" fill="rgba(148,163,184,0.3)" font-size="7" font-family="monospace">T</text>
+      <!-- temperature bars -->
+      <rect x="50" y="130" width="12" height="20" rx="2" fill="rgba(96,165,250,0.3)"/>
+      <rect x="66" y="110" width="12" height="40" rx="2" fill="rgba(129,140,248,0.3)"/>
+      <rect x="82" y="85" width="12" height="65" rx="2" fill="rgba(192,132,252,0.3)"/>
+      <rect x="98" y="60" width="12" height="90" rx="2" fill="rgba(244,114,182,0.3)"/>
+      <text x="56" y="165" text-anchor="middle" fill="rgba(148,163,184,0.25)" font-size="6" font-family="monospace">0.2</text>
+      <text x="72" y="165" text-anchor="middle" fill="rgba(148,163,184,0.25)" font-size="6" font-family="monospace">0.5</text>
+      <text x="88" y="165" text-anchor="middle" fill="rgba(148,163,184,0.25)" font-size="6" font-family="monospace">1.0</text>
+      <text x="104" y="165" text-anchor="middle" fill="rgba(148,163,184,0.25)" font-size="6" font-family="monospace">1.5</text>
+      <!-- arrow 1 -->
+      <text x="155" y="105" fill="rgba(148,163,184,0.3)" font-size="18">→</text>
+      <!-- Step 2: Response cloud -->
+      <rect x="185" y="30" width="170" height="140" rx="8" fill="none" stroke="rgba(148,163,184,0.15)" stroke-width="1"/>
+      <text x="270" y="22" text-anchor="middle" fill="rgba(148,163,184,0.5)" font-size="8" font-family="monospace" letter-spacing="1">RESPONSE EMBEDDINGS</text>
+      <ellipse cx="270" cy="100" rx="65" ry="50" fill="url(#vl-cloud)"/>
+      <!-- scattered dots -->
+      <circle cx="255" cy="85" r="2" fill="rgba(129,140,248,0.5)"/>
+      <circle cx="278" cy="92" r="2" fill="rgba(129,140,248,0.5)"/>
+      <circle cx="262" cy="108" r="2" fill="rgba(129,140,248,0.5)"/>
+      <circle cx="285" cy="100" r="2" fill="rgba(129,140,248,0.5)"/>
+      <circle cx="248" cy="98" r="2" fill="rgba(129,140,248,0.5)"/>
+      <circle cx="270" cy="78" r="2" fill="rgba(192,132,252,0.4)"/>
+      <circle cx="290" cy="115" r="2" fill="rgba(192,132,252,0.4)"/>
+      <circle cx="240" cy="112" r="2" fill="rgba(192,132,252,0.4)"/>
+      <circle cx="300" cy="90" r="2" fill="rgba(244,114,182,0.3)"/>
+      <circle cx="235" cy="75" r="2" fill="rgba(244,114,182,0.3)"/>
+      <circle cx="310" cy="120" r="2" fill="rgba(244,114,182,0.3)"/>
+      <circle cx="225" cy="125" r="2" fill="rgba(244,114,182,0.3)"/>
+      <!-- arrow 2 -->
+      <text x="370" y="105" fill="rgba(148,163,184,0.3)" font-size="18">→</text>
+      <!-- Step 3: Extracted locus -->
+      <rect x="400" y="30" width="230" height="140" rx="8" fill="none" stroke="rgba(148,163,184,0.15)" stroke-width="1"/>
+      <text x="515" y="22" text-anchor="middle" fill="rgba(148,163,184,0.5)" font-size="8" font-family="monospace" letter-spacing="1">BELIEF LOCUS</text>
+      <ellipse cx="515" cy="100" rx="75" ry="45" fill="url(#vl-locus)" stroke="rgba(52,211,153,0.3)" stroke-width="1"/>
+      <circle cx="515" cy="100" r="3" fill="#34d399"/>
+      <!-- annotations -->
+      <text x="515" y="155" text-anchor="middle" fill="rgba(52,211,153,0.6)" font-size="8" font-family="monospace">center = mean(E)</text>
+      <text x="515" y="167" text-anchor="middle" fill="rgba(52,211,153,0.4)" font-size="8" font-family="monospace">shape = var(E)</text>
+      <!-- dimension labels on the locus -->
+      <line x1="440" y1="100" x2="590" y2="100" stroke="rgba(52,211,153,0.15)" stroke-width="1" stroke-dasharray="2,3"/>
+      <line x1="515" y1="55" x2="515" y2="145" stroke="rgba(52,211,153,0.15)" stroke-width="1" stroke-dasharray="2,3"/>
+      <!-- bottom summary -->
+      <text x="325" y="192" text-anchor="middle" fill="rgba(148,163,184,0.35)" font-size="8" font-family="monospace" letter-spacing="1">the experimental output IS the belief</text>
+    </svg>
+  </div>
 
   <h3>The Pipeline</h3>
   <p>Given a topic \(q\) and a set of temperatures \(T = \{t_1, \ldots, t_k\}\):</p>
@@ -669,7 +808,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="pipeline-layer">
       <div class="pipeline-layer-accent"></div>
       <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">Embedding &rarr; <code>BeliefLocus</code></div>
+        <div class="pipeline-layer-name">Embedding → <code>BeliefLocus</code></div>
         <div class="pipeline-layer-desc">New information becomes a locus with type-dependent initial covariance</div>
       </div>
       <div class="pipeline-layer-annotation">memory_splats.py</div>
@@ -694,7 +833,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
       <div class="pipeline-layer-accent"></div>
       <div class="pipeline-layer-content">
         <div class="pipeline-layer-name">Cascade Propagation</div>
-        <div class="pipeline-layer-desc">Fisher-Rao impact triggers downstream revisions in the BDG</div>
+        <div class="pipeline-layer-desc">Fisher-Rao impact triggers downstream revisions in the BRG</div>
       </div>
       <div class="pipeline-layer-annotation">info_geometry.py</div>
     </div>
@@ -710,7 +849,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
       <div class="pipeline-layer-accent"></div>
       <div class="pipeline-layer-content">
         <div class="pipeline-layer-name">Temperature Governance</div>
-        <div class="pipeline-layer-desc">Locus geometry &rarr; generation temperature (5 regimes)</div>
+        <div class="pipeline-layer-desc">Locus geometry → generation temperature (5 regimes)</div>
       </div>
       <div class="pipeline-layer-annotation">In progress</div>
     </div>
@@ -1000,9 +1139,9 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   })();
   </script>
 
-  <p>Production analysis of 867 memories reveals that belief loci self-organize into <strong>anchor basins</strong>: 42 high-trust, high-access memories act as gravitational poles, with 77% of all memories falling within cosine 0.3 of at least one anchor. Anchors do not cluster with each other (mean inter-anchor similarity 0.10) &mdash; they are the distributed poles of the belief space. This geometric structure has direct implications for compression: <a href="epistemic-compression.html">epistemic compression experiments</a> show that 3-bit quantization preserves basin topology (92.9% anchor assignment stability) while 2-bit breaks it (71.4%). The anchor basins defined by belief loci are the compressible skeleton of the epistemic space.</p>
+  <p>Production analysis of 867 memories reveals that belief loci self-organize into <strong>anchor basins</strong>: 42 high-trust, high-access memories act as gravitational poles, with 77% of all memories falling within cosine 0.3 of at least one anchor. Anchors do not cluster with each other (mean inter-anchor similarity 0.10)  - they are the distributed poles of the belief space. This geometric structure has direct implications for compression: <a href="epistemic-compression.html">epistemic compression experiments</a> show that 3-bit quantization preserves basin topology (92.9% anchor assignment stability) while 2-bit breaks it (71.4%). The anchor basins defined by belief loci are the compressible skeleton of the epistemic space.</p>
 
-  <p><a href="belief-backprop.html#wobble">Query resonance</a> uses this geometry: when a query lands in the space, activation propagates through the basin structure via BDG edges, surfacing cross-domain facts that cosine alone misses.</p>
+  <p><a href="belief-backprop.html#wobble">Query resonance</a> uses this geometry: when a query lands in the space, activation propagates through the basin structure via BRG edges, surfacing cross-domain facts that cosine alone misses.</p>
 </section>
 
 </main>

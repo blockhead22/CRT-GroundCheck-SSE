@@ -332,7 +332,7 @@ thead th, th {
     <div class="probe-flow-node">
       <div class="flow-num">5</div>
       <div class="flow-label">Temperatures</div>
-      <div class="flow-detail">0.0 &ndash; 1.5</div>
+      <div class="flow-detail">0.0 - 1.5</div>
     </div>
     <div class="probe-flow-connector"></div>
     <div class="probe-flow-node">
@@ -803,22 +803,22 @@ thead th, th {
       <div class="step-name">Temperature Sweep</div>
       <div class="step-detail">5 temps &times; 30 reps</div>
     </div>
-    <div class="pipeline-arrow">&rarr;</div>
+    <div class="pipeline-arrow">→</div>
     <div class="pipeline-step">
       <div class="step-name">Embedding</div>
       <div class="step-detail">all-MiniLM-L6-v2 (384D)</div>
     </div>
-    <div class="pipeline-arrow">&rarr;</div>
+    <div class="pipeline-arrow">→</div>
     <div class="pipeline-step">
       <div class="step-name">Clustering</div>
       <div class="step-detail">DBSCAN (4 eps values)</div>
     </div>
-    <div class="pipeline-arrow">&rarr;</div>
+    <div class="pipeline-arrow">→</div>
     <div class="pipeline-step">
       <div class="step-name">Metrics</div>
       <div class="step-detail">spread / dH/dT / modes / contradictions</div>
     </div>
-    <div class="pipeline-arrow">&rarr;</div>
+    <div class="pipeline-arrow">→</div>
     <div class="pipeline-step">
       <div class="step-name">Regime Classification</div>
       <div class="step-detail">fracture / gradient / fog / damped</div>
@@ -964,7 +964,7 @@ thead th, th {
     <div class="regime-card card-crack">
       <div class="regime-label">Finding</div>
       <div class="regime-name">Only Qwen3 Mode-Splits</div>
-      <div class="regime-desc">1.3&ndash;1.5 modes on factual domains. Every other model stays at 1.00 across all domains. Fracture is model-specific, not a universal property of factual questions.</div>
+      <div class="regime-desc">1.3-1.5 modes on factual domains. Every other model stays at 1.00 across all domains. Fracture is model-specific, not a universal property of factual questions.</div>
     </div>
     <div class="regime-card card-gradient">
       <div class="regime-label">Finding</div>
@@ -974,7 +974,7 @@ thead th, th {
     <div class="regime-card card-fog">
       <div class="regime-label">Finding</div>
       <div class="regime-name">Silhouette Scores Are Low</div>
-      <div class="regime-desc">0.11&ndash;0.15 for all models. Domains don't cleanly separate point-by-point in 384D. Domain structure is real but noisy. UMAP visualizations are hypothesis generators, not proof.</div>
+      <div class="regime-desc">0.11-0.15 for all models. Domains don't cleanly separate point-by-point in 384D. Domain structure is real but noisy. UMAP visualizations are hypothesis generators, not proof.</div>
     </div>
   </div>
 
@@ -1041,17 +1041,17 @@ thead th, th {
   <div class="method-grid" style="grid-template-columns: repeat(3, 1fr);">
     <div class="method-card" style="border-left: 3px solid #f472b6; text-align:center;">
       <h4 style="font-size:2em; margin-bottom:2px;">Spread</h4>
-      <div class="metric-sub">0.02 &ndash; 0.18</div>
+      <div class="metric-sub">0.02 - 0.18</div>
       <p>Distance the response cloud covers. High spread = the model explores widely when nudged.</p>
     </div>
     <div class="method-card" style="border-left: 3px solid #818cf8; text-align:center;">
       <h4 style="font-size:2em; margin-bottom:2px;">Modes</h4>
-      <div class="metric-sub">1.00 &ndash; 1.50</div>
+      <div class="metric-sub">1.00 - 1.50</div>
       <p>Distinct clusters in the cloud. Multiple modes = competing attractors. Only Qwen3 exceeds 1.0.</p>
     </div>
     <div class="method-card" style="border-left: 3px solid #c084fc; text-align:center;">
       <h4 style="font-size:2em; margin-bottom:2px;">Template</h4>
-      <div class="metric-sub">0.81 &ndash; 0.98</div>
+      <div class="metric-sub">0.81 - 0.98</div>
       <p>Within-cluster similarity. Near 1.0 = paraphrase repetition. Below 0.85 = genuine semantic variety.</p>
     </div>
   </div>

@@ -155,7 +155,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="hero-badge">Reference</div>
     <h1>CORE<br><span class="grad">Glossary</span></h1>
     <p class="sub">Every term, where it comes from, what it means, and why it matters</p>
-    <p class="byline">Aeteros Research &bull; 2026</p>
+    <p class="byline">Aeteros Research · 2026</p>
   </div>
   <div class="scroll-cue">&#9660; SCROLL</div>
 </div>
@@ -227,7 +227,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
         <a href="#contradiction">Contradiction</a>
         <a href="#held-contradiction">Held Contradiction</a>
         <a href="#contradiction-ledger">Contradiction Ledger</a>
-        <a href="#bdg">BDG</a>
+        <a href="#brg">BRG</a>
         <a href="#cascade">Cascade</a>
         <a href="#cascade-depth">Cascade Depth</a>
         <a href="#cascade-width">Cascade Width</a>
@@ -312,7 +312,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="term-entry" id="crt">
     <div class="term-name">CORE <span class="badge badge-original">CORE-Original</span></div>
-    <div class="term-origin">Contradiction-aware Reconciliation and Trust. The full framework name.</div>
+    <div class="term-origin">Contradiction, Observation, Revision, Epistemics. Originally CRT (Cognitive-Reflective Transformer).</div>
     <div class="term-def">
       A memory governance framework for AI systems built on three design laws: belief/speech separation, earned contradiction resolution, and emergent structure over hardcoded logic. CORE treats memory as the source of identity and LLM generation as downstream expression. Every response is grounded in trust-scored memories rather than raw model output.
     </div>
@@ -369,7 +369,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="term-name">Trust <span class="badge badge-original">CORE-Original</span></div>
     <div class="term-origin">CORE-original. Distinguished from <a href="#confidence">Confidence</a>.</div>
     <div class="term-def">
-      A 0&ndash;1 score on a memory that evolves over time through evidence. Trust is <em>earned</em>, not assigned. It increases when corroborating evidence arrives, decreases when contradicting evidence appears, and decays under drift. Trust governs whether a memory can influence responses, survive compaction, or participate in cascade propagation. The key distinction: trust changes; confidence is static.
+      A 0-1 score on a memory that evolves over time through evidence. Trust is <em>earned</em>, not assigned. It increases when corroborating evidence arrives, decreases when contradicting evidence appears, and decays under drift. Trust governs whether a memory can influence responses, survive compaction, or participate in cascade propagation. The key distinction: trust changes; confidence is static.
     </div>
     <div class="term-math">
       Trust evolution follows CRTMath: \(\text{trust}_{t+1} = \text{trust}_t + \eta \cdot (\text{evidence} - \text{trust}_t)\) where \(\eta\) is the adjustment rate, a scaling factor modulated by source authority and corroboration count (not an optimized parameter).
@@ -398,13 +398,13 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="term-name">Memory <span class="badge badge-original">CORE-Original</span></div>
     <div class="term-origin">CORE-specific meaning. More than a stored string.</div>
     <div class="term-def">
-      A stored fact, observation, or preference with trust score, embedding vector, authority level, timestamps, and metadata. Memories are the atoms of the belief system, each one a node in the <a href="#bdg">BDG</a> and a <a href="#belief-locus">Belief Locus</a> in semantic space. Memories have kinds (observation, preference, fact, correction) and authority levels (locked, confirmed, provisional). They are never silently deleted; only deprecated, superseded, or compacted.
+      A stored fact, observation, or preference with trust score, embedding vector, authority level, timestamps, and metadata. Memories are the atoms of the belief system, each one a node in the <a href="#brg">BRG</a> and a <a href="#belief-locus">Belief Locus</a> in semantic space. Memories have kinds (observation, preference, fact, correction) and authority levels (locked, confirmed, provisional). They are never silently deleted; only deprecated, superseded, or compacted.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
       <code>{ text: "Nick works at home on Fridays", trust: 0.78, kind: "observation", authority: "confirmed", embedding: [0.12, -0.04, ...], created: "2026-03-15" }</code>
     </div>
-    <div class="term-related">Related: <a href="#trust">Trust</a>, <a href="#belief-locus">Belief Locus</a>, <a href="#bdg">BDG</a>, <a href="#authority">Authority</a></div>
+    <div class="term-related">Related: <a href="#trust">Trust</a>, <a href="#belief-locus">Belief Locus</a>, <a href="#brg">BRG</a>, <a href="#authority">Authority</a></div>
   </div>
 </section>
 
@@ -488,9 +488,9 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      "Likes hiking" and "enjoys mountain trails" are close in semantic space (cosine similarity ~0.85). "Likes hiking" and "prefers sushi for dinner" are far apart (~0.12). The BDG's SUPPORTS and CONTRADICTS edges are partly derived from distances in this space.
+      "Likes hiking" and "enjoys mountain trails" are close in semantic space (cosine similarity ~0.85). "Likes hiking" and "prefers sushi for dinner" are far apart (~0.12). The BRG's SUPPORTS and CONTRADICTS edges are partly derived from distances in this space.
     </div>
-    <div class="term-related">Related: <a href="#belief-locus">Belief Locus</a>, <a href="#bdg">BDG</a>, <a href="#locus-overlap">Locus Overlap</a></div>
+    <div class="term-related">Related: <a href="#belief-locus">Belief Locus</a>, <a href="#brg">BRG</a>, <a href="#locus-overlap">Locus Overlap</a></div>
   </div>
 </section>
 
@@ -511,7 +511,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      "Meeting is Monday" vs "Meeting is Tuesday" &rarr; RESOLVABLE (one is wrong). "I love my job" vs "My job is killing me" &rarr; HELD (both are true). "I'm going vegan" (last month) vs "I ordered steak" (yesterday) &rarr; EVOLVING (still in flux).
+      "Meeting is Monday" vs "Meeting is Tuesday" → RESOLVABLE (one is wrong). "I love my job" vs "My job is killing me" → HELD (both are true). "I'm going vegan" (last month) vs "I ordered steak" (yesterday) → EVOLVING (still in flux).
     </div>
     <div class="term-related">Related: <a href="#held-contradiction">Held Contradiction</a>, <a href="#contradiction-ledger">Contradiction Ledger</a>, <a href="#belnap-state">Belnap State</a>, <a href="#locus-overlap">Locus Overlap</a></div>
   </div>
@@ -545,11 +545,11 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="term-related">Related: <a href="#contradiction">Contradiction</a>, <a href="#held-contradiction">Held Contradiction</a></div>
   </div>
 
-  <div class="term-entry" id="bdg">
-    <div class="term-name">BDG (Belief Dependency Graph) <span class="badge badge-original">CORE-Adapted</span></div>
-    <div class="term-origin">CORE-original (Definition 3.2 in the cascade paper). Inspired by AGM epistemic entrenchment but makes dependencies explicit as a graph.</div>
+  <div class="term-entry" id="brg">
+    <div class="term-name">BRG (Belief Relationship Graph) <span class="badge badge-original">CORE-Adapted</span></div>
+    <div class="term-origin">CORE-original (Definition 3.2 in the cascade paper). Originally named as a dependency graph; evolved into a belief relationship graph as edge types grew beyond simple dependency. The acronym BRG is retained for consistency across the research papers.</div>
     <div class="term-def">
-      A weighted directed graph where nodes are memories and edges encode evidential relationships. Edge types: CONTRADICTS (semantic tension), SUPPORTS (evidential grounding), SUPERSEDES (temporal update), and RELATED_TO (topical similarity). The BDG is the structure through which <a href="#cascade">cascades</a> propagate. When a belief changes, the impact travels along edges to dependent beliefs.
+      A weighted directed graph where nodes are beliefs (memories with trust scores) and edges encode typed relationships: CONTRADICTS (semantic tension), SUPPORTS (evidential grounding), SUPERSEDES (temporal update), and RELATED_TO (topical similarity). The BRG is the structure through which <a href="#cascade">cascades</a> propagate, the <a href="#belief-backprop">backward influence</a> flows, and the reflection loop walks. When used as a reasoning scaffold, the graph produces tree-like structures - branches are hypotheses, leaves are verifiable facts. The graph is the memory. The tree is the reasoning derived from it.
     </div>
     <div class="term-math">
       \[G = (V, E, w)\]
@@ -557,7 +557,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      Memory "lives in Portland" has SUPPORTS edges to "commute is 20 minutes," "favorite coffee shop is Stumptown," and "weather preference is rain." Revising the location triggers cascade evaluation on all three dependents. The production BDG has 599 nodes and ~4,976 edges with average fan-out \(d \approx 8\).
+      Memory "lives in Portland" has SUPPORTS edges to "commute is 20 minutes," "favorite coffee shop is Stumptown," and "weather preference is rain." Revising the location triggers cascade evaluation on all three dependents. The production BRG has 599 nodes and ~4,976 edges with average fan-out \(d \approx 8\).
     </div>
     <div class="term-related">Related: <a href="#cascade">Cascade</a>, <a href="#memory">Memory</a>, <a href="#firewall">Firewall</a></div>
   </div>
@@ -566,7 +566,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="term-name">Cascade <span class="badge badge-original">CORE-Adapted</span></div>
     <div class="term-origin">CORE-original (Definition 3.5 in the cascade paper). Applies DeGroot-style dynamics to a single agent's internal belief state, a gap no prior framework addresses.</div>
     <div class="term-def">
-      When one belief changes, the impact propagates through the <a href="#bdg">BDG</a> to dependent beliefs. Each affected node receives an impact scaled by edge weight and damped by a Lipschitz constant. Cascades are the mechanism by which a single new fact ("I moved to Austin") triggers broad belief revision across dozens of dependent memories. Propagation follows topological order on DAGs.
+      When one belief changes, the impact propagates through the <a href="#brg">BRG</a> to dependent beliefs. Each affected node receives an impact scaled by edge weight and damped by a Lipschitz constant. Cascades are the mechanism by which a single new fact ("I moved to Austin") triggers broad belief revision across dozens of dependent memories. Propagation follows topological order on DAGs.
     </div>
     <div class="term-math">
       Impact at successor node \(v'\):
@@ -577,7 +577,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
       <strong>Example</strong><br>
       User says "I moved to Austin." The cascade revises: commute time (impact 0.72), weather preferences (0.65), local restaurants (0.58), but does NOT touch "favorite team is the Lakers" (no dependency edge). Each hop attenuates the impact by the damping factor.
     </div>
-    <div class="term-related">Related: <a href="#bdg">BDG</a>, <a href="#damping">Damping</a>, <a href="#cascade-depth">Cascade Depth</a>, <a href="#cascade-width">Cascade Width</a>, <a href="#cascade-pressure">Cascade Pressure</a></div>
+    <div class="term-related">Related: <a href="#brg">BRG</a>, <a href="#damping">Damping</a>, <a href="#cascade-depth">Cascade Depth</a>, <a href="#cascade-width">Cascade Width</a>, <a href="#cascade-pressure">Cascade Pressure</a></div>
   </div>
 
   <div class="term-entry" id="cascade-depth">
@@ -591,9 +591,9 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      If the longest chain in the BDG is location &rarr; commute &rarr; schedule &rarr; meeting habits (depth 3), then no cascade can affect nodes more than 3 hops from the source, regardless of how dramatic the initial revision was.
+      If the longest chain in the BRG is location → commute → schedule → meeting habits (depth 3), then no cascade can affect nodes more than 3 hops from the source, regardless of how dramatic the initial revision was.
     </div>
-    <div class="term-related">Related: <a href="#cascade">Cascade</a>, <a href="#cascade-width">Cascade Width</a>, <a href="#bdg">BDG</a></div>
+    <div class="term-related">Related: <a href="#cascade">Cascade</a>, <a href="#cascade-width">Cascade Width</a>, <a href="#brg">BRG</a></div>
   </div>
 
   <div class="term-entry" id="cascade-width">
@@ -608,7 +608,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      The production BDG has \(d \approx 8\). At depth 1, up to 8 nodes are affected. At depth 2, up to 64. At depth 3, up to 512, nearly the entire 599-node graph. This is why <a href="#damping">damping</a> is essential.
+      The production BRG has \(d \approx 8\). At depth 1, up to 8 nodes are affected. At depth 2, up to 64. At depth 3, up to 512, nearly the entire 599-node graph. This is why <a href="#damping">damping</a> is essential.
     </div>
     <div class="term-related">Related: <a href="#cascade">Cascade</a>, <a href="#cascade-depth">Cascade Depth</a>, <a href="#damping">Damping</a></div>
   </div>
@@ -647,14 +647,14 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="term-name">Instability <span class="badge badge-proven">Theorem 4.4</span></div>
     <div class="term-origin">Proven in the cascade paper. Formalizes cognitive dissonance spirals.</div>
     <div class="term-def">
-      When the BDG contains cycles with strong coupling (spectral radius \(\lambda > 1\)), cascade impact amplifies instead of decaying. Each traversal of the cycle strengthens the revision signal. This is the formal analog of a cognitive dissonance spiral: revising A forces revision of B, which forces revision of A again, each time stronger. The system must detect and break these cycles.
+      When the BRG contains cycles with strong coupling (spectral radius \(\lambda > 1\)), cascade impact amplifies instead of decaying. Each traversal of the cycle strengthens the revision signal. This is the formal analog of a cognitive dissonance spiral: revising A forces revision of B, which forces revision of A again, each time stronger. The system must detect and break these cycles.
     </div>
     <div class="term-math">
       For a cycle \(C = (v_1, \ldots, v_k, v_1)\), let \(\lambda = \prod_{i} L_i \cdot w(v_i, v_{i+1})\). If \(\lambda > 1\), iterated cascade diverges: \(\delta^{(t)} \to \infty\).
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      "I should exercise more" &rarr; "I feel guilty about not exercising" &rarr; "I'm stressed" &rarr; "I cope by skipping exercise" &rarr; "I should exercise more." If all edges are strong (\(\lambda > 1\)), each revision amplifies guilt, creating a runaway spiral. A <a href="#held-contradiction">held contradiction</a> at any point breaks the cycle.
+      "I should exercise more" → "I feel guilty about not exercising" → "I'm stressed" → "I cope by skipping exercise" → "I should exercise more." If all edges are strong (\(\lambda > 1\)), each revision amplifies guilt, creating a runaway spiral. A <a href="#held-contradiction">held contradiction</a> at any point breaks the cycle.
     </div>
     <div class="term-related">Related: <a href="#damping">Damping</a>, <a href="#cascade">Cascade</a>, <a href="#firewall">Firewall</a>, <a href="#held-contradiction">Held Contradiction</a></div>
   </div>
@@ -663,7 +663,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="term-name">Firewall <span class="badge badge-proven">Proposition 5.3</span></div>
     <div class="term-origin">CORE-original (Proposition 5.3 in the cascade paper). Connects epistemic pluralism to system stability.</div>
     <div class="term-def">
-      A held contradiction that blocks cascade propagation. Because a held contradiction's disposition is "do not resolve," no revision event can propagate through it. This makes held contradictions natural circuit-breakers in the BDG. They bound how far a cascade can reach, not by attenuating impact (like <a href="#damping">damping</a>) but by completely stopping propagation at the contested boundary.
+      A held contradiction that blocks cascade propagation. Because a held contradiction's disposition is "do not resolve," no revision event can propagate through it. This makes held contradictions natural circuit-breakers in the BRG. They bound how far a cascade can reach, not by attenuating impact (like <a href="#damping">damping</a>) but by completely stopping propagation at the contested boundary.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -673,10 +673,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   </div>
 
   <div class="term-entry" id="belief-backprop">
-    <div class="term-name">Reverse Cascade (Backward Influence Propagation) <span class="badge badge-original">CORE-Original</span></div>
-    <div class="term-origin">CORE-original (April 2026). Also referred to as "belief backpropagation" in early drafts. The term "reverse cascade" is preferred to avoid conflation with neural network backpropagation (gradient descent via chain rule). This mechanism is damped influence propagation on a weighted directed graph, not calculus-based gradient computation. No direct precedent identified in literature searches to date.</div>
+    <div class="term-name">Backward Influence Propagation <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">CORE-original (April 2026). Previously referred to as "belief backpropagation" and "reverse cascade" in early drafts. Renamed to avoid conflation with neural network backpropagation (gradient descent via chain rule). This mechanism is damped influence propagation on a weighted directed graph, not calculus-based gradient computation. No direct precedent identified in literature searches to date.</div>
     <div class="term-def">
-      When a correction event resolves a contradiction, the resolution generates an <a href="#epistemic-loss">epistemic loss</a> signal that flows <em>backward</em> through the <a href="#bdg">BDG</a>'s dependency edges, adjusting trust scores on every upstream belief that contributed to the incorrect output. The inverse of a forward <a href="#cascade">cascade</a>: cascades answer "if I change X, what else changes?" while backpropagation answers "the output was wrong &mdash; what beliefs caused it?" Three behaviors emerge naturally: <a href="#self-pruning">self-pruning</a>, <a href="#domain-volatility">domain volatility</a> measurement, and <a href="#reflexive-self-model">reflexive self-model</a> calibration. Validated with 30/30 lab checks; bidirectional convergence confirmed with contraction ratio 0.13.
+      When a correction event resolves a contradiction, the resolution generates an <a href="#epistemic-loss">epistemic loss</a> signal that flows <em>backward</em> through the <a href="#brg">BRG</a>'s dependency edges, adjusting trust scores on every upstream belief that contributed to the incorrect output. The inverse of a forward <a href="#cascade">cascade</a>: cascades answer "if I change X, what else changes?" while backpropagation answers "the output was wrong  - what beliefs caused it?" Three behaviors emerge naturally: <a href="#self-pruning">self-pruning</a>, <a href="#domain-volatility">domain volatility</a> measurement, and <a href="#reflexive-self-model">reflexive self-model</a> calibration. Validated with 30/30 lab checks; bidirectional convergence confirmed with contraction ratio 0.13.
     </div>
     <div class="term-math">
       Backward gradient per upstream node \(A\):
@@ -685,70 +685,70 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      "Nick works at a design studio" is corrected twice. The backward pass traces upstream: the retrieval scoring that boosted this memory, the slot classifier that tagged it as "employer," and an old conversation node that mentioned design work. All three have their trust reduced. The memory doesn't just get demoted &mdash; the reasons it survived get demoted.
+      "Nick works at a design studio" is corrected twice. The backward pass traces upstream: the retrieval scoring that boosted this memory, the slot classifier that tagged it as "employer," and an old conversation node that mentioned design work. All three have their trust reduced. The memory doesn't just get demoted  - the reasons it survived get demoted.
     </div>
-    <div class="term-related">Related: <a href="#cascade">Cascade</a>, <a href="#bdg">BDG</a>, <a href="#epistemic-loss">Epistemic Loss</a>, <a href="#self-pruning">Self-Pruning</a>, <a href="#domain-volatility">Domain Volatility</a>, <a href="#damping">Damping</a></div>
+    <div class="term-related">Related: <a href="#cascade">Cascade</a>, <a href="#brg">BRG</a>, <a href="#epistemic-loss">Epistemic Loss</a>, <a href="#self-pruning">Self-Pruning</a>, <a href="#domain-volatility">Domain Volatility</a>, <a href="#damping">Damping</a></div>
   </div>
 
   <div class="term-entry" id="query-resonance">
     <div class="term-name">Query Resonance (Wobble) <span class="badge badge-original">CORE-Original</span></div>
-    <div class="term-origin">CORE-original (April 2026). Originated as the <a href="#semantic-string">Semantic String Engine</a> (2025). The forward complement to <a href="#belief-backprop">belief backpropagation</a>.</div>
+    <div class="term-origin">CORE-original (April 2026). Originated as the <a href="#semantic-string">Semantic String Engine</a> (2025). The forward complement to <a href="#belief-backprop">backward influence propagation</a>. Informally called "wobble" - the formal name is query resonance.</div>
     <div class="term-def">
-      When a query vector lands in the <a href="#bdg">BDG</a>, every node receives direct activation from cosine similarity. That activation then propagates through SUPPORTS edges, damped at each hop. Nodes that are far from the query in vector space but connected to resonant nodes through dependency edges also activate. The resonance pattern surfaces memories that cosine retrieval alone would miss &mdash; a health query brings forward work facts and preference facts because the BDG knows they are causally connected. Three resonance patterns emerge: tight (single-basin, confident), scattered (multi-domain, synthesize), and silent (unknown, refuse). Validated on 867 production memories; wobble survives 3-bit compression (7/8 top memories preserved).
+      When a query vector lands in the <a href="#brg">BRG</a>, every node receives direct activation from cosine similarity. That activation then propagates through SUPPORTS edges, damped at each hop. Nodes that are far from the query in vector space but connected to resonant nodes through dependency edges also activate. The resonance pattern surfaces memories that cosine retrieval alone would miss  - a health query brings forward work facts and preference facts because the BRG knows they are causally connected. Three resonance patterns emerge: tight (single-basin, confident), scattered (multi-domain, synthesize), and silent (unknown, refuse). Validated on 867 production memories; wobble survives 3-bit compression (7/8 top memories preserved).
     </div>
     <div class="term-math">
       Direct: \(r_0(v) = \cos(q, \mu_v)\). Propagated: \(r_{k+1}(v) = \max(r_k(v), \max_{u \to v} r_k(u) \cdot w_{uv} \cdot \alpha)\). Total: \(R(v) = r_0(v) + r_{\text{fwd}}(v) + r_{\text{back}}(v)\).
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      Query: "How is your cGVHD?" Direct cosine finds cGVHD and leukemia memories. Wobble propagates through edges: cGVHD &rarr; overnight shifts hard &rarr; left Walmart &rarr; self-employed. Also: leukemia &rarr; orange awareness &rarr; favorite color. A health query returns work context and preference context because the graph knows they're connected.
+      Query: "How is your cGVHD?" Direct cosine finds cGVHD and leukemia memories. Wobble propagates through edges: cGVHD → overnight shifts hard → left Walmart → self-employed. Also: leukemia → orange awareness → favorite color. A health query returns work context and preference context because the graph knows they're connected.
     </div>
-    <div class="term-related">Related: <a href="#cascade">Cascade</a>, <a href="#bdg">BDG</a>, <a href="#belief-backprop">Belief Backpropagation</a>, <a href="#semantic-string">Semantic String</a></div>
+    <div class="term-related">Related: <a href="#cascade">Cascade</a>, <a href="#brg">BRG</a>, <a href="#belief-backprop">Backward Influence Propagation</a>, <a href="#semantic-string">Semantic String</a></div>
   </div>
 
   <div class="term-entry" id="semantic-string">
     <div class="term-name">Semantic String <span class="badge badge-original">CORE-Original</span></div>
-    <div class="term-origin">CORE-original. First conceptualized in the Mirus/Holden Semantic String Engine (SSE, 2025). Not "string" as in text &mdash; "string" as in the thread connecting two distant beliefs into shared meaning.</div>
+    <div class="term-origin">CORE-original. First conceptualized in the Mirus/Holden Semantic String Engine (SSE, 2025). Not "string" as in text  - "string" as in the thread connecting two distant beliefs into shared meaning.</div>
     <div class="term-def">
-      A cross-domain dependency edge in the <a href="#bdg">BDG</a> that connects beliefs from different semantic basins. "I like orange" connects to the health domain (leukemia awareness), the aesthetic domain (warm tones), the seasonal domain (October birthday), and the work domain (freelance creative identity). The strings radiating from a single node define its meaning &mdash; not the vector, but the topology. A belief with many cross-domain strings is a bridge node; removing it would disconnect multiple basins. The <a href="#query-resonance">wobble</a> mechanism discovers strings by measuring which distant nodes co-activate when a query lands.
+      A cross-domain dependency edge in the <a href="#brg">BRG</a> that connects beliefs from different semantic basins. "I like orange" connects to the health domain (leukemia awareness), the aesthetic domain (warm tones), the seasonal domain (October birthday), and the work domain (freelance creative identity). The strings radiating from a single node define its meaning  - not the vector, but the topology. A belief with many cross-domain strings is a bridge node; removing it would disconnect multiple basins. The <a href="#query-resonance">wobble</a> mechanism discovers strings by measuring which distant nodes co-activate when a query lands.
     </div>
-    <div class="term-related">Related: <a href="#query-resonance">Query Resonance</a>, <a href="#bdg">BDG</a>, <a href="#belief-backprop">Belief Backpropagation</a></div>
+    <div class="term-related">Related: <a href="#query-resonance">Query Resonance</a>, <a href="#brg">BRG</a>, <a href="#belief-backprop">Backward Influence Propagation</a></div>
   </div>
 
   <div class="term-entry" id="epistemic-loss">
     <div class="term-name">Epistemic Error Signal <span class="badge badge-original">CORE-Original</span></div>
-    <div class="term-origin">CORE-original. The correction-weighted magnitude that drives the backward pass in <a href="#belief-backprop">belief backpropagation</a>. Not a loss function in the ML optimization sense &mdash; it is not minimized during any training loop.</div>
+    <div class="term-origin">CORE-original. The correction-weighted magnitude that drives the backward pass in <a href="#belief-backprop">belief backpropagation</a>. Not a loss function in the ML optimization sense  - it is not minimized during any training loop.</div>
     <div class="term-def">
-      A scalar measuring the severity of a correction event. Higher when the system was very confident and wrong, when the same belief has been corrected multiple times, when a user (highest authority) corrected it, and when the error persisted for a long time. This scalar determines how much upstream beliefs need to adjust &mdash; it is a weighting factor for the backward pass, not an objective being optimized.
+      A scalar measuring the severity of a correction event. Higher when the system was very confident and wrong, when the same belief has been corrected multiple times, when a user (highest authority) corrected it, and when the error persisted for a long time. This scalar determines how much upstream beliefs need to adjust  - it is a weighting factor for the backward pass, not an objective being optimized.
     </div>
-    <div class="term-related">Related: <a href="#belief-backprop">Belief Backpropagation</a>, <a href="#trust">Trust</a>, <a href="#contradiction">Contradiction</a></div>
+    <div class="term-related">Related: <a href="#belief-backprop">Backward Influence Propagation</a>, <a href="#trust">Trust</a>, <a href="#contradiction">Contradiction</a></div>
   </div>
 
   <div class="term-entry" id="self-pruning">
     <div class="term-name">Self-Pruning <span class="badge badge-original">CORE-Original</span></div>
-    <div class="term-origin">Consequent behavior of <a href="#belief-backprop">belief backpropagation</a>. Not a separate mechanism &mdash; follows directly from cumulative trust adjustment and a deprecation threshold.</div>
+    <div class="term-origin">Consequent behavior of <a href="#belief-backprop">belief backpropagation</a>. Not a separate mechanism  - follows directly from cumulative trust adjustment and a deprecation threshold.</div>
     <div class="term-def">
-      A belief that repeatedly appears on the wrong side of resolved contradictions accumulates negative adjustment from multiple backward passes. When its trust drops below the deprecation threshold, the memory is pruned &mdash; a consequence of cumulative error signals converging on the same node, not an explicit pruning rule. The key advantage over flat 0.4x demotion: the backward pass also erodes upstream trust, so the retrieval and classification systems that boosted the wrong memory also adjust.
+      A belief that repeatedly appears on the wrong side of resolved contradictions accumulates negative adjustment from multiple backward passes. When its trust drops below the deprecation threshold, the memory is pruned  - a consequence of cumulative error signals converging on the same node, not an explicit pruning rule. The key advantage over flat 0.4x demotion: the backward pass also erodes upstream trust, so the retrieval and classification systems that boosted the wrong memory also adjust.
     </div>
-    <div class="term-related">Related: <a href="#belief-backprop">Belief Backpropagation</a>, <a href="#trust">Trust</a>, <a href="#epistemic-loss">Epistemic Loss</a></div>
+    <div class="term-related">Related: <a href="#belief-backprop">Backward Influence Propagation</a>, <a href="#trust">Trust</a>, <a href="#epistemic-loss">Epistemic Loss</a></div>
   </div>
 
   <div class="term-entry" id="domain-volatility">
     <div class="term-name">Domain Volatility <span class="badge badge-original">CORE-Original</span></div>
     <div class="term-origin">Consequent behavior of <a href="#belief-backprop">belief backpropagation</a>. Domain-specific calibration independently validated by Le (2026) on prediction market data.</div>
     <div class="term-def">
-      The recency-weighted ratio of corrections to assertions within a belief domain. High volatility means the domain has been frequently corrected; low volatility means it is stable. The system uses volatility to adapt its behavior per-domain: volatile domains get higher learning rates (corrections take effect faster), lower assertion confidence (the system hedges), and more retrieval verification. Measured, not configured &mdash; the system doesn't need a rule saying "be careful about employment." It measures that employment has been corrected 3 times in 48 hours.
+      The recency-weighted ratio of corrections to assertions within a belief domain. High volatility means the domain has been frequently corrected; low volatility means it is stable. The system uses volatility to adapt its behavior per-domain: volatile domains get higher learning rates (corrections take effect faster), lower assertion confidence (the system hedges), and more retrieval verification. Measured, not configured  - the system doesn't need a rule saying "be careful about employment." It measures that employment has been corrected 3 times in 48 hours.
     </div>
-    <div class="term-related">Related: <a href="#belief-backprop">Belief Backpropagation</a>, <a href="#trust">Trust</a>, <a href="#reflexive-self-model">Reflexive Self-Model</a></div>
+    <div class="term-related">Related: <a href="#belief-backprop">Backward Influence Propagation</a>, <a href="#trust">Trust</a>, <a href="#reflexive-self-model">Reflexive Self-Model</a></div>
   </div>
 
   <div class="term-entry" id="reflexive-self-model">
     <div class="term-name">Reflexive Self-Model <span class="badge badge-original">CORE-Original</span></div>
     <div class="term-origin">Consequent behavior of <a href="#belief-backprop">belief backpropagation</a>. No direct precedent identified for self-model beliefs participating in the same trust graph as world-beliefs.</div>
     <div class="term-def">
-      The system's beliefs about itself &mdash; "I am reliable on employment facts," "my confidence tracks my accuracy" &mdash; are nodes in the <a href="#bdg">BDG</a> like any other belief, subject to the same backward pass and trust dynamics. When the system is repeatedly wrong about employment, the backward pass erodes "I am reliable on employment facts" while leaving "I am reliable on identity facts" untouched. This is personality as a consequence of epistemic history: the system becomes cautious where it has been wrong, not where a rule tells it to hedge.
+      The system's beliefs about itself  - "I am reliable on employment facts," "my confidence tracks my accuracy"  - are nodes in the <a href="#brg">BRG</a> like any other belief, subject to the same backward pass and trust dynamics. When the system is repeatedly wrong about employment, the backward pass erodes "I am reliable on employment facts" while leaving "I am reliable on identity facts" untouched. This is personality as a consequence of epistemic history: the system becomes cautious where it has been wrong, not where a rule tells it to hedge.
     </div>
-    <div class="term-related">Related: <a href="#belief-backprop">Belief Backpropagation</a>, <a href="#domain-volatility">Domain Volatility</a>, <a href="#belief-speech-gap">Belief/Speech Gap</a></div>
+    <div class="term-related">Related: <a href="#belief-backprop">Backward Influence Propagation</a>, <a href="#domain-volatility">Domain Volatility</a>, <a href="#belief-speech-gap">Belief/Speech Gap</a></div>
   </div>
 </section>
 
@@ -778,7 +778,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="term-name">Structural Gate <span class="badge badge-original">CORE-Original</span></div>
     <div class="term-origin">CORE-original (April 2026). Advisory governance replaced by structural governance; the gate constrains output shape, not just content.</div>
     <div class="term-def">
-      Confidence-based response depth control. Instead of advising the LLM to "be less confident" (which it ignores), the structural gate constrains how many tokens the response can contain based on belief score. Low confidence &rarr; fewer tokens, hedge prefix. High confidence &rarr; full response. This is structural because it physically limits the output rather than hoping the model complies.
+      Confidence-based response depth control. Instead of advising the LLM to "be less confident" (which it ignores), the structural gate constrains how many tokens the response can contain based on belief score. Low confidence → fewer tokens, hedge prefix. High confidence → full response. This is structural because it physically limits the output rather than hoping the model complies.
     </div>
     <div class="term-math">
       Adaptive depth formula: \(\text{tokens} = 100 + 3896 \times \text{belief}^{0.7}\)
@@ -807,7 +807,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="term-name">Governance Bridge <span class="badge badge-original">CORE-Original</span></div>
     <div class="term-origin">CORE-original. Connects two previously independent data stores: memories table and belief_speech tracking.</div>
     <div class="term-def">
-      Bidirectional feedback between memory trust scores and belief/speech tracking. Three loops: (1) <strong>Drift &rarr; Trust Penalty</strong>: high topic instability penalizes supporting memories (drift threshold 0.4). (2) <strong>Trust Drop &rarr; Reclassification</strong>: when memory trust drops below 0.3, stale beliefs that depended on it are demoted from belief to speech. (3) <strong>Cross-validation at Recording</strong>: when storing new beliefs in unstable topics, trust is dampened by 0.85x.
+      Bidirectional feedback between memory trust scores and belief/speech tracking. Three loops: (1) <strong>Drift → Trust Penalty</strong>: high topic instability penalizes supporting memories (drift threshold 0.4). (2) <strong>Trust Drop → Reclassification</strong>: when memory trust drops below 0.3, stale beliefs that depended on it are demoted from belief to speech. (3) <strong>Cross-validation at Recording</strong>: when storing new beliefs in unstable topics, trust is dampened by 0.85x.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -818,7 +818,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="term-entry" id="immune-agent">
     <div class="term-name">Immune Agent <span class="badge badge-original">CORE-Original</span></div>
-    <div class="term-origin">CORE-original (Mirus/Holden architecture). Five agents enforcing five constitutional laws.</div>
+    <div class="term-origin">CORE-original (Mirus/Holden architecture). Six agents enforcing six constitutional laws.</div>
     <div class="term-def">
       An autonomous governance agent that watches the pipeline and enforces one of six constitutional laws. Immune agents operate independently, each monitoring a specific failure mode. They fire when a violation is detected and can block, modify, or flag a response. Named after the immune system analogy: the agents patrol for pathogens (governance violations) without needing central coordination.
     </div>
@@ -934,7 +934,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="term-name">Intent Classification <span class="badge badge-adapted">Adapted</span></div>
     <div class="term-origin">Standard NLP concept, adapted for CORE with a 3-tier architecture.</div>
     <div class="term-def">
-      Determines what the user wants from their message. CORE uses a 3-tier system: (1) Regex tier, which provides instant pattern matching for common intents (greetings, corrections, reminders). (2) LLM router, where a small local model (llama3.2) classifies ambiguous inputs in 1&ndash;5 seconds. (3) Embedding fallback, which activates when both tiers fail and uses cosine similarity against intent exemplars as a last resort. The tier system balances speed against accuracy.
+      Determines what the user wants from their message. CORE uses a 3-tier system: (1) Regex tier, which provides instant pattern matching for common intents (greetings, corrections, reminders). (2) LLM router, where a small local model (llama3.2) classifies ambiguous inputs in 1-5 seconds. (3) Embedding fallback, which activates when both tiers fail and uses cosine similarity against intent exemplars as a last resort. The tier system balances speed against accuracy.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -1013,7 +1013,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="term-name">Drift <span class="badge badge-original">CORE-Original</span></div>
     <div class="term-origin">CORE-original. Measured as cosine alignment between intended and actual behavior.</div>
     <div class="term-def">
-      When the agent's behavior diverges from its stated intent. Drift is measured as a 0&ndash;1 alignment score: 1.0 means the agent did exactly what it said it would; 0.0 means complete divergence. Drift feeds into the <a href="#governance-bridge">governance bridge</a>, where high drift on a topic triggers trust penalties on supporting memories. Drift is the runtime signal that something in the belief system is misaligned.
+      When the agent's behavior diverges from its stated intent. Drift is measured as a 0-1 alignment score: 1.0 means the agent did exactly what it said it would; 0.0 means complete divergence. Drift feeds into the <a href="#governance-bridge">governance bridge</a>, where high drift on a topic triggers trust penalties on supporting memories. Drift is the runtime signal that something in the belief system is misaligned.
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -1026,7 +1026,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="term-name">Execution Drift <span class="badge badge-original">CORE-Original</span></div>
     <div class="term-origin">CORE-original (April 2026). Agent-specific drift in tool use patterns.</div>
     <div class="term-def">
-      When an agent switches from task A to task B without user approval. Detected by tracking tool category sequences during agent execution. If a coding agent starts browsing documentation when asked to write tests, that's execution drift. The drift sensor compares declared intent against actual tool use and flags divergence. Governed by drift rules (e.g., "sensor &rarr; steering wheel" pattern).
+      When an agent switches from task A to task B without user approval. Detected by tracking tool category sequences during agent execution. If a coding agent starts browsing documentation when asked to write tests, that's execution drift. The drift sensor compares declared intent against actual tool use and flags divergence. Governed by drift rules (e.g., "sensor → steering wheel" pattern).
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
@@ -1131,7 +1131,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      "Your dog's name is Mochi" &rarr; mode C (memory-backed). "The weather in Austin is usually warm" &rarr; mode S (LLM knowledge, no personal memory). "You mentioned both Portland and Austin as home; which is current?" &rarr; mode E (contradiction, needs user input).
+      "Your dog's name is Mochi" → mode C (memory-backed). "The weather in Austin is usually warm" → mode S (LLM knowledge, no personal memory). "You mentioned both Portland and Austin as home; which is current?" → mode E (contradiction, needs user input).
     </div>
     <div class="term-related">Related: <a href="#belief">Belief</a>, <a href="#speech">Speech</a>, <a href="#belief-speech-separation">Belief/Speech Separation</a></div>
   </div>
@@ -1144,7 +1144,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      "My name is Nick" &rarr; authority: locked (never overridden). "I work at Microsoft" &rarr; authority: confirmed (user stated directly). "Seems to prefer dark mode" &rarr; authority: provisional (system inferred from behavior).
+      "My name is Nick" → authority: locked (never overridden). "I work at Microsoft" → authority: confirmed (user stated directly). "Seems to prefer dark mode" → authority: provisional (system inferred from behavior).
     </div>
     <div class="term-related">Related: <a href="#trust">Trust</a>, <a href="#memory">Memory</a>, <a href="#law-4">Law 4</a></div>
   </div>
@@ -1157,7 +1157,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     </div>
     <div class="term-example">
       <strong>Example</strong><br>
-      "Nick lives in Austin" &rarr; TRUE (supported, no contradiction). "Nick lives in Portland" &rarr; FALSE (superseded by Austin). "Loves city life" + "Wants to move to the country" &rarr; both BOTH. A freshly stored inference with no corroboration &rarr; NEITHER.
+      "Nick lives in Austin" → TRUE (supported, no contradiction). "Nick lives in Portland" → FALSE (superseded by Austin). "Loves city life" + "Wants to move to the country" → both BOTH. A freshly stored inference with no corroboration → NEITHER.
     </div>
     <div class="term-related">Related: <a href="#held-contradiction">Held Contradiction</a>, <a href="#contradiction">Contradiction</a></div>
   </div>

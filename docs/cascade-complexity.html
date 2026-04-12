@@ -146,12 +146,12 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 <!-- ===== HERO ===== -->
 <div class="hero">
   <div class="hero-inner">
-    <div class="hero-badge">Research Paper &middot; Cascade Complexity</div>
+    <div class="hero-badge">Research Paper · Cascade Complexity</div>
     <h1>On the Complexity of<br><span class="grad">Belief Revision Cascades</span><br>in Dependency Graphs</h1>
     <p class="sub">Formal theory of transitive belief propagation in single-agent epistemic systems</p>
-    <p class="byline">Nick Block &bull; Aeteros Research &bull; 2026</p>
+    <p class="byline">Nick Block · Aeteros Research · 2026</p>
     <div class="finding-box">
-      <p>We introduce <strong>belief revision cascades</strong>, the transitive propagation of belief changes through a dependency graph within a single agent's epistemic state. We formalize this gap through <strong>Belief Dependency Graphs (BDGs)</strong>, prove bounds on cascade depth and width, and establish two convergence results. A key result: <strong>held contradictions</strong> (beliefs the system deliberately does not resolve) act as cascade firewalls, bounding propagation and preventing catastrophic revision storms. Validated on a production BDG (599 beliefs).</p>
+      <p>We introduce <strong>belief revision cascades</strong>, the transitive propagation of belief changes through a dependency graph within a single agent's epistemic state. We formalize this gap through <strong>Belief Relationship Graphs (BRGs)</strong>, prove bounds on cascade depth and width, and establish two convergence results. A key result: <strong>held contradictions</strong> (beliefs the system deliberately does not resolve) act as cascade firewalls, bounding propagation and preventing catastrophic revision storms. Validated on a production BRG (599 beliefs).</p>
     </div>
 
     <!-- Mini Cascade Visualization -->
@@ -183,7 +183,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 </div>
 
 <nav class="sidebar" id="docSidebar">
-  <div class="sidebar-title">Research Paper &middot; Cascad</div>
+  <div class="sidebar-title">Research Paper · Cascad</div>
   <div class="sidebar-spacer"></div>
   <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme">
     <span class="theme-toggle-icon" id="themeIcon">&#9790;</span>
@@ -427,7 +427,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="stat-row">
     <div class="stat-card">
       <div class="stat-value accent">599</div>
-      <div class="stat-label">Production BDG Nodes</div>
+      <div class="stat-label">Production BRG Nodes</div>
     </div>
     <div class="stat-card">
       <div class="stat-value purple">4,976</div>
@@ -484,7 +484,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     </div>
   </div>
 
-  <p><strong>Our contribution.</strong> We introduce <em>Belief Dependency Graphs</em> (BDGs) as a formal structure for studying intra-agent belief revision cascades. We provide formal definitions, complexity bounds, two convergence results, an instability characterization, a conjecture on NP-hardness, and a philosophical result connecting held contradictions to structural stability.</p>
+  <p><strong>Our contribution.</strong> We introduce <em>Belief Relationship Graphs</em> (BRGs) as a formal structure for studying intra-agent belief revision cascades. We provide formal definitions, complexity bounds, two convergence results, an instability characterization, a conjecture on NP-hardness, and a philosophical result connecting held contradictions to structural stability.</p>
 
   <div class="quote-block">
     <p>All definitions map to modules in a running system. This is not a paper about that system; the contribution is the mathematics. But the implementation demonstrates that the formalism captures real mechanics.</p>
@@ -512,7 +512,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <thead><tr><th>Symbol</th><th>Meaning</th></tr></thead>
     <tbody>
       <tr><td><code>b = (μ, Σ, α, t)</code></td><td>Belief state (Definition 3.1)</td></tr>
-      <tr><td><code>G = (V, E, w)</code></td><td>Belief Dependency Graph (Definition 3.2)</td></tr>
+      <tr><td><code>G = (V, E, w)</code></td><td>Belief Relationship Graph (Definition 3.2)</td></tr>
       <tr><td><code>r = (b, b')</code></td><td>Revision event (Definition 3.3)</td></tr>
       <tr><td>\(\delta(r)\)</td><td>Revision impact (Fisher-Rao distance)</td></tr>
       <tr><td>\(d_F(\cdot, \cdot)\)</td><td>Fisher-Rao distance on belief states</td></tr>
@@ -525,10 +525,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 </section>
 
 <!-- ===== 3. BELIEF DEPENDENCY GRAPHS ===== -->
-<section id="bdg">
+<section id="brg">
   <div class="accent-line"></div>
   <span class="section-number">Section 3</span>
-  <h2>Belief Dependency Graphs</h2>
+  <h2>Belief Relationship Graphs</h2>
 
   <!-- Definition 3.1 -->
   <div class="principle principle-belief">
@@ -553,9 +553,9 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <!-- Definition 3.2 -->
   <div class="principle principle-belief">
     <div class="p-num">Definition 3.2 <span class="badge badge-def">Definition</span></div>
-    <div class="p-text">Belief Dependency Graph (BDG)</div>
+    <div class="p-text">Belief Relationship Graph (BRG)</div>
     <div class="p-sub">
-      A <strong>BDG</strong> is a weighted directed graph \(G = (V, E, w)\) where \(V = \{b_1, \ldots, b_n\}\) is a set of belief states, \(E \subseteq V \times V\) encodes evidential support (edge \((b_i, b_j)\) means \(b_j\) depends on \(b_i\)), and \(w: E \to (0,1]\) encodes dependency strength. Edges are typed: <strong>CONTRADICTS</strong>, <strong>SUPERSEDES</strong>, <strong>SUPPORTS</strong>.
+      A <strong>BRG</strong> is a weighted directed graph \(G = (V, E, w)\) where \(V = \{b_1, \ldots, b_n\}\) is a set of belief states, \(E \subseteq V \times V\) encodes evidential support (edge \((b_i, b_j)\) means \(b_j\) depends on \(b_i\)), and \(w: E \to (0,1]\) encodes dependency strength. Edges are typed: <strong>CONTRADICTS</strong>, <strong>SUPERSEDES</strong>, <strong>SUPPORTS</strong>.
     </div>
   </div>
   <div class="impl-block">
@@ -629,7 +629,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="principle principle-trust">
     <div class="p-num">Theorem 4.1 <span class="badge badge-proven">Proved</span></div>
     <div class="p-text">Cascade Depth Bound</div>
-    <div class="p-sub">For a BDG that is a DAG with maximum directed path length \(k\), the worst-case cascade depth from a single revision event is exactly \(k\).</div>
+    <div class="p-sub">For a BRG that is a DAG with maximum directed path length \(k\), the worst-case cascade depth from a single revision event is exactly \(k\).</div>
   </div>
   <div class="proof-block">
     <span class="proof-label">Proof</span>
@@ -642,14 +642,14 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="principle principle-trust">
     <div class="p-num">Theorem 4.2 <span class="badge badge-proven">Proved</span></div>
     <div class="p-text">Cascade Width</div>
-    <div class="p-sub">The number of nodes affected by a cascade in a BDG with \(n\) nodes, maximum out-degree \(d\), and cascade depth \(k\) is \(O(\min(d^k, n))\).</div>
+    <div class="p-sub">The number of nodes affected by a cascade in a BRG with \(n\) nodes, maximum out-degree \(d\), and cascade depth \(k\) is \(O(\min(d^k, n))\).</div>
   </div>
   <div class="proof-block">
     <span class="proof-label">Proof</span>
     <p>At each level of cascade propagation, each triggered node triggers at most \(d\) successors. Starting from depth 0: depth \(j\) has at most \(d^j\) nodes. Total: \(\sum_{j=0}^{k} d^j = O(d^k)\). Bounded by \(n\) since no node is visited twice in a DAG. \(\square\)</p>
   </div>
   <div class="remark">
-    <strong>Corollary 4.2.1 (Sparse Graphs).</strong> For BDGs with bounded out-degree \(d = O(1)\) and \(k = O(\log n)\), total cascade size is polynomial.<br><br>
+    <strong>Corollary 4.2.1 (Sparse Graphs).</strong> For BRGs with bounded out-degree \(d = O(1)\) and \(k = O(\log n)\), total cascade size is polynomial.<br><br>
     <strong>Corollary 4.2.2 (Dense Graphs).</strong> For \(d = O(n)\), a single revision can trigger \(\Theta(n)\) re-evaluations in one step. Dense dependency structures admit catastrophic cascades.
   </div>
 
@@ -658,7 +658,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="p-num">Theorem 4.3 <span class="badge badge-proven">Proved</span></div>
     <div class="p-text">Per-Node Cascade Damping</div>
     <div class="p-sub">
-      Let \(G\) be a BDG (DAG) with \(w_{\max} &lt; 1\) and Lipschitz constant \(L\) at each node. If \(\rho = L \cdot w_{\max} &lt; 1\), then under MAX aggregation:
+      Let \(G\) be a BRG (DAG) with \(w_{\max} &lt; 1\) and Lipschitz constant \(L\) at each node. If \(\rho = L \cdot w_{\max} &lt; 1\), then under MAX aggregation:
       (a) Impact at node \(v\) at depth \(j\) satisfies \(\delta(v) \leq \rho^j \cdot \delta_0\).
       (b) Cascade terminates at depth \(k^* = \lceil \log(\delta_0 / \tau) / \log(1/\rho) \rceil\).
       (c) Total per-path impact: \(\sum_{j=0}^{k^*} \delta_j \leq \delta_0 / (1 - \rho)\).
@@ -683,7 +683,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     </div>
   </div>
   <div class="quote-block">
-    <p>The condition \(\rho &lt; 1\) guarantees per-node impacts decay geometrically. The stronger condition \(d \cdot \rho &lt; 1\) guarantees aggregate disruption is bounded. When \(\rho &lt; 1\) but \(d \cdot \rho \geq 1\) (the typical case in real BDGs), individual nodes are safe but the cascade reaches most of the graph. This is the single-agent analog of DeGroot's spectral condition.</p>
+    <p>The condition \(\rho &lt; 1\) guarantees per-node impacts decay geometrically. The stronger condition \(d \cdot \rho &lt; 1\) guarantees aggregate disruption is bounded. When \(\rho &lt; 1\) but \(d \cdot \rho \geq 1\) (the typical case in real BRGs), individual nodes are safe but the cascade reaches most of the graph. This is the single-agent analog of DeGroot's spectral condition.</p>
   </div>
 
   <!-- Theorem 4.4 -->
@@ -691,7 +691,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="p-num">Theorem 4.4 <span class="badge badge-proven">Proved</span></div>
     <div class="p-text">Iterated Cascade Instability</div>
     <div class="p-sub">
-      If a BDG contains a directed cycle \(\gamma = v_1 \to v_2 \to \cdots \to v_m \to v_1\) with constant Lipschitz constants \(L_1, \ldots, L_m\), the impact at \(v_1\) after \(k\) iterations satisfies \(\delta^{(k)} \leq \lambda^k \cdot \delta^{(0)}\) where
+      If a BRG contains a directed cycle \(\gamma = v_1 \to v_2 \to \cdots \to v_m \to v_1\) with constant Lipschitz constants \(L_1, \ldots, L_m\), the impact at \(v_1\) after \(k\) iterations satisfies \(\delta^{(k)} \leq \lambda^k \cdot \delta^{(0)}\) where
       \[\lambda = \prod_{i=1}^{m} w(v_i, v_{i+1 \bmod m}) \cdot L_i\]
       is the <strong>cycle amplification factor</strong>. If \(\lambda &gt; 1\), impacts grow without bound.
     </div>
@@ -710,12 +710,12 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="p-num">Conjecture 4.5 <span class="badge badge-conjecture">Conjecture</span></div>
     <div class="p-text">NP-Hardness of Optimal Cascade Ordering</div>
     <div class="p-sub">
-      <strong>Problem (OPTIMAL-CASCADE-ORDER).</strong> Given a BDG, \(k\) simultaneous revision events at distinct nodes, minimize total post-cascade contradiction over all orderings \(\pi\). Is finding optimal \(\pi\) NP-hard?
+      <strong>Problem (OPTIMAL-CASCADE-ORDER).</strong> Given a BRG, \(k\) simultaneous revision events at distinct nodes, minimize total post-cascade contradiction over all orderings \(\pi\). Is finding optimal \(\pi\) NP-hard?
     </div>
   </div>
-  <p>The most promising reduction is from <strong>Minimum Linear Arrangement</strong> (MLA, known NP-hard). Each vertex in MLA becomes a revision event; each edge becomes a shared downstream node in the BDG. The cascade interaction cost is monotone in \(|\pi(i) - \pi(j)|\): revisions far apart interact more destructively because intermediate revisions have modified the shared state.</p>
+  <p>The most promising reduction is from <strong>Minimum Linear Arrangement</strong> (MLA, known NP-hard). Each vertex in MLA becomes a revision event; each edge becomes a shared downstream node in the BRG. The cascade interaction cost is monotone in \(|\pi(i) - \pi(j)|\): revisions far apart interact more destructively because intermediate revisions have modified the shared state.</p>
   <div class="remark">
-    <strong>Status: open.</strong> The reduction has the right structure (permutation to permutation, interaction cost depending on ordering distance), but a formal proof that BDG cascade cost faithfully encodes the MLA objective has not been completed. Reductions from Minimum Weighted Vertex Cover and MAX-SAT have also been investigated (Appendix B); neither maps cleanly. If this conjecture is <em>false</em> (optimal ordering is polynomial), that is equally publishable.
+    <strong>Status: open.</strong> The reduction has the right structure (permutation to permutation, interaction cost depending on ordering distance), but a formal proof that BRG cascade cost faithfully encodes the MLA objective has not been completed. Reductions from Minimum Weighted Vertex Cover and MAX-SAT have also been investigated (Appendix B); neither maps cleanly. If this conjecture is <em>false</em> (optimal ordering is polynomial), that is equally publishable.
   </div>
 </section>
 
@@ -729,14 +729,14 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="principle principle-variance">
     <div class="p-num">Proposition 5.1 <span class="badge badge-prop">Proposition</span></div>
     <div class="p-text">AGM as Special Case</div>
-    <div class="p-sub">Standard AGM belief revision is the special case of cascade theory where the BDG has no edges (\(E = \emptyset\)). All theorems reduce to single-node revision: cascade depth is 0, width is 1, convergence is trivially satisfied. The six AGM postulates apply locally at that node.</div>
+    <div class="p-sub">Standard AGM belief revision is the special case of cascade theory where the BRG has no edges (\(E = \emptyset\)). All theorems reduce to single-node revision: cascade depth is 0, width is 1, convergence is trivially satisfied. The six AGM postulates apply locally at that node.</div>
   </div>
 
   <!-- Prop 5.2 -->
   <div class="principle principle-variance">
     <div class="p-num">Proposition 5.2 <span class="badge badge-prop">Proposition</span></div>
-    <div class="p-text">Tree-Structured BDGs</div>
-    <div class="p-sub">For tree-structured BDGs (each node has at most one parent), cascade computation is linear in the number of affected nodes: \(O(|C(r)|)\). No ordering ambiguity exists; there is exactly one propagation path to each affected node. In a tree, the subgraph reachable from any node is itself a tree. Cascade propagation visits each node at most once in topological order.</div>
+    <div class="p-text">Tree-Structured BRGs</div>
+    <div class="p-sub">For tree-structured BRGs (each node has at most one parent), cascade computation is linear in the number of affected nodes: \(O(|C(r)|)\). No ordering ambiguity exists; there is exactly one propagation path to each affected node. In a tree, the subgraph reachable from any node is itself a tree. Cascade propagation visits each node at most once in topological order.</div>
   </div>
 
   <!-- Prop 5.3 - KEY RESULT -->
@@ -789,7 +789,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <p><strong>Belief Propagation distinction.</strong> Pearl's BP messages are <em>conservative</em> (compute what follows from a fixed model) while cascade messages are <em>destructive</em> (modify the model as they propagate). BP has a unique fixed point on trees; cascade propagation has a unique result on DAGs but may diverge on cyclic structures.</p>
 
-  <p><strong>Kumiho (Baek et al., 2026).</strong> The closest recent work provides an AGM-compliant belief revision framework for LLMs using entrenchment orderings derived from token surprisal. However, Kumiho explicitly does not model cascades; each revision is treated independently. Our framework extends this: Kumiho's local revision mechanics could serve as the node-level revision function within a BDG.</p>
+  <p><strong>Kumiho (Baek et al., 2026).</strong> The closest recent work provides an AGM-compliant belief revision framework for LLMs using entrenchment orderings derived from token surprisal. However, Kumiho explicitly does not model cascades; each revision is treated independently. Our framework extends this: Kumiho's local revision mechanics could serve as the node-level revision function within a BRG.</p>
 </section>
 
 <!-- ===== 7. EMPIRICAL ===== -->
@@ -799,7 +799,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <h2>Empirical Illustration</h2>
 
   <h3>7.1 Location Change Cascade</h3>
-  <p>A revision of <code>location("Portland" → "Austin")</code> in an 8-belief BDG:</p>
+  <p>A revision of <code>location("Portland" → "Austin")</code> in an 8-belief BRG:</p>
   <pre>location("Portland") ─SUPPORTS→ commute("20 min bike")
                       ─SUPPORTS→ neighborhood("Pearl District")
                       ─SUPPORTS→ weather_pref("rain gear")
@@ -835,8 +835,8 @@ favorite_team("Lakers")  [no dependencies]</pre>
   </table>
   </div>
 
-  <h3>7.4 Production BDG: Topology</h3>
-  <p>BDG constructed from a production AI assistant's memory database (599 active memories, 384-dimensional sentence embeddings). Edges assigned by pairwise cosine similarity: RELATED_TO for pairs with cosine \(&gt; 0.5\), CONTRADICTS for pairs above \(0.7\) with geometric contradiction detection.</p>
+  <h3>7.4 Production BRG: Topology</h3>
+  <p>BRG constructed from a production AI assistant's memory database (599 active memories, 384-dimensional sentence embeddings). Edges assigned by pairwise cosine similarity: RELATED_TO for pairs with cosine \(&gt; 0.5\), CONTRADICTS for pairs above \(0.7\) with geometric contradiction detection.</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>Statistic</th><th>Value</th></tr></thead>
@@ -857,7 +857,7 @@ favorite_team("Lakers")  [no dependencies]</pre>
   </table>
   </div>
 
-  <h3>7.5 Cascade Results on Production BDG</h3>
+  <h3>7.5 Cascade Results on Production BRG</h3>
   <p>Cascades from three highest out-degree nodes (\(L = 0.9\), \(\tau = 0.01\), MAX aggregation):</p>
   <div class="table-wrap">
   <table>
@@ -901,12 +901,12 @@ favorite_team("Lakers")  [no dependencies]</pre>
     <div class="principle principle-speech">
       <div class="p-num">Finding 3</div>
       <div class="p-text">All cycles are contradiction-pairs</div>
-      <div class="p-sub">Real BDGs do not exhibit support-chain cycles. Theorem 4.4's instability condition is a diagnostic for contradiction management, not general cascade dynamics.</div>
+      <div class="p-sub">Real BRGs do not exhibit support-chain cycles. Theorem 4.4's instability condition is a diagnostic for contradiction management, not general cascade dynamics.</div>
     </div>
     <div class="principle principle-contra">
       <div class="p-num">Finding 4</div>
       <div class="p-text">Graph-wide convergence condition not satisfied</div>
-      <div class="p-sub">For real BDGs with mean out-degree ~8, graph-wide convergence requires ρ &lt; 0.12, much stricter than per-node ρ &lt; 1. Cascade <em>reach</em> is inherently broad in typical belief graphs even when per-node impact is well-controlled.</div>
+      <div class="p-sub">For real BRGs with mean out-degree ~8, graph-wide convergence requires ρ &lt; 0.12, much stricter than per-node ρ &lt; 1. Cascade <em>reach</em> is inherently broad in typical belief graphs even when per-node impact is well-controlled.</div>
     </div>
   </div>
 
@@ -965,15 +965,15 @@ favorite_team("Lakers")  [no dependencies]</pre>
     </div>
     <div class="principle principle-belief">
       <div class="p-num">Open 5</div>
-      <div class="p-text">Learning the BDG</div>
-      <div class="p-sub">Current BDG is constructed from contradiction detection and temporal ordering. Learning the dependency structure from observation (which beliefs actually influence which) is an open learning problem.</div>
+      <div class="p-text">Learning the BRG</div>
+      <div class="p-sub">Current BRG is constructed from contradiction detection and temporal ordering. Learning the dependency structure from observation (which beliefs actually influence which) is an open learning problem.</div>
     </div>
   </div>
 
   <div class="law-card">
     <div class="law-number">The Inverse Problem</div>
     <div class="law-text">The forward cascade tells us how changes propagate.<br>The reverse cascade tells us which beliefs need to change when the output is wrong.</div>
-    <div class="law-sub">The companion paper formalizes this as error-driven trust evolution through the same BDG. Corrections generate an error signal that flows backward through dependency edges, adjusting every upstream belief that contributed to the incorrect output. Three consequent behaviors: self-pruning, domain volatility measurement, and reflexive self-model calibration. 30/30 lab checks passed. <a href="belief-backprop.html" style="color:#818cf8;">Read: Reverse Cascade &rarr;</a></div>
+    <div class="law-sub">The companion paper formalizes this as error-driven trust evolution through the same BRG. Corrections generate an error signal that flows backward through dependency edges, adjusting every upstream belief that contributed to the incorrect output. Three consequent behaviors: self-pruning, domain volatility measurement, and reflexive self-model calibration. 30/30 lab checks passed. <a href="belief-backprop.html" style="color:#818cf8;">Read: Reverse Cascade →</a></div>
   </div>
 </section>
 
@@ -995,7 +995,7 @@ favorite_team("Lakers")  [no dependencies]</pre>
     <div class="pipeline-layer">
       <div class="pipeline-layer-accent"></div>
       <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">Definition 3.2: Belief Dependency Graph</div>
+        <div class="pipeline-layer-name">Definition 3.2: Belief Relationship Graph</div>
         <div class="pipeline-layer-desc"><code>memory_graph.py</code> → <code>BeliefDependencyGraph</code> (NetworkX digraph)</div>
       </div>
       <div class="pipeline-layer-annotation">Typed edges</div>

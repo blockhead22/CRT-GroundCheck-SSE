@@ -16,15 +16,15 @@
     { href: 'continuity-blind.html',       label: 'Continuity-Blind',       group: 'Evidence' },
     { href: 'variance-probing.html',       label: 'Variance Probing',       group: 'Evidence' },
     { href: 'governance-validation.html',  label: 'Governance Validation',  group: 'Evidence' },
-    { href: 'bdg-reasoning-scaffolds.html', label: 'BDG Reasoning Scaffolds', group: 'Evidence' },
-    { href: 'scaffolded_escape_research.html', label: 'Scaffolded Escape', group: 'Evidence' },
+    { href: 'bdg-reasoning-scaffolds.html', label: 'BRG Reasoning Scaffolds', group: 'Evidence' },
+    { href: 'scaffolded_escape_research.html', label: 'Scaffolded Exploration', group: 'Evidence' },
     { href: 'labs.html',                   label: 'Labs',                   group: 'Evidence' },
     // Architecture (how CORE works)
     { href: 'architecture.html',           label: 'Architecture',           group: 'Architecture' },
     { href: 'immune-agents.html',          label: 'Immune Agents',          group: 'Architecture' },
     // Theory (formal foundations)
     { href: 'cascade-complexity.html',     label: 'Cascade Complexity',     group: 'Theory' },
-    { href: 'belief-backprop.html',        label: 'Reverse Cascade',        group: 'Theory' },
+    { href: 'belief-backprop.html',        label: 'Backward Influence Propagation', group: 'Theory' },
     { href: 'epistemic-compression.html',  label: 'Epistemic Compression',  group: 'Theory' },
     { href: 'geometric-memory.html',       label: 'Geometric Memory',       group: 'Theory' },
     { href: 'emotion-governance.html',     label: 'Emotion Governance',     group: 'Theory' },

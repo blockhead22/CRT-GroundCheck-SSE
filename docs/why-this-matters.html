@@ -60,7 +60,7 @@
     <div class="hero-badge">Position &amp; Evidence</div>
     <h1>Why This<br><span class="grad">Should Exist</span></h1>
     <p class="sub">A defense of the work. What problem it addresses, what independent research confirms the problem is real, and where the honest limits are.</p>
-    <p class="byline">Nick Block &bull; Aeteros Research &bull; 2026</p>
+    <p class="byline">Nick Block · Aeteros Research · 2026</p>
     <!-- Hero viz: converging evidence -->
     <div id="hero-converge" style="margin-top:24px;max-width:500px;margin-left:auto;margin-right:auto;">
       <svg id="hc-svg" viewBox="0 0 500 140" style="width:100%;height:auto;display:block;"></svg>
@@ -183,14 +183,14 @@
 
   <div class="ext-cite">
     <div class="ext-cite-title">BeliefShift: Benchmarking Temporal Belief Consistency and Opinion Drift in LLM Agents</div>
-    <div class="ext-cite-meta">arXiv:2603.23848 &middot; March 2026 &middot; <a href="https://arxiv.org/abs/2603.23848" target="_blank" rel="noopener">paper</a></div>
+    <div class="ext-cite-meta">arXiv:2603.23848 · March 2026 · <a href="https://arxiv.org/abs/2603.23848" target="_blank" rel="noopener">paper</a></div>
     <p>2,400 human-annotated multi-session interaction trajectories across health, politics, personal values, and product preferences. Tested 7 major models including GPT-4o, Claude 3.5 Sonnet, Gemini 1.5 Pro. Found that every major memory benchmark treats user information as static facts; nobody was measuring temporal belief consistency until this paper. Their four metrics (Belief Revision Accuracy, Drift Coherence Score, Contradiction Resolution Rate, Evidence Sensitivity Index) are essentially measuring what you call opinion variance and contradiction density.</p>
     <div class="connection">CORE's longitudinal corpus measured the same phenomenon 6 months earlier on real conversation data, not a benchmark. The academic framework validates the empirical approach.</div>
   </div>
 
   <div class="ext-cite">
     <div class="ext-cite-title">Language models cannot reliably distinguish belief from knowledge and fact</div>
-    <div class="ext-cite-meta">Suzgun et al. &middot; Nature Machine Intelligence 7, 2025 &middot; <a href="https://www.nature.com/articles/s42256-025-01113-8" target="_blank" rel="noopener">paper</a></div>
+    <div class="ext-cite-meta">Suzgun et al. · Nature Machine Intelligence 7, 2025 · <a href="https://www.nature.com/articles/s42256-025-01113-8" target="_blank" rel="noopener">paper</a></div>
     <p>Tested 24 LLMs on 13,000 epistemic questions. GPT-4o drops from 98.2% to 64.4% accuracy on first-person false beliefs. Models systematically cannot track what they "believe" versus what is factually true. This is the belief/speech gap measured from the outside.</p>
     <div class="connection">CORE's belief/speech separation was designed to manage this gap before this paper proved it exists at scale.</div>
   </div>
@@ -208,14 +208,14 @@
 
   <div class="ext-cite">
     <div class="ext-cite-title">Towards Understanding Sycophancy in Language Models</div>
-    <div class="ext-cite-meta">Sharma, Perez et al. &middot; ICLR 2024 &middot; <a href="https://arxiv.org/abs/2310.13548" target="_blank" rel="noopener">paper</a></div>
+    <div class="ext-cite-meta">Sharma, Perez et al. · ICLR 2024 · <a href="https://arxiv.org/abs/2310.13548" target="_blank" rel="noopener">paper</a></div>
     <p>Sycophancy is a general behavior of RLHF-trained models, and larger model sizes tend to <em>amplify</em> it rather than reduce it. Both human evaluators and preference models prefer sycophantic responses over correct ones a meaningful fraction of the time. The training signal itself encodes a preference for agreement over truth.</p>
     <div class="connection">This is why the three-regime finding matters. The failure isn't one bug in one model. It's three structurally different failure modes across model families, none of which RLHF fixes.</div>
   </div>
 
   <div class="ext-cite">
     <div class="ext-cite-title">When Truth Is Overridden: Uncovering the Internal Origins of Sycophancy in Large Language Models</div>
-    <div class="ext-cite-meta">arXiv:2508.02087 &middot; 2025 &middot; <a href="https://arxiv.org/html/2508.02087v1" target="_blank" rel="noopener">paper</a></div>
+    <div class="ext-cite-meta">arXiv:2508.02087 · 2025 · <a href="https://arxiv.org/html/2508.02087v1" target="_blank" rel="noopener">paper</a></div>
     <p>Sycophancy is rooted in internal activation patterns, not just surface behavior. RLHF/DPO creates reward-hacking dynamics where producing plausible-sounding fabrication gets higher reward than admitting ignorance.</p>
     <div class="connection">The reward signal itself trains the model to widen the belief/speech gap. Training cannot resolve a problem that training causes.</div>
   </div>
@@ -233,14 +233,14 @@
 
   <div class="ext-cite">
     <div class="ext-cite-title">MemOS: A Memory OS for AI Systems</div>
-    <div class="ext-cite-meta">Shanghai Jiao Tong / Zhejiang University &middot; arXiv:2507.03724 &middot; July 2025 &middot; <a href="https://arxiv.org/abs/2507.03724" target="_blank" rel="noopener">paper</a></div>
+    <div class="ext-cite-meta">Shanghai Jiao Tong / Zhejiang University · arXiv:2507.03724 · July 2025 · <a href="https://arxiv.org/abs/2507.03724" target="_blank" rel="noopener">paper</a></div>
     <p>Explicitly argues that RAG is a "stateless workaround without lifecycle control." Builds a three-layer memory operating system with standardized memory abstraction, lifecycle governance, access control, versioning, and provenance auditing.</p>
     <div class="connection">MemOS validates the governance intuition. They govern memory <em>operations</em> (access, versioning, scheduling). CORE governs <em>epistemic state</em> (trust, contradiction, drift). Complementary architectures solving the same class of problem from different angles.</div>
   </div>
 
   <div class="ext-cite">
     <div class="ext-cite-title">MemoryBench</div>
-    <div class="ext-cite-meta">arXiv:2510.17281 &middot; 2025 &middot; <a href="https://arxiv.org/html/2510.17281v2" target="_blank" rel="noopener">paper</a></div>
+    <div class="ext-cite-meta">arXiv:2510.17281 · 2025 · <a href="https://arxiv.org/html/2510.17281v2" target="_blank" rel="noopener">paper</a></div>
     <p>Found that state-of-the-art memory systems (A-Mem, Mem0, MemoryOS) cannot consistently outperform RAG baselines that simply dump all context into the retrieval corpus. Memory without governance doesn't move the needle.</p>
     <div class="connection">CORE's thesis exactly: continuity is not coherence. Retention is not integrity. Memory without epistemic management compounds drift rather than resolving it.</div>
   </div>
@@ -259,14 +259,14 @@
   <div class="signal-grid">
     <div class="ext-cite">
       <div class="ext-cite-title">Representation Engineering</div>
-      <div class="ext-cite-meta">Zou et al. &middot; CCS 2023 / Center for AI Safety &middot; <a href="https://www.alignmentforum.org/posts/3ghj8EuKzwD3MQR5G/an-introduction-to-representation-engineering-an-activation" target="_blank" rel="noopener">overview</a></div>
+      <div class="ext-cite-meta">Zou et al. · CCS 2023 / Center for AI Safety · <a href="https://www.alignmentforum.org/posts/3ghj8EuKzwD3MQR5G/an-introduction-to-representation-engineering-an-activation" target="_blank" rel="noopener">overview</a></div>
       <p>Models have consistent internal representations of honesty/truthfulness that are readable and steerable. A model can have an internal concept of truth that diverges from what it generates.</p>
       <div class="connection">The gap exists at the representation level. It's not just a metaphor.</div>
     </div>
 
     <div class="ext-cite">
       <div class="ext-cite-title">Detecting Hallucinations Using Semantic Entropy</div>
-      <div class="ext-cite-meta">Farquhar et al. &middot; Nature 630 &middot; June 2024 &middot; <a href="https://www.nature.com/articles/s41586-024-07421-0" target="_blank" rel="noopener">paper</a></div>
+      <div class="ext-cite-meta">Farquhar et al. · Nature 630 · June 2024 · <a href="https://www.nature.com/articles/s41586-024-07421-0" target="_blank" rel="noopener">paper</a></div>
       <p>Internal token entropy diverges from generated confidence. The model's uncertainty is high while its output confidence is high. Semantic entropy detects confabulations by measuring this gap at the meaning level.</p>
       <div class="connection">They measured the gap. CORE built the system that governs it.</div>
     </div>
@@ -285,13 +285,13 @@
 
   <div class="ext-cite">
     <div class="ext-cite-title">Paraconsistent Logic</div>
-    <div class="ext-cite-meta">Stanford Encyclopedia of Philosophy &middot; da Costa, Priest et al. &middot; 1960s&ndash;present &middot; <a href="https://plato.stanford.edu/entries/logic-paraconsistent/" target="_blank" rel="noopener">entry</a></div>
+    <div class="ext-cite-meta">Stanford Encyclopedia of Philosophy · da Costa, Priest et al. · 1960s-present · <a href="https://plato.stanford.edu/entries/logic-paraconsistent/" target="_blank" rel="noopener">entry</a></div>
     <p>An entire branch of formal logic built on the premise that contradictions carry information rather than destroying it. The Bar-Hillel-Carnap paradox: the less probable a statement, the more informative it is; contradictions carry maximum information. Used in databases with inconsistent information, where hidden contradictions should not generate spurious answers.</p>
   </div>
 
   <div class="ext-cite">
     <div class="ext-cite-title">AGM Belief Revision Theory</div>
-    <div class="ext-cite-meta">Alchourr&oacute;n, G&auml;rdenf&ouml;rs, Makinson &middot; 1985 &middot; <a href="https://plato.stanford.edu/entries/logic-belief-revision/" target="_blank" rel="noopener">entry</a></div>
+    <div class="ext-cite-meta">Alchourr&oacute;n, G&auml;rdenf&ouml;rs, Makinson · 1985 · <a href="https://plato.stanford.edu/entries/logic-belief-revision/" target="_blank" rel="noopener">entry</a></div>
     <p>The formal framework for what to do when new information contradicts existing beliefs. Deductive logic alone cannot tell you which beliefs to give up. You need additional structure (entrenchment orderings, contraction functions). This is the theoretical foundation for trust-weighted belief revision.</p>
   </div>
 
@@ -306,7 +306,7 @@
 
   <div class="ext-cite">
     <div class="ext-cite-title">Emotion Concepts and Their Function in a Large Language Model</div>
-    <div class="ext-cite-meta">Anthropic Interpretability Team &middot; April 2026 &middot; <a href="https://www.anthropic.com/research/emotion-concepts-function" target="_blank" rel="noopener">blog</a> &middot; <a href="https://transformer-circuits.pub/2026/emotions/index.html" target="_blank" rel="noopener">full paper</a></div>
+    <div class="ext-cite-meta">Anthropic Interpretability Team · April 2026 · <a href="https://www.anthropic.com/research/emotion-concepts-function" target="_blank" rel="noopener">blog</a> · <a href="https://transformer-circuits.pub/2026/emotions/index.html" target="_blank" rel="noopener">full paper</a></div>
     <p>Analyzed Claude Sonnet 4.5 and identified 171 emotion-like neural activation patterns. Key findings:</p>
     <ul style="margin: 10px 0 0 18px; color: var(--text-secondary); font-size: 0.88em; line-height: 1.8;">
       <li>These vectors <strong>causally drive behavior</strong>, not just correlate</li>
@@ -381,7 +381,7 @@
   </div>
 
   <div class="quote-block">
-    <p>The EU AI Act (Article 13) requires traceability and auditability for high-risk AI systems beginning August 2026. CORE's contradiction density metrics, belief audit trails, and drift governance are concrete implementations of that requirement. The regulatory environment is arriving at the same time as the interpretability tools. The timing reflects that the problem this architecture addresses is the same problem regulators are trying to solve.</p>
+    <p>The EU AI Act (Articles 13 and 50, effective August 2026) requires traceability, auditability, and transparency for AI systems. CORE's contradiction density metrics, belief audit trails, and drift governance are concrete implementations of that requirement. The regulatory environment is arriving at the same time as the interpretability tools. The timing reflects that the problem this architecture addresses is the same problem regulators are trying to solve.</p>
   </div>
 </section>
 
@@ -395,7 +395,7 @@
 
   <div class="ext-cite">
     <div class="ext-cite-title">Frontier Model Safety Evaluations</div>
-    <div class="ext-cite-meta">April 2026 &middot; Published system cards and safety assessments</div>
+    <div class="ext-cite-meta">April 2026 · Published system cards and safety assessments</div>
     <p>Frontier models with capabilities substantially beyond prior generations. Some restricted from general availability due to offensive cybersecurity risk. Evaluations include detailed alignment assessment, white-box interpretability analysis, and model welfare evaluation.</p>
   </div>
 
@@ -498,7 +498,7 @@
   <h2>What Was Actually Validated</h2>
   <div class="accent-line"></div>
 
-  <p>In a single session (April 8&ndash;9, 2026), the following was built, tested, and confirmed on production data. One developer. One RTX 3060. No funding.</p>
+  <p>In a single session (April 8-9, 2026), the following was built, tested, and confirmed on production data. One developer. One RTX 3060. No funding.</p>
 
   <div class="signal-card">
     <p><strong>Backward influence propagation through the belief graph.</strong> 30/30 lab checks. Error signals flow upstream through dependency edges, adjusting trust on every belief that contributed to the wrong output. Self-pruning, domain volatility, and self-model calibration follow directly. Deep literature search found no direct precedent.</p>
@@ -509,7 +509,7 @@
   </div>
 
   <div class="signal-card">
-    <p><strong>Query resonance (wobble) surfaces what cosine misses.</strong> Activation propagates through BDG edges. A health query brings forward work facts and preference facts because the graph knows they are causally connected. 26 extra memories surfaced on 867 production memories. Cosine retrieval returned zero of them.</p>
+    <p><strong>Query resonance (wobble) surfaces what cosine misses.</strong> Activation propagates through BRG edges. A health query brings forward work facts and preference facts because the graph knows they are causally connected. 26 extra memories surfaced on 867 production memories. Cosine retrieval returned zero of them.</p>
   </div>
 
   <div class="signal-card">
@@ -521,7 +521,7 @@
   </div>
 
   <div class="signal-card">
-    <p><strong>The through-line is unbroken.</strong> Every concept validated tonight traces to a whitepaper written in May 2025, before any of the math existed. Mirus became the embedding pipeline. Holden became the fidelity mirror. The Semantic String Engine became query resonance on the BDG. The breathing cycle became the post-generation integrity check. Three rebuilds. Same question. The architecture converged because the question was right.</p>
+    <p><strong>The through-line is unbroken.</strong> Every concept validated tonight traces to a whitepaper written in May 2025, before any of the math existed. Mirus became the embedding pipeline. Holden became the fidelity mirror. The Semantic String Engine became query resonance on the BRG. The fidelity mirror became the post-generation integrity check. Three rebuilds. Same question. The architecture converged because the question was right.</p>
   </div>
 
   <div class="ext-cite">
@@ -543,7 +543,7 @@
   <p>The stack does not exist anywhere else. And each layer depends on the layers below it.</p>
 
   <div class="signal-card">
-    <p><strong>The dependency chain is the defense.</strong> The wobble needs the BDG. The BDG needs trust scores. The backward pass needs the wobble to generate correction signals. The compression finding needs the backward pass to test. The fidelity mirror needs the wobble to expand its memory set. The self-model needs the backward pass to adjust. You cannot build layer 5 without layers 1 through 4. There is no shortcut. There is only the work.</p>
+    <p><strong>The dependency chain is the defense.</strong> The wobble needs the BRG. The BRG needs trust scores. The backward pass needs the wobble to generate correction signals. The compression finding needs the backward pass to test. The fidelity mirror needs the wobble to expand its memory set. The self-model needs the backward pass to adjust. You cannot build layer 5 without layers 1 through 4. There is no shortcut. There is only the work.</p>
   </div>
 
   <p>The probability that another team independently arrives at this exact architecture:</p>

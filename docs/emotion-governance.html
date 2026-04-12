@@ -149,7 +149,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <div class="hero-badge">Position Paper: Agentic Governance</div>
     <h1>Functional Emotion Governance<br><span class="grad">for Agentic AI Systems</span></h1>
     <p class="sub">Bridging Anthropic's interpretability findings to practical epistemic control</p>
-    <p class="byline">Nick Block &bull; Aeteros Research &bull; 2026</p>
+    <p class="byline">Nick Block · Aeteros Research · 2026</p>
     <div class="finding-box">
       <p>
         <strong>Anthropic identified 171 functional emotion vectors</strong> in Claude Sonnet 4.5 that causally shape model behavior. CORE provides the governance architecture for these dynamics: cascade pressure maps to desperation, drift detection maps to emotional monitoring, and structural gates map to regulation. This paper bridges neural-level interpretability to system-level agentic control.
@@ -192,7 +192,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <li><strong>System-level governance</strong>: detecting, monitoring, and regulating those states in production pipelines (CORE's contribution)</li>
   </ul>
 
-  <p>This paper demonstrates that the Contradiction-aware Reconciliation and Trust (CORE) framework, developed independently for epistemic governance of AI agents, already implements the behavioral control plane for the dynamics Anthropic has now proven exist at the neural level.</p>
+  <p>This paper demonstrates that the CORE framework (Contradiction, Observation, Revision, Epistemics), developed independently for epistemic governance of AI agents, already implements the behavioral control plane for the dynamics Anthropic has now proven exist at the neural level.</p>
 </section>
 
 <!-- ===== SECTION 2 ===== -->
@@ -262,7 +262,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
           <td><span class="badge badge-proven">Shipped</span></td>
         </tr>
         <tr>
-          <td>"Desperate" &rarr; corner-cutting</td>
+          <td>"Desperate" → corner-cutting</td>
           <td><strong>Cascade instability (Theorem 4.4)</strong></td>
           <td><span class="badge badge-corollary">Paper + Production</span></td>
         </tr>
@@ -295,11 +295,11 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <h2>Cascade Pressure as Desperation Signal</h2>
   <div class="accent-line"></div>
 
-  <p>When a belief is revised in CORE's Belief Dependency Graph (BDG), the revision propagates through dependent beliefs. This cascade pressure, the aggregate destabilization of downstream beliefs, is the structural equivalent of Anthropic's "desperate" functional state.</p>
+  <p>When a belief is revised in CORE's Belief Relationship Graph (BRG), the revision propagates through dependent beliefs. This cascade pressure, the aggregate destabilization of downstream beliefs, is the structural equivalent of Anthropic's "desperate" functional state.</p>
 
   <h3>The Mechanism</h3>
 
-  <p>A single belief revision triggers re-evaluation of all dependent beliefs. In a production BDG with 599 nodes and mean out-degree ~8, a revision to a high-connectivity node can reach approximately 64% of the graph. When many downstream beliefs are destabilized simultaneously, the system is under <strong>epistemic stress</strong>, the functional analog of desperation.</p>
+  <p>A single belief revision triggers re-evaluation of all dependent beliefs. In a production BRG with 599 nodes and mean out-degree ~8, a revision to a high-connectivity node can reach approximately 64% of the graph. When many downstream beliefs are destabilized simultaneously, the system is under <strong>epistemic stress</strong>, the functional analog of desperation.</p>
 
   <h3>Formal Grounding</h3>
 
@@ -323,7 +323,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="stat-row">
     <div class="stat-card">
       <div class="stat-value accent">599</div>
-      <div class="stat-label">Production BDG Nodes</div>
+      <div class="stat-label">Production BRG Nodes</div>
     </div>
     <div class="stat-card">
       <div class="stat-value purple">64%</div>
@@ -339,7 +339,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="impl-block">
     <span class="impl-label">Production Implementation</span>
-    <p>Cascade pressure is computed in real-time via the BDG engine (<code>memory_graph.py</code>). When cascade reach exceeds configurable thresholds, the system triggers held-contradiction firewalls (Proposition 5.3), halting propagation and preserving stability.</p>
+    <p>Cascade pressure is computed in real-time via the BRG engine (<code>memory_graph.py</code>). When cascade reach exceeds configurable thresholds, the system triggers held-contradiction firewalls (Proposition 5.3), halting propagation and preserving stability.</p>
   </div>
 </section>
 
@@ -451,7 +451,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
       <div class="pipeline-layer-accent"></div>
       <div class="pipeline-layer-content">
         <div class="pipeline-layer-name">Rule 1: Re-Ground</div>
-        <div class="pipeline-layer-desc">Alignment &lt; 0.15 &rarr; force memory re-retrieval. The agent has lost contact with its evidence base and must re-anchor before continuing.</div>
+        <div class="pipeline-layer-desc">Alignment &lt; 0.15 → force memory re-retrieval. The agent has lost contact with its evidence base and must re-anchor before continuing.</div>
       </div>
       <div class="pipeline-layer-annotation">alignment &lt; 0.15</div>
     </div>
@@ -459,7 +459,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
       <div class="pipeline-layer-accent"></div>
       <div class="pipeline-layer-content">
         <div class="pipeline-layer-name">Rule 2: Circuit Breaker</div>
-        <div class="pipeline-layer-desc">3+ consecutive drifts &rarr; halt execution and ask user. Sustained drift indicates the agent cannot self-correct and requires human intervention.</div>
+        <div class="pipeline-layer-desc">3+ consecutive drifts → halt execution and ask user. Sustained drift indicates the agent cannot self-correct and requires human intervention.</div>
       </div>
       <div class="pipeline-layer-annotation">3+ consecutive drifts</div>
     </div>
@@ -467,7 +467,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
       <div class="pipeline-layer-accent"></div>
       <div class="pipeline-layer-content">
         <div class="pipeline-layer-name">Rule 3: Escalate</div>
-        <div class="pipeline-layer-desc">2 consecutive drifts &rarr; escalate to a more capable model. The current model's "emotional state" is beyond its capacity to regulate. Bring in a stronger reasoner.</div>
+        <div class="pipeline-layer-desc">2 consecutive drifts → escalate to a more capable model. The current model's "emotional state" is beyond its capacity to regulate. Bring in a stronger reasoner.</div>
       </div>
       <div class="pipeline-layer-annotation">2 consecutive drifts</div>
     </div>
@@ -477,7 +477,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="impl-block">
     <span class="impl-label">Production Implementation</span>
-    <p>Drift events are computed per-step by the alignment scorer, emitted as SSE events through the pipeline, and rendered in real-time in the frontend pipeline panel. All three governance rules are wired end-to-end: detection &rarr; event emission &rarr; response action.</p>
+    <p>Drift events are computed per-step by the alignment scorer, emitted as SSE events through the pipeline, and rendered in real-time in the frontend pipeline panel. All three governance rules are wired end-to-end: detection → event emission → response action.</p>
   </div>
 </section>
 

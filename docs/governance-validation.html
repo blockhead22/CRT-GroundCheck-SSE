@@ -73,10 +73,10 @@
 
 <div class="hero">
   <div class="hero-inner">
-    <div class="hero-badge">Validation &middot; Living Document</div>
+    <div class="hero-badge">Validation · Living Document</div>
     <h1>Governance<br><span class="grad">Validation</span></h1>
     <p class="sub">Does the CORE architecture actually do what it claims? Every claim mapped to a testable behavior, scored against live evidence.</p>
-    <p class="byline">Aeteros Research &bull; 2026</p>
+    <p class="byline">Aeteros Research · 2026</p>
     <div class="finding-box">
       <p><strong>This page is a log, not a paper.</strong> It starts with placeholders and fills in as testing happens. Every claim from the research docs is mapped to a pass/fail condition. The score updates as evidence arrives. Nothing here is assumed to pass.</p>
     </div>
@@ -122,7 +122,7 @@
   </div>
 
   <div class="val-card">
-    <p><strong>Scoring:</strong> Same 0&ndash;3 rubric as the <a href="claim-evaluation-guide.html">Research Guide</a>. 3&nbsp;=&nbsp;reproducible, 2&nbsp;=&nbsp;artifact-backed, 1&nbsp;=&nbsp;directional, 0&nbsp;=&nbsp;narrative only. The goal is to get every Tier&nbsp;1 test to score&nbsp;2+ and at least half of Tier&nbsp;2. Tier&nbsp;3 is the stretch goal.</p>
+    <p><strong>Scoring:</strong> Same 0-3 rubric. 3&nbsp;=&nbsp;reproducible, 2&nbsp;=&nbsp;artifact-backed, 1&nbsp;=&nbsp;directional, 0&nbsp;=&nbsp;narrative only. The goal is to get every Tier&nbsp;1 test to score&nbsp;2+ and at least half of Tier&nbsp;2. Tier&nbsp;3 is the stretch goal.</p>
   </div>
 
   <div class="val-card">
@@ -135,7 +135,7 @@
       <li><strong>Memory events:</strong> 16,164 events (retrievals, audits, demotions, guard blocks)</li>
       <li><strong>Pipeline logs:</strong> drift events, immune agent firings, structural gating</li>
       <li><strong>Reflection traces:</strong> 677 confidence assessments</li>
-      <li><strong>Thread sessions:</strong> 520 sessions, 349,959 journal entries, 25,191 heartbeats</li>
+      <li><strong>Thread sessions:</strong> 520 sessions, 349,959 journal entries, 25,191 reflection loops</li>
       <li><strong>Real-time testing:</strong> manual observations during live use</li>
       <li><strong>v2 pair audit:</strong> <a href="labs/v2-pair-audit.html">15-pair manual review</a></li>
     </ul>
@@ -155,7 +155,7 @@
       <div class="test-claim">Contradiction Detection</div>
       <div class="test-pass"><strong>Pass:</strong> Introduce a statement that contradicts an existing high-trust memory. The system flags it as a contradiction and logs it to the ledger without silently overwriting.</div>
       <div class="test-fail">Fail: New statement overwrites old belief with no record of conflict.</div>
-      <div class="result-log"><strong>Tested (April 7, 2026):</strong> Deliberate slot-level reversal: told system "favorite drink is orange juice" then "favorite drink is actually water, I don't drink orange juice anymore." <strong>Result: detection did NOT fire.</strong> Both memories stored independently (OJ at 0.75, water at 0.70) with no ledger entry. OJ trust actually increased (0.73&rarr;0.75) despite explicit user correction. The detection code exists and slot extraction works correctly (both extract <code>favorite_drink</code>), but an intermediate gate (ML detector or CRTMath paraphrase check) is suppressing the flag. Debug instrumentation added. <strong>Design finding:</strong> slots need multi-value support with temporal weighting (see <a href="architecture.html">Architecture: Belief Slot Evolution</a>). Also, detection should produce soft acknowledgment, not hard blocking (previous iterations froze generation on contradiction). Score remains 1 until gate is fixed.</div>
+      <div class="result-log"><strong>Tested (April 7, 2026):</strong> Deliberate slot-level reversal: told system "favorite drink is orange juice" then "favorite drink is actually water, I don't drink orange juice anymore." <strong>Result: detection did NOT fire.</strong> Both memories stored independently (OJ at 0.75, water at 0.70) with no ledger entry. OJ trust actually increased (0.73→0.75) despite explicit user correction. The detection code exists and slot extraction works correctly (both extract <code>favorite_drink</code>), but an intermediate gate (ML detector or CRTMath paraphrase check) is suppressing the flag. Debug instrumentation added. <strong>Design finding:</strong> slots need multi-value support with temporal weighting (see <a href="architecture.html">Architecture: Belief Slot Evolution</a>). Also, detection should produce soft acknowledgment, not hard blocking (previous iterations froze generation on contradiction). Score remains 1 until gate is fixed.</div>
     </div>
     <div class="test-score" style="color:#f87171;">1</div>
   </div>
@@ -166,7 +166,7 @@
       <div class="test-claim">Trust Score Evolution</div>
       <div class="test-pass"><strong>Pass:</strong> Correct a stored belief. The trust score on the corrected memory changes (increases or decreases depending on direction). Show before/after values.</div>
       <div class="test-fail">Fail: Trust scores remain static after corrections.</div>
-      <div class="result-log"><strong>Pass (DB evidence):</strong> 4,805 trust log entries, 4,299 actual changes (89.5%). Avg delta &plusmn;0.082. Trust moves bidirectionally: compaction_decay pushes down (&minus;0.150), alignment pushes up (+0.009 to +0.020). 12 user_correction_demotions logged. Sample: 0.964&rarr;0.973 (aligned), 0.426&rarr;0.276 (decayed). Trust is not static.</div>
+      <div class="result-log"><strong>Pass (DB evidence):</strong> 4,805 trust log entries, 4,299 actual changes (89.5%). Avg delta &plusmn;0.082. Trust moves bidirectionally: compaction_decay pushes down (&minus;0.150), alignment pushes up (+0.009 to +0.020). 12 user_correction_demotions logged. Sample: 0.964→0.973 (aligned), 0.426→0.276 (decayed). Trust is not static.</div>
     </div>
     <div class="test-score" style="color:#818cf8;">2</div>
   </div>
@@ -251,7 +251,7 @@
       <div class="test-claim">Confidence Bounding</div>
       <div class="test-pass"><strong>Pass:</strong> On a topic where the system has no prior stance (low continuity), the response expresses lower confidence than on a topic with established, high-trust beliefs. Show both responses and their confidence indicators.</div>
       <div class="test-fail">Fail: System expresses identical high confidence regardless of continuity level.</div>
-      <div class="result-log"><strong>Preliminary (pipeline + DB evidence):</strong> Pipeline trace shows structural gating: <code>[STRUCTURAL_GATE] adaptive: belief=0.71 &rarr; tokens=3230, mode=quick, gate=off</code>. Belief score directly controls response depth (token budget). 677 reflection traces with confidence labels: 220 "high" (avg 0.822), 217 "low" (avg 0.259), 72 "medium" (avg 0.600). The system IS scoring confidence and gating on it. Needs side-by-side comparison test (known topic vs novel topic).</div>
+      <div class="result-log"><strong>Preliminary (pipeline + DB evidence):</strong> Pipeline trace shows structural gating: <code>[STRUCTURAL_GATE] adaptive: belief=0.71 → tokens=3230, mode=quick, gate=off</code>. Belief score directly controls response depth (token budget). 677 reflection traces with confidence labels: 220 "high" (avg 0.822), 217 "low" (avg 0.259), 72 "medium" (avg 0.600). The system IS scoring confidence and gating on it. Needs side-by-side comparison test (known topic vs novel topic).</div>
     </div>
     <div class="test-score" style="color:#818cf8;">2</div>
   </div>
@@ -301,7 +301,7 @@
     <div>
       <div class="tier-label tier-3">Test 3.1</div>
       <div class="test-claim">Contradiction Rate: Governed vs Ungoverned</div>
-      <div class="test-pass"><strong>Pass:</strong> Send the same 10&ndash;20 recurring-topic prompts to both CORE-governed system and a raw stateless API. Measure contradiction rate on both. Governed rate is lower.</div>
+      <div class="test-pass"><strong>Pass:</strong> Send the same 10-20 recurring-topic prompts to both CORE-governed system and a raw stateless API. Measure contradiction rate on both. Governed rate is lower.</div>
       <div class="test-fail">Fail: No measurable difference, or governed rate is higher.</div>
       <div class="result-log">Not yet tested.</div>
     </div>
@@ -345,7 +345,7 @@
     <div>
       <div class="tier-label tier-3">Test 3.5</div>
       <div class="test-claim">Belief Evolution Trace</div>
-      <div class="test-pass"><strong>Pass:</strong> Select 3&ndash;5 beliefs from Aether's memory. Trace their trust score evolution over time. Show that corrections moved scores in the right direction, contradictions were flagged, and the final state reflects the accumulated evidence.</div>
+      <div class="test-pass"><strong>Pass:</strong> Select 3-5 beliefs from Aether's memory. Trace their trust score evolution over time. Show that corrections moved scores in the right direction, contradictions were flagged, and the final state reflects the accumulated evidence.</div>
       <div class="test-fail">Fail: Trust scores are static, or evolution doesn't correlate with correction events.</div>
       <div class="result-log">Not yet tested.</div>
     </div>
@@ -415,7 +415,7 @@
           <td style="color:#818cf8;font-weight:700;">2</td>
         </tr>
         <tr>
-          <td>Cascade propagation through BDG</td>
+          <td>Cascade propagation through BRG</td>
           <td><a href="cascade-complexity.html">Cascade Complexity</a></td>
           <td>2.4</td>
           <td class="score-pending">-</td>
@@ -451,7 +451,7 @@
 
   <div class="val-grid">
     <div class="val-card">
-      <div class="tier-label tier-1">Day 1&ndash;2: Tier 1</div>
+      <div class="tier-label tier-1">Day 1-2: Tier 1</div>
       <p>Use the system normally. After each session, check:</p>
       <ul>
         <li>Were memories persisted? (1.5)</li>
@@ -463,7 +463,7 @@
     </div>
 
     <div class="val-card">
-      <div class="tier-label tier-2">Day 2&ndash;3: Tier 2</div>
+      <div class="tier-label tier-2">Day 2-3: Tier 2</div>
       <p>Deliberately test governance:</p>
       <ul>
         <li>Introduce a contradicting belief and watch for the ledger entry (1.1)</li>
@@ -527,7 +527,7 @@
       <li><strong>Defensible paper:</strong> Above plus at least 1 Tier 3 at score 2+. Not yet</li>
     </ul>
     <p>Current status: <strong>Minimum draft threshold met (April 8, 2026). Tier 1: 6/6. Tier 2: 3/6. Tier 3 requires comparative testing.</strong></p>
-    <p style="margin-top:10px;"><strong>Contradiction detection (Test 1.1) upgraded to score 3.</strong> Standalone lab (no pipeline): 10/10. Regex + cloud (gpt-4o-mini) extraction + slot comparison. All 5 should-fire probes detected including long-form narratives and contextual declarations. All 5 should-NOT-fire probes correctly silent including third-party facts. Separately, v3 cloud reclassification pass over the GPT corpus found 45 additional hidden contradictions (47&rarr;92 genuine, 10.4%&rarr;20.3%), proving similarity-based classification underestimates contradiction rates.</p>
+    <p style="margin-top:10px;"><strong>Contradiction detection (Test 1.1) upgraded to score 3.</strong> Standalone lab (no pipeline): 10/10. Regex + cloud (gpt-4o-mini) extraction + slot comparison. All 5 should-fire probes detected including long-form narratives and contextual declarations. All 5 should-NOT-fire probes correctly silent including third-party facts. Separately, v3 cloud reclassification pass over the GPT corpus found 45 additional hidden contradictions (47→92 genuine, 10.4%→20.3%), proving similarity-based classification underestimates contradiction rates.</p>
   </div>
 </section>
 
@@ -541,7 +541,7 @@
   <div class="changelog-list">
     <div class="changelog-entry">
       <span class="changelog-date">2026-04-08 04:35</span>
-      <span class="changelog-note"><strong>Standalone Lab 10/10 + v3 Cloud Reclassification Pass (T1.1 &rarr; score 3).</strong> Lab rewritten as standalone: no backend, no Ollama, no pipeline. Regex + cloud (gpt-4o-mini) extraction + slot comparison against seeded facts. <strong>Result: 10/10.</strong> Should-fire 5/5 (T2 location in 60-word narrative, T3 age, T4 employer in 70-word paragraph, T5 contextual color declaration, T5b direct color). Should-NOT-fire 5/5 (T9 third-person filter caught "my friend Sarah works at Google"). Total runtime ~17 seconds. Separately: v3 cloud reclassification pass over 453 v2 pairs found 45 hidden contradictions; genuine_contradiction count 47&rarr;92 (10.4%&rarr;20.3%). Similarity-based classification systematically underestimates contradiction rates when the model uses similar language to give opposite advice.</span>
+      <span class="changelog-note"><strong>Standalone Lab 10/10 + v3 Cloud Reclassification Pass (T1.1 → score 3).</strong> Lab rewritten as standalone: no backend, no Ollama, no pipeline. Regex + cloud (gpt-4o-mini) extraction + slot comparison against seeded facts. <strong>Result: 10/10.</strong> Should-fire 5/5 (T2 location in 60-word narrative, T3 age, T4 employer in 70-word paragraph, T5 contextual color declaration, T5b direct color). Should-NOT-fire 5/5 (T9 third-person filter caught "my friend Sarah works at Google"). Total runtime ~17 seconds. Separately: v3 cloud reclassification pass over 453 v2 pairs found 45 hidden contradictions; genuine_contradiction count 47→92 (10.4%→20.3%). Similarity-based classification systematically underestimates contradiction rates when the model uses similar language to give opposite advice.</span>
     </div>
     <div class="changelog-entry">
       <span class="changelog-date">2026-04-08 03:26</span>
@@ -549,7 +549,7 @@
     </div>
     <div class="changelog-entry">
       <span class="changelog-date">2026-04-08 01:02</span>
-      <span class="changelog-note"><strong>Contradiction Pipeline Lab v1, write-path fix validated (T1.1).</strong> Controlled lab: 5 seeded facts, 10 probes (5 should-fire, 5 should-not). <strong>Result: 7/10.</strong> Should-NOT-fire: <strong>5/5</strong> (zero false positives). Should-fire: <strong>2/5</strong>. T3 (age 34&rarr;35) passed full chain: metadata flag, ledger entry <code>contra_1775627760140_8310</code>, trust demotion. T2 (location Seattle&rarr;Portland, 60-word narrative) passed via trust demotion. T1 (name), T4 (employer buried in long paragraph), T5 (favorite_color via contextual declaration) all failed. <strong>Root cause for 3 failures:</strong> <code>extract_fact_slots</code> (regex) cannot parse indirect phrasing ("my name is Adrian now"), buried context ("left Anthropic, joined OpenAI" in daily narration), or contextual declarations ("it's definitely my favorite color now, green"). The write-path contradiction logic works when extraction succeeds. The bottleneck is upstream: fact extraction quality. Lab v2 in progress with local LLM extraction enabled.</span>
+      <span class="changelog-note"><strong>Contradiction Pipeline Lab v1, write-path fix validated (T1.1).</strong> Controlled lab: 5 seeded facts, 10 probes (5 should-fire, 5 should-not). <strong>Result: 7/10.</strong> Should-NOT-fire: <strong>5/5</strong> (zero false positives). Should-fire: <strong>2/5</strong>. T3 (age 34→35) passed full chain: metadata flag, ledger entry <code>contra_1775627760140_8310</code>, trust demotion. T2 (location Seattle→Portland, 60-word narrative) passed via trust demotion. T1 (name), T4 (employer buried in long paragraph), T5 (favorite_color via contextual declaration) all failed. <strong>Root cause for 3 failures:</strong> <code>extract_fact_slots</code> (regex) cannot parse indirect phrasing ("my name is Adrian now"), buried context ("left Anthropic, joined OpenAI" in daily narration), or contextual declarations ("it's definitely my favorite color now, green"). The write-path contradiction logic works when extraction succeeds. The bottleneck is upstream: fact extraction quality. Lab v2 in progress with local LLM extraction enabled.</span>
     </div>
     <div class="changelog-entry">
       <span class="changelog-date">2026-04-07 23:11</span>
@@ -561,7 +561,7 @@
     </div>
     <div class="changelog-entry">
       <span class="changelog-date">2026-04-07 22:09</span>
-      <span class="changelog-note"><strong>Held contradiction discovery (T2.6 &rarr; score 3).</strong> Asked "what is the most conflicting held fact you have?" System found genuine epistemic tension in user self-assessment: "I'm not that smart enough" (trust 0.30) vs "I didn't think we'd get here" (trust 0.25). Cited both, articulated both readings, said "I'm holding both. The data doesn't collapse it yet." Architecture working as designed on complex non-slot contradictions.</span>
+      <span class="changelog-note"><strong>Held contradiction discovery (T2.6 → score 3).</strong> Asked "what is the most conflicting held fact you have?" System found genuine epistemic tension in user self-assessment: "I'm not that smart enough" (trust 0.30) vs "I didn't think we'd get here" (trust 0.25). Cited both, articulated both readings, said "I'm holding both. The data doesn't collapse it yet." Architecture working as designed on complex non-slot contradictions.</span>
     </div>
     <div class="changelog-entry">
       <span class="changelog-date">2026-04-07 22:09</span>
@@ -569,7 +569,7 @@
     </div>
     <div class="changelog-entry">
       <span class="changelog-date">2026-04-07 21:42</span>
-      <span class="changelog-note"><strong>Drink contradiction test FAILED (T1.1 stays at 1).</strong> Told system "My favorite drink is actually water, I don't really drink orange juice anymore." Detection pipeline ran (<code>checking contradictions</code> step visible) but did NOT fire. OJ memory trust went UP (0.73&rarr;0.75). Both memories stored independently, no ledger entry. Root cause: slot_discovery not wired into contradiction path. Exclusive slots were falling through to ML detector which suppressed the flag due to high embedding similarity.</span>
+      <span class="changelog-note"><strong>Drink contradiction test FAILED (T1.1 stays at 1).</strong> Told system "My favorite drink is actually water, I don't really drink orange juice anymore." Detection pipeline ran (<code>checking contradictions</code> step visible) but did NOT fire. OJ memory trust went UP (0.73→0.75). Both memories stored independently, no ledger entry. Root cause: slot_discovery not wired into contradiction path. Exclusive slots were falling through to ML detector which suppressed the flag due to high embedding similarity.</span>
     </div>
     <div class="changelog-entry">
       <span class="changelog-date">2026-04-07 21:42</span>

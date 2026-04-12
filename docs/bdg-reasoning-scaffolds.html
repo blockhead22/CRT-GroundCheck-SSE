@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BDG Reasoning Scaffolds: Structural Decomposition for Small Models | Aeteros Research</title>
+<title>BRG Reasoning Scaffolds: Structural Decomposition for Small Models | Aeteros Research</title>
 <script>
 MathJax = {
   tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']], tags: 'ams' },
@@ -191,12 +191,12 @@ MathJax = {
 <!-- ===== HERO ===== -->
 <div class="hero">
   <div class="hero-inner">
-    <div class="hero-badge">Evidence Paper &middot; BDG Reasoning Scaffolds</div>
-    <h1>BDG Reasoning Scaffolds:<br><span class="grad">Making Small Models Competent</span><br>Through Structural Decomposition</h1>
+    <div class="hero-badge">Evidence Paper · BRG Reasoning Scaffolds</div>
+    <h1>BRG Reasoning Scaffolds:<br><span class="grad">Making Small Models Competent</span><br>Through Structural Decomposition</h1>
     <p class="sub">The intelligence is in the structure, not the model. A 3B parameter model goes from 0% to 80% precision when the scaffold changes.</p>
-    <p class="byline">Nick Block &bull; Aeteros Research &bull; April 2026</p>
+    <p class="byline">Nick Block · Aeteros Research · April 2026</p>
     <div class="finding-box">
-      <p>We demonstrate that Belief Dependency Graph (BDG) structure &mdash; originally designed for epistemic memory governance &mdash; transfers directly to code analysis and belief verification as a <strong>general-purpose reasoning scaffold</strong>. A 3B parameter model (llama3.2) scoring <strong>0% precision</strong> on direct code auditing achieves <strong>80% precision</strong> when the same task is decomposed into a BDG tree of factual leaf questions. The model never changed. The scaffold changed five times. The intelligence is in the structure, not the model.</p>
+      <p>We demonstrate that Belief Relationship Graph (BRG) structure  - originally designed for epistemic memory governance  - transfers directly to code analysis and belief verification as a <strong>general-purpose reasoning scaffold</strong>. A 3B parameter model (llama3.2) scoring <strong>0% precision</strong> on direct code auditing achieves <strong>80% precision</strong> when the same task is decomposed into a BRG tree of factual leaf questions. The model never changed. The scaffold changed five times. The intelligence is in the structure, not the model.</p>
     </div>
 
     <div class="stat-grid" style="margin-top: 28px;">
@@ -206,7 +206,7 @@ MathJax = {
       </div>
       <div class="stat-cell">
         <div class="stat-value" style="color:#34d399;">80%</div>
-        <div class="stat-label">BDG v2 Precision</div>
+        <div class="stat-label">BRG v2 Precision</div>
       </div>
       <div class="stat-cell">
         <div class="stat-value" style="color:#c084fc;">94%</div>
@@ -226,12 +226,12 @@ MathJax = {
 </div>
 
 <nav class="sidebar" id="docSidebar" data-manual-sidebar>
-  <div class="sidebar-title">BDG Scaffolds</div>
+  <div class="sidebar-title">BRG Scaffolds</div>
   <a href="#introduction">1 Introduction</a>
   <a href="#progression">2 The Progression</a>
   <a href="#atomic">3 Atomic Verification</a>
   <a href="#degradation">4 Degradation Curve</a>
-  <a href="#architecture">5 BDG Architecture</a>
+  <a href="#architecture">5 BRG Architecture</a>
   <a href="#findings">6 Real Findings</a>
   <a href="#hybrid">7 Hybrid Leaves</a>
   <a href="#tension">8 Structural Tension</a>
@@ -259,15 +259,19 @@ MathJax = {
 
   <p>This paper presents counter-evidence. We tested five different scaffolding architectures on the <strong>same model</strong> (llama3.2, 3B parameters) performing the <strong>same task</strong> (auditing a 2,233-line Python codebase for real bugs). The results span from 0% precision to 80% precision. The model never changed. The scaffold changed five times.</p>
 
-  <p>The core insight comes from an unexpected direction. The Belief Dependency Graph (BDG), originally designed for epistemic memory governance in the <a href="cascade-complexity.html">CORE/Aether system</a>, decomposes complex questions into trees of factual sub-questions. Each leaf question is small enough for a 3B model to answer accurately. The scaffold holds the reasoning structure externally. The model provides atomic verification.</p>
+  <p>The core insight comes from an unexpected direction. The Belief Relationship Graph (BRG), originally designed for epistemic memory governance in the <a href="cascade-complexity.html">CORE/Aether system</a>, decomposes complex questions into trees of factual sub-questions. Each leaf question is small enough for a 3B model to answer accurately. The scaffold holds the reasoning structure externally. The model provides atomic verification.</p>
+
+  <div class="remark">
+    <strong>On terminology:</strong> The BRG is a belief relationship graph - a directed graph where nodes are beliefs and edges are typed relationships (SUPPORTS, CONTRADICTS, EVOLVES). It was originally called a "dependency graph" but evolved beyond simple dependency as the edge types grew richer. When used as a reasoning scaffold, the structure resembles a tree with branches and leaves - the cloud model generates the branching structure, the local model verifies each leaf. The graph is the memory structure. The tree is the reasoning structure derived from it.
+  </div>
 
   <div class="law-card">
     <div class="law-number">Core Thesis</div>
     <div class="law-text">Question-model fit determines accuracy more than model size</div>
-    <div class="law-sub">Shape the question to match the model's capability. Hold the reasoning externally. The BDG is a general-purpose reasoning scaffold applicable to any domain where questions can be decomposed into factual sub-questions.</div>
+    <div class="law-sub">Shape the question to match the model's capability. Hold the reasoning externally. The BRG is a general-purpose reasoning scaffold applicable to any domain where questions can be decomposed into factual sub-questions.</div>
   </div>
 
-  <p>This is not prompt engineering. Prompt engineering adjusts how you ask. Structural decomposition changes <em>what</em> you ask. The distinction matters: a prompt-engineered question still requires the model to hold the full reasoning chain internally. A structurally decomposed question never asks the model to reason at all &mdash; only to verify facts.</p>
+  <p>This is not prompt engineering. Prompt engineering adjusts how you ask. Structural decomposition changes <em>what</em> you ask. The distinction matters: a prompt-engineered question still requires the model to hold the full reasoning chain internally. A structurally decomposed question never asks the model to reason at all  - only to verify facts.</p>
 </section>
 
 <!-- ============================================================ -->
@@ -278,37 +282,37 @@ MathJax = {
   <h2>The Progression</h2>
   <div class="accent-line"></div>
 
-  <p>Five architectures tested on the same model (llama3.2 3B) and same codebase (CRT heartbeat system, 2,233 lines). Each architecture represents a different theory about why the model was failing.</p>
+  <p>Five architectures tested on the same model (llama3.2 3B) and same codebase (CRT reflection loop, 2,233 lines). Each architecture represents a different theory about why the model was failing.</p>
 
   <div class="progression-grid">
     <div class="progression-card prog-fail">
       <div class="prog-version">Architecture 1</div>
-      <div class="prog-title">Direct Dump &mdash; <span class="score-badge score-red">0%</span></div>
-      <div class="prog-desc">Feed the entire codebase (15K characters) directly to the model with instructions to find bugs. Result: 20 findings, all false positives. The model fixated on a single function (<code>sanitize_html</code>) and hallucinated issues that did not exist in the code. It never examined 90% of the codebase. The context window was technically sufficient &mdash; the model simply could not sustain analytical attention across that much code.</div>
+      <div class="prog-title">Direct Dump  - <span class="score-badge score-red">0%</span></div>
+      <div class="prog-desc">Feed the entire codebase (15K characters) directly to the model with instructions to find bugs. Result: 20 findings, all false positives. The model fixated on a single function (<code>sanitize_html</code>) and hallucinated issues that did not exist in the code. It never examined 90% of the codebase. The context window was technically sufficient  - the model simply could not sustain analytical attention across that much code.</div>
     </div>
 
     <div class="progression-card prog-fail">
       <div class="prog-version">Architecture 2</div>
-      <div class="prog-title">Chunked + Guard Listing &mdash; <span class="score-badge score-red">0 findings</span></div>
+      <div class="prog-title">Chunked + Guard Listing  - <span class="score-badge score-red">0 findings</span></div>
       <div class="prog-desc">Split the code into chunks per function. Ask the model to list safety guards present in each chunk. Result: the model rubber-stamped everything. Every function was marked as having appropriate error handling, even functions with obvious missing <code>finally</code> blocks. The model treated the task as a checklist exercise and confirmed whatever patterns it could find, ignoring what was absent.</div>
     </div>
 
     <div class="progression-card prog-fail">
       <div class="prog-version">Architecture 3</div>
-      <div class="prog-title">Chunked + Risk Challenge &mdash; <span class="score-badge score-red">0%</span></div>
-      <div class="prog-desc">Split into chunks, but instead of asking for guards, present a specific risk hypothesis and ask the model to confirm or deny. Result: the model agreed with every claim. Present "this function leaks connections" &mdash; the model agrees. Present "this function is safe" &mdash; the model also agrees. A 3B model at this context size is a yes-machine for leading questions. Sycophancy dominates analytical judgment.</div>
+      <div class="prog-title">Chunked + Risk Challenge  - <span class="score-badge score-red">0%</span></div>
+      <div class="prog-desc">Split into chunks, but instead of asking for guards, present a specific risk hypothesis and ask the model to confirm or deny. Result: the model agreed with every claim. Present "this function leaks connections"  - the model agrees. Present "this function is safe"  - the model also agrees. A 3B model at this context size is a yes-machine for leading questions. Sycophancy dominates analytical judgment.</div>
     </div>
 
     <div class="progression-card prog-partial">
       <div class="prog-version">Architecture 4</div>
-      <div class="prog-title">BDG Tree v1 &mdash; <span class="score-badge score-amber">60%</span></div>
+      <div class="prog-title">BRG Tree v1  - <span class="score-badge score-amber">60%</span></div>
       <div class="prog-desc">Decompose each function into a tree of factual leaf questions with expected answers. Each leaf asks a single, verifiable question about a code snippet under 200 lines: "Does this function have a <code>finally</code> block?" "Is <code>conn.close()</code> called on all exit paths?" The model answers each leaf. The scaffold aggregates: any UNSAFE leaf makes the branch a RISK. Result: 83 findings, 9/15 validated as real bugs. The model went from useless to genuinely useful by changing what we asked it.</div>
     </div>
 
     <div class="progression-card prog-success">
       <div class="prog-version">Architecture 5</div>
-      <div class="prog-title">BDG Tree v2 (Tightened) &mdash; <span class="score-badge score-green">80%</span></div>
-      <div class="prog-desc">Same BDG tree approach, but with tighter leaf question design: more specific expected answers, smaller code excerpts per leaf, disambiguation of near-synonyms (e.g., "closed" vs. "closed in finally block"). Result: 75 findings, 12/15 validated as real bugs. The 20-percentage-point improvement came entirely from question design refinement, not from model changes or prompt engineering.</div>
+      <div class="prog-title">BRG Tree v2 (Tightened)  - <span class="score-badge score-green">80%</span></div>
+      <div class="prog-desc">Same BRG tree approach, but with tighter leaf question design: more specific expected answers, smaller code excerpts per leaf, disambiguation of near-synonyms (e.g., "closed" vs. "closed in finally block"). Result: 75 findings, 12/15 validated as real bugs. The 20-percentage-point improvement came entirely from question design refinement, not from model changes or prompt engineering.</div>
     </div>
   </div>
 
@@ -352,7 +356,7 @@ MathJax = {
           <td>Agreed with every claim (sycophancy)</td>
         </tr>
         <tr>
-          <td>BDG tree v1</td>
+          <td>BRG tree v1</td>
           <td><span class="score-badge score-amber">60%</span></td>
           <td>83</td>
           <td>9/15</td>
@@ -360,7 +364,7 @@ MathJax = {
           <td>Ambiguous leaf wording, overcount</td>
         </tr>
         <tr>
-          <td>BDG tree v2 (tightened)</td>
+          <td>BRG tree v2 (tightened)</td>
           <td><span class="score-badge score-green">80%</span></td>
           <td>75</td>
           <td>12/15</td>
@@ -372,7 +376,7 @@ MathJax = {
     <div class="table-caption">Table 1. Five scaffold architectures on identical model (llama3.2 3B) and codebase (2,233 lines).</div>
   </div>
 
-  <div class="remark"><strong>Key observation:</strong> The jump from 0% to 60% came from changing the task structure (direct question &rarr; tree of factual leaves). The jump from 60% to 80% came from tightening the leaf questions. Both improvements are scaffold changes, not model changes. The model's weights never moved.</div>
+  <div class="remark"><strong>Key observation:</strong> The jump from 0% to 60% came from changing the task structure (direct question → tree of factual leaves). The jump from 60% to 80% came from tightening the leaf questions. Both improvements are scaffold changes, not model changes. The model's weights never moved.</div>
 </section>
 
 <!-- ============================================================ -->
@@ -383,11 +387,11 @@ MathJax = {
   <h2>Atomic Verification</h2>
   <div class="accent-line"></div>
 
-  <p>Before building the BDG scaffold, we needed to establish a foundational capability: <strong>can a 3B model read code accurately at all?</strong> If the model cannot answer simple factual questions about code, no scaffold will help. If it can, then the scaffold only needs to decompose complex questions into simple ones.</p>
+  <p>Before building the BRG scaffold, we needed to establish a foundational capability: <strong>can a 3B model read code accurately at all?</strong> If the model cannot answer simple factual questions about code, no scaffold will help. If it can, then the scaffold only needs to decompose complex questions into simple ones.</p>
 
   <h3>Experimental Design</h3>
 
-  <p>16 factual questions about code snippets under 20 lines. Each question has one objectively correct answer. No reasoning required &mdash; only reading comprehension and pattern matching.</p>
+  <p>16 factual questions about code snippets under 20 lines. Each question has one objectively correct answer. No reasoning required  - only reading comprehension and pattern matching.</p>
 
   <div class="table-wrap">
     <table>
@@ -486,11 +490,11 @@ MathJax = {
 
   <div class="result-card">
     <h3>Atomic Verification Result</h3>
-    <div class="result-meta">llama3.2 3B &bull; 16 questions &bull; code snippets &le; 20 lines</div>
-    <p><span class="score-badge score-green">94%</span> accuracy (15/16 correct). The single miss: a counting question &mdash; the model reported <code>conn.close()</code> appeared 2 times when the correct answer was 3. The model misidentified one occurrence inside a nested conditional. Every other question type &mdash; including tricky adversarial questions about variable shadowing and mutable default closures &mdash; was answered correctly.</p>
+    <div class="result-meta">llama3.2 3B · 16 questions · code snippets &le; 20 lines</div>
+    <p><span class="score-badge score-green">94%</span> accuracy (15/16 correct). The single miss: a counting question  - the model reported <code>conn.close()</code> appeared 2 times when the correct answer was 3. The model misidentified one occurrence inside a nested conditional. Every other question type  - including tricky adversarial questions about variable shadowing and mutable default closures  - was answered correctly.</p>
   </div>
 
-  <div class="remark"><strong>Implication:</strong> The 3B model <em>can</em> read code accurately when the context is small and the question is factual. The failures observed in Architectures 1&ndash;3 are not reading comprehension failures &mdash; they are structural failures of the task framing. The model has the capability. The scaffold must extract it.</div>
+  <div class="remark"><strong>Implication:</strong> The 3B model <em>can</em> read code accurately when the context is small and the question is factual. The failures observed in Architectures 1-3 are not reading comprehension failures  - they are structural failures of the task framing. The model has the capability. The scaffold must extract it.</div>
 </section>
 
 <!-- ============================================================ -->
@@ -501,7 +505,7 @@ MathJax = {
   <h2>The Degradation Curve</h2>
   <div class="accent-line"></div>
 
-  <p>The atomic verification result (94% at &le;20 lines) establishes the floor. But the BDG scaffold needs the model to answer questions about function-sized chunks, not 20-line snippets. How does accuracy degrade as code length increases?</p>
+  <p>The atomic verification result (94% at &le;20 lines) establishes the floor. But the BRG scaffold needs the model to answer questions about function-sized chunks, not 20-line snippets. How does accuracy degrade as code length increases?</p>
 
   <h3>Experimental Design</h3>
   <p>Same factual question types as the atomic test, but applied to progressively longer code blocks. Each length tested with multiple questions. Accuracy measured as percentage of correct factual answers.</p>
@@ -546,15 +550,15 @@ MathJax = {
       </div>
     </div>
   </div>
-  <div class="table-caption">Figure 1. Accuracy cliff at ~400 lines defines the maximum BDG leaf chunk size.</div>
+  <div class="table-caption">Figure 1. Accuracy cliff at ~400 lines defines the maximum BRG leaf chunk size.</div>
 
   <div class="result-card">
     <h3>The Boundary</h3>
-    <div class="result-meta">llama3.2 3B &bull; 6 code lengths &bull; factual questions</div>
-    <p>Accuracy remains above 80% through <strong>200 lines</strong>. It collapses to <strong>45% at 410 lines</strong> &mdash; effectively random for binary questions. At 802 lines, the model produces responses that reference code constructs not present in the input (hallucination). The boundary is sharp, not gradual. This defines the <strong>hard constraint</strong> for BDG leaf design: each leaf question must reference a code excerpt under ~400 lines. In practice, we target under 200 lines to stay in the high-confidence region.</p>
+    <div class="result-meta">llama3.2 3B · 6 code lengths · factual questions</div>
+    <p>Accuracy remains above 80% through <strong>200 lines</strong>. It collapses to <strong>45% at 410 lines</strong>  - effectively random for binary questions. At 802 lines, the model produces responses that reference code constructs not present in the input (hallucination). The boundary is sharp, not gradual. This defines the <strong>hard constraint</strong> for BRG leaf design: each leaf question must reference a code excerpt under ~400 lines. In practice, we target under 200 lines to stay in the high-confidence region.</p>
   </div>
 
-  <p>This degradation curve is model-specific. A 7B model would have a different curve. A 70B model would have a different curve. The BDG scaffold design adapts to the model by setting chunk size based on measured accuracy thresholds, not assumed capability.</p>
+  <p>This degradation curve is model-specific. A 7B model would have a different curve. A 70B model would have a different curve. The BRG scaffold design adapts to the model by setting chunk size based on measured accuracy thresholds, not assumed capability.</p>
 
   <div class="principle-grid">
     <div class="principle principle-fit">
@@ -566,14 +570,14 @@ MathJax = {
 </section>
 
 <!-- ============================================================ -->
-<!-- SECTION 5: BDG ARCHITECTURE                                    -->
+<!-- SECTION 5: BRG ARCHITECTURE                                    -->
 <!-- ============================================================ -->
 <section id="architecture">
   <span class="section-number">Section 5</span>
-  <h2>BDG Architecture</h2>
+  <h2>BRG Architecture</h2>
   <div class="accent-line"></div>
 
-  <p>The BDG tree audit is a two-tier system: one cloud call generates the reasoning structure, then many local calls execute the verification. The cloud model reasons; the local model verifies. Neither does both.</p>
+  <p>The BRG tree audit is a two-tier system: one cloud call generates the reasoning structure, then many local calls execute the verification. The cloud model reasons; the local model verifies. Neither does both.</p>
 
   <h3>Pipeline</h3>
 
@@ -674,9 +678,109 @@ Function: process_heartbeat()
               Expected: YES for SAFE, NO for UNSAFE
 </pre>
 
-  <p>Each leaf is a single factual question. The model never needs to reason about whether a pattern is dangerous &mdash; that judgment is encoded in the tree structure by the cloud model. Mirus only needs to verify <em>what the code does</em>, not <em>whether what it does is safe</em>.</p>
+  <p>Each leaf is a single factual question. The model never needs to reason about whether a pattern is dangerous - that judgment is encoded in the tree structure by the cloud model. Mirus only needs to verify <em>what the code does</em>, not <em>whether what it does is safe</em>.</p>
 
-  <div class="remark"><strong>The separation is the key insight:</strong> risk identification (what could go wrong) requires reasoning and context &mdash; a cloud-scale capability. Fact verification (does this code do X) requires reading comprehension &mdash; a 3B-scale capability. The BDG scaffold places each task at the right level.</div>
+  <!-- Diagram: BRG Tree Walk -->
+  <div style="margin:32px auto;max-width:680px;">
+    <svg viewBox="0 0 680 340" style="width:100%;height:auto;display:block;">
+      <defs>
+        <filter id="brg-glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+
+      <!-- Root node -->
+      <circle cx="340" cy="40" r="20" fill="rgba(129,140,248,0.15)" stroke="rgba(129,140,248,0.4)" stroke-width="1.5"/>
+      <text x="340" y="44" text-anchor="middle" fill="#818cf8" font-size="8" font-family="monospace" font-weight="600">ROOT</text>
+      <text x="340" y="14" text-anchor="middle" fill="rgba(129,140,248,0.5)" font-size="7" font-family="monospace">process_heartbeat()</text>
+
+      <!-- Edges: root to branches -->
+      <line x1="325" y1="58" x2="140" y2="110" stroke="rgba(148,163,184,0.15)" stroke-width="1"/>
+      <line x1="340" y1="60" x2="340" y2="110" stroke="rgba(148,163,184,0.15)" stroke-width="1"/>
+      <line x1="355" y1="58" x2="540" y2="110" stroke="rgba(148,163,184,0.15)" stroke-width="1"/>
+
+      <!-- Branch 1: Connection leak (RISK - red) -->
+      <circle cx="140" cy="125" r="16" fill="rgba(251,113,133,0.12)" stroke="rgba(251,113,133,0.35)" stroke-width="1"/>
+      <text x="140" y="129" text-anchor="middle" fill="#fb7185" font-size="7" font-family="monospace" font-weight="600">RISK</text>
+      <text x="140" y="100" text-anchor="middle" fill="rgba(251,113,133,0.6)" font-size="7" font-family="monospace">conn leak</text>
+
+      <!-- Branch 1 leaves -->
+      <line x1="128" y1="140" x2="60" y2="190" stroke="rgba(148,163,184,0.1)" stroke-width="1"/>
+      <line x1="140" y1="141" x2="140" y2="190" stroke="rgba(148,163,184,0.1)" stroke-width="1"/>
+      <line x1="152" y1="140" x2="220" y2="190" stroke="rgba(148,163,184,0.1)" stroke-width="1"/>
+
+      <circle cx="60" cy="205" r="12" fill="rgba(52,211,153,0.1)" stroke="rgba(52,211,153,0.25)" stroke-width="1"/>
+      <text x="60" y="208" text-anchor="middle" fill="#34d399" font-size="6" font-family="monospace">YES</text>
+      <text x="60" y="228" text-anchor="middle" fill="rgba(148,163,184,0.35)" font-size="6" font-family="monospace">acquires conn?</text>
+
+      <circle cx="140" cy="205" r="12" fill="rgba(251,113,133,0.15)" stroke="rgba(251,113,133,0.3)" stroke-width="1"/>
+      <text x="140" y="208" text-anchor="middle" fill="#fb7185" font-size="6" font-family="monospace">NO</text>
+      <text x="140" y="228" text-anchor="middle" fill="rgba(148,163,184,0.35)" font-size="6" font-family="monospace">finally close?</text>
+
+      <circle cx="220" cy="205" r="12" fill="rgba(251,113,133,0.15)" stroke="rgba(251,113,133,0.3)" stroke-width="1"/>
+      <text x="220" y="208" text-anchor="middle" fill="#fb7185" font-size="6" font-family="monospace">YES</text>
+      <text x="220" y="228" text-anchor="middle" fill="rgba(148,163,184,0.35)" font-size="6" font-family="monospace">early return?</text>
+
+      <!-- Branch 2: Type conversion (SAFE - green) -->
+      <circle cx="340" cy="125" r="16" fill="rgba(52,211,153,0.12)" stroke="rgba(52,211,153,0.3)" stroke-width="1"/>
+      <text x="340" y="129" text-anchor="middle" fill="#34d399" font-size="7" font-family="monospace" font-weight="600">SAFE</text>
+      <text x="340" y="100" text-anchor="middle" fill="rgba(52,211,153,0.5)" font-size="7" font-family="monospace">type conv</text>
+
+      <!-- Branch 2 leaves -->
+      <line x1="330" y1="140" x2="300" y2="190" stroke="rgba(148,163,184,0.1)" stroke-width="1"/>
+      <line x1="350" y1="140" x2="380" y2="190" stroke="rgba(148,163,184,0.1)" stroke-width="1"/>
+
+      <circle cx="300" cy="205" r="12" fill="rgba(52,211,153,0.1)" stroke="rgba(52,211,153,0.2)" stroke-width="1"/>
+      <text x="300" y="208" text-anchor="middle" fill="#34d399" font-size="6" font-family="monospace">YES</text>
+      <text x="300" y="228" text-anchor="middle" fill="rgba(148,163,184,0.35)" font-size="6" font-family="monospace">int() called?</text>
+
+      <circle cx="380" cy="205" r="12" fill="rgba(52,211,153,0.1)" stroke="rgba(52,211,153,0.2)" stroke-width="1"/>
+      <text x="380" y="208" text-anchor="middle" fill="#34d399" font-size="6" font-family="monospace">YES</text>
+      <text x="380" y="228" text-anchor="middle" fill="rgba(148,163,184,0.35)" font-size="6" font-family="monospace">try/except?</text>
+
+      <!-- Branch 3: HTML injection (RISK - being walked) -->
+      <circle cx="540" cy="125" r="16" fill="rgba(251,191,36,0.12)" stroke="rgba(251,191,36,0.35)" stroke-width="1.5" filter="url(#brg-glow)"/>
+      <text x="540" y="129" text-anchor="middle" fill="#fbbf24" font-size="7" font-family="monospace" font-weight="600">WALK</text>
+      <text x="540" y="100" text-anchor="middle" fill="rgba(251,191,36,0.6)" font-size="7" font-family="monospace">html inject</text>
+
+      <!-- Branch 3 leaves -->
+      <line x1="525" y1="140" x2="470" y2="190" stroke="rgba(251,191,36,0.15)" stroke-width="1"/>
+      <line x1="540" y1="141" x2="540" y2="190" stroke="rgba(251,191,36,0.15)" stroke-width="1"/>
+      <line x1="555" y1="140" x2="610" y2="190" stroke="rgba(148,163,184,0.08)" stroke-width="1" stroke-dasharray="3,3"/>
+
+      <circle cx="470" cy="205" r="12" fill="rgba(52,211,153,0.1)" stroke="rgba(52,211,153,0.2)" stroke-width="1"/>
+      <text x="470" y="208" text-anchor="middle" fill="#34d399" font-size="6" font-family="monospace">YES</text>
+      <text x="470" y="228" text-anchor="middle" fill="rgba(148,163,184,0.35)" font-size="6" font-family="monospace">user text in html?</text>
+
+      <!-- Active leaf (being evaluated) -->
+      <circle cx="540" cy="205" r="12" fill="rgba(251,191,36,0.15)" stroke="rgba(251,191,36,0.4)" stroke-width="1.5" filter="url(#brg-glow)"/>
+      <text x="540" y="208" text-anchor="middle" fill="#fbbf24" font-size="6" font-family="monospace">?</text>
+      <text x="540" y="228" text-anchor="middle" fill="rgba(251,191,36,0.5)" font-size="6" font-family="monospace">escape() called?</text>
+
+      <!-- Unexpanded leaf (dashed) -->
+      <circle cx="610" cy="205" r="12" fill="none" stroke="rgba(148,163,184,0.15)" stroke-width="1" stroke-dasharray="3,3"/>
+      <text x="610" y="208" text-anchor="middle" fill="rgba(148,163,184,0.25)" font-size="6" font-family="monospace">...</text>
+      <text x="610" y="228" text-anchor="middle" fill="rgba(148,163,184,0.2)" font-size="6" font-family="monospace">quote=True?</text>
+
+      <!-- Walker indicator -->
+      <circle cx="540" cy="205" r="18" fill="none" stroke="rgba(251,191,36,0.2)" stroke-width="1" stroke-dasharray="4,4"/>
+
+      <!-- Legend -->
+      <g transform="translate(30,275)">
+        <circle cx="0" cy="0" r="5" fill="rgba(129,140,248,0.2)" stroke="rgba(129,140,248,0.4)" stroke-width="1"/>
+        <text x="12" y="3" fill="rgba(148,163,184,0.4)" font-size="7" font-family="monospace">cloud generates tree</text>
+
+        <circle cx="170" cy="0" r="5" fill="rgba(52,211,153,0.15)" stroke="rgba(52,211,153,0.25)" stroke-width="1"/>
+        <text x="182" y="3" fill="rgba(148,163,184,0.4)" font-size="7" font-family="monospace">3B verifies leaf</text>
+
+        <circle cx="320" cy="0" r="5" fill="rgba(251,191,36,0.15)" stroke="rgba(251,191,36,0.35)" stroke-width="1"/>
+        <text x="332" y="3" fill="rgba(148,163,184,0.4)" font-size="7" font-family="monospace">currently walking</text>
+
+        <circle cx="470" cy="0" r="5" fill="none" stroke="rgba(148,163,184,0.15)" stroke-width="1" stroke-dasharray="2,2"/>
+        <text x="482" y="3" fill="rgba(148,163,184,0.4)" font-size="7" font-family="monospace">unexpanded</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="remark"><strong>The separation is the key insight:</strong> risk identification (what could go wrong) requires reasoning and context - a cloud-scale capability. Fact verification (does this code do X) requires reading comprehension - a 3B-scale capability. The BRG scaffold places each task at the right level.</div>
 </section>
 
 <!-- ============================================================ -->
@@ -687,7 +791,7 @@ Function: process_heartbeat()
   <h2>Real Findings</h2>
   <div class="accent-line"></div>
 
-  <p>The BDG v2 audit produced 75 total findings. 15 were selected for manual validation against the production codebase. Of these, 12 were confirmed as real bugs (80% precision). Three categories of real findings emerged.</p>
+  <p>The BRG v2 audit produced 75 total findings. 15 were selected for manual validation against the production codebase. Of these, 12 were confirmed as real bugs (80% precision). Three categories of real findings emerged.</p>
 
   <h3>Validated Findings</h3>
 
@@ -810,7 +914,7 @@ Function: process_heartbeat()
         </tr>
       </tbody>
     </table>
-    <div class="table-caption">Table 3. Validated findings from BDG v2 audit. 12/15 real (80% precision). Connection leaks are a systemic pattern found across 8 functions.</div>
+    <div class="table-caption">Table 3. Validated findings from BRG v2 audit. 12/15 real (80% precision). Connection leaks are a systemic pattern found across 8 functions.</div>
   </div>
 
   <h3>Finding Patterns</h3>
@@ -818,24 +922,24 @@ Function: process_heartbeat()
   <div class="principle-grid">
     <div class="principle principle-scaffold">
       <span class="p-num">Pattern 1: Systemic Bugs</span>
-      <span class="p-text">Connection leaks found across 8 functions &mdash; same root cause, replicated everywhere</span>
-      <span class="p-sub">The BDG scaffold found the same <code>conn.close()</code>-not-in-finally pattern in 8 separate functions. A human auditor finding one instance would search for others. The BDG scaffold finds them independently because each function gets its own tree. This is structural thoroughness &mdash; the scaffold cannot skip functions or get bored.</span>
+      <span class="p-text">Connection leaks found across 8 functions  - same root cause, replicated everywhere</span>
+      <span class="p-sub">The BRG scaffold found the same <code>conn.close()</code>-not-in-finally pattern in 8 separate functions. A human auditor finding one instance would search for others. The BRG scaffold finds them independently because each function gets its own tree. This is structural thoroughness  - the scaffold cannot skip functions or get bored.</span>
     </div>
     <div class="principle principle-atomic">
       <span class="p-num">Pattern 2: Cross-Layer Logic Bugs</span>
       <span class="p-text">LLM prompt references data the input feed never provides</span>
-      <span class="p-sub">Finding #11 (prompt asks for <code>post_id</code> but feed has no IDs) is a logic bug that spans two layers of the system. The BDG leaf question was: "Does the data structure passed to this function contain a field called post_id?" The model correctly answered NO. The tree structure identified that the prompt template referenced this field. The scaffold connected the two facts. The model never had to.</span>
+      <span class="p-sub">Finding #11 (prompt asks for <code>post_id</code> but feed has no IDs) is a logic bug that spans two layers of the system. The BRG leaf question was: "Does the data structure passed to this function contain a field called post_id?" The model correctly answered NO. The tree structure identified that the prompt template referenced this field. The scaffold connected the two facts. The model never had to.</span>
     </div>
     <div class="principle principle-hybrid">
       <span class="p-num">Pattern 3: False Positive Profile</span>
       <span class="p-text">All three false positives required architectural context beyond the function</span>
-      <span class="p-sub">Thread safety (#13) requires knowing the deployment model. Config validation (#14) requires knowing the startup sequence. Cache bounds (#15) requires seeing code in a different file. The false positives are precisely the cases where per-function analysis is insufficient &mdash; they define the scaffold's honest boundary.</span>
+      <span class="p-sub">Thread safety (#13) requires knowing the deployment model. Config validation (#14) requires knowing the startup sequence. Cache bounds (#15) requires seeing code in a different file. The false positives are precisely the cases where per-function analysis is insufficient  - they define the scaffold's honest boundary.</span>
     </div>
   </div>
 
   <div class="impl-block">
     <span class="impl-label">Production Impact</span>
-    Finding #10 (<code>response_text[:200]</code> on None) was a real crash bug discovered by this audit and subsequently fixed in production. The BDG scaffold found a bug that manual review had missed. Total cost of the audit: one cloud API call for tree generation plus ~184 seconds of local inference.
+    Finding #10 (<code>response_text[:200]</code> on None) was a real crash bug discovered by this audit and subsequently fixed in production. The BRG scaffold found a bug that manual review had missed. Total cost of the audit: one cloud API call for tree generation plus ~184 seconds of local inference.
   </div>
 </section>
 
@@ -847,16 +951,16 @@ Function: process_heartbeat()
   <h2>Hybrid Leaves</h2>
   <div class="accent-line"></div>
 
-  <p>The BDG scaffold in code auditing uses a single leaf type: LLM verification. But when we applied the same structural decomposition principle to other domains, we discovered that <strong>mixing leaf types</strong> consistently outperforms any single method.</p>
+  <p>The BRG scaffold in code auditing uses a single leaf type: LLM verification. But when we applied the same structural decomposition principle to other domains, we discovered that <strong>mixing leaf types</strong> consistently outperforms any single method.</p>
 
   <h3>Intent Routing</h3>
 
   <div class="result-card">
     <h3>Three Leaf Types Compared</h3>
-    <div class="result-meta">Intent classification &bull; CRT routing pipeline &bull; 200 test queries</div>
+    <div class="result-meta">Intent classification · CRT routing pipeline · 200 test queries</div>
     <p>
       Pure regex matching: <span class="score-badge score-amber">~70%</span> accuracy. Fast, deterministic, but misses semantic intent variations.<br>
-      Pure BDG LLM classification: <span class="score-badge score-amber">65&ndash;70%</span> accuracy. Handles semantic variation but hallucinates categories.<br>
+      Pure BRG LLM classification: <span class="score-badge score-amber">65-70%</span> accuracy. Handles semantic variation but hallucinates categories.<br>
       Hybrid (regex + embedding + LLM tiebreaker): <span class="score-badge score-green">93%</span> accuracy. Regex handles known patterns. Embeddings catch semantic similarity. LLM only invoked for ambiguous cases that both miss.
     </p>
   </div>
@@ -865,10 +969,10 @@ Function: process_heartbeat()
 
   <div class="result-card">
     <h3>Contradiction Detection Approaches</h3>
-    <div class="result-meta">Belief pair verification &bull; CRT memory system &bull; 100 contradiction pairs</div>
+    <div class="result-meta">Belief pair verification · CRT memory system · 100 contradiction pairs</div>
     <p>
       Pure LLM judgment: <span class="score-badge score-red">40%</span> accuracy. The model over-detects contradiction, flagging stylistic differences as semantic conflicts.<br>
-      Hybrid with LLM: <span class="score-badge score-red">38%</span> accuracy. Adding structural features did not compensate for LLM noise &mdash; the LLM signal dominated.<br>
+      Hybrid with LLM: <span class="score-badge score-red">38%</span> accuracy. Adding structural features did not compensate for LLM noise  - the LLM signal dominated.<br>
       Structural only (slot extraction + embedding similarity + metadata comparison): <span class="score-badge score-green">88%</span> accuracy. No LLM calls. 0.2s per pair.
     </p>
   </div>
@@ -918,7 +1022,7 @@ Function: process_heartbeat()
   <div class="law-card">
     <div class="law-number">Hybrid Leaf Principle</div>
     <div class="law-text">Use regex for patterns, embeddings for similarity, LLM only as tiebreaker</div>
-    <div class="law-sub">The LLM is the most expensive and least reliable leaf type. Promote it to the role it actually excels at &mdash; handling the cases that deterministic methods cannot resolve &mdash; rather than using it as a universal hammer.</div>
+    <div class="law-sub">The LLM is the most expensive and least reliable leaf type. Promote it to the role it actually excels at  - handling the cases that deterministic methods cannot resolve  - rather than using it as a universal hammer.</div>
   </div>
 </section>
 
@@ -956,8 +1060,8 @@ Function: process_heartbeat()
 
   <div class="result-card">
     <h3>Structural Tension Result</h3>
-    <div class="result-meta">Slot + embedding + metadata &bull; 0 LLM calls &bull; 100 belief pairs</div>
-    <p><span class="score-badge score-green">88%</span> accuracy at <span class="score-badge score-purple">0.2s</span> per pair. No language model invoked. The structural approach correctly identifies tension between beliefs that share a subject-predicate but diverge on object, temporal markers, or trust trajectory. It does not identify beliefs that are semantically contradictory but structurally different (e.g., "Nick is a vegetarian" vs. "Nick ordered a steak") &mdash; that 12% gap is where LLM judgment would add value, if used as a final tiebreaker rather than a primary detector.</p>
+    <div class="result-meta">Slot + embedding + metadata · 0 LLM calls · 100 belief pairs</div>
+    <p><span class="score-badge score-green">88%</span> accuracy at <span class="score-badge score-purple">0.2s</span> per pair. No language model invoked. The structural approach correctly identifies tension between beliefs that share a subject-predicate but diverge on object, temporal markers, or trust trajectory. It does not identify beliefs that are semantically contradictory but structurally different (e.g., "Nick is a vegetarian" vs. "Nick ordered a steak")  - that 12% gap is where LLM judgment would add value, if used as a final tiebreaker rather than a primary detector.</p>
   </div>
 
   <div class="law-card">
@@ -966,7 +1070,7 @@ Function: process_heartbeat()
     <div class="law-sub">Contradiction is binary. Tension is measurable. A 0.72 tension score between two beliefs about employment status tells you more than a boolean "contradicts: true". The scaffold measures tension from structure. Judgment, if needed, is applied at the end, not the beginning.</div>
   </div>
 
-  <p>This is the BDG principle applied to its own domain. Instead of asking the model a complex judgment question ("are these beliefs contradictory?"), we decompose it into factual sub-questions ("do these beliefs share a subject?", "do they have different objects?", "what is their embedding similarity?") and let the scaffold combine the answers.</p>
+  <p>This is the BRG principle applied to its own domain. Instead of asking the model a complex judgment question ("are these beliefs contradictory?"), we decompose it into factual sub-questions ("do these beliefs share a subject?", "do they have different objects?", "what is their embedding similarity?") and let the scaffold combine the answers.</p>
 </section>
 
 <!-- ============================================================ -->
@@ -981,7 +1085,7 @@ Function: process_heartbeat()
 
   <h3>The Principle</h3>
 
-  <p>Every model has a capability boundary &mdash; a region of task complexity where its accuracy is high. Outside that region, accuracy degrades rapidly (as demonstrated by the degradation curve in Section 4). The traditional response is to use a larger model with a wider capability boundary. The BDG alternative is to reshape the task to fit inside the smaller model's boundary.</p>
+  <p>Every model has a capability boundary  - a region of task complexity where its accuracy is high. Outside that region, accuracy degrades rapidly (as demonstrated by the degradation curve in Section 4). The traditional response is to use a larger model with a wider capability boundary. The BRG alternative is to reshape the task to fit inside the smaller model's boundary.</p>
 
   <div class="principle-grid">
     <div class="principle principle-scaffold">
@@ -996,24 +1100,24 @@ Function: process_heartbeat()
     </div>
     <div class="principle principle-hybrid">
       <span class="p-num">Implication 3</span>
-      <span class="p-text">The BDG scaffold is domain-general</span>
-      <span class="p-sub">Any verification task that can be decomposed into factual sub-questions is a candidate for BDG scaffolding. Medical diagnosis: "does the patient have symptom X?" Legal review: "does clause Y contain term Z?" Financial audit: "does this transaction exceed threshold W?" The structure transfers. The leaves change.</span>
+      <span class="p-text">The BRG scaffold is domain-general</span>
+      <span class="p-sub">Any verification task that can be decomposed into factual sub-questions is a candidate for BRG scaffolding. Medical diagnosis: "does the patient have symptom X?" Legal review: "does clause Y contain term Z?" Financial audit: "does this transaction exceed threshold W?" The structure transfers. The leaves change.</span>
     </div>
     <div class="principle principle-tension">
       <span class="p-num">Implication 4</span>
       <span class="p-text">Cost follows the scaffold, not the model</span>
-      <span class="p-sub">The BDG code audit used one cloud API call (tree generation) and 184 local inferences (~3 minutes of local compute). The direct-dump approach used the same model for the same time with 0% precision. The cost is identical. The value is entirely determined by the scaffold. Scaling up to a larger model without fixing the scaffold is waste.</span>
+      <span class="p-sub">The BRG code audit used one cloud API call (tree generation) and 184 local inferences (~3 minutes of local compute). The direct-dump approach used the same model for the same time with 0% precision. The cost is identical. The value is entirely determined by the scaffold. Scaling up to a larger model without fixing the scaffold is waste.</span>
     </div>
     <div class="principle principle-fit">
       <span class="p-num">Implication 5</span>
       <span class="p-text">Reasoning should be held externally, not generated internally</span>
-      <span class="p-sub">The BDG tree holds the reasoning chain (risk hypothesis, decomposed questions, aggregation logic) outside the model. The model never generates reasoning &mdash; it only verifies facts. This eliminates the most common failure modes of small models: loss of thread, hallucinated reasoning chains, and sycophantic agreement with complex premises.</span>
+      <span class="p-sub">The BRG tree holds the reasoning chain (risk hypothesis, decomposed questions, aggregation logic) outside the model. The model never generates reasoning  - it only verifies facts. This eliminates the most common failure modes of small models: loss of thread, hallucinated reasoning chains, and sycophantic agreement with complex premises.</span>
     </div>
   </div>
 
   <h3>The Design Methodology</h3>
 
-  <p>To apply BDG scaffolding to a new domain:</p>
+  <p>To apply BRG scaffolding to a new domain:</p>
 
 <pre>
 1. MEASURE the model's accuracy boundary
@@ -1055,20 +1159,20 @@ Function: process_heartbeat()
 
   <div class="stat-grid">
     <div class="stat-cell">
-      <div class="stat-value" style="color:#fb7185;">0%&rarr;80%</div>
+      <div class="stat-value" style="color:#fb7185;">0%→80%</div>
       <div class="stat-label">Code Audit</div>
     </div>
     <div class="stat-cell">
-      <div class="stat-value" style="color:#34d399;">70%&rarr;93%</div>
+      <div class="stat-value" style="color:#34d399;">70%→93%</div>
       <div class="stat-label">Intent Routing</div>
     </div>
     <div class="stat-cell">
-      <div class="stat-value" style="color:#c084fc;">40%&rarr;88%</div>
+      <div class="stat-value" style="color:#c084fc;">40%→88%</div>
       <div class="stat-label">Belief Verification</div>
     </div>
   </div>
 
-  <p>The BDG reasoning scaffold is a structural intervention. It does not change the model, the training data, or the inference parameters. It changes the shape of the questions the model receives. Every question is reshaped to fall within the model's measured capability boundary. The reasoning is held externally in the tree structure. The model provides atomic verification.</p>
+  <p>The BRG reasoning scaffold is a structural intervention. It does not change the model, the training data, or the inference parameters. It changes the shape of the questions the model receives. Every question is reshaped to fall within the model's measured capability boundary. The reasoning is held externally in the tree structure. The model provides atomic verification.</p>
 
   <div class="law-card">
     <div class="law-number">Central Result</div>
@@ -1076,7 +1180,7 @@ Function: process_heartbeat()
     <div class="law-sub">A 3B parameter model that cannot audit code can verify facts about code. A scaffold that decomposes auditing into fact verification makes the 3B model an effective auditor. The capability was always there. The structure was missing.</div>
   </div>
 
-  <p>This suggests a broader reframing of the capability scaling question. Before asking "do we need a larger model?", ask: "have we shaped the question to fit the model we have?" The degradation curve is the diagnostic tool. The BDG tree is the structural intervention. The hybrid leaf principle determines which verification method to use at each node. Together, they form a repeatable methodology for making small models competent at tasks they appear to fail.</p>
+  <p>This suggests a broader reframing of the capability scaling question. Before asking "do we need a larger model?", ask: "have we shaped the question to fit the model we have?" The degradation curve is the diagnostic tool. The BRG tree is the structural intervention. The hybrid leaf principle determines which verification method to use at each node. Together, they form a repeatable methodology for making small models competent at tasks they appear to fail.</p>
 
   <div class="remark"><strong>The model never changed. The scaffold changed five times. That is the finding.</strong></div>
 </section>
