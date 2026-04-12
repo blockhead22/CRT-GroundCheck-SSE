@@ -6282,10 +6282,29 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     # factual grounding. If below threshold, gate the response.
     try:
         from personal_agent.fidelity_mirror import check_fidelity
+
+        # Inject gravity topology as a recognized source for grounding.
+        # Without this, responses about belief tension/topology fail the
+        # fidelity check because the gravity map isn't in retrieved memories.
+        _fidelity_mems = list(retrieved_mems) if retrieved_mems else []
+        try:
+            from personal_agent._gravity_singleton import get_gravity_bridge
+            _grav_for_fidelity = get_gravity_bridge()
+            if _grav_for_fidelity is not None:
+                _grav_text = _grav_for_fidelity.prompt_section(max_rooms=10)
+                if _grav_text:
+                    _fidelity_mems.append({
+                        "text": _grav_text,
+                        "trust": 0.9,
+                        "kind": "gravity_topology",
+                    })
+        except Exception:
+            pass
+
         _fidelity = check_fidelity(
             response=final_answer,
             query=effective_message,
-            memories=retrieved_mems if retrieved_mems else [],
+            memories=_fidelity_mems,
         )
         metadata["fidelity_mirror"] = {
             "belief_fidelity": _fidelity.belief_fidelity,

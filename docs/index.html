@@ -18,122 +18,270 @@
 <!-- ===== HERO ===== -->
 <div class="hero">
   <div class="hero-inner">
-    <div class="hero-badge">Technical Narrative / Aeteros Research</div>
-    <h1>The Story of<br><span class="grad">Aeteros CORE</span></h1>
-    <p class="sub">An epistemic governance architecture for AI systems that remember, reason, and account for what they believe</p>
-    <p class="byline">Nick Block &bull; Aeteros &bull; 2026</p>
-    <div class="finding-box">
-      <p><strong>CORE</strong> (Contradiction, Observation, Revision, Epistemics) is the epistemic governance architecture at the heart of Aeteros. It gives AI systems a persistent belief state, tracks contradictions instead of hiding them, and separates what the model believes from what it says. The production system built on CORE includes 820+ persistent memories, 6 governance layers, and 5 autonomous immune agents that enforce epistemic integrity at runtime.</p>
+    <h1 style="font-size:clamp(2.8em,6vw,4.5em);letter-spacing:-0.02em;margin-bottom:0.15em;"><span class="grad">Aeteros</span></h1>
+    <p class="sub" style="font-size:clamp(1em,2vw,1.35em);letter-spacing:0.12em;text-transform:uppercase;font-family:var(--mono);opacity:0.55;margin-bottom:0;">AI driven by meaning.</p>
+
+    <!-- Hero viz: belief/speech divergence monitor -->
+    <div id="belief-speech-viz" style="margin-top:56px;max-width:820px;margin-left:auto;margin-right:auto;position:relative;">
+      <svg id="bs-svg" viewBox="0 0 820 300" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;" aria-hidden="true"></svg>
     </div>
-    <p style="margin-top:14px;font-size:0.72em;font-family:var(--mono);color:var(--hero-sub);letter-spacing:0.3px;max-width:700px;margin-left:auto;margin-right:auto;opacity:0.7;">Note: Some documents still reference "CRT" (the previous working name). CRT&nbsp;=&nbsp;CORE. The architecture is the same.</p>
-    <!-- Hero viz: memory network awakening -->
-    <div id="hero-network" style="margin-top:28px;max-width:640px;margin-left:auto;margin-right:auto;">
-      <svg id="hn-svg" viewBox="0 0 640 200" style="width:100%;height:auto;display:block;"></svg>
-    </div>
+
+    <p class="byline" style="margin-top:36px;opacity:0.35;">Nick Block &bull; 2026</p>
   </div>
-  <div class="scroll-cue">SCROLL TO READ</div>
+  <div class="scroll-cue" style="opacity:0.25;font-size:0.6em;letter-spacing:3px;">&#9660;</div>
 </div>
 
 <script>
 (function() {
-  function buildHeroNetwork() {
+  function buildBeliefSpeechViz() {
     if (!window.gsap) return;
-    var svg = document.getElementById('hn-svg');
+    var svg = document.getElementById('bs-svg');
     if (!svg) return;
     var ns = 'http://www.w3.org/2000/svg';
 
-    // 12 memory nodes with scattered -> organized positions
-    var nodes = [
-      { sx: 50, sy: 160, ex: 80, ey: 60 },
-      { sx: 590, sy: 30, ex: 180, ey: 40 },
-      { sx: 120, sy: 10, ex: 280, ey: 70 },
-      { sx: 500, sy: 180, ex: 380, ey: 50 },
-      { sx: 30, sy: 90, ex: 480, ey: 60 },
-      { sx: 610, sy: 140, ex: 560, ey: 45 },
-      { sx: 300, sy: 190, ex: 130, ey: 140 },
-      { sx: 400, sy: 5, ex: 230, ey: 150 },
-      { sx: 200, sy: 180, ex: 330, ey: 135 },
-      { sx: 560, sy: 80, ex: 430, ey: 145 },
-      { sx: 100, sy: 50, ex: 530, ey: 140 },
-      { sx: 450, sy: 120, ex: 320, ey: 30 }
+    /* ── palette ── */
+    var C = {
+      belief:      '#818cf8',
+      beliefGlow:  'rgba(129,140,248,0.35)',
+      speech:      '#cbd5e1',
+      speechDrift: '#f87171',
+      gapFill:     'rgba(248,113,113,0.06)',
+      gapGlow:     'rgba(248,113,113,0.12)',
+      marker:      'rgba(248,113,113,0.5)',
+      grid:        'rgba(148,163,184,0.04)',
+      scanline:    'rgba(148,163,184,0.018)',
+      labelB:      'rgba(129,140,248,0.9)',
+      labelS:      'rgba(203,213,225,0.8)',
+      labelG:      'rgba(248,113,113,0.9)',
+      labelF:      'rgba(148,163,184,0.3)',
+    };
+
+    /* ── defs: glow filters ── */
+    var defs = document.createElementNS(ns, 'defs');
+
+    // Belief line glow
+    var fB = document.createElementNS(ns, 'filter');
+    fB.setAttribute('id','glow-belief'); fB.setAttribute('x','-20%'); fB.setAttribute('y','-20%');
+    fB.setAttribute('width','140%'); fB.setAttribute('height','140%');
+    var blurB = document.createElementNS(ns, 'feGaussianBlur');
+    blurB.setAttribute('stdDeviation','4'); blurB.setAttribute('result','blur');
+    fB.appendChild(blurB);
+    var mergeB = document.createElementNS(ns, 'feMerge');
+    var mn1 = document.createElementNS(ns, 'feMergeNode'); mn1.setAttribute('in','blur');
+    var mn2 = document.createElementNS(ns, 'feMergeNode'); mn2.setAttribute('in','SourceGraphic');
+    mergeB.appendChild(mn1); mergeB.appendChild(mn2);
+    fB.appendChild(mergeB);
+    defs.appendChild(fB);
+
+    // Gap glow
+    var fG = document.createElementNS(ns, 'filter');
+    fG.setAttribute('id','glow-gap'); fG.setAttribute('x','-10%'); fG.setAttribute('y','-10%');
+    fG.setAttribute('width','120%'); fG.setAttribute('height','120%');
+    var blurG = document.createElementNS(ns, 'feGaussianBlur');
+    blurG.setAttribute('stdDeviation','8'); blurG.setAttribute('result','blur');
+    fG.appendChild(blurG);
+    var mergeG = document.createElementNS(ns, 'feMerge');
+    var gn1 = document.createElementNS(ns, 'feMergeNode'); gn1.setAttribute('in','blur');
+    var gn2 = document.createElementNS(ns, 'feMergeNode'); gn2.setAttribute('in','SourceGraphic');
+    mergeG.appendChild(gn1); mergeG.appendChild(gn2);
+    fG.appendChild(mergeG);
+    defs.appendChild(fG);
+
+    // Speech line gradient: slate → red across divergence zone
+    var grad = document.createElementNS(ns, 'linearGradient');
+    grad.setAttribute('id','speech-grad'); grad.setAttribute('x1','0%'); grad.setAttribute('x2','100%');
+    var s1 = document.createElementNS(ns, 'stop');
+    s1.setAttribute('offset','0%'); s1.setAttribute('stop-color', C.speech);
+    var s2 = document.createElementNS(ns, 'stop');
+    s2.setAttribute('offset','42%'); s2.setAttribute('stop-color', C.speech);
+    var s3 = document.createElementNS(ns, 'stop');
+    s3.setAttribute('offset','60%'); s3.setAttribute('stop-color', C.speechDrift);
+    var s4 = document.createElementNS(ns, 'stop');
+    s4.setAttribute('offset','90%'); s4.setAttribute('stop-color', C.speech);
+    grad.appendChild(s1); grad.appendChild(s2); grad.appendChild(s3); grad.appendChild(s4);
+    defs.appendChild(grad);
+
+    svg.appendChild(defs);
+
+    /* ── helpers ── */
+    function smooth(pts) {
+      var d = 'M ' + pts[0][0] + ',' + pts[0][1];
+      for (var i = 1; i < pts.length; i++) {
+        var p0 = pts[i - 1], p1 = pts[i];
+        var cx = (p0[0] + p1[0]) / 2;
+        d += ' C ' + cx + ',' + p0[1] + ' ' + cx + ',' + p1[1] + ' ' + p1[0] + ',' + p1[1];
+      }
+      return d;
+    }
+
+    function el(tag, attrs) {
+      var e = document.createElementNS(ns, tag);
+      Object.keys(attrs).forEach(function(k) { e.setAttribute(k, attrs[k]); });
+      return e;
+    }
+
+    function txt(x, y, str, color, size, anchor) {
+      return el('text', {
+        x:x, y:y, fill:color, 'font-size':size||'10', 'font-family':'monospace',
+        'letter-spacing':'2', 'text-anchor':anchor||'start'
+      });
+    }
+
+    /* ── waveform data ── */
+    // Belief: alive, organic, stays centered around y=140
+    var bPts = [
+      [15,140],[50,133],[85,142],[120,130],[155,138],[190,128],[225,136],[260,131],
+      [295,139],[330,135],[365,140],[400,137],[435,142],[470,136],[505,140],
+      [540,138],[575,141],[610,137],[645,140],[680,139],[720,140],[770,140],[800,140]
+    ];
+    // Speech: tracks belief exactly, then diverges hard at x≈365
+    var sPts = [
+      [15,140],[50,133],[85,142],[120,130],[155,138],[190,128],[225,136],[260,131],
+      [295,139],[330,135],[365,140],
+      [400,160],[435,185],[470,210],[505,228],[540,230],[575,220],[610,200],
+      [645,180],[680,160],[720,145],[770,140],[800,140]
     ];
 
-    // Edges (after organized positions)
-    var edges = [[0,1],[1,2],[2,3],[3,4],[4,5],[6,7],[7,8],[8,9],[9,10],[0,6],[2,8],[3,11],[11,1],[5,10]];
+    // Divergence index in both arrays: index 10 → [365,140]
+    var divIdx = 10;
 
-    // Draw edges first (behind nodes)
-    var edgeEls = [];
-    edges.forEach(function(e) {
-      var line = document.createElementNS(ns, 'line');
-      line.setAttribute('x1', nodes[e[0]].ex);
-      line.setAttribute('y1', nodes[e[0]].ey);
-      line.setAttribute('x2', nodes[e[1]].ex);
-      line.setAttribute('y2', nodes[e[1]].ey);
-      line.setAttribute('stroke', 'rgba(129,140,248,0.25)');
-      line.setAttribute('stroke-width', '1');
-      svg.appendChild(line);
-      edgeEls.push(line);
-    });
+    // Gap fill path
+    var gapFwd = sPts.slice(divIdx);
+    var gapBwd = bPts.slice(divIdx).reverse();
+    var gapD = smooth(gapFwd) + ' ' + smooth(gapBwd).replace(/^M/, 'L') + ' Z';
 
-    // Governance grid (faint)
-    for (var gx = 80; gx <= 560; gx += 120) {
-      var gl = document.createElementNS(ns, 'line');
-      gl.setAttribute('x1', gx); gl.setAttribute('y1', 20);
-      gl.setAttribute('x2', gx); gl.setAttribute('y2', 170);
-      gl.setAttribute('stroke', 'rgba(99,102,241,0.06)');
-      gl.setAttribute('stroke-width', '1');
-      gl.setAttribute('stroke-dasharray', '4,6');
-      svg.appendChild(gl);
-      gsap.set(gl, { opacity: 0 });
-      gsap.to(gl, { opacity: 1, duration: 1, delay: 3.5 });
+    /* ── background: faint grid + scanlines ── */
+    // Vertical grid lines
+    for (var gx = 50; gx <= 780; gx += 73) {
+      svg.appendChild(el('line', { x1:gx, y1:30, x2:gx, y2:270,
+        stroke:C.grid, 'stroke-width':'1' }));
     }
-    for (var gy = 40; gy <= 160; gy += 50) {
-      var gh = document.createElementNS(ns, 'line');
-      gh.setAttribute('x1', 60); gh.setAttribute('y1', gy);
-      gh.setAttribute('x2', 580); gh.setAttribute('y2', gy);
-      gh.setAttribute('stroke', 'rgba(99,102,241,0.06)');
-      gh.setAttribute('stroke-width', '1');
-      gh.setAttribute('stroke-dasharray', '4,6');
-      svg.appendChild(gh);
-      gsap.set(gh, { opacity: 0 });
-      gsap.to(gh, { opacity: 1, duration: 1, delay: 3.5 });
+    // Horizontal grid lines
+    for (var gy = 60; gy <= 260; gy += 40) {
+      svg.appendChild(el('line', { x1:15, y1:gy, x2:800, y2:gy,
+        stroke:C.grid, 'stroke-width':'1' }));
+    }
+    // Scanlines (CRT effect)
+    for (var sl = 0; sl < 300; sl += 3) {
+      svg.appendChild(el('line', { x1:0, y1:sl, x2:820, y2:sl,
+        stroke:C.scanline, 'stroke-width':'1' }));
     }
 
-    // Draw nodes
-    var colors = ['#818cf8','#34d399','#f472b6','#fbbf24','#c084fc','#60a5fa','#818cf8','#34d399','#f472b6','#fbbf24','#c084fc','#60a5fa'];
-    var circEls = [];
-    nodes.forEach(function(n, i) {
-      var c = document.createElementNS(ns, 'circle');
-      c.setAttribute('cx', n.sx);
-      c.setAttribute('cy', n.sy);
-      c.setAttribute('r', 5);
-      c.setAttribute('fill', colors[i]);
-      c.setAttribute('opacity', '0.7');
-      svg.appendChild(c);
-      circEls.push(c);
-    });
+    /* ── gap fill (with glow) ── */
+    var gapGlowEl = el('path', { d: gapD, fill: C.gapGlow, stroke: 'none', filter: 'url(#glow-gap)' });
+    svg.appendChild(gapGlowEl);
+    var gapFillEl = el('path', { d: gapD, fill: C.gapFill, stroke: 'none' });
+    svg.appendChild(gapFillEl);
 
-    // Animate: scattered -> organized
+    /* ── lines ── */
+    // Belief glow layer (behind)
+    var bGlow = el('path', { d: smooth(bPts), fill:'none', stroke:C.beliefGlow,
+      'stroke-width':'6', filter:'url(#glow-belief)' });
+    svg.appendChild(bGlow);
+
+    // Belief line
+    var bLine = el('path', { d: smooth(bPts), fill:'none', stroke:C.belief, 'stroke-width':'2' });
+    svg.appendChild(bLine);
+
+    // Speech line (gradient stroke)
+    var sLine = el('path', { d: smooth(sPts), fill:'none', stroke:'url(#speech-grad)', 'stroke-width':'2' });
+    svg.appendChild(sLine);
+
+    /* ── divergence marker ── */
+    var divLine = el('line', { x1:365, y1:40, x2:365, y2:260,
+      stroke:C.marker, 'stroke-width':'1', 'stroke-dasharray':'4,6' });
+    svg.appendChild(divLine);
+
+    var divDot = el('circle', { cx:365, cy:140, r:4, fill:C.marker });
+    svg.appendChild(divDot);
+
+    // Pulse ring at divergence point
+    var divRing = el('circle', { cx:365, cy:140, r:4, fill:'none',
+      stroke:C.marker, 'stroke-width':'1.5' });
+    svg.appendChild(divRing);
+
+    /* ── gap measurement arrow at peak (x=540, belief≈138, speech≈230) ── */
+    var arrX = 555;
+    var gapLine = el('line', { x1:arrX, y1:140, x2:arrX, y2:228,
+      stroke:C.marker, 'stroke-width':'1', 'stroke-dasharray':'3,4' });
+    svg.appendChild(gapLine);
+    // Arrow caps
+    svg.appendChild(el('polygon', { points: (arrX-3)+',145 '+(arrX+3)+',145 '+arrX+',139', fill:C.marker }));
+    svg.appendChild(el('polygon', { points: (arrX-3)+',224 '+(arrX+3)+',224 '+arrX+',230', fill:C.marker }));
+
+    /* ── labels ── */
+    var lDrift = txt(375, 36, 'DRIFT DETECTED', C.labelG, '9');
+    lDrift.textContent = 'DRIFT DETECTED';
+    var lBelief = txt(10, 133, 'BELIEF', C.labelB, '10');
+    lBelief.textContent = 'BELIEF';
+    var lSpeech = txt(505, 258, 'SPEECH', C.labelS, '10', 'middle');
+    lSpeech.textContent = 'SPEECH';
+    var lGap = txt(arrX + 10, 190, 'gap: 0.34', C.labelG, '9');
+    lGap.textContent = 'gap: 0.34';
+    var lTime = txt(795, 283, 'time', C.labelF, '8', 'end');
+    lTime.textContent = 'time';
+
+    [lDrift, lBelief, lSpeech, lGap, lTime].forEach(function(t) { svg.appendChild(t); });
+
+    /* ── animate ── */
+    var fadeEls = [gapGlowEl, gapFillEl, divLine, divDot, divRing, gapLine, lDrift, lBelief, lSpeech, lGap, lTime];
+    fadeEls.forEach(function(e) { gsap.set(e, { opacity: 0 }); });
+    // Hide arrow caps
+    var caps = svg.querySelectorAll('polygon');
+    caps.forEach(function(c) { gsap.set(c, { opacity: 0 }); });
+
+    gsap.set(bGlow, { opacity: 0 });
+
+    var bLen = bLine.getTotalLength();
+    var sLen = sLine.getTotalLength();
+    bLine.setAttribute('stroke-dasharray', bLen);
+    bLine.setAttribute('stroke-dashoffset', bLen);
+    sLine.setAttribute('stroke-dasharray', sLen);
+    sLine.setAttribute('stroke-dashoffset', sLen);
+
     var tl = gsap.timeline({ delay: 0.8 });
 
-    // Phase 1: nodes appear (already visible, just pulse)
-    tl.to(circEls, { attr: { r: 7 }, opacity: 1, duration: 0.4, stagger: 0.05, ease: 'back.out(2)' });
+    // Phase 1: lines draw in (3s, slow and deliberate)
+    tl.to(bLine, { attr: { 'stroke-dashoffset': 0 }, duration: 3.2, ease: 'power1.inOut' }, 0);
+    tl.to(sLine, { attr: { 'stroke-dashoffset': 0 }, duration: 3.2, ease: 'power1.inOut' }, 0.3);
 
-    // Phase 2: nodes move to organized positions
-    nodes.forEach(function(n, i) {
-      tl.to(circEls[i], { attr: { cx: n.ex, cy: n.ey }, duration: 1.2, ease: 'power3.inOut' }, 1.2);
-    });
+    // Belief glow fades in as line draws
+    tl.to(bGlow, { opacity: 1, duration: 2.0 }, 0.5);
 
-    // Phase 3: edges fade in
-    gsap.set(edgeEls, { opacity: 0 });
-    tl.to(edgeEls, { opacity: 1, duration: 0.8, stagger: 0.05 }, 2.2);
+    // Belief label appears early
+    tl.to(lBelief, { opacity: 1, duration: 0.5 }, 1.0);
 
-    // Phase 4: nodes settle to final size
-    tl.to(circEls, { attr: { r: 5 }, duration: 0.5, ease: 'power2.inOut' }, 3.0);
+    // Phase 2: divergence marker appears when lines visibly split (~45% through)
+    tl.to(divLine, { opacity: 1, duration: 0.3 }, 1.8);
+    tl.to(divDot, { opacity: 1, duration: 0.2 }, 1.9);
+
+    // Pulse ring expands outward
+    tl.to(divRing, { opacity: 1, duration: 0.1 }, 1.9);
+    tl.to(divRing, { attr: { r: 18 }, opacity: 0, duration: 0.8, ease: 'power2.out' }, 2.0);
+
+    // Drift label
+    tl.to(lDrift, { opacity: 1, duration: 0.4 }, 2.1);
+
+    // Phase 3: gap fills with glow bloom
+    tl.to(gapGlowEl, { opacity: 1, duration: 1.2, ease: 'power1.out' }, 2.3);
+    tl.to(gapFillEl, { opacity: 1, duration: 0.8 }, 2.5);
+
+    // Gap measurement + labels
+    tl.to([gapLine], { opacity: 1, duration: 0.3 }, 2.8);
+    tl.to(caps, { opacity: 1, duration: 0.3 }, 2.9);
+    tl.to([lGap, lSpeech], { opacity: 1, duration: 0.4, stagger: 0.15 }, 3.0);
+    tl.to(lTime, { opacity: 1, duration: 0.3 }, 3.3);
+
+    // Phase 4: belief line breathes (continuous subtle pulse)
+    tl.add(function() {
+      gsap.to(bGlow, {
+        opacity: 0.5, duration: 1.8, ease: 'sine.inOut', repeat: -1, yoyo: true
+      });
+    }, 4.0);
   }
 
-  if (window.gsap) { buildHeroNetwork(); }
-  else { (window.__gsapCallbacks = window.__gsapCallbacks || []).push(buildHeroNetwork); }
+  if (window.gsap) { buildBeliefSpeechViz(); }
+  else { (window.__gsapCallbacks = window.__gsapCallbacks || []).push(buildBeliefSpeechViz); }
 })();
 </script>
 
@@ -165,37 +313,19 @@
 <!-- ============================================================ -->
 <section id="problem">
   <span class="chapter-num">Chapter 1</span>
-  <h2>The Problem</h2>
+  <h2>Every conversation resets. Except this one.</h2>
 
-  <p>Every major AI assistant deployed today has the same structural flaw: it has no memory of what it believes. Each conversation starts from zero. Each response is generated with full confidence and no continuity. The system that told you one thing yesterday will tell you the opposite today and never notice.</p>
+  <p>A user asks their AI assistant about cannabis dosing while navigating an antidepressant transition. The system helps them measure their bowl size, offers harm-reduction guidance, and builds context around their medical situation. 192 days later, the same user returns. The system tells them to quit entirely. It doesn't remember the previous conversation. It doesn't know about the medication. It gives the opposite advice with the same confidence.</p>
 
-  <p>This is an architectural failure with measurable consequences.</p>
-
-  <p>We analyzed <strong>1,275 sessions</strong> across 13 months of real conversation data (59,370 messages, single user). The full measurement methodology and results are in the <a href="contradiction-density.html">contradiction density paper</a>.</p>
-
-  <div class="stat-row">
-    <div class="stat-cell">
-      <div class="stat-value bad">0%</div>
-      <div class="stat-label">Continuity Awareness</div>
-    </div>
-    <div class="stat-cell">
-      <div class="stat-value bad">0.34</div>
-      <div class="stat-label">Mean Consistency</div>
-    </div>
-    <div class="stat-cell">
-      <div class="stat-value neutral">59,370</div>
-      <div class="stat-label">Messages Analyzed</div>
-    </div>
-  </div>
+  <p>Neither session knew about the other.</p>
 
   <div class="quote">
     <p>If a system can't remember what it told you yesterday, it shouldn't be giving you advice today.</p>
   </div>
 
-  <p>The dominant deployment paradigm treats each conversation as independent. RAG adds retrieval, but retrieval is not belief. Finding a relevant document is not the same as knowing what you think about it, how confident you are, whether it conflicts with something else you know, or whether your position has changed over time.</p>
+  <p>This is not a hypothetical. It's a real case from <strong>59,370 messages</strong> across 13 months of conversation data, analyzed in the <a href="contradiction-density.html">contradiction density paper</a>. The contradictions concentrate in exactly the <a href="sensitive-domains.html">domains</a> where inconsistency carries real consequences: health, identity, career, ongoing projects.</p>
 
-  <h3>v2 Validation (April 2026)</h3>
-  <p>A stricter reanalysis with query-intent filtering confirmed that the signal is real but the original magnitude was overstated. Of 40,200 candidate contradiction pairs, <strong>98.9% were filtered out</strong> as topic-boundary noise (pairs where the user asked different questions that happened to fall under the same domain). Of the 453 surviving intent-matched pairs, <strong>47 are genuine contradictions</strong> (10.4%) with the highest average risk score of any category.</p>
+  <p>Every major AI assistant deployed today has this structural flaw. Each conversation starts from zero. Each response is generated with full confidence and no continuity. RAG adds retrieval, but retrieval is not belief. Finding a relevant document is not the same as knowing what you think about it, how confident you are, or whether it conflicts with something you said six months ago.</p>
 
   <div class="stat-row">
     <div class="stat-cell">
@@ -212,11 +342,9 @@
     </div>
   </div>
 
-  <p>Two additional findings sharpen the picture. First, <strong>time is the primary amplifier</strong>: the hard contradiction rate nearly doubles from 7% at short time gaps to 12.4% at 3+ months. The longer a user relies on the system, the worse it gets. Second, <strong>most contradiction is invisible to pairwise comparison</strong>: arc-level analysis across 200 multi-turn conversations found that 93% of stance flips span 3+ turns, meaning no single pair comparison would catch them.</p>
+  <p><strong>Time is the primary amplifier.</strong> The hard contradiction rate nearly doubles from 7% at short time gaps to 12.4% at 3+ months. The longer a user relies on the system, the worse it gets. And 93% of stance flips span 3+ turns, meaning no pairwise comparison catches them. A stricter v2 reanalysis confirmed the signal: of 40,200 candidate pairs, 98.9% were topic-boundary noise, but the 47 genuine contradictions that survived had the highest risk scores of any category.</p>
 
-  <p>Most critically, the contradictions concentrate in <a href="sensitive-domains.html">sensitive domains</a> where inconsistency carries real consequences. The same system taught a user to measure their cannabis bowl size in one session and told them to quit entirely 192 days later, while the user was navigating an antidepressant transition. Neither session knew about the other.</p>
-
-  <p>For any system providing ongoing personal support (health guidance, career advice, project collaboration), statelessness is a structural failure. The user builds trust over time. The system resets that trust every session while maintaining the appearance of continuity.</p>
+  <p>For any system providing ongoing personal support, statelessness is a structural failure. The user builds trust over time. The system resets that trust every session while maintaining the appearance of continuity.</p>
 </section>
 
 <!-- ============================================================ -->

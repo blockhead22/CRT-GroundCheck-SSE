@@ -1200,6 +1200,74 @@ Reason carefully. If unsure, reply with action=none.
         except Exception as e:
             logger.debug(f"[HEARTBEAT] Tension scan skipped: {e}")
 
+        # --- 2a-grav. Gravity Topology Audit ---
+        # Read the gravity map, report rooms under pressure, flag attention targets.
+        # This is the event-driven heartbeat layer — gravity delta was already measured
+        # per-turn in store_memory(). Here we do the periodic audit: rebuild from DB
+        # if stale, report structural state, and identify rooms needing consolidation.
+        try:
+            from personal_agent._gravity_singleton import get_gravity_bridge
+            _gravity = get_gravity_bridge()
+            if _gravity is not None:
+                # Periodic rebuild if stale (every 5 min)
+                if _gravity.should_rebuild():
+                    _gravity.initialize()
+
+                _grav_summary = _gravity.summary()
+                _grav_rooms = _grav_summary.get("rooms", {})
+
+                # Rooms under pressure (wanting to split)
+                _pressure_rooms = [
+                    name for name, data in _grav_rooms.items()
+                    if data.get("tension", 0) > 0.5
+                ]
+
+                # Rooms with held contradictions
+                _contradiction_rooms = [
+                    (name, data["contradictions"])
+                    for name, data in _grav_rooms.items()
+                    if data.get("contradictions", 0) > 3
+                ]
+
+                # Walker attention — where should the system focus?
+                _attention = _gravity.walker_attention()
+
+                # Recent salience events
+                _salience_active = _grav_summary.get("salience", {}).get("triggered", False)
+                _salience_log_len = _grav_summary.get("salience", {}).get("log_length", 0)
+
+                if _pressure_rooms or _contradiction_rooms or _salience_active:
+                    _detail_parts = []
+                    if _pressure_rooms:
+                        _detail_parts.append(f"pressure: {', '.join(_pressure_rooms)}")
+                    if _contradiction_rooms:
+                        _detail_parts.append(
+                            f"contradictions: {', '.join(f'{n}({c})' for n, c in _contradiction_rooms)}"
+                        )
+                    if _attention:
+                        _detail_parts.append(f"attention -> {_attention}")
+                    if _salience_active:
+                        _detail_parts.append("salience active")
+
+                    actions_taken.append({
+                        "action": "gravity_topology",
+                        "detail": f"Gravity: {'; '.join(_detail_parts)}",
+                        "total_rooms": _grav_summary.get("total_rooms", 0),
+                        "total_memories": _grav_summary.get("total_memories", 0),
+                        "pressure_rooms": _pressure_rooms,
+                        "contradiction_rooms": dict(_contradiction_rooms),
+                        "attention": _attention,
+                        "salience_events": _salience_log_len,
+                    })
+                    logger.info(
+                        "[HEARTBEAT] Gravity: %d rooms, pressure=%s, attention=%s",
+                        _grav_summary.get("total_rooms", 0),
+                        _pressure_rooms or "none",
+                        _attention or "stable",
+                    )
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Gravity topology audit skipped: {e}")
+
         # --- 2b. System State Snapshot + Behavioral Triggers ---
         system_snapshot = None
         try:
