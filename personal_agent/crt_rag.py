@@ -1785,17 +1785,29 @@ class CRTEnhancedRAG:
         effective: Dict[str, Dict[str, Any]] = {}
 
         def _put(slot: str, payload: Dict[str, Any], priority: int) -> None:
+            # ── Profile slot resolution ──
+            # Priority order: 3 (thread fact store) > 2 (global profile) > 1 (memory fallback)
+            # Within same priority: highest trust wins, then most recent timestamp.
+            # This ensures the profile shows the most trusted value, not the first found.
             slot_name = self._canonical_user_slot_name(slot)
             if not slot_name:
                 return
             current = effective.get(slot_name)
             current_priority = int((current or {}).get("_priority") or -1)
+            current_trust = float((current or {}).get("trust") or 0.0)
             current_timestamp = float((current or {}).get("timestamp") or 0.0)
+            new_trust = float(payload.get("trust") or 0.0)
             new_timestamp = float(payload.get("timestamp") or 0.0)
-            if current is not None and (current_priority > priority):
+            # Higher priority surface always wins
+            if current is not None and current_priority > priority:
                 return
-            if current is not None and current_priority == priority and current_timestamp > new_timestamp:
-                return
+            # Same priority: highest trust wins
+            if current is not None and current_priority == priority:
+                if current_trust > new_trust:
+                    return
+                # Equal trust: most recent timestamp wins
+                if current_trust == new_trust and current_timestamp > new_timestamp:
+                    return
             effective[slot_name] = {**payload, "_priority": priority}
 
         if self.fact_store is not None:

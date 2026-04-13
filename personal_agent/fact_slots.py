@@ -698,10 +698,44 @@ def is_question(text: str) -> bool:
     ))
 
 
+# ═══════════════════════════════════════════════════════════════════
+# SLOT VALUE VALIDATION
+# After extraction, verify the value makes sense for the slot type.
+# Prevents "coffee" being stored as a favorite_color, etc.
+# ═══════════════════════════════════════════════════════════════════
+
+_KNOWN_COLORS = {
+    "red", "orange", "yellow", "green", "blue", "purple", "violet", "indigo",
+    "pink", "cyan", "magenta", "white", "black", "brown", "gray", "grey",
+    "teal", "navy", "maroon", "burgundy", "crimson", "coral", "salmon",
+    "gold", "silver", "beige", "tan", "olive", "lime", "aqua", "turquoise",
+    "lavender", "mauve", "plum", "charcoal", "ivory", "cream", "rust",
+}
+
+_SLOT_VALIDATORS = {
+    "favorite_color": lambda v: any(c in v.lower().split() for c in _KNOWN_COLORS) or v.lower().strip() in _KNOWN_COLORS,
+    "name": lambda v: len(v.split()) <= 4 and not any(w in v.lower() for w in ["self-employed", "freelance", "not ", "employed"]),
+}
+
+
+def _validate_slot_value(slot: str, value: str) -> bool:
+    """
+    Check if a value makes sense for a given slot type.
+    Returns True if valid, False if the value doesn't belong in this slot.
+    """
+    validator = _SLOT_VALIDATORS.get(slot)
+    if validator is None:
+        return True  # no validator = accept anything
+    try:
+        return validator(value)
+    except Exception:
+        return True  # fail open on validator errors
+
+
 def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     """
     Extract a small set of personal-profile fact slots from free text.
-    
+
     Note: Regex parsing is relatively expensive. Consider caching results
     at the call site if the same text is processed multiple times.
     """
@@ -1548,6 +1582,14 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     if not _EXTRACT_NAMES_FROM_CONVERSATION:
         facts.pop("name", None)
         facts.pop("assistant_name", None)
+
+    # ── Slot value validation ──
+    # Remove any extracted facts where the value doesn't make sense for the slot.
+    # e.g., "coffee" is not a valid color, "Nick not self employed" is not a valid name.
+    invalid_slots = [slot for slot, fact in facts.items() if not _validate_slot_value(slot, fact.normalized or fact.value)]
+    for slot in invalid_slots:
+        logger.info(f"[SLOT_VALIDATE] Rejected {slot}={facts[slot].value!r} - value doesn't match slot type")
+        facts.pop(slot)
 
     return facts
 
