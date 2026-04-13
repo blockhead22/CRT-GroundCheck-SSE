@@ -67,6 +67,88 @@ def _get_drift_assessor():
     return _llm_drift_assessor
 
 
+# ---------------------------------------------------------------------------
+# Tension Type Classification (goal formation layer)
+# ---------------------------------------------------------------------------
+# Lightweight rule-based classifier matching the lab's TensionClassifier.
+# Runs inside record_contradiction() to tag every ledger entry with its
+# tension type: state_change, factual_error, staleness, identity_conflict,
+# or ambivalence. This feeds the goal formation engine.
+
+_STATE_VERBS = {"owns", "has", "uses", "works", "lives", "prefers", "takes",
+                "drives", "runs", "studies", "plays", "exercises",
+                "left", "quit", "freelancing", "self-employed"}
+
+_TRANSITION_DELIBERATIVE = {
+    "thinking about", "considering", "might", "maybe", "should",
+    "contemplating", "wondering if",
+}
+
+_TRANSITION_COMPLETED = {
+    "sold", "left", "quit", "switched", "moved", "stopped",
+    "dropped", "already", "now taking", "now using", "doctor switched",
+}
+
+_IDENTITY_NEGATIVE = {
+    "don't know if", "not sure i", "doubt", "can't", "not cut out",
+    "not good enough", "imposter", "second guess",
+}
+
+_IDENTITY_POSITIVE = {
+    "capable", "built", "created", "proven", "achieved", "skilled",
+}
+
+
+def _classify_tension_type(
+    old_text: str,
+    new_text: str,
+    contradiction_type: Optional[str] = None,
+    drift_mean: float = 0.0,
+    confidence_delta: float = 0.0,
+) -> Tuple[Optional[str], float]:
+    """Classify the tension type between two contradicting texts.
+
+    Returns (tension_type, magnitude) or (None, 0.0).
+    """
+    old_lower = old_text.lower()
+    new_lower = new_text.lower()
+
+    # 1. Identity conflict
+    old_neg = any(m in old_lower for m in _IDENTITY_NEGATIVE)
+    old_pos = any(m in old_lower for m in _IDENTITY_POSITIVE)
+    new_neg = any(m in new_lower for m in _IDENTITY_NEGATIVE)
+    new_pos = any(m in new_lower for m in _IDENTITY_POSITIVE)
+    if (old_pos and new_neg) or (old_neg and new_pos):
+        magnitude = min(1.0, abs(confidence_delta) * 1.2 + 0.3)
+        return ("identity_conflict", magnitude)
+
+    # 2. State change
+    has_state = any(v in old_lower for v in _STATE_VERBS)
+    is_delib = any(t in new_lower for t in _TRANSITION_DELIBERATIVE)
+    is_completed = any(t in new_lower for t in _TRANSITION_COMPLETED)
+    if has_state and (is_delib or is_completed):
+        magnitude = min(1.0, drift_mean * 0.8 + 0.2)
+        return ("state_change", magnitude)
+
+    # 3. Check contradiction_type from existing classification
+    if contradiction_type == "temporal":
+        return ("staleness", min(0.7, drift_mean + 0.2))
+
+    # 4. Factual error (default for CONFLICT type with high drift)
+    if contradiction_type == "conflict" and drift_mean > 0.3:
+        return ("factual_error", min(1.0, drift_mean))
+
+    # 5. Ambivalence (low drift, similar confidence)
+    if drift_mean < 0.2 and abs(confidence_delta) < 0.15:
+        return ("ambivalence", 0.3)
+
+    # Fallback: use drift as generic tension
+    if drift_mean > 0.2:
+        return ("factual_error", min(1.0, drift_mean))
+
+    return (None, 0.0)
+
+
 class ContradictionStatus:
     """Status of contradiction resolution."""
     OPEN = "open"              # Unresolved tension
@@ -113,6 +195,11 @@ class ContradictionEntry:
     # Slot tracking - which fact slots does this contradiction affect?
     affects_slots: Optional[str] = None  # Comma-separated slot names (e.g., "employer,location")
     
+    # Tension type classification (goal formation layer)
+    # state_change | factual_error | staleness | identity_conflict | ambivalence
+    tension_type: Optional[str] = None
+    tension_magnitude: float = 0.0  # 0.0-1.0, severity of the tension
+
     # Disposition classification (Phase G1: resolvable/held/evolving/contextual)
     disposition: Optional[str] = None           # resolvable | held | evolving | contextual | unknown
     disposition_confidence: float = 0.0         # classifier confidence 0-1
@@ -816,6 +903,26 @@ class ContradictionLedger:
                 except Exception as _disp_err:
                     _logger.debug("[DISPOSITION] Classification failed (non-fatal): %s", _disp_err)
 
+        # --- Tension type classification (goal formation layer) ---
+        _tension_type = None
+        _tension_magnitude = 0.0
+        try:
+            _tension_type, _tension_magnitude = _classify_tension_type(
+                old_text=old_text or "",
+                new_text=new_text or "",
+                contradiction_type=contradiction_type,
+                drift_mean=drift_mean,
+                confidence_delta=confidence_delta,
+            )
+            if _tension_type:
+                _logger.info(
+                    "[TENSION_TYPE] %s (magnitude=%.2f) for %s vs %s",
+                    _tension_type, _tension_magnitude,
+                    (old_text or "")[:40], (new_text or "")[:40],
+                )
+        except Exception as _tt_err:
+            _logger.debug("[TENSION_TYPE] Classification failed (non-fatal): %s", _tt_err)
+
         entry = ContradictionEntry(
             ledger_id=f"contra_{int(time.time() * 1000)}_{hash(old_memory_id + new_memory_id) % 10000}",
             timestamp=time.time(),
@@ -826,6 +933,8 @@ class ContradictionLedger:
             confidence_delta=confidence_delta,
             status=ContradictionStatus.OPEN,
             contradiction_type=contradiction_type,
+            tension_type=_tension_type,
+            tension_magnitude=round(_tension_magnitude, 3),
             affects_slots=affects_slots_str,
             disposition=_disp_result.disposition.value if _disp_result else None,
             disposition_confidence=_disp_result.confidence if _disp_result else 0.0,
@@ -845,6 +954,11 @@ class ContradictionLedger:
             metadata['suggested_policy'] = suggested_policy
         if _disp_result:
             metadata['disposition_rule_trace'] = _disp_result.rule_trace
+
+        # Include tension_type in metadata for storage
+        if _tension_type:
+            metadata['tension_type'] = _tension_type
+            metadata['tension_magnitude'] = round(_tension_magnitude, 3)
 
         cursor.execute("""
             INSERT INTO contradictions

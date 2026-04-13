@@ -143,13 +143,18 @@ def _build_fresh(thread_id: str, memory_db_path: str) -> str:
     from .crt_memory import sanitize_memory_for_prompt as _sanitize_mem
 
     top_memories.sort(key=lambda m: getattr(m, "trust", 0), reverse=True)
-    lines = ["", "## What I know about you (sorted by trust, highest first):"]
+    lines = [
+        "",
+        "## Facts about the user Nick (sorted by trust, highest first):",
+        "These are things NICK told you or facts about Nick. They are HIS beliefs and experiences, not yours.",
+        "Reference them as 'you said' or 'you mentioned' — never as 'I believe' or 'I expressed'.",
+    ]
     for m in top_memories:
         text = _sanitize_mem(m.text.strip()[:200])
         if not text:
             continue
         trust = getattr(m, "trust", 0)
-        lines.append(f"- [trust:{trust:.2f}] {text}")
+        lines.append(f"- [trust:{trust:.2f}] Nick: {text}")
 
     if provisional:
         lines.append("")

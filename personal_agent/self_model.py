@@ -221,6 +221,70 @@ class SelfModel:
             import uuid
             conn = _get_db_connection(str(mem_db))
 
+            # --- Self-model tension check ---
+            # Before overwriting, check if old and new values conflict.
+            # This gives the system awareness of its own belief changes.
+            try:
+                _old_rows = conn.execute(
+                    """
+                    SELECT memory_id, text, trust FROM memories
+                    WHERE kind = 'self_model'
+                      AND text LIKE ?
+                      AND (deprecated IS NULL OR deprecated = 0)
+                    ORDER BY timestamp DESC LIMIT 1
+                    """,
+                    (f"[self_model:{slot}]%",),
+                ).fetchall()
+                if _old_rows:
+                    _old_id = _old_rows[0][0]
+                    _old_text = _old_rows[0][1]
+                    _old_trust = _old_rows[0][2] or 0.5
+                    # Only check tension if values actually differ
+                    _old_value = _old_text.split("]", 1)[1].strip() if "]" in _old_text else _old_text
+                    _new_value = value.strip()
+                    if _old_value != _new_value:
+                        from .crt_ledger import _classify_tension_type
+                        _tt, _tm = _classify_tension_type(
+                            old_text=_old_text,
+                            new_text=text,
+                            contradiction_type="revision",
+                            drift_mean=0.3,
+                            confidence_delta=abs(trust - _old_trust),
+                        )
+                        if _tt:
+                            logger.info(
+                                "[SELF_MODEL] Internal tension: slot=%s type=%s magnitude=%.2f "
+                                "old='%s' new='%s'",
+                                slot, _tt, _tm, _old_value[:40], _new_value[:40],
+                            )
+                            # Record to ledger if available
+                            try:
+                                from .crt_ledger import ContradictionLedger
+                                _ledger_path = str(mem_db).replace("crt_memory", "crt_ledger")
+                                if Path(_ledger_path).exists():
+                                    _ledger = ContradictionLedger(db_path=_ledger_path)
+                                    _new_id = str(uuid.uuid4())
+                                    _ledger.record_contradiction(
+                                        old_memory_id=_old_id,
+                                        new_memory_id=_new_id,
+                                        drift_mean=0.3,
+                                        confidence_delta=abs(trust - _old_trust),
+                                        old_text=_old_text,
+                                        new_text=text,
+                                        contradiction_type="revision",
+                                        summary=f"Self-model slot '{slot}' changed: "
+                                                f"'{_old_value[:50]}' → '{_new_value[:50]}'",
+                                        thread_id=thread_id,
+                                    )
+                                    logger.info(
+                                        "[SELF_MODEL] Recorded self-model contradiction to ledger: %s",
+                                        slot,
+                                    )
+                            except Exception as _ledger_err:
+                                logger.debug("[SELF_MODEL] Ledger write skipped: %s", _ledger_err)
+            except Exception as _tension_err:
+                logger.debug("[SELF_MODEL] Tension check skipped: %s", _tension_err)
+
             # Soft-deprecate any existing slot memories
             conn.execute(
                 """

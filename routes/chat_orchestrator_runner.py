@@ -641,7 +641,46 @@ def run_orchestrator(
 
             auto_followup = None
             if pending_followups and not phase_complete and continuation_count < _MAX_AUTO_CONTINUATIONS:
-                auto_followup = pending_followups[0]
+                # Drift gate: only auto-continue if the last run wasn't drifting.
+                # If alignment dropped or the run had drift events, stop pulling.
+                # First sign of drift = stop. Don't compound incoherence.
+                _should_continue = True
+                try:
+                    # Check last run's drift count and alignment
+                    _last_run_drift = 0
+                    _last_run_alignment = 1.0
+                    try:
+                        _rl_conn2 = __import__("sqlite3").connect(
+                            str(_rl_db_path) if '_rl_db_path' in dir() else "personal_agent/agent_run_log.db",
+                            timeout=5.0,
+                        )
+                        _rl_row2 = _rl_conn2.execute(
+                            "SELECT drift_count, confidence FROM agent_runs ORDER BY timestamp DESC LIMIT 1"
+                        ).fetchone()
+                        _rl_conn2.close()
+                        if _rl_row2:
+                            _last_run_drift = int(_rl_row2[0] or 0)
+                            _last_run_alignment = float(_rl_row2[1] or 1.0)
+                    except Exception:
+                        pass
+
+                    if _last_run_drift > 0:
+                        _should_continue = False
+                        runtime.safe_print(
+                            f"[ORCHESTRATOR] Drift gate: {_last_run_drift} drift events in last run — "
+                            f"suppressing auto-continuation"
+                        )
+                    elif _last_run_alignment < 0.4:
+                        _should_continue = False
+                        runtime.safe_print(
+                            f"[ORCHESTRATOR] Alignment gate: {_last_run_alignment:.2f} < 0.4 — "
+                            f"suppressing auto-continuation"
+                        )
+                except Exception as _dg_err:
+                    runtime.safe_print(f"[ORCHESTRATOR] Drift gate check failed (non-fatal): {_dg_err}")
+
+                if _should_continue:
+                    auto_followup = pending_followups[0]
 
             if auto_followup:
                 continuation_count += 1

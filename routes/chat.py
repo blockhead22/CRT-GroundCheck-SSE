@@ -4295,14 +4295,23 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 _pre_gen_belief = min(0.85, 0.3 + 0.05 * len(_valid_mems) + _avg_trust * 0.2)
         result["pre_gen_belief"] = round(_pre_gen_belief, 3)
 
-        # ── Adaptive depth: smooth token budget from belief confidence ──
-        # Replaces the old cliff-based gating (< 0.4 → 150, < 0.55 → 500, else 4096)
-        # with a smooth power-law curve. The ** 0.7 exponent is generous in the
-        # mid-range (0.4-0.7) where most queries land, avoiding massive cliffs.
-        # belief 0.0 → 100, ~0.3 → 200, ~0.5 → 800, ~0.7 → 2000, 0.9+ → 4096
+        # ── Adaptive depth: gravity-aware token budget ──
+        # Base: smooth power-law curve from belief confidence.
+        # Modifier: memory density (more grounded memories = more room to elaborate).
+        # Dense room + high trust = go deep. Sparse room = cut short.
         _MIN_TOKENS = 100
         _MAX_TOKENS = 4096
-        _confidence_max_tokens = int(_MIN_TOKENS + (_MAX_TOKENS - _MIN_TOKENS) * min(1.0, _pre_gen_belief ** 0.7))
+        _base_tokens = int(_MIN_TOKENS + (_MAX_TOKENS - _MIN_TOKENS) * min(1.0, _pre_gen_belief ** 0.7))
+
+        # Memory density bonus: scale depth by how many high-trust memories ground this response
+        _mem_count = len(result.get("retrieved_memories") or result.get("prompt_memories") or [])
+        _high_trust_mems = sum(
+            1 for m in (result.get("retrieved_memories") or result.get("prompt_memories") or [])
+            if isinstance(m, dict) and (m.get("trust") or 0) > 0.7
+        )
+        # 0 memories = no bonus. 5+ high-trust = up to 40% more tokens.
+        _density_multiplier = 1.0 + min(0.4, _high_trust_mems * 0.08)
+        _confidence_max_tokens = min(_MAX_TOKENS, int(_base_tokens * _density_multiplier))
         _confidence_gate_active = _pre_gen_belief < 0.35  # only hedge below 0.35
         _confidence_hedge = ""
         if _confidence_gate_active:
@@ -4533,14 +4542,17 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 # Retrieved memories with trust scores
                 if _pc_memories:
                     from personal_agent.crt_memory import sanitize_memory_for_prompt as _sanitize_mem
-                    _mem_lines = ["Relevant memories about the user:"]
+                    _mem_lines = [
+                        "Facts about the user Nick (these are HIS words and experiences, not yours):",
+                        "When referencing these, say 'you said' or 'you mentioned' — never 'I believe' or 'I expressed'.",
+                    ]
                     for _m in (list(_pc_memories) if isinstance(_pc_memories, list) else [])[:10]:
                         _mt = (_m.get("text") or "").strip()
                         _mt = _sanitize_mem(_mt)
                         _mtr = _m.get("trust")
                         if _mt:
                             _trust_tag = f" [trust={_mtr:.2f}]" if _mtr is not None else ""
-                            _mem_lines.append(f"- {_mt[:250]}{_trust_tag}")
+                            _mem_lines.append(f"- Nick: {_mt[:250]}{_trust_tag}")
                     if len(_mem_lines) > 1:
                         _dynamic_parts.append("\n".join(_mem_lines))
 
@@ -5590,6 +5602,30 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             expansion_reason = None
 
     final_answer = base_answer
+
+    # Strip model-generated greeting prefix if the model echoed the system greeting
+    # (3B models sometimes reproduce "Hey! I'm Aether. What's on your mind?" from context)
+    _GREETING_PATTERNS = [
+        "Hey! I'm Aether. What's on your mind?",
+        "Hey! I'm Aether.",
+        "Hey! What's on your mind?",
+    ]
+    for _gp in _GREETING_PATTERNS:
+        if final_answer.startswith(_gp):
+            final_answer = final_answer[len(_gp):].lstrip("\n").lstrip()
+            _safe_print(f"[GREETING_STRIP] Removed model-echoed greeting: {_gp[:40]}")
+            break
+
+    # Strip hallucinated source citations (3B models invent fake references)
+    import re as _re_strip
+    final_answer = _re_strip.sub(
+        r'\n*(?:Source|Sources|References?):\s*\(.*?\)\s*$', '', final_answer, flags=_re_strip.DOTALL
+    ).rstrip()
+    # Also strip "Source: (This explanation is based on...)" patterns
+    final_answer = _re_strip.sub(
+        r'\n*(?:Source|Sources|References?):\s*$', '', final_answer, flags=_re_strip.MULTILINE
+    ).rstrip()
+
     if greeting_text:
         final_answer = f"{greeting_text}\n\n{final_answer}"
 
@@ -7334,14 +7370,82 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
 
                     _safe_print(f"[CORRECTION] Found {len(_corr_candidates)} candidate memories (from {len(_corr_results)} total)")
 
+                    # --- Slot-scoped demotion (Bug #5 fix) ---
+                    # Extract the fact slot from the correction to scope demotions.
+                    # "I lied, coffee is my favorite drink" → slot = favorite_drink
+                    # Only demote memories that share the same slot OR have high
+                    # textual overlap with the correction subject.
+                    _corr_slot = None
+                    _corr_subject_words = set()
+                    try:
+                        _corr_lower = _corr_query.lower()
+                        # Extract slot-like patterns
+                        _SLOT_PATTERNS = {
+                            "favorite_color": r"fav(?:ou?rite)?\s+color",
+                            "favorite_drink": r"fav(?:ou?rite)?\s+drink|coffee|tea|juice",
+                            "favorite_food": r"fav(?:ou?rite)?\s+food",
+                            "employer": r"work(?:s?|ed|ing)?\s+(?:at|for)|employer|job|walmart|freelanc",
+                            "location": r"live[sd]?\s+in|location|address|from\s+",
+                            "name": r"(?:my\s+)?name\s+is|call\s+me",
+                            "pet": r"(?:my\s+)?(?:dog|cat|pet|fish)\s+",
+                        }
+                        for slot_name, pattern in _SLOT_PATTERNS.items():
+                            if re.search(pattern, _corr_lower):
+                                _corr_slot = slot_name
+                                break
+
+                        # Extract content words for subject matching
+                        _stopwords = {"i", "my", "is", "a", "the", "its", "favorite", "favourite",
+                                      "lied", "actually", "really", "not", "never", "liked",
+                                      "drink", "color", "food", "am", "was", "dont", "don't"}
+                        _corr_subject_words = {
+                            w for w in re.findall(r'\b\w+\b', _corr_lower)
+                            if w not in _stopwords and len(w) > 2
+                        }
+
+                        _safe_print(f"[CORRECTION] Detected slot: {_corr_slot}, subject words: {_corr_subject_words}")
+                    except Exception:
+                        pass
+
                     _demoted_count = 0
                     _demoted_texts = []
+                    _skipped_texts = []
                     _CORRECTION_TRUST = 0.15  # Target trust for corrected memories
 
-                    for _c_mem, _c_score in _corr_candidates[:5]:  # Cap at 5 demotions
+                    for _c_mem, _c_score in _corr_candidates[:10]:  # Check more, demote fewer
                         _old_trust = float(_c_mem.trust)
                         if _old_trust <= _CORRECTION_TRUST:
                             continue  # Already low, skip
+
+                        # Slot-scope check: only demote if memory is about the same slot
+                        _mem_lower = (_c_mem.text or "").lower()
+                        _should_demote = False
+
+                        if _corr_slot:
+                            # Check if memory matches the correction slot
+                            _slot_pattern = _SLOT_PATTERNS.get(_corr_slot, "")
+                            if _slot_pattern and re.search(_slot_pattern, _mem_lower):
+                                _should_demote = True
+                                _safe_print(f"[CORRECTION] Slot match ({_corr_slot}): {_c_mem.text[:50]}")
+                            else:
+                                # Check for subject word overlap (e.g., "coffee" in both)
+                                _mem_words = set(re.findall(r'\b\w+\b', _mem_lower))
+                                _overlap = _corr_subject_words & _mem_words
+                                if len(_overlap) >= 1 and any(len(w) > 3 for w in _overlap):
+                                    _should_demote = True
+                                    _safe_print(f"[CORRECTION] Subject overlap ({_overlap}): {_c_mem.text[:50]}")
+                        else:
+                            # No slot detected — fall back to high similarity threshold
+                            if _c_score > 0.5:
+                                _should_demote = True
+
+                        if not _should_demote:
+                            _skipped_texts.append(f"  SKIPPED (no slot match): {_c_mem.text[:60]}")
+                            _safe_print(f"[CORRECTION] SKIPPED (no slot match, sim={_c_score:.3f}): {_c_mem.text[:60]}")
+                            continue
+
+                        if _demoted_count >= 5:
+                            break  # Cap at 5 demotions
 
                         _corr_mem._update_memory_trust(_c_mem.memory_id, _CORRECTION_TRUST)
                         _corr_mem.record_memory_event(

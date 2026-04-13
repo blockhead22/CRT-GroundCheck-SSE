@@ -250,6 +250,55 @@ class HeartbeatLLMExecutor:
             logger.debug(f"[HEARTBEAT] Error getting recent messages (fallback): {e}")
             return []
     
+    def _is_user_in_productive_flow(self, thread_id: str) -> bool:
+        """Check if user appears to be in productive flow state.
+
+        Flow detection: high message density in recent window + recency.
+        Also checks for chronic condition context to calibrate fatigue signals.
+
+        When flow is detected, proactive messages (curiosity pulse, news) are
+        suppressed to avoid interrupting the user's productive state.
+        """
+        try:
+            recent_msgs = self._get_recent_messages(thread_id, limit=15)
+            if len(recent_msgs) < 3:
+                return False
+
+            # Get timestamps from user messages only
+            user_timestamps = [
+                m.get("timestamp", 0) for m in recent_msgs
+                if m.get("role") == "user" and m.get("timestamp", 0) > 0
+            ]
+            if len(user_timestamps) < 3:
+                return False
+
+            # Check recency: most recent message within last 10 minutes
+            now = time.time()
+            last_msg_age = now - max(user_timestamps)
+            if last_msg_age > 600:  # 10 minutes
+                return False
+
+            # Message density: messages per minute over the window
+            time_span = max(user_timestamps) - min(user_timestamps)
+            if time_span <= 0:
+                return False
+
+            msgs_per_min = len(user_timestamps) / (time_span / 60)
+
+            # Flow threshold: >0.5 messages/min = active conversation
+            if msgs_per_min > 0.5:
+                logger.info(
+                    "[HEARTBEAT] Flow state detected: %.1f msgs/min, "
+                    "last message %ds ago — suppressing proactive output",
+                    msgs_per_min, int(last_msg_age),
+                )
+                return True
+
+            return False
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Flow detection failed (non-fatal): {e}")
+            return False
+
     def _get_open_contradictions(self, thread_id: str, limit: int = 5) -> List[Dict[str, Any]]:
         """Get open contradictions from Ledger DB."""
         ledger_path = self._resolve_ledger_db_path(thread_id)
@@ -1503,28 +1552,44 @@ Reason carefully. If unsure, reply with action=none.
         except Exception as e:
             logger.debug(f"[HEARTBEAT] Memory audit skipped: {e}")
 
-        # --- 4. Curiosity pulse (personality + reflection guided) ---
+        # --- Flow protection gate ---
+        # Suppress proactive messages when user is actively working.
+        # Chronic fatigue + flow state = don't nag about rest.
+        # This is the "don't tell Nick to sleep when he's having a breakthrough" rule.
+        _in_flow = False
         try:
-            curiosity_actions = self._run_curiosity_pulse(
-                thread_id,
-                snapshot,
-                config or {},
-                dry_run=dry_run,
-            )
-            if curiosity_actions:
-                actions_taken.extend(curiosity_actions)
-                logger.info(f"[HEARTBEAT] Curiosity pulse emitted ({len(curiosity_actions)})")
-        except Exception as e:
-            logger.debug(f"[HEARTBEAT] Curiosity pulse skipped: {e}")
+            _in_flow = self._is_user_in_productive_flow(thread_id)
+        except Exception:
+            pass
+
+        # --- 4. Curiosity pulse (personality + reflection guided) ---
+        if _in_flow:
+            logger.info("[HEARTBEAT] Flow protection: suppressing curiosity pulse")
+        else:
+            try:
+                curiosity_actions = self._run_curiosity_pulse(
+                    thread_id,
+                    snapshot,
+                    config or {},
+                    dry_run=dry_run,
+                )
+                if curiosity_actions:
+                    actions_taken.extend(curiosity_actions)
+                    logger.info(f"[HEARTBEAT] Curiosity pulse emitted ({len(curiosity_actions)})")
+            except Exception as e:
+                logger.debug(f"[HEARTBEAT] Curiosity pulse skipped: {e}")
 
         # --- 5. Optional news monitoring ---
-        try:
-            news_actions = self._run_news_monitoring(thread_id, config or {}, dry_run=dry_run)
-            if news_actions:
-                actions_taken.extend(news_actions)
-                logger.info(f"[HEARTBEAT] News monitor posted {len(news_actions)} digest update(s)")
-        except Exception as e:
-            logger.debug(f"[HEARTBEAT] News monitor skipped: {e}")
+        if _in_flow:
+            logger.info("[HEARTBEAT] Flow protection: suppressing news monitoring")
+        else:
+            try:
+                news_actions = self._run_news_monitoring(thread_id, config or {}, dry_run=dry_run)
+                if news_actions:
+                    actions_taken.extend(news_actions)
+                    logger.info(f"[HEARTBEAT] News monitor posted {len(news_actions)} digest update(s)")
+            except Exception as e:
+                logger.debug(f"[HEARTBEAT] News monitor skipped: {e}")
 
         # --- 6. Respond to mentions (existing behavior) ---
         try:

@@ -413,12 +413,21 @@ def build_belief_context(objective: str, memory_system, ledger=None, *, tier: in
                 f'- "{mem.text[:200]}" '
                 f'[trust={mem.trust:.2f}, {mem.kind}, {authority}{contra_tag}]'
             )
-        sections.append("[User Identity — established facts]:\n" + "\n".join(lines))
+        sections.append(
+            "[Facts about the user Nick — these are HIS statements and experiences, not yours]:\n"
+            + "\n".join(lines)
+        )
 
     if tier < 2:
         if not sections:
             return ""
-        return "BELIEF STATE (grounded from CRT memory):\n\n" + "\n\n".join(sections)
+        return (
+        "BELIEF STATE (grounded from CRT memory):\n"
+        "IMPORTANT: These are facts about and statements by the USER (Nick). "
+        "They are not YOUR beliefs or experiences. When referencing them, "
+        "use 'you said', 'you mentioned', 'Nick believes' — never 'I said', 'I believe', 'I expressed'.\n\n"
+        + "\n\n".join(sections)
+    )
 
     # --- Tier 2: Query-relevant memories ---
     try:
@@ -441,7 +450,7 @@ def build_belief_context(objective: str, memory_system, ledger=None, *, tier: in
                 f'[trust={mem.trust:.2f}, {mem.kind}, {authority}, score={score:.3f}{contra_tag}]'
             )
         if lines:
-            sections.append("[Relevant to this query]:\n" + "\n".join(lines))
+            sections.append("[Nick's memories relevant to this query — attribute to Nick, not yourself]:\n" + "\n".join(lines))
 
     # --- Tier 2b: Open contradictions from ledger ---
     if ledger:
@@ -464,7 +473,13 @@ def build_belief_context(objective: str, memory_system, ledger=None, *, tier: in
 
     if not sections:
         return ""
-    return "BELIEF STATE (grounded from CRT memory):\n\n" + "\n\n".join(sections)
+    return (
+        "BELIEF STATE (grounded from CRT memory):\n"
+        "IMPORTANT: These are facts about and statements by the USER (Nick). "
+        "They are not YOUR beliefs or experiences. When referencing them, "
+        "use 'you said', 'you mentioned', 'Nick believes' — never 'I said', 'I believe', 'I expressed'.\n\n"
+        + "\n\n".join(sections)
+    )
 
 
 @dataclass
@@ -523,7 +538,7 @@ Available actions:
 - {"action": "tool_call", "tool": "diff_file", "args": {"path": "file.py", "ref": "HEAD~1"}, "reasoning": "why"}
 - {"action": "tool_call", "tool": "image_read", "args": {"path": "screenshot.png", "prompt": "Describe what you see"}, "reasoning": "why"}
 - {"action": "tool_call", "tool": "plan_create", "args": {"title": "Plan name", "steps": ["Step 1", "Step 2"]}, "reasoning": "why"}
-- {"action": "tool_call", "tool": "introspect", "args": {"aspect": "routing_weights|execution_beliefs|contradiction_density|epistemic_posture|all"}, "reasoning": "why"}
+- {"action": "tool_call", "tool": "introspect", "args": {"aspect": "all"}, "reasoning": "why"} — Valid aspects: "all", "routing_weights", "execution_beliefs", "contradiction_density", "epistemic_posture". Use "all" to get everything. Can combine with | (e.g., "routing_weights|execution_beliefs").
 - {"action": "tool_call", "tool": "gpt_log_search", "args": {"query": "search terms", "top_k": 10, "role": "user|assistant"}, "reasoning": "why"} — Search Nick's full ChatGPT history (57K+ messages). Semantic search. Use when user references past GPT conversations or wants to find something discussed before.
 - {"action": "tool_call", "tool": "gpt_log_context", "args": {"msg_id": "id_from_search", "window": 5}, "reasoning": "why"} — Get full conversation thread around a GPT log search result.
 - {"action": "tool_call", "tool": "gpt_log_promote", "args": {"msg_id": "id_to_promote"}, "reasoning": "why"} — Promote a GPT log message into CRT memory (low trust, external source).
@@ -1182,9 +1197,14 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
 
         elif tool_name == "introspect":
             aspect = args.get("aspect", "all")
+            # Handle piped aspect strings (e.g., "routing_weights|execution_beliefs|all")
+            # by splitting on | and checking each. If any part is "all", show everything.
+            _aspect_parts = set(a.strip() for a in aspect.split("|") if a.strip())
+            if "all" in _aspect_parts or not _aspect_parts:
+                _aspect_parts = {"routing_weights", "execution_beliefs", "contradiction_density", "epistemic_posture"}
             sections = []
 
-            if aspect in ("routing_weights", "all"):
+            if "routing_weights" in _aspect_parts:
                 try:
                     from personal_agent.routing_beliefs import _get_db as _rb_get_db
                     db = _rb_get_db()
@@ -1199,7 +1219,7 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
                 except Exception as e:
                     sections.append(f"[routing_weights error: {e}]")
 
-            if aspect in ("execution_beliefs", "all"):
+            if "execution_beliefs" in _aspect_parts:
                 try:
                     from personal_agent.execution_beliefs import get_execution_model
                     em = get_execution_model()
@@ -1215,7 +1235,7 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
                 except Exception as e:
                     sections.append(f"[execution_beliefs error: {e}]")
 
-            if aspect in ("contradiction_density", "all"):
+            if "contradiction_density" in _aspect_parts:
                 try:
                     from personal_agent.routing_beliefs import _get_db as _rb_get_db2
                     db2 = _rb_get_db2()
@@ -1240,7 +1260,7 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
                 except Exception as e:
                     sections.append(f"[contradiction_density error: {e}]")
 
-            if aspect in ("epistemic_posture", "all"):
+            if "epistemic_posture" in _aspect_parts:
                 try:
                     from personal_agent.execution_beliefs import get_execution_model, _classify_posture, _is_philosophical_run
                     import sqlite3
@@ -1291,13 +1311,18 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
                     hits = store.search(query, top_k=top_k, role_filter=role)
                     if hits:
                         lines = []
-                        for r in hits:
+                        for r in hits[:5]:  # Cap at 5 results for 3B model context
                             dt = _dt.datetime.fromtimestamp(r.timestamp) if r.timestamp else None
                             ds = dt.strftime("%Y-%m-%d") if dt else "?"
+                            # Truncate text and strip any embedded error messages
+                            _text = r.text[:250].replace("404 error", "").strip()
                             lines.append(
-                                f"[{r.role}] score={r.score:.3f} | {ds} | conv=\"{r.conv_title}\" | msg_id={r.msg_id}\n  {r.text[:400]}"
+                                f"[{r.role}] score={r.score:.3f} | {ds} | conv=\"{r.conv_title}\" | msg_id={r.msg_id}\n  Nick said: {_text}"
                             )
-                        result["content"] = "\n\n".join(lines)
+                        result["content"] = (
+                            "GPT log search results (these are Nick's past conversations, not yours):\n\n"
+                            + "\n\n".join(lines)
+                        )
                     else:
                         result["content"] = "No matching GPT log messages found."
                 except Exception as _gls_err:
@@ -1322,8 +1347,14 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
                             dt = _dt2.datetime.fromtimestamp(m.timestamp) if m.timestamp else None
                             ts = dt.strftime("%H:%M:%S") if dt else "?"
                             marker = " <<<" if m.msg_id == msg_id else ""
-                            lines.append(f"[{m.role} {ts}]{marker}\n{m.text[:600]}")
-                        result["content"] = "\n\n".join(lines)
+                            # Truncate and clean text to prevent 3B model confusion
+                            _text = m.text[:300].replace("404 error", "").strip()
+                            _speaker = "Nick" if m.role == "user" else "AI"
+                            lines.append(f"[{_speaker} {ts}]{marker}\n{_text}")
+                        result["content"] = (
+                            "Conversation thread from Nick's past chat history:\n\n"
+                            + "\n\n".join(lines)
+                        )
                     else:
                         result["content"] = "Message not found."
                         result["status"] = "error"
@@ -1946,6 +1977,52 @@ class Orchestrator:
             elif action == "tool_call":
                 tool = decision.get("tool", "")
                 args = decision.get("args", {})
+
+                # ── Coherence guard: detect identical tool calls ──
+                # Same architecture as agent_tool_loop coherence guard.
+                # If the brain calls the same tool with same args twice,
+                # or gets empty results twice, force a respond.
+                _tool_key = f"{tool}:{json.dumps(args, sort_keys=True, default=str)}"
+                _identical_count = sum(
+                    1 for s in run_log.steps
+                    if s.action == "tool_call" and s.tool == tool
+                    and json.dumps(s.args or {}, sort_keys=True, default=str) == json.dumps(args, sort_keys=True, default=str)
+                )
+                _empty_count = sum(
+                    1 for s in run_log.steps
+                    if s.action == "tool_call" and s.tool == tool
+                    and s.status == "ok"
+                    and len(str(s.result_preview or "").strip()) < 20
+                )
+                if _identical_count >= 2 or _empty_count >= 2:
+                    _guard_reason = (
+                        f"identical_calls={_identical_count}" if _identical_count >= 2
+                        else f"empty_results={_empty_count}"
+                    )
+                    print(f"  [COHERENCE_GUARD] {tool} — {_guard_reason}, forcing respond")
+                    state.thinking.append(f"[coherence_guard] Stopped repeating {tool} ({_guard_reason})")
+                    # Force the brain to respond without tools
+                    context = self._build_context(state, last_result)
+                    _nudge = (
+                        f"\n\nYou have called {tool} {_identical_count + 1} times with the same arguments. "
+                        "Stop calling tools and answer with what you have. "
+                        "If you don't have enough information, say so honestly."
+                    )
+                    _forced = self.brain.complete(
+                        system=_system_prompt,
+                        prompt=context + _nudge,
+                        max_tokens=1000,
+                    )
+                    _forced_text = (_forced.content or "").strip()
+                    if _forced_text:
+                        _fd = self._parse_decision(_forced_text)
+                        _forced_text = _fd.get("message") or _fd.get("response") or _forced_text
+                    if not _forced_text:
+                        _forced_text = f"I tried to use {tool} but couldn't get useful results. I don't have enough information to answer confidently."
+                    yield {"type": "response", "content": _forced_text}
+                    state.done = True
+                    break
+
                 _visible_tools = set(_allowed_tools) if "_allowed_tools" in locals() else set(KNOWN_ORCHESTRATOR_TOOLS)
 
                 if tool not in _visible_tools:

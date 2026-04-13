@@ -336,15 +336,29 @@ QUERY_DOMAIN_PATTERNS: Dict[str, List[str]] = {
     ],
     "programming": [
         r"\b(?:code|coding|programming|developer|software|app|debug)\b",
-        r"\b(?:python|javascript|api|backend|frontend)\b",
+        r"\b(?:python|javascript|api|backend|frontend|crt|aether|system)\b",
+        r"\b(?:how\s+(?:do|does)\s+(?:you|this|it)\s+work)\b",
+        r"\b(?:explain.*(?:system|architecture|how you))\b",
+        r"\b(?:what\s+(?:is|are)\s+(?:your|the)\s+(?:system|architecture|pipeline))\b",
     ],
     "photography": [
         r"\b(?:photo|photograph|camera|shoot|editing)\b",
         r"\b(?:portrait|wedding|studio|lightroom)\b",
+        r"\b(?:lens|canon|nikon|sony|fuji)\b",
     ],
     "career": [
         r"\b(?:job|work|career|employer|company|team)\b",
         r"\b(?:salary|interview|resume|promotion)\b",
+        r"\b(?:walmart|freelanc|self.employ)\b",
+    ],
+    "health": [
+        r"\b(?:health|medical|doctor|medication|symptom)\b",
+        r"\b(?:cgvhd|leukemia|transplant|fatigue|pain)\b",
+    ],
+    "identity": [
+        r"\b(?:who\s+am\s+i|what\s+(?:matters|is\s+important)\s+to\s+me)\b",
+        r"\b(?:my\s+(?:values|beliefs|identity|purpose))\b",
+        r"\b(?:what\s+(?:concerns|worries|bothers)\s+(?:you|me))\b",
     ],
 }
 

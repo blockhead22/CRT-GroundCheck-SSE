@@ -202,6 +202,20 @@ def check_fidelity(
     t0 = time.perf_counter()
     findings: List[str] = []
 
+    # Self-referential queries (about the system itself) are grounded in the
+    # system prompt, not in retrieved memories. Lower the threshold so the
+    # fidelity mirror doesn't penalize accurate self-description.
+    _q_lower = query.lower()
+    _SELF_REF_PATTERNS = [
+        "how do you work", "how does this system", "explain your",
+        "what are you", "how are you built", "your architecture",
+        "how does aether", "how does crt", "what can you do",
+        "what concerns you", "what do you think", "could you improve",
+        "how do you think", "explain deeper", "explain how",
+    ]
+    if any(p in _q_lower for p in _SELF_REF_PATTERNS):
+        threshold = min(threshold, 0.10)  # Very relaxed for self-description
+
     # Short-circuit: if no memories, can't check fidelity
     if not memories or not response or not query:
         return FidelityScore(

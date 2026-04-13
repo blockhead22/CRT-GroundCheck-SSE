@@ -668,7 +668,43 @@ class AgentToolLoop:
                             import json as _json_unwrap
                             _parsed = _json_unwrap.loads(_stripped)
                             if isinstance(_parsed, dict):
-                                if "message" in _parsed:
+                                # Check if model emitted a tool call as text
+                                # (3B models sometimes confuse "call tool" with "output tool JSON")
+                                _text_tool = _parsed.get("type") or _parsed.get("tool")
+                                _KNOWN_TEXT_TOOLS = {
+                                    "gpt_log_context", "gpt_log_search", "memory_recall",
+                                    "introspect", "gpt_log_promote",
+                                }
+                                if _text_tool in _KNOWN_TEXT_TOOLS:
+                                    # Execute it as an actual tool call
+                                    _text_tool_args = {
+                                        k: v for k, v in _parsed.items()
+                                        if k not in ("type", "tool", "action", "reasoning")
+                                    }
+                                    print(f"[AGENT_LOOP_DEBUG] Model emitted tool call as text — executing {_text_tool}({_text_tool_args})")
+                                    try:
+                                        from personal_agent.cookie_orchestrator import execute_tool
+                                        _engine_mem = getattr(self.engine, 'memory', None) if self.engine else None
+                                        _rescued_result = execute_tool(_text_tool, _text_tool_args, _engine_mem)
+                                        _rescued_content = _rescued_result.get("content", "")
+                                        # Truncate to prevent 3B model from regurgitating raw log data
+                                        if _rescued_content and len(_rescued_content) > 1000:
+                                            _rescued_content = _rescued_content[:1000] + "\n[...truncated]"
+                                        if _rescued_content and len(_rescued_content) > 20:
+                                            # Feed the result back and let the model respond
+                                            messages.append({"role": "assistant", "content": clean_text})
+                                            messages.append({
+                                                "role": "user",
+                                                "content": f"[Tool result for {_text_tool}]:\n{_rescued_content}\n\nNow answer the original question using this data. Summarize in your own words — do NOT repeat the raw data.",
+                                            })
+                                            print(f"[AGENT_LOOP_DEBUG] Rescued tool call, feeding result back ({len(_rescued_content)} chars)")
+                                            continue  # Re-enter loop with tool result in context
+                                        else:
+                                            clean_text = f"I tried to look that up but didn't find useful results. {_rescued_content or ''}"
+                                    except Exception as _rescue_err:
+                                        print(f"[AGENT_LOOP_DEBUG] Rescued tool call failed: {_rescue_err}")
+                                        clean_text = "I tried to look that up but encountered an error."
+                                elif "message" in _parsed:
                                     clean_text = str(_parsed["message"])
                                     print("[AGENT_LOOP_DEBUG] Unwrapped JSON 'message' field from model")
                                 elif "response" in _parsed:
@@ -788,12 +824,48 @@ class AgentToolLoop:
                     yield {"type": "token", "content": _fallback}
                 break
 
-            # ── 2b. Repetition guard — stop if same tool called 3+ times ──
+            # ── 2b. Repetition guard — stop if same tool called 2+ times with same args ──
+            # Also catches the coherence decay pattern: model calls same tool
+            # repeatedly with identical args, gets empty results, doesn't adapt.
+            # Same architecture as the salience gate in exploration_tree_gravity.py.
             _tool_name_this = tool_calls[0].get("name", "") if tool_calls else ""
+            _tool_args_this = tool_calls[0].get("arguments", {}) if tool_calls else {}
+            if isinstance(_tool_args_this, str):
+                try:
+                    _tool_args_this = json.loads(_tool_args_this)
+                except Exception:
+                    pass
+            _tool_key_this = f"{_tool_name_this}:{json.dumps(_tool_args_this, sort_keys=True)}"
+
             _same_tool_count = sum(
                 1 for s in steps if s.tool_name == _tool_name_this
             )
-            if _same_tool_count >= 3:
+            # Exact same tool + args = coherence decay (locally rational, globally stuck)
+            _identical_call_count = sum(
+                1 for s in steps
+                if s.tool_name == _tool_name_this
+                and json.dumps(s.tool_args, sort_keys=True) == json.dumps(_tool_args_this, sort_keys=True)
+            )
+            # Empty results from this tool = tool isn't helping
+            _empty_results = sum(
+                1 for s in steps
+                if s.tool_name == _tool_name_this
+                and s.status == "ok"
+                and len(s.result_content.strip()) < 20  # Near-empty result
+            )
+
+            _should_break = (
+                _same_tool_count >= 3  # Original threshold
+                or _identical_call_count >= 2  # Exact same call twice = stuck
+                or _empty_results >= 2  # Tool returning nothing twice = wrong approach
+            )
+            if _should_break:
+                _break_reason = (
+                    f"identical_calls={_identical_call_count}" if _identical_call_count >= 2
+                    else f"empty_results={_empty_results}" if _empty_results >= 2
+                    else f"same_tool={_same_tool_count}x"
+                )
+                print(f"[AGENT_LOOP_DEBUG] Coherence guard: {_tool_name_this} — {_break_reason}, forcing answer")
                 print(f"[AGENT_LOOP_DEBUG] Repetition guard: {_tool_name_this} called {_same_tool_count} times, forcing answer")
                 # Inject a nudge message and let the LLM answer without tools
                 messages.append({
@@ -813,15 +885,30 @@ class AgentToolLoop:
                     if _forced_text:
                         from personal_agent.text_utils import strip_thinking_tags
                         _forced_text = strip_thinking_tags(_forced_text)
-                        # Unwrap JSON-wrapped responses
-                        if _forced_text.startswith('{"response"'):
+                        # Unwrap JSON-wrapped responses (same logic as final emit)
+                        _stripped_f = _forced_text.strip()
+                        if _stripped_f.startswith("{"):
                             try:
                                 import json as _json_f
-                                _pf = _json_f.loads(_forced_text)
-                                if isinstance(_pf, dict) and "response" in _pf:
-                                    _forced_text = str(_pf["response"])
+                                _pf = _json_f.loads(_stripped_f)
+                                if isinstance(_pf, dict):
+                                    if "message" in _pf:
+                                        _forced_text = str(_pf["message"])
+                                    elif "response" in _pf:
+                                        _forced_text = str(_pf["response"])
                             except Exception:
                                 pass
+                        elif "```" in _stripped_f:
+                            import re as _re_f
+                            _fm = _re_f.search(r'```(?:json)?\s*\n?(.*?)\n?\s*```', _stripped_f, _re_f.DOTALL)
+                            if _fm:
+                                try:
+                                    import json as _json_f2
+                                    _pf = _json_f2.loads(_fm.group(1).strip())
+                                    if isinstance(_pf, dict):
+                                        _forced_text = str(_pf.get("message") or _pf.get("response") or _forced_text)
+                                except Exception:
+                                    pass
                         print(f"[AGENT_LOOP_DEBUG] Forced answer: {_forced_text[:200]}")
                         yield {"type": "token", "content": _forced_text}
                     else:
@@ -1197,12 +1284,16 @@ class AgentToolLoop:
                 from personal_agent.crt_memory import sanitize_memory_for_prompt as _sanitize
                 _retrieved = self.engine.retrieve(message, k=5)
                 if _retrieved:
-                    _mem_lines = ["\n\n## Relevant memories for this query (trust-weighted):"]
+                    _mem_lines = [
+                        "\n\n## What the USER (Nick) has told you (trust-weighted):",
+                        "These are Nick's statements and facts about Nick — NOT your beliefs.",
+                        "When referencing these, say 'you said' or 'you mentioned', never 'I believe' or 'I said'.",
+                    ]
                     for _mem, _score in _retrieved:
                         _text = _sanitize((_mem.text or "").strip()[:200])
                         if _text:
                             _trust = getattr(_mem, "trust", 0)
-                            _mem_lines.append(f"- [trust:{_trust:.2f}] {_text}")
+                            _mem_lines.append(f"- [trust:{_trust:.2f}] Nick: {_text}")
                             self.retrieved_memories.append({
                                 "text": (_mem.text or "").strip()[:300],
                                 "trust": _trust,
