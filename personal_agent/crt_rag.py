@@ -1798,9 +1798,21 @@ class CRTEnhancedRAG:
             current_timestamp = float((current or {}).get("timestamp") or 0.0)
             new_trust = float(payload.get("trust") or 0.0)
             new_timestamp = float(payload.get("timestamp") or 0.0)
-            # Higher priority surface always wins
+            # Higher priority surface normally wins, BUT:
+            # If a lower-priority source (memory) has significantly higher trust
+            # than a higher-priority source (profile), the memory wins.
+            # This prevents stale profile values from overriding well-evidenced memories.
+            TRUST_OVERRIDE_DELTA = 0.15  # memory needs to be this much more trusted to override profile
             if current is not None and current_priority > priority:
-                return
+                # Allow trust-based override: if new value has much higher trust, it wins
+                if new_trust > current_trust + TRUST_OVERRIDE_DELTA:
+                    logger.info(
+                        f"[PROFILE_TRUST_OVERRIDE] {slot_name}: memory trust {new_trust:.2f} "
+                        f"overrides profile trust {current_trust:.2f} (delta={new_trust - current_trust:.2f})"
+                    )
+                    pass  # fall through to set the new value
+                else:
+                    return
             # Same priority: highest trust wins
             if current is not None and current_priority == priority:
                 if current_trust > new_trust:
@@ -5091,10 +5103,31 @@ class CRTEnhancedRAG:
             "your creator", "your developer", "your builder",
         ))
         
+        # ── Context-aware query expansion for short corrections ──
+        # When the user says "No it is not" or "That's wrong" or "Actually...",
+        # the query has no semantic content for retrieval. We expand it with
+        # the topic from the previous turn so retrieval finds relevant memories.
+        _retrieval_query = user_query
+        _SHORT_CORRECTION_WORDS = {"no", "not", "wrong", "nope", "actually", "incorrect", "false"}
+        _query_words = set(user_text.lower().split())
+        if len(_query_words) <= 8 and _query_words & _SHORT_CORRECTION_WORDS:
+            # This looks like a short correction/negation - expand with conversation context
+            if conversation_history and len(conversation_history) >= 2:
+                # Find the last assistant message to get the topic
+                for _prev_msg in reversed(conversation_history[:-1]):
+                    if _prev_msg.get("role") == "assistant":
+                        _prev_text = str(_prev_msg.get("content", ""))[:200]
+                        if _prev_text:
+                            _retrieval_query = f"{_prev_text} {user_query}"
+                            logger.info(
+                                "[QUERY_EXPAND] Short correction detected, expanded retrieval query with prior context"
+                            )
+                        break
+
         _t_retrieve = time.perf_counter()
         try:
             retrieved = self.retrieve(
-                user_query,
+                _retrieval_query,
                 k=retrieval_k,
                 relevant_slots=relevant_slots_set if relevant_slots_set else None,
                 include_system=_is_self_referential,
@@ -5110,7 +5143,7 @@ class CRTEnhancedRAG:
             # Backward-compatible fallback for tests that monkeypatch retrieve with
             # older call signatures that don't accept newer kwargs.
             retrieved = self.retrieve(
-                user_query,
+                _retrieval_query,
                 k=retrieval_k,
                 include_system=_is_self_referential,
             )
