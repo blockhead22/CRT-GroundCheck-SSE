@@ -6258,15 +6258,92 @@ class CRTEnhancedRAG:
             except Exception as e:
                 log_swallowed_exception("crt_rag.query.continuity_check", e)
 
-        reasoning_result = self.reasoning.reason(
-            query=user_query,
-            context=reasoning_context,
-            mode=mode,
-            model_override=model_override,
-            conversation_history=conversation_history,
-        )
-        
-        candidate_output = reasoning_result['answer']
+        # ═══════════════════════════════════════════════════════════════
+        # SCAFFOLD GENERATION GATE
+        # ═══════════════════════════════════════════════════════════════
+        # When running on a local model, small models (3B-14B) struggle
+        # with open-ended queries that require synthesizing many memories.
+        # Instead of dumping everything into context and hoping, we use
+        # a staged scaffold that walks the belief graph anchor-by-anchor.
+        #
+        # The scaffold:
+        #   1. Groups memories into topic clusters (anchor basins)
+        #   2. Generates 2-3 sentences per cluster with focused context
+        #   3. Checks each section against prior sections for coherence
+        #   4. Retries failed sections, excludes irreconcilable ones
+        #   5. Expands verified facts with one inference step
+        #
+        # This is the PRIMARY generation path for local models, not a
+        # fallback. Cloud models still use direct generation because
+        # they have the attention span for it.
+        #
+        # Feature flag: set CRT_SCAFFOLD_GENERATION=true to enable
+        # (disabled by default until integration is validated)
+        # ═══════════════════════════════════════════════════════════════
+        _use_scaffold = False
+        _scaffold_result = None
+        try:
+            import os
+            _scaffold_enabled = os.getenv("CRT_SCAFFOLD_GENERATION", "false").lower() in ("true", "1", "yes")
+            _is_local_mode = (model_override or "").startswith("ollama") or \
+                             str(getattr(self, '_current_gen_mode', '') or '').lower() in ("local", "local_network")
+            _is_open_ended = len(prompt_docs) >= 3 and not _is_general_knowledge and not _is_search_query
+
+            if _scaffold_enabled and _is_local_mode and _is_open_ended:
+                from personal_agent.scaffold_generation import scaffold_generate
+
+                # Convert prompt_docs to the format scaffold expects: (text, trust, id)
+                _scaffold_memories = []
+                for doc in prompt_docs:
+                    _text = doc.get('text', '')
+                    _trust = float(doc.get('trust', 0.5))
+                    _mid = doc.get('memory_id', '')
+                    if _text and not doc.get('_injected_context'):
+                        _scaffold_memories.append((_text, _trust, _mid))
+
+                if len(_scaffold_memories) >= 3:
+                    _scaffold_model = model_override or str(os.getenv("CRT_OLLAMA_MODEL", "gemma3:latest"))
+                    _scaffold_result = scaffold_generate(
+                        query=user_query,
+                        memories=_scaffold_memories,
+                        model=_scaffold_model,
+                    )
+                    _use_scaffold = bool(_scaffold_result and _scaffold_result.get("output", "").strip())
+                    if _use_scaffold:
+                        logger.info(
+                            "[SCAFFOLD_GATE] Using scaffold generation: %d/%d anchors, %d tokens",
+                            _scaffold_result.get("anchors_passed", 0),
+                            _scaffold_result.get("anchors_total", 0),
+                            _scaffold_result.get("tokens_used", 0),
+                        )
+        except Exception as _scaffold_err:
+            logger.debug("[SCAFFOLD_GATE] Scaffold generation failed, falling back to standard: %s", _scaffold_err)
+            _use_scaffold = False
+
+        if _use_scaffold and _scaffold_result:
+            # Scaffold produced the output - wrap it in the expected format
+            candidate_output = _scaffold_result["output"]
+            reasoning_result = {
+                'answer': candidate_output,
+                'mode': 'scaffold_staged',
+                'scaffold_meta': {
+                    'anchors_passed': _scaffold_result.get("anchors_passed", 0),
+                    'anchors_total': _scaffold_result.get("anchors_total", 0),
+                    'anchors_dead': _scaffold_result.get("anchors_dead", 0),
+                    'tokens_used': _scaffold_result.get("tokens_used", 0),
+                    'time_ms': _scaffold_result.get("time_ms", 0),
+                },
+            }
+        else:
+            # Standard generation path (cloud models or scaffold disabled)
+            reasoning_result = self.reasoning.reason(
+                query=user_query,
+                context=reasoning_context,
+                mode=mode,
+                model_override=model_override,
+                conversation_history=conversation_history,
+            )
+            candidate_output = reasoning_result['answer']
 
         # Consistency guard: if we have memory context, do not let the surface text
         # claim "first conversation" / "no memories".
