@@ -457,9 +457,12 @@ Be specific. Reference actual facts. Do not add information not in the memories 
             if line.strip():
                 logger.info(f"    > {line.strip()[:120]}")
 
-    # ── Stage 4: Incremental coherence check with retry ──
-    logger.info("  Stage 3: Incremental coherence checks...")
+    # ── Stage 4: Threshold coherence check with retry ──
+    logger.info("  Stage 3: Threshold coherence checks...")
     MAX_RETRIES = 2
+    COHERENCE_PASS = 0.7     # above this = pass
+    COHERENCE_RETRY = 0.4    # between retry and pass = pass with warning
+    # below COHERENCE_RETRY = retry/kill
 
     verified_sections = []
     contradictions_count = 0
@@ -469,36 +472,57 @@ Be specific. Reference actual facts. Do not add information not in the memories 
 
         for attempt in range(MAX_RETRIES + 1):
             if not verified_sections:
-                # First section - just check internal consistency
-                check_prompt = f"""Does this text contain any internal contradictions? Answer only YES or NO.
+                check_prompt = f"""Rate the internal consistency of this text on a scale of 0 to 10.
+0 = contains major factual contradictions
+5 = minor inconsistencies or repeated information
+10 = fully consistent, no issues
 
-{section[:500]}"""
+Text: {section[:500]}
+
+Reply with ONLY a number 0-10."""
             else:
-                # Check against all previously verified sections
                 prior_text = "\n".join(verified_sections)[-600:]
-                check_prompt = f"""Does the NEW text contradict anything in the PREVIOUS text? Answer only YES or NO.
+                check_prompt = f"""Rate how well the NEW text is consistent with the PREVIOUS text on a scale of 0 to 10.
+0 = directly contradicts previous facts
+5 = minor overlap or slightly inconsistent tone
+10 = fully consistent, adds new information without contradiction
 
 PREVIOUS (verified):
 {prior_text}
 
 NEW:
-{section[:400]}"""
+{section[:400]}
+
+Reply with ONLY a number 0-10."""
 
             check_out, _, _ = call_gemma3(check_prompt, max_tokens=10)
-            is_coherent = "yes" not in check_out.lower()
 
-            if is_coherent:
-                step.coherence_score = 1.0
+            # Parse score
+            import re as _re
+            score_match = _re.search(r'(\d+)', check_out.strip())
+            raw_score = int(score_match.group(1)) if score_match else 5
+            coherence = raw_score / 10.0
+
+            if coherence >= COHERENCE_PASS:
+                step.coherence_score = coherence
                 verified_sections.append(section)
                 passed = True
                 if attempt > 0:
-                    logger.info(f"  [{step.anchor}] PASSED on retry {attempt}")
+                    logger.info(f"  [{step.anchor}] PASSED on retry {attempt} (coherence={coherence:.1f})")
+                else:
+                    logger.info(f"  [{step.anchor}] PASSED (coherence={coherence:.1f})")
+                break
+            elif coherence >= COHERENCE_RETRY:
+                # Marginal - pass with warning, don't retry
+                step.coherence_score = coherence
+                verified_sections.append(section)
+                passed = True
+                logger.warning(f"  [{step.anchor}] MARGINAL (coherence={coherence:.1f}) - included with warning")
                 break
             else:
                 if attempt < MAX_RETRIES:
-                    # Retry: regenerate this section with explicit warning
-                    logger.warning(f"  [{step.anchor}] FAILED coherence (attempt {attempt + 1}/{MAX_RETRIES + 1}), retrying...")
-                    retry_prompt = staged["prompt"] + f"\n\nIMPORTANT: Your previous attempt contradicted established facts. Here is what has been verified so far:\n{chr(10).join(verified_sections)[-400:]}\n\nDo NOT contradict these facts."
+                    logger.warning(f"  [{step.anchor}] FAILED (coherence={coherence:.1f}, attempt {attempt + 1}/{MAX_RETRIES + 1}), retrying...")
+                    retry_prompt = staged["prompt"] + f"\n\nIMPORTANT: Your previous attempt scored {coherence:.1f}/1.0 on coherence. Here is what has been verified so far:\n{chr(10).join(verified_sections)[-400:]}\n\nWrite ONLY new facts that do not contradict the above."
 
                     section, retry_tokens, retry_time = call_gemma3(retry_prompt, max_tokens=200)
                     step.generated_text = section
@@ -507,16 +531,64 @@ NEW:
                     total_tokens += retry_tokens
                     total_time += retry_time
                 else:
-                    # Final attempt failed - mark as dead, skip this anchor
-                    step.coherence_score = 0.0
+                    step.coherence_score = coherence
                     contradictions_count += 1
-                    logger.warning(f"  [{step.anchor}] DEAD after {MAX_RETRIES + 1} attempts - skipping anchor")
+                    logger.warning(f"  [{step.anchor}] DEAD (coherence={coherence:.1f}) after {MAX_RETRIES + 1} attempts")
 
         if not passed:
             logger.warning(f"  [{step.anchor}] excluded from final output")
 
-    full_output = "\n\n".join(verified_sections)
-    logger.info(f"  Final output: {len(verified_sections)}/{len(walk_steps)} anchors passed, {contradictions_count} dead")
+    # ── Stage 5: Generative expansion ──
+    logger.info("  Stage 4: Generative expansion...")
+    expanded_sections = []
+
+    for i, section in enumerate(verified_sections):
+        # Ask model to infer one step beyond the verified facts
+        expand_prompt = f"""You wrote this about a user based on verified facts:
+"{section}"
+
+Now write ONE additional sentence that follows logically from this - something that isn't explicitly stated but is a reasonable inference. Do not repeat what's already written. Do not invent new facts. Only state what logically follows.
+
+If nothing follows naturally, reply with: NOTHING_TO_ADD"""
+
+        expansion, exp_tokens, exp_time = call_gemma3(expand_prompt, max_tokens=80)
+        total_tokens += exp_tokens
+        total_time += exp_time
+
+        if "nothing_to_add" in expansion.lower() or len(expansion.strip()) < 10:
+            expanded_sections.append(section)
+            logger.info(f"  Expand [{walk_steps[i].anchor if i < len(walk_steps) else '?'}]: no expansion needed")
+            continue
+
+        # Check expansion against all verified sections
+        all_verified = "\n".join(verified_sections)[-800:]
+        verify_prompt = f"""Rate the consistency of this INFERENCE with the established facts on a scale 0-10.
+0 = contradicts known facts
+5 = plausible but unsupported
+10 = clearly follows from the facts
+
+Facts:
+{all_verified}
+
+Inference:
+{expansion[:200]}
+
+Reply with ONLY a number 0-10."""
+
+        verify_out, _, _ = call_gemma3(verify_prompt, max_tokens=10)
+        score_match = _re.search(r'(\d+)', verify_out.strip())
+        exp_score = int(score_match.group(1)) if score_match else 5
+        exp_coherence = exp_score / 10.0
+
+        if exp_coherence >= 0.6:
+            expanded_sections.append(section + " " + expansion)
+            logger.info(f"  Expand [{walk_steps[i].anchor if i < len(walk_steps) else '?'}]: KEPT (score={exp_coherence:.1f}) - {expansion[:80]}...")
+        else:
+            expanded_sections.append(section)
+            logger.info(f"  Expand [{walk_steps[i].anchor if i < len(walk_steps) else '?'}]: REJECTED (score={exp_coherence:.1f}) - {expansion[:80]}...")
+
+    full_output = "\n\n".join(expanded_sections)
+    logger.info(f"  Final: {len(verified_sections)}/{len(walk_steps)} anchors, {contradictions_count} dead, {len(expanded_sections)} with expansion pass")
 
     domains_covered = [step.anchor for step in walk_steps]
 
