@@ -275,6 +275,7 @@ def check_fidelity(
     # Split response into sentences, check each against memory bank.
     sentences = [s.strip() for s in response.split('.') if len(s.strip()) > 20]
 
+    grounded_count = 0  # Initialize before branches to avoid UnboundLocalError
     if len(sentences) <= 1:
         # Short/conversational response — use whole response similarity to memories
         # instead of sentence-level grounding (which fails on one-liners)
@@ -285,7 +286,6 @@ def check_fidelity(
         if len(sentences) == 0:
             findings.append("Response too short for sentence-level grounding (using whole-response)")
     else:
-        grounded_count = 0
         for sent in sentences[:10]:  # Cap at 10 sentences
             sent_vec = _encode(sent)
             if sent_vec is None:

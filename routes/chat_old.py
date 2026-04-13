@@ -4546,6 +4546,18 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                         "Facts about the user Nick (these are HIS words and experiences, not yours):",
                         "When referencing these, say 'you said' or 'you mentioned' — never 'I believe' or 'I expressed'.",
                     ]
+                    # Detect corrections/negations and promote to hard constraints
+                    _NEG_PREFIXES = ("i do not ", "i don't ", "i am not ", "i'm not ",
+                                     "not a ", "never ", "nick does not ", "nick is not ")
+                    _correction_lines = []
+                    for _m in (list(_pc_memories) if isinstance(_pc_memories, list) else [])[:10]:
+                        _mt = (_m.get("text") or "").strip()
+                        if any(_mt.lower().startswith(p) for p in _NEG_PREFIXES):
+                            _correction_lines.append(f"  >>> CORRECTION: Nick: {_sanitize_mem(_mt[:250])}")
+                    if _correction_lines:
+                        _mem_lines.append("")
+                        _mem_lines.append("IMPORTANT CORRECTIONS (override conflicting memories):")
+                        _mem_lines.extend(_correction_lines)
                     for _m in (list(_pc_memories) if isinstance(_pc_memories, list) else [])[:10]:
                         _mt = (_m.get("text") or "").strip()
                         _mt = _sanitize_mem(_mt)

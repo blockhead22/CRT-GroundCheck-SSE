@@ -675,7 +675,11 @@ class AgentToolLoop:
                                     "gpt_log_context", "gpt_log_search", "memory_recall",
                                     "introspect", "gpt_log_promote",
                                 }
-                                if _text_tool in _KNOWN_TEXT_TOOLS:
+                                # Handle {"type": "text", "text": "actual response"} format
+                                if _text_tool == "text" and "text" in _parsed:
+                                    clean_text = str(_parsed["text"])
+                                    print("[AGENT_LOOP_DEBUG] Unwrapped JSON 'type:text' format from model")
+                                elif _text_tool in _KNOWN_TEXT_TOOLS:
                                     # Execute it as an actual tool call
                                     _text_tool_args = {
                                         k: v for k, v in _parsed.items()
@@ -1284,11 +1288,33 @@ class AgentToolLoop:
                 from personal_agent.crt_memory import sanitize_memory_for_prompt as _sanitize
                 _retrieved = self.engine.retrieve(message, k=5)
                 if _retrieved:
+                    # Detect negation/correction memories and promote them to hard constraints
+                    _corrections = []
+                    _NEGATION_PREFIXES = (
+                        "i do not ", "i don't ", "i am not ", "i'm not ",
+                        "not a ", "never ", "i did not ", "i didn't ",
+                        "nick does not ", "nick doesn't ", "nick is not ",
+                    )
+                    for _mem, _score in _retrieved:
+                        _text_lower = (_mem.text or "").strip().lower()
+                        if any(_text_lower.startswith(p) for p in _NEGATION_PREFIXES):
+                            _corrections.append((_mem, _score))
+
                     _mem_lines = [
                         "\n\n## What the USER (Nick) has told you (trust-weighted):",
                         "These are Nick's statements and facts about Nick — NOT your beliefs.",
                         "When referencing these, say 'you said' or 'you mentioned', never 'I believe' or 'I said'.",
                     ]
+
+                    # Hard constraints first — corrections and negations OVERRIDE other memories
+                    if _corrections:
+                        _mem_lines.append("")
+                        _mem_lines.append("IMPORTANT CORRECTIONS (these override any conflicting memories below):")
+                        for _cmem, _cscore in _corrections:
+                            _ctext = _sanitize((_cmem.text or "").strip()[:200])
+                            if _ctext:
+                                _mem_lines.append(f"  >>> CORRECTION: Nick: {_ctext}")
+
                     for _mem, _score in _retrieved:
                         _text = _sanitize((_mem.text or "").strip()[:200])
                         if _text:

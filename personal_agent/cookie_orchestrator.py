@@ -404,19 +404,27 @@ def build_belief_context(objective: str, memory_system, ledger=None, *, tier: in
 
     if corpus:
         lines = []
+        correction_lines = []
+        _NEG_PREFIXES = ("i do not ", "i don't ", "i am not ", "i'm not ",
+                         "not a ", "never ", "nick does not ", "nick is not ")
         for mem, score in corpus:
             contra_tag = ""
             if getattr(mem, 'contradiction_count', 0) > 0:
                 contra_tag = f", {mem.contradiction_count}x contradicted"
             authority = getattr(mem, 'authority', 'unknown')
-            lines.append(
+            mem_line = (
                 f'- "{mem.text[:200]}" '
                 f'[trust={mem.trust:.2f}, {mem.kind}, {authority}{contra_tag}]'
             )
-        sections.append(
-            "[Facts about the user Nick — these are HIS statements and experiences, not yours]:\n"
-            + "\n".join(lines)
-        )
+            lines.append(mem_line)
+            # Promote negation/correction memories
+            if any(mem.text.strip().lower().startswith(p) for p in _NEG_PREFIXES):
+                correction_lines.append(f'  >>> CORRECTION: "{mem.text[:200]}"')
+        header = "[Facts about the user Nick — these are HIS statements and experiences, not yours]:\n"
+        if correction_lines:
+            header += "IMPORTANT CORRECTIONS (override conflicting memories):\n"
+            header += "\n".join(correction_lines) + "\n\n"
+        sections.append(header + "\n".join(lines))
 
     if tier < 2:
         if not sections:
@@ -1957,6 +1965,33 @@ class Orchestrator:
                 continue
 
             if action == "think":
+                # Coherence guard for think loops: if 3+ consecutive thinks,
+                # force the model to stop deliberating and respond.
+                _consecutive_thinks = 0
+                for _ps in reversed(run_log.steps):
+                    if _ps.action == "think":
+                        _consecutive_thinks += 1
+                    else:
+                        break
+                if _consecutive_thinks >= 3:
+                    print(f"  [COHERENCE_GUARD] {_consecutive_thinks} consecutive thinks — forcing respond")
+                    state.thinking.append(f"[coherence_guard] Stopped thinking loop after {_consecutive_thinks} iterations")
+                    context = self._build_context(state, last_result)
+                    _nudge = (
+                        f"\n\nYou have been thinking for {_consecutive_thinks} iterations without acting or responding. "
+                        "Stop deliberating and respond with what you have. Be direct."
+                    )
+                    _forced = self.brain.complete(system=_system_prompt, prompt=context + _nudge, max_tokens=1000)
+                    _forced_text = (_forced.content or "").strip()
+                    if _forced_text:
+                        _fd = self._parse_decision(_forced_text)
+                        _forced_text = _fd.get("message") or _fd.get("response") or _forced_text
+                    if not _forced_text:
+                        _forced_text = "I've been overthinking this. Let me give you a direct answer based on what I know."
+                    yield {"type": "response", "content": _forced_text}
+                    state.done = True
+                    break
+
                 state.thinking.append(reasoning)
                 state.add_step(StepRecord(
                     iteration=iteration, action="think",
