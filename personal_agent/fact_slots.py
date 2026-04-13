@@ -14,9 +14,12 @@ Phase 2.0 Updates:
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Tuple, List
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
