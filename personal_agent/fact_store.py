@@ -1033,7 +1033,13 @@ class FactStore:
         return llm_response, []
 
     def close(self):
-        """Close any open connections. SQLite uses context managers so this is mostly a no-op."""
-        # SQLite connections are opened/closed per operation via context managers
-        # This method exists for compatibility with dump_and_clear_all
-        pass
+        """Close any persistent connections."""
+        if self._persistent_conn is not None:
+            try:
+                self._persistent_conn.close()
+            except Exception:
+                pass
+            self._persistent_conn = None
+
+    def __del__(self):
+        self.close()

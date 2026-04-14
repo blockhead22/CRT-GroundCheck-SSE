@@ -556,6 +556,9 @@ CLOUD_SETTING_DEFAULTS: Dict[str, str] = {
     "tooling_tool_enabled_store_credential": "true",
     "tooling_tool_enabled_web_browse": "true",
     "tooling_tool_enabled_web_search": "true",
+    # Salience gate (Lab 11) — softmax re-ranking for contradictions & memories
+    "salience_gate_enabled": "true",
+    "salience_temperature": "1.0",
 }
 
 

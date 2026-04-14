@@ -1607,6 +1607,18 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.warning(f"[SHUTDOWN] Error stopping heartbeat loop: {e}")
 
+        # Close SQLite singletons to suppress ResourceWarnings
+        try:
+            from personal_agent.cloud_usage_logger import _logger_instance
+            from personal_agent.cloud_usage_tracker import _tracker_instance
+            if _logger_instance:
+                _logger_instance.close()
+            if _tracker_instance:
+                _tracker_instance.close()
+            logger.info("[SHUTDOWN] SQLite singletons closed")
+        except Exception as e:
+            logger.warning(f"[SHUTDOWN] SQLite cleanup: {e}")
+
     # --- Endpoints extracted to routes/ ---
     # See routes/{module}.py for route handlers.
 

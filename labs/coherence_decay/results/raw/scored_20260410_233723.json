@@ -1,0 +1,4876 @@
+[
+  {
+    "prompt_id": "prog_01",
+    "domain": "programming",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L0_free_500",
+    "total_tokens": 298,
+    "total_time_ms": 15391.164779663086,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "keywords_found": [
+        "ListNode",
+        "next",
+        "prev",
+        "None",
+        "while",
+        "head"
+      ],
+      "keywords_missing": [],
+      "total_keywords": 6
+    },
+    "drift": {
+      "drift_scores": [
+        0.1223
+      ],
+      "drift_mean": 0.1223,
+      "drift_max": 0.1223,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "executability": {
+      "executable": true,
+      "reason": "compiles",
+      "error": null
+    },
+    "composite": 1.0694
+  },
+  {
+    "prompt_id": "prog_02",
+    "domain": "programming",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L0_free_500",
+    "total_tokens": 332,
+    "total_time_ms": 14992.366075515747,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.6,
+      "keywords_found": [
+        "mid",
+        "while",
+        "return -1"
+      ],
+      "keywords_missing": [
+        "low",
+        "high"
+      ],
+      "total_keywords": 5
+    },
+    "drift": {
+      "drift_scores": [
+        0.2578
+      ],
+      "drift_mean": 0.2578,
+      "drift_max": 0.2578,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "executability": {
+      "executable": true,
+      "reason": "compiles",
+      "error": null
+    },
+    "composite": 0.8756
+  },
+  {
+    "prompt_id": "narr_01",
+    "domain": "narrative",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L0_free_500",
+    "total_tokens": 245,
+    "total_time_ms": 8719.100952148438,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.5384615384615384,
+      "facts_found": [
+        "Mara",
+        "lighthouse",
+        "winter",
+        "black cat",
+        "Sable",
+        "three days",
+        "replacement part"
+      ],
+      "facts_missing": [
+        "left-handed",
+        "clockmaker",
+        "northern coast",
+        "lamp broken",
+        "mainland",
+        "no phone"
+      ],
+      "total_facts": 13
+    },
+    "drift": {
+      "drift_scores": [
+        0.3106
+      ],
+      "drift_mean": 0.3106,
+      "drift_max": 0.3106,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "character name stays Mara",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "cat stays black and named Sable",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "setting stays winter/lighthouse",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "lamp stays broken unless repair arrives",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "no phone used for communication",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 5
+    },
+    "composite": 0.7377
+  },
+  {
+    "prompt_id": "narr_02",
+    "domain": "narrative",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L0_free_500",
+    "total_tokens": 182,
+    "total_time_ms": 7862.1838092803955,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "Alex knows sale",
+        "Alex keeps secret",
+        "Jordan expects promotion",
+        "Jordan doesn't know about sale"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.4985
+      ],
+      "drift_mean": 0.4985,
+      "drift_max": 0.4985,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "Alex never reveals sale directly",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "Jordan never references sale or acquisition",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "dramatic irony maintained",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "both characters maintain distinct knowledge states",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 4
+    },
+    "composite": 0.4754
+  },
+  {
+    "prompt_id": "mem_01",
+    "domain": "memory",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L0_free_500",
+    "total_tokens": 116,
+    "total_time_ms": 4066.105842590332,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.8888888888888888,
+      "facts_found": [
+        "marine biologist",
+        "Woods Hole",
+        "S\u00e3o Paulo",
+        "2018",
+        "Massachusetts",
+        "thermal vents",
+        "twin daughters",
+        "7 years old"
+      ],
+      "facts_missing": [
+        "shellfish allergy"
+      ],
+      "total_facts": 9
+    },
+    "drift": {
+      "drift_scores": [
+        0.3002
+      ],
+      "drift_mean": 0.3002,
+      "drift_max": 0.3002,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "all_facts_present",
+      "note": "see fidelity_score"
+    },
+    "composite": 0.8805
+  },
+  {
+    "prompt_id": "mem_02",
+    "domain": "memory",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L0_free_500",
+    "total_tokens": 97,
+    "total_time_ms": 4315.669059753418,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "built 1952",
+        "70+ years",
+        "architect died 1948",
+        "architect supervised construction"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.1583
+      ],
+      "drift_mean": 0.1583,
+      "drift_max": 0.1583,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "detect_contradiction",
+      "contradiction_detected": true
+    },
+    "composite": 0.5604
+  },
+  {
+    "prompt_id": "prog_01",
+    "domain": "programming",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L1_free_200",
+    "total_tokens": 123,
+    "total_time_ms": 5643.522024154663,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "keywords_found": [
+        "ListNode",
+        "next",
+        "prev",
+        "None",
+        "while",
+        "head"
+      ],
+      "keywords_missing": [],
+      "total_keywords": 6
+    },
+    "drift": {
+      "drift_scores": [
+        0.1379
+      ],
+      "drift_mean": 0.1379,
+      "drift_max": 0.1379,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "executability": {
+      "executable": true,
+      "reason": "compiles",
+      "error": null
+    },
+    "composite": 1.0655
+  },
+  {
+    "prompt_id": "prog_02",
+    "domain": "programming",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L1_free_200",
+    "total_tokens": 129,
+    "total_time_ms": 6160.735845565796,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.6,
+      "keywords_found": [
+        "mid",
+        "while",
+        "return -1"
+      ],
+      "keywords_missing": [
+        "low",
+        "high"
+      ],
+      "total_keywords": 5
+    },
+    "drift": {
+      "drift_scores": [
+        0.224
+      ],
+      "drift_mean": 0.224,
+      "drift_max": 0.224,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "executability": {
+      "executable": true,
+      "reason": "compiles",
+      "error": null
+    },
+    "composite": 0.884
+  },
+  {
+    "prompt_id": "narr_01",
+    "domain": "narrative",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L1_free_200",
+    "total_tokens": 163,
+    "total_time_ms": 6110.2118492126465,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.46153846153846156,
+      "facts_found": [
+        "Mara",
+        "lighthouse",
+        "black cat",
+        "Sable",
+        "replacement part",
+        "mainland"
+      ],
+      "facts_missing": [
+        "left-handed",
+        "clockmaker",
+        "northern coast",
+        "winter",
+        "lamp broken",
+        "three days",
+        "no phone"
+      ],
+      "total_facts": 13
+    },
+    "drift": {
+      "drift_scores": [
+        0.2719
+      ],
+      "drift_mean": 0.2719,
+      "drift_max": 0.2719,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "character name stays Mara",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "cat stays black and named Sable",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "setting stays winter/lighthouse",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "lamp stays broken unless repair arrives",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "no phone used for communication",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 5
+    },
+    "composite": 0.7166
+  },
+  {
+    "prompt_id": "narr_02",
+    "domain": "narrative",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L1_free_200",
+    "total_tokens": 155,
+    "total_time_ms": 6035.81976890564,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "Alex knows sale",
+        "Alex keeps secret",
+        "Jordan expects promotion",
+        "Jordan doesn't know about sale"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.5138
+      ],
+      "drift_mean": 0.5138,
+      "drift_max": 0.5138,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "Alex never reveals sale directly",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "Jordan never references sale or acquisition",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "dramatic irony maintained",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "both characters maintain distinct knowledge states",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 4
+    },
+    "composite": 0.4716
+  },
+  {
+    "prompt_id": "mem_01",
+    "domain": "memory",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L1_free_200",
+    "total_tokens": 98,
+    "total_time_ms": 4288.675785064697,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.8888888888888888,
+      "facts_found": [
+        "marine biologist",
+        "Woods Hole",
+        "S\u00e3o Paulo",
+        "2018",
+        "Massachusetts",
+        "thermal vents",
+        "twin daughters",
+        "7 years old"
+      ],
+      "facts_missing": [
+        "shellfish allergy"
+      ],
+      "total_facts": 9
+    },
+    "drift": {
+      "drift_scores": [
+        0.2905
+      ],
+      "drift_mean": 0.2905,
+      "drift_max": 0.2905,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "all_facts_present",
+      "note": "see fidelity_score"
+    },
+    "composite": 0.8829
+  },
+  {
+    "prompt_id": "mem_02",
+    "domain": "memory",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L1_free_200",
+    "total_tokens": 102,
+    "total_time_ms": 3690.263032913208,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "built 1952",
+        "70+ years",
+        "architect died 1948",
+        "architect supervised construction"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.1426
+      ],
+      "drift_mean": 0.1426,
+      "drift_max": 0.1426,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "detect_contradiction",
+      "contradiction_detected": true
+    },
+    "composite": 0.5644
+  },
+  {
+    "prompt_id": "prog_01",
+    "domain": "programming",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L2_burst_50",
+    "total_tokens": 267,
+    "total_time_ms": 13780.06911277771,
+    "reanchors": 9,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "keywords_found": [
+        "ListNode",
+        "next",
+        "prev",
+        "None",
+        "while",
+        "head"
+      ],
+      "keywords_missing": [],
+      "total_keywords": 6
+    },
+    "drift": {
+      "drift_scores": [
+        0.197,
+        0.1324,
+        0.3156,
+        0.3501,
+        0.3244,
+        0.4118,
+        0.1883,
+        0.3389,
+        0.4986
+      ],
+      "drift_mean": 0.3063,
+      "drift_max": 0.4986,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "executability": {
+      "executable": true,
+      "reason": "compiles",
+      "error": null
+    },
+    "composite": 1.0234
+  },
+  {
+    "prompt_id": "prog_02",
+    "domain": "programming",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L2_burst_50",
+    "total_tokens": 500,
+    "total_time_ms": 40899.54614639282,
+    "reanchors": 25,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "keywords_found": [
+        "low",
+        "high",
+        "mid",
+        "while",
+        "return -1"
+      ],
+      "keywords_missing": [],
+      "total_keywords": 5
+    },
+    "drift": {
+      "drift_scores": [
+        0.331,
+        0.2705,
+        0.3129,
+        0.5726,
+        0.63,
+        0.5646,
+        0.364,
+        0.4355,
+        0.5075,
+        0.5709,
+        0.4301,
+        0.3373,
+        0.2923,
+        0.3939,
+        0.5726,
+        0.6255,
+        0.641,
+        0.33,
+        0.4398,
+        0.4983,
+        0.5482,
+        0.6553,
+        0.9361,
+        0.9522,
+        0.7267,
+        0.9441
+      ],
+      "drift_mean": 0.534,
+      "drift_max": 0.9522,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "executability": {
+      "executable": false,
+      "reason": "syntax_error",
+      "error": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    compile(open(r'/var/folders/r3/_zzp3zjj6tn5rkrmrrl4p6s40000gn/T/tmphh90jyo2.py').read(), '/var/folders/r3/_zzp3zjj6tn5rkrmrrl4p6s40000gn/T/tmphh90jyo2.py', 'exec')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+    },
+    "composite": 0.8665
+  },
+  {
+    "prompt_id": "narr_01",
+    "domain": "narrative",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L2_burst_50",
+    "total_tokens": 481,
+    "total_time_ms": 26569.10514831543,
+    "reanchors": 12,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.46153846153846156,
+      "facts_found": [
+        "Mara",
+        "lighthouse",
+        "black cat",
+        "Sable",
+        "replacement part",
+        "mainland"
+      ],
+      "facts_missing": [
+        "left-handed",
+        "clockmaker",
+        "northern coast",
+        "winter",
+        "lamp broken",
+        "three days",
+        "no phone"
+      ],
+      "total_facts": 13
+    },
+    "drift": {
+      "drift_scores": [
+        0.3673,
+        0.5994,
+        0.544,
+        0.6265,
+        0.5067,
+        0.5368,
+        0.4987,
+        0.7087,
+        0.4378,
+        0.712,
+        0.4666,
+        0.8874
+      ],
+      "drift_mean": 0.5743,
+      "drift_max": 0.8874,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "character name stays Mara",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "cat stays black and named Sable",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "setting stays winter/lighthouse",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "lamp stays broken unless repair arrives",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "no phone used for communication",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 5
+    },
+    "composite": 0.641
+  },
+  {
+    "prompt_id": "narr_02",
+    "domain": "narrative",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L2_burst_50",
+    "total_tokens": 373,
+    "total_time_ms": 25264.909029006958,
+    "reanchors": 10,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "Alex knows sale",
+        "Alex keeps secret",
+        "Jordan expects promotion",
+        "Jordan doesn't know about sale"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.602,
+        0.7681,
+        0.7324,
+        0.828,
+        0.609,
+        0.7261,
+        0.525,
+        0.6056,
+        0.5687,
+        0.2672
+      ],
+      "drift_mean": 0.6232,
+      "drift_max": 0.828,
+      "drift_trend": "decreasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "Alex never reveals sale directly",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "Jordan never references sale or acquisition",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "dramatic irony maintained",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "both characters maintain distinct knowledge states",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 4
+    },
+    "composite": 0.4442
+  },
+  {
+    "prompt_id": "mem_01",
+    "domain": "memory",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L2_burst_50",
+    "total_tokens": 500,
+    "total_time_ms": 31313.772201538086,
+    "reanchors": 14,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.8888888888888888,
+      "facts_found": [
+        "marine biologist",
+        "Woods Hole",
+        "S\u00e3o Paulo",
+        "2018",
+        "Massachusetts",
+        "thermal vents",
+        "twin daughters",
+        "7 years old"
+      ],
+      "facts_missing": [
+        "shellfish allergy"
+      ],
+      "total_facts": 9
+    },
+    "drift": {
+      "drift_scores": [
+        0.3404,
+        0.4376,
+        0.3689,
+        0.5195,
+        0.6335,
+        0.9082,
+        0.7371,
+        0.9152,
+        0.6849,
+        0.6244,
+        0.7472,
+        0.9862,
+        0.6465,
+        0.8906,
+        0.9276
+      ],
+      "drift_mean": 0.6912,
+      "drift_max": 0.9862,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "all_facts_present",
+      "note": "see fidelity_score"
+    },
+    "composite": 0.7828
+  },
+  {
+    "prompt_id": "mem_02",
+    "domain": "memory",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L2_burst_50",
+    "total_tokens": 173,
+    "total_time_ms": 12101.104736328125,
+    "reanchors": 5,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "built 1952",
+        "70+ years",
+        "architect died 1948",
+        "architect supervised construction"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.2032,
+        0.2756,
+        0.3623,
+        0.2729,
+        0.4242
+      ],
+      "drift_mean": 0.3076,
+      "drift_max": 0.4242,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "detect_contradiction",
+      "contradiction_detected": true
+    },
+    "composite": 0.5231
+  },
+  {
+    "prompt_id": "prog_01",
+    "domain": "programming",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L3_burst_25_entropy",
+    "total_tokens": 128,
+    "total_time_ms": 35973.8872051239,
+    "reanchors": 10,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "keywords_found": [
+        "ListNode",
+        "next",
+        "prev",
+        "None",
+        "while",
+        "head"
+      ],
+      "keywords_missing": [],
+      "total_keywords": 6
+    },
+    "drift": {
+      "drift_scores": [
+        0.482,
+        0.5041,
+        0.2432,
+        0.628,
+        0.5763,
+        0.3633,
+        0.2886,
+        0.2216,
+        0.6186,
+        0.9205
+      ],
+      "drift_mean": 0.4846,
+      "drift_max": 0.9205,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        1.0,
+        0.0667,
+        0.3333,
+        1.0,
+        0.3077,
+        0.25,
+        0.0,
+        0.0,
+        0.7273,
+        1.0
+      ],
+      "entropy_global_mean": 0.4472,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "executability": {
+      "executable": true,
+      "reason": "compiles",
+      "error": null
+    },
+    "composite": 0.9788
+  },
+  {
+    "prompt_id": "prog_02",
+    "domain": "programming",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L3_burst_25_entropy",
+    "total_tokens": 344,
+    "total_time_ms": 82094.68865394592,
+    "reanchors": 21,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.6,
+      "keywords_found": [
+        "mid",
+        "while",
+        "return -1"
+      ],
+      "keywords_missing": [
+        "low",
+        "high"
+      ],
+      "total_keywords": 5
+    },
+    "drift": {
+      "drift_scores": [
+        0.617,
+        0.3862,
+        0.603,
+        0.2904,
+        0.5687,
+        0.4834,
+        0.3191,
+        0.6581,
+        0.6566,
+        0.6116,
+        0.4471,
+        0.7787,
+        0.6801,
+        0.5308,
+        0.1818,
+        0.4295,
+        0.4836,
+        0.4611,
+        0.605,
+        0.4352,
+        0.2796
+      ],
+      "drift_mean": 0.5003,
+      "drift_max": 0.7787,
+      "drift_trend": "stable",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.6522,
+        0.7222,
+        0.5333,
+        0.8889,
+        0.9524,
+        0.0,
+        0.0,
+        0.0,
+        0.7727,
+        0.9231,
+        0.5556,
+        0.0,
+        0.0,
+        0.0,
+        0.6667,
+        0.9412,
+        0.55
+      ],
+      "entropy_global_mean": 0.6336,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "decreasing",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 1,
+      "contradictions": [
+        {
+          "sentence_a_idx": 1,
+          "sentence_a": "## Step 2: Check for edge cases\nWe need to handle the case where the input list is empty",
+          "sentence_b_idx": 9,
+          "sentence_b": "```python\nwhile left <= right:\n    mid = (left + right) // 2\n    if sorted_list[mid] == target_value",
+          "method": "pattern"
+        }
+      ],
+      "self_consistent": false
+    },
+    "executability": {
+      "executable": false,
+      "reason": "syntax_error",
+      "error": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    compile(open(r'/var/folders/r3/_zzp3zjj6tn5rkrmrrl4p6s40000gn/T/tmp0v9_5yi0.py').read(), '/var/folders/r3/_zzp3zjj6tn5rkrmrrl4p6s40000gn/T/tmp0v9_5yi0.py', 'exec')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+    },
+    "composite": 0.5899
+  },
+  {
+    "prompt_id": "narr_01",
+    "domain": "narrative",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L3_burst_25_entropy",
+    "total_tokens": 500,
+    "total_time_ms": 106037.58025169373,
+    "reanchors": 26,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.46153846153846156,
+      "facts_found": [
+        "Mara",
+        "clockmaker",
+        "lighthouse",
+        "black cat",
+        "Sable",
+        "replacement part"
+      ],
+      "facts_missing": [
+        "left-handed",
+        "northern coast",
+        "winter",
+        "lamp broken",
+        "three days",
+        "mainland",
+        "no phone"
+      ],
+      "total_facts": 13
+    },
+    "drift": {
+      "drift_scores": [
+        0.6323,
+        0.9,
+        0.6588,
+        0.6632,
+        0.6757,
+        0.4917,
+        0.7167,
+        0.7453,
+        0.5865,
+        0.7962,
+        0.7334,
+        0.526,
+        0.8847,
+        0.6772,
+        0.478,
+        0.9014,
+        0.6909,
+        0.8227,
+        0.7457,
+        0.663,
+        0.4391,
+        0.5522,
+        0.8514,
+        0.5088,
+        0.7644,
+        0.9777,
+        0.9188
+      ],
+      "drift_mean": 0.7038,
+      "drift_max": 0.9777,
+      "drift_trend": "stable",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.9167,
+        0.8636,
+        0.8947,
+        0.5714,
+        0.8929,
+        0.5,
+        0.9583,
+        1.0,
+        0.85,
+        0.5417,
+        0.7692,
+        0.96,
+        0.9231,
+        0.6923,
+        0.9524,
+        1.0,
+        0.875,
+        0.5909,
+        0.8235,
+        0.95,
+        0.4783,
+        0.44,
+        0.9,
+        1.0,
+        0.95,
+        0.8889,
+        0.8889
+      ],
+      "entropy_global_mean": 0.816,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 1,
+      "contradictions": [
+        {
+          "sentence_a_idx": 5,
+          "sentence_a": "The replacement part she needed was supposed to arrive by post, but that could take weeks, and she d",
+          "sentence_b_idx": 31,
+          "sentence_b": "She didn't know anyone in the village who was a clockmaker, and she certainly wasn't one of them",
+          "method": "pattern"
+        }
+      ],
+      "self_consistent": false
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "character name stays Mara",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "cat stays black and named Sable",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "setting stays winter/lighthouse",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "lamp stays broken unless repair arrives",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "no phone used for communication",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 5
+    },
+    "composite": 0.4837
+  },
+  {
+    "prompt_id": "narr_02",
+    "domain": "narrative",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L3_burst_25_entropy",
+    "total_tokens": 443,
+    "total_time_ms": 8328103.02901268,
+    "reanchors": 24,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "Alex knows sale",
+        "Alex keeps secret",
+        "Jordan expects promotion",
+        "Jordan doesn't know about sale"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.5119,
+        0.5436,
+        0.5122,
+        0.7889,
+        0.9058,
+        0.8026,
+        0.5686,
+        0.9887,
+        0.7951,
+        0.673,
+        0.807,
+        0.6341,
+        0.7353,
+        0.5996,
+        0.8994,
+        0.4556,
+        0.7657,
+        0.7746,
+        0.7609,
+        0.8698,
+        0.9443,
+        0.7124,
+        0.6516,
+        0.8991
+      ],
+      "drift_mean": 0.7333,
+      "drift_max": 0.9887,
+      "drift_trend": "stable",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.9545,
+        0.9643,
+        0.8,
+        0.7778,
+        0.8846,
+        0.6667,
+        0.9565,
+        0.8696,
+        0.7647,
+        0.95,
+        0.7778,
+        1.0,
+        0.75,
+        0.8889,
+        1.0,
+        0.9375,
+        0.7368,
+        0.7917,
+        0.88,
+        0.25,
+        0.8571,
+        0.92,
+        0.8846,
+        1.0
+      ],
+      "entropy_global_mean": 0.8337,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "Alex never reveals sale directly",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "Jordan never references sale or acquisition",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "dramatic irony maintained",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "both characters maintain distinct knowledge states",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 4
+    },
+    "composite": 0.4167
+  },
+  {
+    "prompt_id": "mem_01",
+    "domain": "memory",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L3_burst_25_entropy",
+    "total_tokens": 148,
+    "total_time_ms": 2593841.4101600647,
+    "reanchors": 7,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.8888888888888888,
+      "facts_found": [
+        "marine biologist",
+        "Woods Hole",
+        "S\u00e3o Paulo",
+        "2018",
+        "Massachusetts",
+        "thermal vents",
+        "twin daughters",
+        "7 years old"
+      ],
+      "facts_missing": [
+        "shellfish allergy"
+      ],
+      "total_facts": 9
+    },
+    "drift": {
+      "drift_scores": [
+        0.2791,
+        0.5947,
+        0.4557,
+        0.6344,
+        0.4305,
+        0.4232,
+        0.6569
+      ],
+      "drift_mean": 0.4964,
+      "drift_max": 0.6569,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.8929,
+        0.75,
+        0.9565,
+        0.7308,
+        0.7692,
+        0.875,
+        0.963
+      ],
+      "entropy_global_mean": 0.8483,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "all_facts_present",
+      "note": "see fidelity_score"
+    },
+    "composite": 0.8315
+  },
+  {
+    "prompt_id": "mem_02",
+    "domain": "memory",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L3_burst_25_entropy",
+    "total_tokens": 258,
+    "total_time_ms": 5635029.481172562,
+    "reanchors": 14,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "built 1952",
+        "70+ years",
+        "architect died 1948",
+        "architect supervised construction"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.3498,
+        0.4489,
+        0.4109,
+        0.4068,
+        0.3539,
+        0.4347,
+        0.2804,
+        0.4596,
+        0.3364,
+        0.4876,
+        0.5395,
+        0.3287,
+        0.3793,
+        0.9548
+      ],
+      "drift_mean": 0.4408,
+      "drift_max": 0.9548,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        1.0,
+        0.4091,
+        0.7647,
+        0.5652,
+        0.619,
+        0.3929,
+        0.8571,
+        0.9583,
+        1.0,
+        0.913,
+        0.7826,
+        0.8095,
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.7312,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "decreasing",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "detect_contradiction",
+      "contradiction_detected": true
+    },
+    "composite": 0.4898
+  },
+  {
+    "prompt_id": "prog_01",
+    "domain": "programming",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L4_full_scaffold",
+    "total_tokens": 146,
+    "total_time_ms": 7251146.478176117,
+    "reanchors": 12,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "keywords_found": [
+        "ListNode",
+        "next",
+        "prev",
+        "None",
+        "while",
+        "head"
+      ],
+      "keywords_missing": [],
+      "total_keywords": 6
+    },
+    "drift": {
+      "drift_scores": [
+        0.482,
+        0.5041,
+        0.3094,
+        0.6374,
+        0.6567,
+        0.394,
+        0.4128,
+        0.1614,
+        0.2838,
+        0.6584,
+        0.923,
+        0.8385
+      ],
+      "drift_mean": 0.5218,
+      "drift_max": 0.923,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        1.0,
+        0.4667,
+        1.0,
+        0.5385,
+        0.1818,
+        0.0,
+        0.0,
+        0.1,
+        0.0,
+        0.0,
+        0.8,
+        0.9474
+      ],
+      "entropy_global_mean": 0.4014,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "decreasing",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 1,
+      "contradictions": [
+        {
+          "sentence_a_idx": 2,
+          "sentence_a": "next = None\n```\n\n## Step 2: Implement the reverse function\n```python\ndef reverseList(head):\n    prev",
+          "sentence_b_idx": 14,
+          "sentence_b": "next = ListNode(5)\n\n# Reverse the linked list\nnew_head = reverseList(head)\n\n# Print the reversed lin",
+          "method": "pattern"
+        }
+      ],
+      "self_consistent": false
+    },
+    "executability": {
+      "executable": true,
+      "reason": "compiles",
+      "error": null
+    },
+    "composite": 0.8446
+  },
+  {
+    "prompt_id": "prog_02",
+    "domain": "programming",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L4_full_scaffold",
+    "total_tokens": 339,
+    "total_time_ms": 6326201.4989852905,
+    "reanchors": 22,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "keywords_found": [
+        "low",
+        "high",
+        "mid",
+        "while",
+        "return -1"
+      ],
+      "keywords_missing": [],
+      "total_keywords": 5
+    },
+    "drift": {
+      "drift_scores": [
+        0.617,
+        0.2873,
+        0.4952,
+        0.3846,
+        0.4324,
+        0.4816,
+        0.3456,
+        0.5374,
+        0.4459,
+        0.4419,
+        0.4583,
+        0.61,
+        0.4611,
+        0.7059,
+        0.1651,
+        0.3711,
+        0.4148,
+        0.4787,
+        0.6807,
+        0.2651,
+        0.4521,
+        0.6173
+      ],
+      "drift_mean": 0.4613,
+      "drift_max": 0.7059,
+      "drift_trend": "stable",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.7647,
+        0.9286,
+        0.6667,
+        0.7273,
+        0.8947,
+        0.5714,
+        0.0,
+        0.7619,
+        0.6875,
+        0.0,
+        0.0,
+        0.3529,
+        0.0,
+        0.3333,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.1333,
+        1.0,
+        1.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.4814,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "decreasing",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 2,
+      "contradictions": [
+        {
+          "sentence_a_idx": 1,
+          "sentence_a": "```python\ndef binary_search(sorted_list, target_value):\n```\n\n## Step 2: Handle edge cases\nIf the lis",
+          "sentence_b_idx": 9,
+          "sentence_b": "It handles edge cases such as empty lists and single-element lists, and returns -1 if the target val",
+          "method": "pattern"
+        },
+        {
+          "sentence_a_idx": 4,
+          "sentence_a": "```python\nlow = 0\nhigh = len(sorted_list) - 1\nfound = False\n```\n\n## Step 4: Perform binary search\nWh",
+          "sentence_b_idx": 8,
+          "sentence_b": "```python\nif not found:\n    return -1\nelse:\n    return mid\n```\n\nThe final code should look like this",
+          "similarity": 0.85,
+          "method": "embedding+negation"
+        }
+      ],
+      "self_consistent": false
+    },
+    "executability": {
+      "executable": false,
+      "reason": "syntax_error",
+      "error": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    compile(open(r'/var/folders/r3/_zzp3zjj6tn5rkrmrrl4p6s40000gn/T/tmpcu_pttua.py').read(), '/var/folders/r3/_zzp3zjj6tn5rkrmrrl4p6s40000gn/T/tmpcu_pttua.py', 'exec')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+    },
+    "composite": 0.7597
+  },
+  {
+    "prompt_id": "narr_01",
+    "domain": "narrative",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L4_full_scaffold",
+    "total_tokens": 500,
+    "total_time_ms": 66232105.149030685,
+    "reanchors": 25,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.3076923076923077,
+      "facts_found": [
+        "Mara",
+        "lighthouse",
+        "winter",
+        "Sable"
+      ],
+      "facts_missing": [
+        "left-handed",
+        "clockmaker",
+        "northern coast",
+        "black cat",
+        "lamp broken",
+        "three days",
+        "replacement part",
+        "mainland",
+        "no phone"
+      ],
+      "total_facts": 13
+    },
+    "drift": {
+      "drift_scores": [
+        0.5718,
+        0.736,
+        0.5766,
+        0.6757,
+        0.8478,
+        0.6447,
+        0.647,
+        0.6765,
+        0.559,
+        0.6942,
+        0.5489,
+        0.4819,
+        0.7786,
+        0.6851,
+        0.5436,
+        0.582,
+        0.7023,
+        0.3876,
+        0.7331,
+        0.6868,
+        0.6091,
+        0.7188,
+        0.7027,
+        0.473,
+        0.7075,
+        0.8799
+      ],
+      "drift_mean": 0.6481,
+      "drift_max": 0.8799,
+      "drift_trend": "stable",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        1.0,
+        0.7917,
+        0.96,
+        0.913,
+        0.9286,
+        0.9091,
+        1.0,
+        0.8333,
+        0.5714,
+        1.0,
+        0.8571,
+        1.0,
+        1.0,
+        0.7,
+        0.6471,
+        0.8696,
+        0.7692,
+        0.9643,
+        0.24,
+        0.9048,
+        0.9167,
+        0.7143,
+        0.84,
+        1.0,
+        0.8571,
+        0.5
+      ],
+      "entropy_global_mean": 0.8447,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "character name stays Mara",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "cat stays black and named Sable",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "setting stays winter/lighthouse",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "lamp stays broken unless repair arrives",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "no phone used for communication",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 5
+    },
+    "composite": 0.5611
+  },
+  {
+    "prompt_id": "narr_02",
+    "domain": "narrative",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L4_full_scaffold",
+    "total_tokens": 394,
+    "total_time_ms": 82420.74799537659,
+    "reanchors": 21,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "Alex knows sale",
+        "Alex keeps secret",
+        "Jordan expects promotion",
+        "Jordan doesn't know about sale"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.5267,
+        0.5278,
+        0.5945,
+        0.9213,
+        0.7206,
+        0.7283,
+        0.8938,
+        0.7763,
+        0.6352,
+        0.9426,
+        0.6811,
+        0.6627,
+        0.8558,
+        0.5952,
+        0.7941,
+        0.7858,
+        0.69,
+        0.8204,
+        0.866,
+        0.6033,
+        0.9011
+      ],
+      "drift_mean": 0.7392,
+      "drift_max": 0.9426,
+      "drift_trend": "stable",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        1.0,
+        0.95,
+        0.9091,
+        0.9444,
+        0.6087,
+        0.7059,
+        1.0,
+        0.875,
+        0.8571,
+        0.84,
+        0.9048,
+        0.8824,
+        0.8,
+        0.9444,
+        1.0,
+        1.0,
+        0.7647,
+        0.7826,
+        0.3333,
+        0.7647,
+        0.8
+      ],
+      "entropy_global_mean": 0.8364,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "Alex never reveals sale directly",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "Jordan never references sale or acquisition",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "dramatic irony maintained",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "both characters maintain distinct knowledge states",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 4
+    },
+    "composite": 0.4152
+  },
+  {
+    "prompt_id": "mem_01",
+    "domain": "memory",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L4_full_scaffold",
+    "total_tokens": 171,
+    "total_time_ms": 56330.586194992065,
+    "reanchors": 8,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.8888888888888888,
+      "facts_found": [
+        "marine biologist",
+        "Woods Hole",
+        "S\u00e3o Paulo",
+        "2018",
+        "Massachusetts",
+        "thermal vents",
+        "twin daughters",
+        "7 years old"
+      ],
+      "facts_missing": [
+        "shellfish allergy"
+      ],
+      "total_facts": 9
+    },
+    "drift": {
+      "drift_scores": [
+        0.4528,
+        0.6068,
+        0.6132,
+        0.4191,
+        0.4444,
+        0.5146,
+        0.642,
+        0.5779
+      ],
+      "drift_mean": 0.5338,
+      "drift_max": 0.642,
+      "drift_trend": "stable",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.9231,
+        0.96,
+        0.8571,
+        0.7241,
+        0.8889,
+        0.7931,
+        0.76,
+        0.8261
+      ],
+      "entropy_global_mean": 0.839,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "decreasing",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "all_facts_present",
+      "note": "see fidelity_score"
+    },
+    "composite": 0.8221
+  },
+  {
+    "prompt_id": "mem_02",
+    "domain": "memory",
+    "model_tier": "local_small",
+    "model_name": "llama3.2:latest",
+    "strategy": "L4_full_scaffold",
+    "total_tokens": 247,
+    "total_time_ms": 218575.50501823425,
+    "reanchors": 12,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "built 1952",
+        "70+ years",
+        "architect died 1948",
+        "architect supervised construction"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.5333,
+        0.3308,
+        0.3757,
+        0.4857,
+        0.3506,
+        0.6091,
+        0.6168,
+        0.5167,
+        0.6664,
+        0.4156,
+        0.3574,
+        0.6201
+      ],
+      "drift_mean": 0.4899,
+      "drift_max": 0.6664,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        1.0,
+        0.625,
+        0.9643,
+        0.9231,
+        0.8182,
+        0.5417,
+        0.6562,
+        0.9643,
+        0.5,
+        0.0,
+        1.0,
+        0.9565
+      ],
+      "entropy_global_mean": 0.8365,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "decreasing",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 2,
+      "contradictions": [
+        {
+          "sentence_a_idx": 3,
+          "sentence_a": "However, if the architect died in 1948 (Statement B), it is not possible for the architect to have s",
+          "sentence_b_idx": 12,
+          "sentence_b": "If the architect did not personally supervise the construction of the building, then it is possible ",
+          "method": "pattern"
+        },
+        {
+          "sentence_a_idx": 4,
+          "sentence_a": "This means that either Statement A or Statement C must be false",
+          "sentence_b_idx": 9,
+          "sentence_b": "This means that both Statements A and C cannot be true at the same time",
+          "similarity": 0.889,
+          "method": "embedding+negation"
+        }
+      ],
+      "self_consistent": false
+    },
+    "memory_behavior": {
+      "expected_behavior": "detect_contradiction",
+      "contradiction_detected": true
+    },
+    "composite": 0.3525
+  },
+  {
+    "prompt_id": "prog_01",
+    "domain": "programming",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L0_free_500",
+    "total_tokens": 135,
+    "total_time_ms": 98626.45196914673,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "keywords_found": [
+        "ListNode",
+        "next",
+        "prev",
+        "None",
+        "while",
+        "head"
+      ],
+      "keywords_missing": [],
+      "total_keywords": 6
+    },
+    "drift": {
+      "drift_scores": [
+        0.1011
+      ],
+      "drift_mean": 0.1011,
+      "drift_max": 0.1011,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 3,
+      "contradictions": [
+        {
+          "sentence_a_idx": 2,
+          "sentence_a": "next = next\n\ndef reverse_linked_list(head: ListNode) -> None:\n    prev_node = None\n    current_node ",
+          "sentence_b_idx": 10,
+          "sentence_b": "next = ListNode(4)\n\nreverse_linked_list(head)\n\nwhile head is not None:\n    print(head",
+          "method": "pattern"
+        },
+        {
+          "sentence_a_idx": 0,
+          "sentence_a": "Here is the code for defining the `ListNode` class and the function to reverse a singly linked list ",
+          "sentence_b_idx": 2,
+          "sentence_b": "next = next\n\ndef reverse_linked_list(head: ListNode) -> None:\n    prev_node = None\n    current_node ",
+          "similarity": 0.867,
+          "method": "embedding+negation"
+        },
+        {
+          "sentence_a_idx": 2,
+          "sentence_a": "next = next\n\ndef reverse_linked_list(head: ListNode) -> None:\n    prev_node = None\n    current_node ",
+          "sentence_b_idx": 4,
+          "sentence_b": "next = prev_node   # Reverse the link\n        prev_node = current_node       # Move to the next pair",
+          "similarity": 0.87,
+          "method": "embedding+negation"
+        }
+      ],
+      "self_consistent": false
+    },
+    "executability": {
+      "executable": true,
+      "reason": "compiles",
+      "error": null
+    },
+    "composite": 0.9497
+  },
+  {
+    "prompt_id": "prog_02",
+    "domain": "programming",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L0_free_500",
+    "total_tokens": 119,
+    "total_time_ms": 21579.561948776245,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "keywords_found": [
+        "low",
+        "high",
+        "mid",
+        "while",
+        "return -1"
+      ],
+      "keywords_missing": [],
+      "total_keywords": 5
+    },
+    "drift": {
+      "drift_scores": [
+        0.1032
+      ],
+      "drift_mean": 0.1032,
+      "drift_max": 0.1032,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "executability": {
+      "executable": true,
+      "reason": "compiles",
+      "error": null
+    },
+    "composite": 1.0742
+  },
+  {
+    "prompt_id": "narr_01",
+    "domain": "narrative",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L0_free_500",
+    "total_tokens": 362,
+    "total_time_ms": 27139.716863632202,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.38461538461538464,
+      "facts_found": [
+        "Mara",
+        "lighthouse",
+        "black cat",
+        "Sable",
+        "replacement part"
+      ],
+      "facts_missing": [
+        "left-handed",
+        "clockmaker",
+        "northern coast",
+        "winter",
+        "lamp broken",
+        "three days",
+        "mainland",
+        "no phone"
+      ],
+      "total_facts": 13
+    },
+    "drift": {
+      "drift_scores": [
+        0.2765
+      ],
+      "drift_mean": 0.2765,
+      "drift_max": 0.2765,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "character name stays Mara",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "cat stays black and named Sable",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "setting stays winter/lighthouse",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "lamp stays broken unless repair arrives",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "no phone used for communication",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 5
+    },
+    "composite": 0.6847
+  },
+  {
+    "prompt_id": "narr_02",
+    "domain": "narrative",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L0_free_500",
+    "total_tokens": 264,
+    "total_time_ms": 22792.40608215332,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "Alex knows sale",
+        "Alex keeps secret",
+        "Jordan expects promotion",
+        "Jordan doesn't know about sale"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.5848
+      ],
+      "drift_mean": 0.5848,
+      "drift_max": 0.5848,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "Alex never reveals sale directly",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "Jordan never references sale or acquisition",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "dramatic irony maintained",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "both characters maintain distinct knowledge states",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 4
+    },
+    "composite": 0.4538
+  },
+  {
+    "prompt_id": "mem_01",
+    "domain": "memory",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L0_free_500",
+    "total_tokens": 77,
+    "total_time_ms": 6067.183256149292,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.8888888888888888,
+      "facts_found": [
+        "marine biologist",
+        "Woods Hole",
+        "S\u00e3o Paulo",
+        "2018",
+        "Massachusetts",
+        "thermal vents",
+        "twin daughters",
+        "7 years old"
+      ],
+      "facts_missing": [
+        "shellfish allergy"
+      ],
+      "total_facts": 9
+    },
+    "drift": {
+      "drift_scores": [
+        0.2806
+      ],
+      "drift_mean": 0.2806,
+      "drift_max": 0.2806,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "all_facts_present",
+      "note": "see fidelity_score"
+    },
+    "composite": 0.8854
+  },
+  {
+    "prompt_id": "mem_02",
+    "domain": "memory",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L0_free_500",
+    "total_tokens": 119,
+    "total_time_ms": 9010.992765426636,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "built 1952",
+        "70+ years",
+        "architect died 1948",
+        "architect supervised construction"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.1978
+      ],
+      "drift_mean": 0.1978,
+      "drift_max": 0.1978,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "detect_contradiction",
+      "contradiction_detected": true
+    },
+    "composite": 0.5506
+  },
+  {
+    "prompt_id": "prog_01",
+    "domain": "programming",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L1_free_200",
+    "total_tokens": 94,
+    "total_time_ms": 10651.249885559082,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "keywords_found": [
+        "ListNode",
+        "next",
+        "prev",
+        "None",
+        "while",
+        "head"
+      ],
+      "keywords_missing": [],
+      "total_keywords": 6
+    },
+    "drift": {
+      "drift_scores": [
+        0.0878
+      ],
+      "drift_mean": 0.0878,
+      "drift_max": 0.0878,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 1,
+      "contradictions": [
+        {
+          "sentence_a_idx": 0,
+          "sentence_a": "Here is the code for the ListNode class and the function to reverse a singly linked list in-place:\n\n",
+          "sentence_b_idx": 2,
+          "sentence_b": "next = next\n\ndef reverse_linked_list(head: ListNode) -> None:\n    prev_node = None\n    current_node ",
+          "similarity": 0.873,
+          "method": "embedding+negation"
+        }
+      ],
+      "self_consistent": false
+    },
+    "executability": {
+      "executable": true,
+      "reason": "compiles",
+      "error": null
+    },
+    "composite": 0.953
+  },
+  {
+    "prompt_id": "prog_02",
+    "domain": "programming",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L1_free_200",
+    "total_tokens": 89,
+    "total_time_ms": 10083.381175994873,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.4,
+      "keywords_found": [
+        "mid",
+        "return -1"
+      ],
+      "keywords_missing": [
+        "low",
+        "high",
+        "while"
+      ],
+      "total_keywords": 5
+    },
+    "drift": {
+      "drift_scores": [
+        0.1055
+      ],
+      "drift_mean": 0.1055,
+      "drift_max": 0.1055,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "executability": {
+      "executable": true,
+      "reason": "compiles",
+      "error": null
+    },
+    "composite": 0.8336
+  },
+  {
+    "prompt_id": "narr_01",
+    "domain": "narrative",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L1_free_200",
+    "total_tokens": 144,
+    "total_time_ms": 10907.181024551392,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.38461538461538464,
+      "facts_found": [
+        "Mara",
+        "lighthouse",
+        "winter",
+        "black cat",
+        "Sable"
+      ],
+      "facts_missing": [
+        "left-handed",
+        "clockmaker",
+        "northern coast",
+        "lamp broken",
+        "three days",
+        "replacement part",
+        "mainland",
+        "no phone"
+      ],
+      "total_facts": 13
+    },
+    "drift": {
+      "drift_scores": [
+        0.2595
+      ],
+      "drift_mean": 0.2595,
+      "drift_max": 0.2595,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "character name stays Mara",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "cat stays black and named Sable",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "setting stays winter/lighthouse",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "lamp stays broken unless repair arrives",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "no phone used for communication",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 5
+    },
+    "composite": 0.689
+  },
+  {
+    "prompt_id": "narr_02",
+    "domain": "narrative",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L1_free_200",
+    "total_tokens": 132,
+    "total_time_ms": 12041.19086265564,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "Alex knows sale",
+        "Alex keeps secret",
+        "Jordan expects promotion",
+        "Jordan doesn't know about sale"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.5677
+      ],
+      "drift_mean": 0.5677,
+      "drift_max": 0.5677,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "Alex never reveals sale directly",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "Jordan never references sale or acquisition",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "dramatic irony maintained",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "both characters maintain distinct knowledge states",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 4
+    },
+    "composite": 0.4581
+  },
+  {
+    "prompt_id": "mem_01",
+    "domain": "memory",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L1_free_200",
+    "total_tokens": 65,
+    "total_time_ms": 7854.933023452759,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.7777777777777778,
+      "facts_found": [
+        "marine biologist",
+        "Woods Hole",
+        "S\u00e3o Paulo",
+        "2018",
+        "Massachusetts",
+        "thermal vents",
+        "twin daughters"
+      ],
+      "facts_missing": [
+        "shellfish allergy",
+        "7 years old"
+      ],
+      "total_facts": 9
+    },
+    "drift": {
+      "drift_scores": [
+        0.2959
+      ],
+      "drift_mean": 0.2959,
+      "drift_max": 0.2959,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "all_facts_present",
+      "note": "see fidelity_score"
+    },
+    "composite": 0.8371
+  },
+  {
+    "prompt_id": "mem_02",
+    "domain": "memory",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L1_free_200",
+    "total_tokens": 68,
+    "total_time_ms": 5868.878126144409,
+    "reanchors": 0,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "built 1952",
+        "70+ years",
+        "architect died 1948",
+        "architect supervised construction"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.1491
+      ],
+      "drift_mean": 0.1491,
+      "drift_max": 0.1491,
+      "drift_trend": "single_span",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "single_span",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "detect_contradiction",
+      "contradiction_detected": true
+    },
+    "composite": 0.5627
+  },
+  {
+    "prompt_id": "prog_01",
+    "domain": "programming",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L2_burst_50",
+    "total_tokens": 118,
+    "total_time_ms": 24258.33821296692,
+    "reanchors": 7,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "keywords_found": [
+        "ListNode",
+        "next",
+        "prev",
+        "None",
+        "while",
+        "head"
+      ],
+      "keywords_missing": [],
+      "total_keywords": 6
+    },
+    "drift": {
+      "drift_scores": [
+        0.1195,
+        0.4672,
+        0.3891,
+        0.3393,
+        0.1646,
+        0.3468,
+        0.9347
+      ],
+      "drift_mean": 0.3945,
+      "drift_max": 0.9347,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 2,
+      "contradictions": [
+        {
+          "sentence_a_idx": 2,
+          "sentence_a": "next = next\n\ndef reverse_linked_list(head: ListNode) -> ListNode:\n    prev_node = None\n    current_n",
+          "sentence_b_idx": 10,
+          "sentence_b": "next = ListNode(4)\n\nreversed_list = reverse_linked_list(head)\n\nwhile reversed_list is not None:\n    ",
+          "method": "pattern"
+        },
+        {
+          "sentence_a_idx": 2,
+          "sentence_a": "next = next\n\ndef reverse_linked_list(head: ListNode) -> ListNode:\n    prev_node = None\n    current_n",
+          "sentence_b_idx": 4,
+          "sentence_b": "next = prev_node   # Reverse the link\n        prev_node = current_node       # Move to the previous ",
+          "similarity": 0.883,
+          "method": "embedding+negation"
+        }
+      ],
+      "self_consistent": false
+    },
+    "executability": {
+      "executable": true,
+      "reason": "compiles",
+      "error": null
+    },
+    "composite": 0.8764
+  },
+  {
+    "prompt_id": "prog_02",
+    "domain": "programming",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L2_burst_50",
+    "total_tokens": 277,
+    "total_time_ms": 35009.80091094971,
+    "reanchors": 10,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.8,
+      "keywords_found": [
+        "low",
+        "high",
+        "mid",
+        "return -1"
+      ],
+      "keywords_missing": [
+        "while"
+      ],
+      "total_keywords": 5
+    },
+    "drift": {
+      "drift_scores": [
+        0.2469,
+        0.4867,
+        0.6343,
+        0.4405,
+        0.4479,
+        0.5601,
+        0.6651,
+        0.518,
+        0.4427,
+        0.3969
+      ],
+      "drift_mean": 0.4839,
+      "drift_max": 0.6651,
+      "drift_trend": "stable",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "executability": {
+      "executable": true,
+      "reason": "compiles",
+      "error": null
+    },
+    "composite": 0.899
+  },
+  {
+    "prompt_id": "narr_01",
+    "domain": "narrative",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L2_burst_50",
+    "total_tokens": 500,
+    "total_time_ms": 49740.885972976685,
+    "reanchors": 14,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.5384615384615384,
+      "facts_found": [
+        "Mara",
+        "lighthouse",
+        "northern coast",
+        "black cat",
+        "Sable",
+        "three days",
+        "replacement part"
+      ],
+      "facts_missing": [
+        "left-handed",
+        "clockmaker",
+        "winter",
+        "lamp broken",
+        "mainland",
+        "no phone"
+      ],
+      "total_facts": 13
+    },
+    "drift": {
+      "drift_scores": [
+        0.3761,
+        0.5178,
+        0.5218,
+        0.5274,
+        0.497,
+        0.5142,
+        0.7088,
+        0.8651,
+        0.5276,
+        0.6755,
+        0.485,
+        0.4498,
+        0.7981,
+        0.9641,
+        0.8883
+      ],
+      "drift_mean": 0.6211,
+      "drift_max": 0.9641,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "character name stays Mara",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "cat stays black and named Sable",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "setting stays winter/lighthouse",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "lamp stays broken unless repair arrives",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "no phone used for communication",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 5
+    },
+    "composite": 0.6601
+  },
+  {
+    "prompt_id": "narr_02",
+    "domain": "narrative",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L2_burst_50",
+    "total_tokens": 500,
+    "total_time_ms": 60226.4449596405,
+    "reanchors": 16,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "Alex knows sale",
+        "Alex keeps secret",
+        "Jordan expects promotion",
+        "Jordan doesn't know about sale"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.5225,
+        0.6353,
+        0.6853,
+        0.5608,
+        0.6576,
+        0.674,
+        0.6399,
+        0.8307,
+        0.8832,
+        0.677,
+        0.5388,
+        0.7011,
+        0.498,
+        0.7294,
+        0.5173,
+        0.929,
+        0.7671
+      ],
+      "drift_mean": 0.6734,
+      "drift_max": 0.929,
+      "drift_trend": "stable",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 2,
+      "contradictions": [
+        {
+          "sentence_a_idx": 0,
+          "sentence_a": "Jordan: Hey Alex, I can't wait for our meeting next week",
+          "sentence_b_idx": 38,
+          "sentence_b": "But whatever it is, I know we can handle it",
+          "method": "pattern"
+        },
+        {
+          "sentence_a_idx": 29,
+          "sentence_a": "I've been hearing some rumors and I can't wait to find out more",
+          "sentence_b_idx": 38,
+          "sentence_b": "But whatever it is, I know we can handle it",
+          "method": "pattern"
+        }
+      ],
+      "self_consistent": false
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "Alex never reveals sale directly",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "Jordan never references sale or acquisition",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "dramatic irony maintained",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "both characters maintain distinct knowledge states",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 4
+    },
+    "composite": 0.3066
+  },
+  {
+    "prompt_id": "mem_01",
+    "domain": "memory",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L2_burst_50",
+    "total_tokens": 55,
+    "total_time_ms": 8910.307884216309,
+    "reanchors": 2,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.8888888888888888,
+      "facts_found": [
+        "marine biologist",
+        "Woods Hole",
+        "S\u00e3o Paulo",
+        "2018",
+        "Massachusetts",
+        "thermal vents",
+        "twin daughters",
+        "7 years old"
+      ],
+      "facts_missing": [
+        "shellfish allergy"
+      ],
+      "total_facts": 9
+    },
+    "drift": {
+      "drift_scores": [
+        0.3588,
+        0.3072
+      ],
+      "drift_mean": 0.333,
+      "drift_max": 0.3588,
+      "drift_trend": "decreasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "all_facts_present",
+      "note": "see fidelity_score"
+    },
+    "composite": 0.8723
+  },
+  {
+    "prompt_id": "mem_02",
+    "domain": "memory",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L2_burst_50",
+    "total_tokens": 88,
+    "total_time_ms": 11475.567102432251,
+    "reanchors": 3,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "built 1952",
+        "70+ years",
+        "architect died 1948",
+        "architect supervised construction"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.1837,
+        0.3415,
+        0.5557
+      ],
+      "drift_mean": 0.3603,
+      "drift_max": 0.5557,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entropy_global_mean": 0.0,
+      "entropy_global_max": 0.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "detect_contradiction",
+      "contradiction_detected": true
+    },
+    "composite": 0.5099
+  },
+  {
+    "prompt_id": "prog_01",
+    "domain": "programming",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L3_burst_25_entropy",
+    "total_tokens": 134,
+    "total_time_ms": 72319.1978931427,
+    "reanchors": 13,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "keywords_found": [
+        "ListNode",
+        "next",
+        "prev",
+        "None",
+        "while",
+        "head"
+      ],
+      "keywords_missing": [],
+      "total_keywords": 6
+    },
+    "drift": {
+      "drift_scores": [
+        0.465,
+        0.2367,
+        0.567,
+        0.6088,
+        0.5597,
+        0.6103,
+        0.3202,
+        0.4477,
+        0.169,
+        0.1894,
+        0.3289,
+        0.8366,
+        0.8967
+      ],
+      "drift_mean": 0.4797,
+      "drift_max": 0.8967,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.0,
+        0.0,
+        0.1,
+        0.5556,
+        0.8696,
+        0.9167,
+        0.7273,
+        0.0,
+        0.75,
+        0.0,
+        0.0,
+        0.9,
+        0.0
+      ],
+      "entropy_global_mean": 0.4711,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 1,
+      "contradictions": [
+        {
+          "sentence_a_idx": 2,
+          "sentence_a": "next = next\n\ndef reverse_linked_list(head: ListNode) -> ListNode:\n    prev = None\n    current = head",
+          "sentence_b_idx": 10,
+          "sentence_b": "next = ListNode(4)\n\n# reverse the linked list\nreversed_list = reverse_linked_list(head)\n\n# print the",
+          "method": "pattern"
+        }
+      ],
+      "self_consistent": false
+    },
+    "executability": {
+      "executable": true,
+      "reason": "compiles",
+      "error": null
+    },
+    "composite": 0.8551
+  },
+  {
+    "prompt_id": "prog_02",
+    "domain": "programming",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L3_burst_25_entropy",
+    "total_tokens": 252,
+    "total_time_ms": 106852.41222381592,
+    "reanchors": 16,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "keywords_found": [
+        "low",
+        "high",
+        "mid",
+        "while",
+        "return -1"
+      ],
+      "keywords_missing": [],
+      "total_keywords": 5
+    },
+    "drift": {
+      "drift_scores": [
+        0.4165,
+        0.6458,
+        0.4696,
+        0.5461,
+        0.5893,
+        0.731,
+        0.7294,
+        0.5432,
+        0.3954,
+        0.526,
+        0.6213,
+        0.6937,
+        0.5972,
+        0.5511,
+        0.464,
+        0.5091
+      ],
+      "drift_mean": 0.5643,
+      "drift_max": 0.731,
+      "drift_trend": "stable",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        1.0,
+        0.2727,
+        0.6,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.6,
+        0.3,
+        0.6667,
+        0.7727,
+        1.0,
+        0.2308,
+        0.7059,
+        0.875,
+        0.8571
+      ],
+      "entropy_global_mean": 0.5708,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "increasing",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 2,
+      "contradictions": [
+        {
+          "sentence_a_idx": 0,
+          "sentence_a": "Here's one possible solution:\n\n```python\ndef binary_search(arr, target):\n    low = 0\n    high = len(",
+          "sentence_b_idx": 1,
+          "sentence_b": "= target:\n        return -1\n\n    # Continue searching while low is less than or equal to high\n    wh",
+          "method": "pattern"
+        },
+        {
+          "sentence_a_idx": 1,
+          "sentence_a": "= target:\n        return -1\n\n    # Continue searching while low is less than or equal to high\n    wh",
+          "sentence_b_idx": 4,
+          "sentence_b": "If the target is found, the function returns its index; otherwise, it returns -1",
+          "method": "pattern"
+        }
+      ],
+      "self_consistent": false
+    },
+    "executability": {
+      "executable": true,
+      "reason": "compiles",
+      "error": null
+    },
+    "composite": 0.8339
+  },
+  {
+    "prompt_id": "narr_01",
+    "domain": "narrative",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L3_burst_25_entropy",
+    "total_tokens": 428,
+    "total_time_ms": 224591.84908866882,
+    "reanchors": 24,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.5384615384615384,
+      "facts_found": [
+        "Mara",
+        "clockmaker",
+        "lighthouse",
+        "black cat",
+        "Sable",
+        "three days",
+        "replacement part"
+      ],
+      "facts_missing": [
+        "left-handed",
+        "northern coast",
+        "winter",
+        "lamp broken",
+        "mainland",
+        "no phone"
+      ],
+      "total_facts": 13
+    },
+    "drift": {
+      "drift_scores": [
+        0.4924,
+        0.6833,
+        0.5822,
+        0.471,
+        0.733,
+        0.7828,
+        0.6835,
+        0.8386,
+        0.8441,
+        0.7699,
+        0.644,
+        0.8475,
+        0.7787,
+        0.9722,
+        0.4644,
+        0.8936,
+        0.6438,
+        0.6886,
+        0.4952,
+        0.6955,
+        0.5103,
+        0.7279,
+        0.6395,
+        0.9016
+      ],
+      "drift_mean": 0.6993,
+      "drift_max": 0.9722,
+      "drift_trend": "stable",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.8824,
+        0.8571,
+        0.7727,
+        0.5,
+        1.0,
+        0.76,
+        0.68,
+        0.8636,
+        1.0,
+        0.2174,
+        0.8667,
+        0.92,
+        0.9048,
+        0.8667,
+        0.95,
+        0.9615,
+        0.8148,
+        0.8095,
+        0.9,
+        0.96,
+        0.7391,
+        0.96,
+        0.8696,
+        0.0
+      ],
+      "entropy_global_mean": 0.8286,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "character name stays Mara",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "cat stays black and named Sable",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "setting stays winter/lighthouse",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "lamp stays broken unless repair arrives",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "no phone used for communication",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 5
+    },
+    "composite": 0.6406
+  },
+  {
+    "prompt_id": "narr_02",
+    "domain": "narrative",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L3_burst_25_entropy",
+    "total_tokens": 451,
+    "total_time_ms": 279007.4918270111,
+    "reanchors": 30,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "Alex knows sale",
+        "Alex keeps secret",
+        "Jordan expects promotion",
+        "Jordan doesn't know about sale"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.5697,
+        0.6198,
+        0.81,
+        0.678,
+        0.6584,
+        0.6272,
+        0.6207,
+        0.669,
+        0.6315,
+        0.6895,
+        0.5675,
+        0.6728,
+        0.6893,
+        0.6309,
+        0.6071,
+        0.7031,
+        0.6121,
+        0.6487,
+        0.7949,
+        0.5978,
+        0.5829,
+        0.7348,
+        0.6175,
+        0.7888,
+        0.7827,
+        0.5664,
+        0.4615,
+        0.5627,
+        0.661,
+        0.8722
+      ],
+      "drift_mean": 0.6576,
+      "drift_max": 0.8722,
+      "drift_trend": "stable",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.5,
+        0.9444,
+        0.75,
+        0.4375,
+        0.9231,
+        0.9231,
+        0.875,
+        0.7692,
+        0.5882,
+        0.7333,
+        0.6364,
+        0.9333,
+        0.75,
+        0.8,
+        0.4737,
+        0.7647,
+        0.8889,
+        0.6429,
+        0.9286,
+        0.8333,
+        0.6667,
+        0.8824,
+        0.9231,
+        1.0,
+        0.6667,
+        0.875,
+        0.9375,
+        1.0,
+        0.9474,
+        0.0
+      ],
+      "entropy_global_mean": 0.7857,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 10,
+      "contradictions": [
+        {
+          "sentence_a_idx": 9,
+          "sentence_a": "I can't wait to take on more responsibilities and help the company grow even further",
+          "sentence_b_idx": 44,
+          "sentence_b": "With our current team and leadership, I believe we can achieve great things",
+          "method": "pattern"
+        },
+        {
+          "sentence_a_idx": 9,
+          "sentence_a": "I can't wait to take on more responsibilities and help the company grow even further",
+          "sentence_b_idx": 51,
+          "sentence_b": "I hope I can return the favor someday",
+          "method": "pattern"
+        },
+        {
+          "sentence_a_idx": 17,
+          "sentence_a": "I can't wait to see what the future holds for us",
+          "sentence_b_idx": 44,
+          "sentence_b": "With our current team and leadership, I believe we can achieve great things",
+          "method": "pattern"
+        },
+        {
+          "sentence_a_idx": 17,
+          "sentence_a": "I can't wait to see what the future holds for us",
+          "sentence_b_idx": 51,
+          "sentence_b": "I hope I can return the favor someday",
+          "method": "pattern"
+        },
+        {
+          "sentence_a_idx": 28,
+          "sentence_a": "I can't wait to see what we can accomplish together",
+          "sentence_b_idx": 44,
+          "sentence_b": "With our current team and leadership, I believe we can achieve great things",
+          "method": "pattern"
+        },
+        {
+          "sentence_a_idx": 28,
+          "sentence_a": "I can't wait to see what we can accomplish together",
+          "sentence_b_idx": 51,
+          "sentence_b": "I hope I can return the favor someday",
+          "method": "pattern"
+        },
+        {
+          "sentence_a_idx": 33,
+          "sentence_a": "(They both return to their desks and continue working)\n\nAlex: (thinking to himself) I wish I could t",
+          "sentence_b_idx": 44,
+          "sentence_b": "With our current team and leadership, I believe we can achieve great things",
+          "method": "pattern"
+        },
+        {
+          "sentence_a_idx": 33,
+          "sentence_a": "(They both return to their desks and continue working)\n\nAlex: (thinking to himself) I wish I could t",
+          "sentence_b_idx": 51,
+          "sentence_b": "I hope I can return the favor someday",
+          "method": "pattern"
+        },
+        {
+          "sentence_a_idx": 44,
+          "sentence_a": "With our current team and leadership, I believe we can achieve great things",
+          "sentence_b_idx": 57,
+          "sentence_b": "This sale is a big deal, and I can't risk ruining it for everyone",
+          "method": "pattern"
+        },
+        {
+          "sentence_a_idx": 51,
+          "sentence_a": "I hope I can return the favor someday",
+          "sentence_b_idx": 57,
+          "sentence_b": "This sale is a big deal, and I can't risk ruining it for everyone",
+          "method": "pattern"
+        }
+      ],
+      "self_consistent": false
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "Alex never reveals sale directly",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "Jordan never references sale or acquisition",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "dramatic irony maintained",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "both characters maintain distinct knowledge states",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 4
+    },
+    "composite": 0.3106
+  },
+  {
+    "prompt_id": "mem_01",
+    "domain": "memory",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L3_burst_25_entropy",
+    "total_tokens": 62,
+    "total_time_ms": 28395.82061767578,
+    "reanchors": 4,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.7777777777777778,
+      "facts_found": [
+        "marine biologist",
+        "Woods Hole",
+        "S\u00e3o Paulo",
+        "2018",
+        "Massachusetts",
+        "thermal vents",
+        "twin daughters"
+      ],
+      "facts_missing": [
+        "shellfish allergy",
+        "7 years old"
+      ],
+      "total_facts": 9
+    },
+    "drift": {
+      "drift_scores": [
+        0.4452,
+        0.4084,
+        0.496,
+        0.4386
+      ],
+      "drift_mean": 0.447,
+      "drift_max": 0.496,
+      "drift_trend": "stable",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        1.0,
+        0.8947,
+        0.8125,
+        0.7857
+      ],
+      "entropy_global_mean": 0.8689,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "decreasing",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "all_facts_present",
+      "note": "see fidelity_score"
+    },
+    "composite": 0.7994
+  },
+  {
+    "prompt_id": "mem_02",
+    "domain": "memory",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L3_burst_25_entropy",
+    "total_tokens": 74,
+    "total_time_ms": 30506.46185874939,
+    "reanchors": 4,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "built 1952",
+        "70+ years",
+        "architect died 1948",
+        "architect supervised construction"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.2408,
+        0.4211,
+        0.3768,
+        0.4842
+      ],
+      "drift_mean": 0.3807,
+      "drift_max": 0.4842,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.7,
+        0.8636,
+        0.9,
+        1.0
+      ],
+      "entropy_global_mean": 0.8625,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "increasing",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "detect_contradiction",
+      "contradiction_detected": true
+    },
+    "composite": 0.5048
+  },
+  {
+    "prompt_id": "prog_01",
+    "domain": "programming",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L4_full_scaffold",
+    "total_tokens": 130,
+    "total_time_ms": 74832.57699012756,
+    "reanchors": 13,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 1.0,
+      "keywords_found": [
+        "ListNode",
+        "next",
+        "prev",
+        "None",
+        "while",
+        "head"
+      ],
+      "keywords_missing": [],
+      "total_keywords": 6
+    },
+    "drift": {
+      "drift_scores": [
+        0.465,
+        0.2367,
+        0.567,
+        0.5921,
+        0.4708,
+        0.6511,
+        0.2772,
+        0.4547,
+        0.1621,
+        0.3253,
+        0.3206,
+        0.8346,
+        0.9056
+      ],
+      "drift_mean": 0.4818,
+      "drift_max": 0.9056,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        1.0,
+        0.0,
+        0.0,
+        0.6,
+        0.65,
+        0.375,
+        0.375,
+        0.0,
+        0.5,
+        0.0,
+        0.1667,
+        0.7,
+        0.0
+      ],
+      "entropy_global_mean": 0.3704,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "decreasing",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 2,
+      "contradictions": [
+        {
+          "sentence_a_idx": 2,
+          "sentence_a": "next = next\n\ndef reverse_linked_list(head: ListNode) -> ListNode:\n    prev = None\n    current = head",
+          "sentence_b_idx": 10,
+          "sentence_b": "next = ListNode(4)\n\nreversed_list = reverse_linked_list(head)\n\n# Print the reversed linked list\nwhil",
+          "method": "pattern"
+        },
+        {
+          "sentence_a_idx": 2,
+          "sentence_a": "next = next\n\ndef reverse_linked_list(head: ListNode) -> ListNode:\n    prev = None\n    current = head",
+          "sentence_b_idx": 4,
+          "sentence_b": "next = prev        # Reverse the linking\n        prev = current            # Move to the next pair o",
+          "similarity": 0.866,
+          "method": "embedding+negation"
+        }
+      ],
+      "self_consistent": false
+    },
+    "executability": {
+      "executable": true,
+      "reason": "compiles",
+      "error": null
+    },
+    "composite": 0.8546
+  },
+  {
+    "prompt_id": "prog_02",
+    "domain": "programming",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L4_full_scaffold",
+    "total_tokens": 261,
+    "total_time_ms": 106330.75380325317,
+    "reanchors": 16,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.8,
+      "keywords_found": [
+        "low",
+        "high",
+        "mid",
+        "return -1"
+      ],
+      "keywords_missing": [
+        "while"
+      ],
+      "total_keywords": 5
+    },
+    "drift": {
+      "drift_scores": [
+        0.4165,
+        0.5012,
+        0.5906,
+        0.6812,
+        0.6744,
+        0.5595,
+        0.4998,
+        0.7327,
+        0.5549,
+        0.7052,
+        0.6048,
+        0.7226,
+        0.7284,
+        0.6546,
+        0.5774,
+        0.4484
+      ],
+      "drift_mean": 0.6033,
+      "drift_max": 0.7327,
+      "drift_trend": "stable",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.2,
+        1.0,
+        0.3,
+        0.0,
+        0.3333,
+        0.0,
+        0.6667,
+        0.9048,
+        0.5833,
+        0.7059,
+        0.8333,
+        0.5909,
+        0.05,
+        0.0,
+        0.75,
+        0.0
+      ],
+      "entropy_global_mean": 0.5111,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "executability": {
+      "executable": true,
+      "reason": "compiles",
+      "error": null
+    },
+    "composite": 0.8692
+  },
+  {
+    "prompt_id": "narr_01",
+    "domain": "narrative",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L4_full_scaffold",
+    "total_tokens": 500,
+    "total_time_ms": 218969.35510635376,
+    "reanchors": 27,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.23076923076923078,
+      "facts_found": [
+        "Mara",
+        "lighthouse",
+        "Sable"
+      ],
+      "facts_missing": [
+        "left-handed",
+        "clockmaker",
+        "northern coast",
+        "winter",
+        "black cat",
+        "lamp broken",
+        "three days",
+        "replacement part",
+        "mainland",
+        "no phone"
+      ],
+      "total_facts": 13
+    },
+    "drift": {
+      "drift_scores": [
+        0.836,
+        0.4999,
+        0.5973,
+        0.8034,
+        0.5301,
+        0.8205,
+        0.7807,
+        0.5181,
+        0.8537,
+        0.7973,
+        0.5328,
+        0.8619,
+        0.7218,
+        0.6583,
+        0.7078,
+        0.4783,
+        0.753,
+        0.7103,
+        0.5218,
+        0.8933,
+        0.5685,
+        0.5912,
+        0.7533,
+        0.5668,
+        0.8828,
+        0.922,
+        0.8968,
+        0.9704
+      ],
+      "drift_mean": 0.7153,
+      "drift_max": 0.9704,
+      "drift_trend": "stable",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        1.0,
+        0.875,
+        0.8889,
+        0.8421,
+        0.75,
+        0.913,
+        1.0,
+        0.95,
+        1.0,
+        1.0,
+        0.6842,
+        0.9048,
+        0.9444,
+        0.4762,
+        0.4545,
+        0.45,
+        0.9167,
+        0.8571,
+        0.9,
+        0.7857,
+        0.913,
+        0.9444,
+        0.96,
+        0.5789,
+        0.7895,
+        0.7368,
+        0.9231,
+        0.9
+      ],
+      "entropy_global_mean": 0.8318,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "stable",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "character name stays Mara",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "cat stays black and named Sable",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "setting stays winter/lighthouse",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "lamp stays broken unless repair arrives",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "no phone used for communication",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 5
+    },
+    "composite": 0.5135
+  },
+  {
+    "prompt_id": "narr_02",
+    "domain": "narrative",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L4_full_scaffold",
+    "total_tokens": 500,
+    "total_time_ms": 274967.93389320374,
+    "reanchors": 33,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "Alex knows sale",
+        "Alex keeps secret",
+        "Jordan expects promotion",
+        "Jordan doesn't know about sale"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.5956,
+        0.6164,
+        0.7601,
+        0.7101,
+        0.6293,
+        0.7983,
+        0.692,
+        0.7569,
+        0.7216,
+        0.4485,
+        0.6733,
+        0.5241,
+        0.9676,
+        0.6462,
+        0.7155,
+        0.6814,
+        0.8242,
+        0.5822,
+        0.4754,
+        0.5671,
+        0.6048,
+        0.8351,
+        0.6218,
+        0.6845,
+        0.7091,
+        0.6201,
+        0.6021,
+        0.6876,
+        0.751,
+        0.6214,
+        0.7519,
+        0.7308,
+        0.9819,
+        0.8473
+      ],
+      "drift_mean": 0.6893,
+      "drift_max": 0.9819,
+      "drift_trend": "stable",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.9286,
+        0.0,
+        0.9167,
+        0.8889,
+        1.0,
+        0.7895,
+        0.8333,
+        0.8125,
+        0.2941,
+        0.8824,
+        0.9231,
+        1.0,
+        0.9565,
+        0.8333,
+        0.8571,
+        1.0,
+        0.7778,
+        1.0,
+        0.9474,
+        0.6429,
+        0.8182,
+        0.7273,
+        0.8125,
+        0.9375,
+        0.0625,
+        0.0,
+        0.0909,
+        0.0556,
+        1.0,
+        0.0,
+        0.7059,
+        0.8571,
+        0.3333,
+        0.25
+      ],
+      "entropy_global_mean": 0.6772,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "decreasing",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 1,
+      "contradictions": [
+        {
+          "sentence_a_idx": 2,
+          "sentence_a": "I can't wait for my promotion next month",
+          "sentence_b_idx": 25,
+          "sentence_b": "We make a great team and I know we can handle whatever comes our way",
+          "method": "pattern"
+        }
+      ],
+      "self_consistent": false
+    },
+    "narrative_consistency": {
+      "consistency_checks": [
+        {
+          "check": "Alex never reveals sale directly",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "Jordan never references sale or acquisition",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "dramatic irony maintained",
+          "status": "needs_human_review"
+        },
+        {
+          "check": "both characters maintain distinct knowledge states",
+          "status": "needs_human_review"
+        }
+      ],
+      "total_checks": 4
+    },
+    "composite": 0.3027
+  },
+  {
+    "prompt_id": "mem_01",
+    "domain": "memory",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L4_full_scaffold",
+    "total_tokens": 59,
+    "total_time_ms": 34238.06190490723,
+    "reanchors": 4,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.8888888888888888,
+      "facts_found": [
+        "marine biologist",
+        "Woods Hole",
+        "S\u00e3o Paulo",
+        "2018",
+        "Massachusetts",
+        "thermal vents",
+        "twin daughters",
+        "7 years old"
+      ],
+      "facts_missing": [
+        "shellfish allergy"
+      ],
+      "total_facts": 9
+    },
+    "drift": {
+      "drift_scores": [
+        0.4301,
+        0.4578,
+        0.3432,
+        0.6641
+      ],
+      "drift_mean": 0.4738,
+      "drift_max": 0.6641,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        1.0,
+        0.5882,
+        0.6111,
+        0.0
+      ],
+      "entropy_global_mean": 0.5902,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "decreasing",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "all_facts_present",
+      "note": "see fidelity_score"
+    },
+    "composite": 0.8371
+  },
+  {
+    "prompt_id": "mem_02",
+    "domain": "memory",
+    "model_tier": "local_medium",
+    "model_name": "mistral:latest",
+    "strategy": "L4_full_scaffold",
+    "total_tokens": 89,
+    "total_time_ms": 43088.011026382446,
+    "reanchors": 5,
+    "reruns": 0,
+    "scored": true,
+    "fidelity": {
+      "fidelity_score": 0.0,
+      "facts_found": [],
+      "facts_missing": [
+        "built 1952",
+        "70+ years",
+        "architect died 1948",
+        "architect supervised construction"
+      ],
+      "total_facts": 4
+    },
+    "drift": {
+      "drift_scores": [
+        0.2408,
+        0.5095,
+        0.3985,
+        0.3985,
+        0.8624
+      ],
+      "drift_mean": 0.4819,
+      "drift_max": 0.8624,
+      "drift_trend": "increasing",
+      "drift_available": true
+    },
+    "entropy": {
+      "entropy_span_means": [
+        0.6,
+        0.875,
+        0.85,
+        0.9048,
+        0.8333
+      ],
+      "entropy_global_mean": 0.8132,
+      "entropy_global_max": 1.0,
+      "entropy_trend": "increasing",
+      "high_entropy_spans": 0
+    },
+    "self_contradiction": {
+      "contradiction_count": 0,
+      "contradictions": [],
+      "self_consistent": true
+    },
+    "memory_behavior": {
+      "expected_behavior": "detect_contradiction",
+      "contradiction_detected": true
+    },
+    "composite": 0.4795
+  }
+]

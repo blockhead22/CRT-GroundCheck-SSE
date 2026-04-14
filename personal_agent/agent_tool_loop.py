@@ -1120,6 +1120,17 @@ class AgentToolLoop:
                     "content": result["content"][:4000],  # Keep context manageable
                 })
 
+                # Nudge after first tool call to reduce repetitive calls on small models
+                if iteration == 0:
+                    messages.append({
+                        "role": "user",
+                        "content": (
+                            f"The {tool_name} tool returned results above. "
+                            f"If they answer the question, respond now. "
+                            f"Do not call {tool_name} again with the same query."
+                        ),
+                    })
+
         else:
             # Hit max iterations
             logger.warning("[AGENT_LOOP] Hit max iterations (%d)", self.max_iterations)

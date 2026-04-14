@@ -204,6 +204,7 @@ class ContradictionListItem(BaseModel):
     new_trust: Optional[float] = None
     detected_at: Optional[float] = None
     policy: Optional[str] = None
+    salience_score: Optional[float] = None
 
 
 class ResolveContradictionRequest(BaseModel):
@@ -226,6 +227,7 @@ class ContradictionWorkItem(BaseModel):
     next_action: str
     suggested_question: str
     semantic_anchor: Optional[Dict[str, Any]] = None
+    salience_score: Optional[float] = None
 
 
 class ContradictionNextResponse(BaseModel):

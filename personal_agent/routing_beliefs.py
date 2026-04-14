@@ -467,6 +467,18 @@ class RoutingBeliefDB:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def close(self):
+        """Close the underlying SQLite connection."""
+        if self._conn is not None:
+            try:
+                self._conn.close()
+            except Exception:
+                pass
+            self._conn = None
+
+    def __del__(self):
+        self.close()
+
 
 # ---------------------------------------------------------------------------
 # Singleton

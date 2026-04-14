@@ -357,6 +357,9 @@ def auth_update_settings(
         "tooling_tool_enabled_web_search",
         # Streaming transport
         "ws_streaming",  # true | false — use WebSocket instead of SSE for chat streaming
+        # Salience gate (Lab 11)
+        "salience_gate_enabled",
+        "salience_temperature",
     }
 
     updated = {}

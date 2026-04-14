@@ -1,0 +1,51 @@
+======================================================================
+  LAB 11 REPORT: Salience-Gated Softmax Re-Ranking
+  Generated: 2026-04-14 00:17:35
+  Evidence entries: 54 (E:36, N:10, R:8)
+  Contradiction pairs: 14
+  Result: 4/4 passed in 0.0s
+======================================================================
+
+  FORMULA:
+  S = α·V + β·D + γ·R + δ·U
+  priority_i = exp(S_i / T) / Σ exp(S_j / T)
+  α=0.35, β=0.30, γ=0.20, δ=0.15
+
+  ⚠  No resolution performed — ranking only.
+
+  SALIENCE DISTRIBUTION:
+  Pair               Salience  | Distribution
+  E011 vs E010         0.2783  | ████████████████████████████████████████
+  E030 vs E022         0.2746  | ███████████████████████████████████████
+  E021 vs E010         0.2704  | ██████████████████████████████████████
+  E012 vs E010         0.2652  | ██████████████████████████████████████
+  E013 vs E022         0.2360  | █████████████████████████████████
+  E015 vs E013         0.2324  | █████████████████████████████████
+  E005 vs E003         0.2039  | █████████████████████████████
+  E018 vs E017         0.1997  | ████████████████████████████
+  E018 vs E016         0.1991  | ████████████████████████████
+  E035 vs E015         0.1989  | ████████████████████████████
+  E005 vs E004         0.1950  | ████████████████████████████
+  E004 vs E003         0.1809  | █████████████████████████
+  E026 vs E025         0.1583  | ██████████████████████
+  E024 vs E023         0.1556  | ██████████████████████
+
+  TEMPERATURE COMPARISON:
+  T      Top-1 pair         Top-1 priority  Entropy
+  0.1    E011 vs E010             0.120616    2.558
+  0.3    E011 vs E010             0.086624    2.630
+  0.5    E011 vs E010             0.080369    2.636
+  1.0    E011 vs E010             0.075830    2.638
+  2.0    E011 vs E010             0.073611    2.639
+  5.0    E011 vs E010             0.072297    2.639
+
+  GROUND TRUTH CHECK (best T):
+
+  ✓ Jay Wilds 6-version oscillation
+  ✓ Cell tower vs AT&T disclaimer
+  ✓ Lividity vs burial timeline
+  ✓ Asia alibi vs murder window
+  ✓ Brady violation / alternative suspects
+  ✓ Ineffective counsel / disbarment
+
+  Total: 6/6 in top 10

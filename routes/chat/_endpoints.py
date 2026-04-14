@@ -4298,10 +4298,10 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         else:
                             # Ambiguous — treat as new message, clear stale checkpoint
                             _session_db.clear_pending_checkpoint(req.thread_id)
-                            _task_intent = _classify_intent(req.message, active_task=_active_task)
+                            _task_intent = _classify_intent(query_with_continuity, active_task=_active_task)
                             logger.info("[STREAM] Ambiguous checkpoint response — reclassifying")
                 else:
-                    _task_intent = _classify_intent(req.message, active_task=_active_task)
+                    _task_intent = _classify_intent(query_with_continuity, active_task=_active_task)
 
             except Exception as _cie:
                 logger.error("[STREAM] INTENT CLASSIFIER ERROR: %s", _cie, exc_info=True)

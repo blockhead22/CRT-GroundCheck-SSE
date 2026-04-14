@@ -1945,6 +1945,7 @@ _INTENT_TOOL_MAP: Dict[str, List[str]] = {
     "create_commitment": ["create_commitment"],
     "broad_recall": ["memory_recall"],
     "user_reflection": ["memory_recall"],
+    "inquiry_queue": ["inquiry_queue"],
 }
 
 
@@ -1955,6 +1956,8 @@ def _generate_acknowledgment(intent: "TaskIntent", message: str) -> str:
     unknown intent types.
     """
     _msg = str(message or "").strip().lower()
+    if intent.intent_type == "inquiry_queue":
+        return "Let me check what I'm uncertain about right now."
     if intent.intent_type == "broad_recall":
         if any(term in _msg for term in ("health history", "medical history", "icu", "three promises", "life matters more")):
             return (

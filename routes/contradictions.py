@@ -170,6 +170,63 @@ def _priority_key(item: ContradictionWorkItem) -> tuple:
     )
 
 
+def _salience_sort(items: list[ContradictionWorkItem], temperature: float = 1.0) -> list[ContradictionWorkItem]:
+    """Sort work items by salience score using softmax with temperature.
+
+    No resolution performed — ranking only.
+    """
+    if not items:
+        return items
+    try:
+        import numpy as np
+        from personal_agent.salience import compute_contradiction_salience, softmax
+
+        t_now = time.time()
+
+        # Count open contradictions per slot for volatility signal
+        slot_counts: dict[str, int] = {}
+        for item in items:
+            slot = (item.summary or "").split(":")[0].strip().lower() if item.summary else "unknown"
+            slot_counts[slot] = slot_counts.get(slot, 0) + 1
+
+        # Compute salience scores
+        scores = []
+        for item in items:
+            slot = (item.summary or "").split(":")[0].strip().lower() if item.summary else "unknown"
+            # Extract timestamp from ledger_id (format: contra_<timestamp>_<random>)
+            try:
+                ts = float(item.ledger_id.split("_")[1]) / 1000.0
+            except (IndexError, ValueError):
+                ts = t_now
+            s = compute_contradiction_salience(
+                drift_mean=item.drift_mean or 0.0,
+                slot=slot,
+                slot_open_count=slot_counts.get(slot, 1),
+                timestamp=ts,
+                t_now=t_now,
+            )
+            item.salience_score = round(s, 4)
+            scores.append(s)
+
+        # Apply softmax for final ranking
+        score_array = np.array(scores)
+        priorities = softmax(score_array, temperature=temperature)
+        ranked = sorted(zip(items, priorities), key=lambda x: x[1], reverse=True)
+        top_slot = None
+        if ranked:
+            _s = (ranked[0][0].summary or "").split(":")[0].strip().lower() if ranked[0][0].summary else "?"
+            top_slot = _s
+        print(
+            "[SALIENCE] contradiction rerank n=%d T=%.2f top_slot=%s top_priority=%.4f"
+            % (len(items), temperature, top_slot, float(ranked[0][1]) if ranked else 0.0)
+        )
+        return [item for item, _ in ranked]
+    except Exception as e:
+        logger.warning("[SALIENCE] Fallback to drift sort: %s", e)
+        items.sort(key=_priority_key)
+        return items
+
+
 # ---------------------------------------------------------------------------
 # GET endpoints
 # ---------------------------------------------------------------------------
@@ -220,7 +277,28 @@ def ledger_open(
         # Set policy from contradiction_type
         data['policy'] = data.get('contradiction_type', 'conflict')
 
+        # Compute salience score if gate is enabled (Lab 11)
+        try:
+            import auth as _auth_sal
+            _uid_sal = int(getattr(request.state, "user_id", 1))
+            if _auth_sal.get_user_setting(_uid_sal, "salience_gate_enabled", "true") == "true":
+                from personal_agent.salience import compute_contradiction_salience
+                _slot = data.get('slot', 'unknown')
+                _slot_count = sum(1 for _e in entries if _slot in str(getattr(_e, 'affects_slots', '') or ''))
+                data['salience_score'] = round(compute_contradiction_salience(
+                    drift_mean=data.get('drift_mean', 0.0),
+                    slot=_slot,
+                    slot_open_count=max(1, _slot_count),
+                    timestamp=data.get('timestamp', 0.0),
+                ), 4)
+        except Exception:
+            pass
+
         result.append(ContradictionListItem(**data))
+
+    # Sort by salience if scores were computed
+    if result and result[0].salience_score is not None:
+        result.sort(key=lambda x: x.salience_score or 0.0, reverse=True)
 
     return result
 
@@ -238,7 +316,24 @@ def contradiction_work_items(
         entries = []
 
     items = [_work_item_for_entry(request, engine, thread_id, e) for e in entries]
-    items.sort(key=_priority_key)
+
+    # Salience-gated re-ranking (Lab 11)
+    try:
+        import auth as _auth_salience
+        _uid = int(getattr(request.state, "user_id", 1))
+        _salience_on = _auth_salience.get_user_setting(_uid, "salience_gate_enabled", "true") == "true"
+    except Exception:
+        _salience_on = False
+
+    if _salience_on:
+        try:
+            _temp = float(_auth_salience.get_user_setting(_uid, "salience_temperature", "1.0"))
+        except (ValueError, NameError):
+            _temp = 1.0
+        items = _salience_sort(items, temperature=_temp)
+    else:
+        items.sort(key=_priority_key)
+
     return items[: int(limit)]
 
 
@@ -256,7 +351,24 @@ def contradiction_next(
         return ContradictionNextResponse(thread_id=sanitize_thread_id(thread_id), has_item=False, item=None)
 
     items = [_work_item_for_entry(request, engine, thread_id, e) for e in entries]
-    items.sort(key=_priority_key)
+
+    # Salience-gated re-ranking (Lab 11)
+    try:
+        import auth as _auth_salience
+        _uid = int(getattr(request.state, "user_id", 1))
+        _salience_on = _auth_salience.get_user_setting(_uid, "salience_gate_enabled", "true") == "true"
+    except Exception:
+        _salience_on = False
+
+    if _salience_on:
+        try:
+            _temp = float(_auth_salience.get_user_setting(_uid, "salience_temperature", "1.0"))
+        except (ValueError, NameError):
+            _temp = 1.0
+        items = _salience_sort(items, temperature=_temp)
+    else:
+        items.sort(key=_priority_key)
+
     return ContradictionNextResponse(thread_id=sanitize_thread_id(thread_id), has_item=True, item=items[0])
 
 

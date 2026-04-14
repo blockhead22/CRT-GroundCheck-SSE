@@ -2870,6 +2870,36 @@ class CRTMemorySystem:
         # Sort by score descending
         memory_dicts.sort(key=lambda x: x[1], reverse=True)
 
+        # ── Salience-gated softmax re-ranking (Lab 11) ────────────
+        # If enabled, apply softmax with temperature to the top candidates.
+        # This exponentially stretches score differences: high-trust memories
+        # dominate at low temperature, scores spread at high temperature.
+        # No resolution — ranking only.
+        try:
+            import auth as _auth_sal
+            _sal_enabled = _auth_sal.get_user_setting(1, "salience_gate_enabled", "true") == "true"
+            if _sal_enabled and len(memory_dicts) > 1:
+                from personal_agent.salience import softmax, classify_query_temperature
+                _sal_temp = float(_auth_sal.get_user_setting(1, "salience_temperature", "1.0"))
+                _temp_source = "user_setting"
+                # Auto-adjust temperature based on query type if using default
+                if _sal_temp == 1.0:
+                    _sal_temp = classify_query_temperature(query)
+                    _temp_source = "auto_query_type"
+                _raw_scores = np.array([sc for _, sc in memory_dicts], dtype=np.float32)
+                if np.max(_raw_scores) > 0:
+                    _pre_top = memory_dicts[0][1] if memory_dicts else 0.0
+                    _priorities = softmax(_raw_scores, temperature=_sal_temp)
+                    memory_dicts = [(m, float(p)) for (m, _), p in zip(memory_dicts, _priorities)]
+                    memory_dicts.sort(key=lambda x: x[1], reverse=True)
+                    _post_top = memory_dicts[0][1]
+                    print(
+                        "[SALIENCE] softmax rerank n=%d T=%.2f (%s) top_linear=%.4f top_softmax=%.4f"
+                        % (len(memory_dicts), _sal_temp, _temp_source, _pre_top, _post_top)
+                    )
+        except Exception as _sal_err:
+            print(f"[SALIENCE] rerank skipped: {_sal_err}")
+
         # Increment access_count for returned memories
         top_k = memory_dicts[:k]
 

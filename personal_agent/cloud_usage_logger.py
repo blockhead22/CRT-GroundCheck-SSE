@@ -362,6 +362,20 @@ class CloudUsageLogger:
             "by_feature": by_feature,
         }
 
+    def close(self):
+        """Close the underlying SQLite connection."""
+        with self._lock:
+            if self._db_conn is not None:
+                try:
+                    self._db_conn.close()
+                except Exception:
+                    pass
+                self._db_conn = None
+                self._initialized = False
+
+    def __del__(self):
+        self.close()
+
 
 # ---------------------------------------------------------------------------
 # Module-level singleton
