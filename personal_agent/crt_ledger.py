@@ -364,6 +364,14 @@ class ContradictionLedger:
         except Exception:
             pass
         
+        # CRT Math Upgrade #5: Continuous disposition simplex columns
+        for col in ["disp_resolve", "disp_hold", "disp_evolve", "disp_dormant"]:
+            try:
+                cursor.execute(f"ALTER TABLE contradictions ADD COLUMN {col} REAL DEFAULT 0.25")
+                _logger.info("[CRT_MATH] Added disposition simplex column: contradictions.%s", col)
+            except Exception:
+                pass  # Column already exists
+
         # Reflection queue
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS reflection_queue (

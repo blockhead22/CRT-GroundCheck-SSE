@@ -352,6 +352,17 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
   <h3>The Trust Model</h3>
   <p>CORE uses continuous trust rather than binary truth flags. Memories gain or lose trust over time depending on confirmation, contradiction, user correction, and provenance quality. Negative evidence reduces trust faster than positive evidence increases it. Trust participates in retrieval scoring — a highly relevant memory with low trust scores lower than a moderately relevant memory with high trust. This prevents the system from confidently citing memories it has learned to distrust.</p>
 
+  <!-- Updated 2026-04-13: CRT Math Upgrades (5 shipped) -->
+  <p><strong>As of April 2026</strong>, trust evolution uses five mathematical upgrades validated across 10 labs:</p>
+  <ul>
+    <li><strong>Learnable gain/decay</strong> — trust evolution rates scale with per-domain volatility. Names gain trust fast; opinions gain slowly and lose quickly.</li>
+    <li><strong>Beta distribution trust</strong> — each memory carries Beta(α, β) parameters. Mean = trust level, variance = uncertainty. New memories are easily moved; old confirmed memories are stable. Conjugate Bayesian updates on evidence.</li>
+    <li><strong>Unified gate equation</strong> — gate(v) = I(R &gt; θ + λ·drift) · exp(−γ·depth). Collapses salience gate, trust gate, and marble drift check into one continuous function.</li>
+    <li><strong>Typed-edge damping</strong> — cascade propagation uses per-edge-type coefficients: SUPERSEDES (0.85), CONTRADICTS (0.60), SUPPORTS (0.30). Corrections hit harder than supporting evidence.</li>
+    <li><strong>Continuous disposition simplex</strong> — contradictions carry a 4D probability vector [resolve, hold, evolve, dormant] that drifts continuously instead of jumping between discrete states.</li>
+  </ul>
+  <p>Details: <a href="glossary.html#beta-trust">glossary</a>, <a href="cascade-complexity.html">cascade paper</a>, <a href="belief-backprop.html">backprop paper</a>, <a href="geometric-memory.html">geometric memory</a>.</p>
+
   <h3>Grounding and Verification</h3>
   <p>After generation, the fidelity mirror checks whether the response faithfully represents the belief state. Claims are extracted, matched against stored evidence, and scored. Language models sound most confident exactly when governance is weakest — the verification layer catches this gap. When a correction resolves a contradiction, the error signal flows <em>backward</em> through the Belief Dependency Graph, adjusting trust on every upstream belief that contributed to the wrong output. <a href="belief-backprop.html">Full paper →</a></p>
 </section>

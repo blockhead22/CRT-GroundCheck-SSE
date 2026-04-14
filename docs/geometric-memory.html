@@ -560,6 +560,31 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   \]
 
   <p>If the evidence falls within the expected range (\(\|\mu_{\text{new}} - \mu\|^2 < \mathrm{tr}(\Sigma)\)), covariance tightens. If it is surprising, covariance widens proportionally to \(\log(\text{surprise})\), and confidence drops. This gives the system a natural surprise-modulated learning rate.</p>
+
+  <!-- Updated 2026-04-13: Beta Distribution Trust -->
+  <h3>3.6 Beta-Conjugate Trust (Apr 2026)</h3>
+
+  <p>The scalar trust score is now backed by a <strong>Beta(&alpha;, &beta;) distribution</strong>, making trust uncertainty a first-class quantity alongside the Gaussian covariance of the locus itself.</p>
+
+  \[
+  \text{trust} = \frac{\alpha}{\alpha + \beta}, \quad \text{var}_{\text{trust}} = \frac{\alpha\beta}{(\alpha+\beta)^2(\alpha+\beta+1)}
+  \]
+
+  <p>New memories start at Beta(2, 2) — moderate trust (0.50), high variance (0.05). As evidence accumulates:</p>
+  <ul>
+    <li><strong>Aligned evidence</strong>: &alpha; increments (conjugate update). Trust mean rises, variance shrinks.</li>
+    <li><strong>Contradicting evidence</strong>: &beta; increments. Trust mean falls, variance shrinks (the system becomes more certain it's wrong).</li>
+    <li><strong>No evidence (decay)</strong>: Both parameters gently decay toward priors. Old untouched memories gradually lose certainty.</li>
+  </ul>
+
+  <p>The key insight: two memories can have identical trust (0.70) but radically different uncertainty. A new memory with Beta(2.3, 1.0) has variance 0.049 — one contradiction drops it to 0.54. An old confirmed memory with Beta(14.0, 6.0) has variance 0.010 — the same contradiction barely moves it to 0.67. <strong>Confidence is earned through accumulated evidence, not merely by persisting.</strong></p>
+
+  <div class="impl-block">
+    <span class="impl-label">Implementation</span>
+    <p><code>BetaTrust</code> dataclass in <code>crt_core.py</code>: fields <code>alpha</code>, <code>beta_param</code>; properties <code>mean</code>, <code>variance</code>, <code>confidence</code>; methods <code>update_aligned(weight)</code>, <code>update_contradicted(weight)</code>. Schema columns <code>trust_alpha</code>, <code>trust_beta</code> in <code>crt_memory.py</code>. Lab 2 in <code>top10_math_labs.py</code> validates 5x variance difference and correct asymmetric update behavior.</p>
+  </div>
+
+  <p>Connection to the geometric model: the Beta posterior over trust is a 1D distribution on [0, 1], orthogonal to the embedding-space Gaussian. Together they form a joint belief state: the Gaussian captures <em>what</em> is believed (semantic content + uncertainty), and the Beta captures <em>how much</em> the system trusts it (epistemic confidence + uncertainty). The Fisher-Rao metric on the Beta manifold provides a natural distance between trust states: two memories with the same mean but different evidence counts are geometrically distant.</p>
 </section>
 
 <!-- ===== SECTION 4: VARIANCE-TO-SPLAT PIPELINE ===== -->

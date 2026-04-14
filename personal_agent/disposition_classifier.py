@@ -16,8 +16,11 @@ NLI if available.
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional, List, Tuple
+import logging
 import re
 import time
+
+logger = logging.getLogger(__name__)
 
 
 class Disposition(Enum):
@@ -26,6 +29,91 @@ class Disposition(Enum):
     EVOLVING = "evolving"
     CONTEXTUAL = "contextual"
     UNKNOWN = "unknown"
+
+
+# -------------------------------------------------------------------------
+# CRT Math Upgrade #5: Continuous Disposition Simplex
+# -------------------------------------------------------------------------
+
+@dataclass
+class DispositionSimplex:
+    """4D probability vector over disposition states.
+
+    Instead of a single discrete disposition, model the state as a probability
+    distribution: [p_resolve, p_hold, p_evolve, p_dormant] summing to 1.
+    Dispositions drift continuously via Bayesian-like updates.
+    """
+    resolve: float = 0.25
+    hold: float = 0.25
+    evolve: float = 0.25
+    dormant: float = 0.25
+
+    @property
+    def dominant(self) -> str:
+        """Return the name of the highest-probability state."""
+        vals = {"resolve": self.resolve, "hold": self.hold, "evolve": self.evolve, "dormant": self.dormant}
+        return max(vals, key=vals.get)  # type: ignore[arg-type]
+
+    @property
+    def as_list(self) -> list:
+        return [self.resolve, self.hold, self.evolve, self.dormant]
+
+    def update(self, event: str, strength: float = 0.1) -> None:
+        """Shift probability mass toward the event-indicated state.
+
+        Events: "reinforced" → resolve, "both_valid" → hold,
+                "clarified" → evolve, "stale" / "idle" → dormant.
+        """
+        # Map events to target dimension
+        target_map = {
+            "reinforced": "resolve",
+            "resolved": "resolve",
+            "both_valid": "hold",
+            "both_reinforced": "hold",
+            "clarified": "evolve",
+            "shift": "evolve",
+            "stale": "dormant",
+            "idle": "dormant",
+        }
+        target = target_map.get(event, "dormant")
+
+        # Shift: increase target by strength, decrease others proportionally
+        current = {"resolve": self.resolve, "hold": self.hold, "evolve": self.evolve, "dormant": self.dormant}
+        transfer = strength * (1.0 - current[target])  # can't exceed 1.0
+        for key in current:
+            if key == target:
+                current[key] += transfer
+            else:
+                current[key] -= transfer * (current[key] / max(1e-8, 1.0 - current[target] + transfer))
+
+        # Normalize to sum to 1
+        total = sum(current.values())
+        if total > 0:
+            self.resolve = current["resolve"] / total
+            self.hold = current["hold"] / total
+            self.evolve = current["evolve"] / total
+            self.dormant = current["dormant"] / total
+
+        logger.info(
+            "[CRT_MATH] disposition: simplex=[%.2f,%.2f,%.2f,%.2f], dominant=%s, event=%s",
+            self.resolve, self.hold, self.evolve, self.dormant, self.dominant, event,
+        )
+
+    @classmethod
+    def from_disposition(cls, disp: "Disposition", confidence: float = 0.6) -> "DispositionSimplex":
+        """Create a simplex from a discrete disposition, concentrating mass."""
+        base = (1.0 - confidence) / 3.0
+        s = cls(resolve=base, hold=base, evolve=base, dormant=base)
+        mapping = {
+            Disposition.RESOLVABLE: "resolve",
+            Disposition.HELD: "hold",
+            Disposition.EVOLVING: "evolve",
+            Disposition.CONTEXTUAL: "hold",   # contextual ≈ held
+            Disposition.UNKNOWN: "dormant",
+        }
+        target = mapping.get(disp, "dormant")
+        setattr(s, target, confidence)
+        return s
 
 
 @dataclass
@@ -52,6 +140,7 @@ class DispositionResult:
     signals: DispositionSignals
     explanation: str                 # human-readable reason
     rule_trace: List[str] = field(default_factory=list)  # which rules fired
+    simplex: Optional[DispositionSimplex] = None  # Upgrade #5: continuous disposition
 
 
 # ---------------------------------------------------------------------------
@@ -465,6 +554,18 @@ def classify_disposition(signals: DispositionSignals) -> DispositionResult:
     )
 
 
+def _attach_simplex(result: DispositionResult) -> DispositionResult:
+    """Upgrade #5: Attach continuous disposition simplex to classification result."""
+    result.simplex = DispositionSimplex.from_disposition(result.disposition, result.confidence)
+    logger.info(
+        "[CRT_MATH] disposition: disp=%s, conf=%.2f, simplex=[%.2f,%.2f,%.2f,%.2f], dominant=%s",
+        result.disposition.value, result.confidence,
+        result.simplex.resolve, result.simplex.hold, result.simplex.evolve, result.simplex.dormant,
+        result.simplex.dominant,
+    )
+    return result
+
+
 def classify_contradiction(
     text_a: str,
     text_b: str,
@@ -474,7 +575,8 @@ def classify_contradiction(
 ) -> DispositionResult:
     """End-to-end: extract signals and classify."""
     signals = extract_signals(text_a, text_b, timestamp_a, timestamp_b, similarity)
-    return classify_disposition(signals)
+    result = classify_disposition(signals)
+    return _attach_simplex(result)
 
 
 # ---------------------------------------------------------------------------

@@ -378,7 +378,71 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
       <strong>Example</strong><br>
       A memory "User likes hiking" starts at trust 0.5. The user mentions hiking three more times over a week. Each mention bumps trust via CRTMath. After a month, trust reaches 0.87. Now it's a high-confidence belief that survives compaction.
     </div>
-    <div class="term-related">Related: <a href="#confidence">Confidence</a>, <a href="#authority">Authority</a>, <a href="#governance-bridge">Governance Bridge</a></div>
+    <div class="term-related">Related: <a href="#confidence">Confidence</a>, <a href="#authority">Authority</a>, <a href="#governance-bridge">Governance Bridge</a>, <a href="#beta-trust">Beta Trust</a>, <a href="#learnable-gain-decay">Learnable Gain/Decay</a></div>
+  </div>
+
+  <!-- Added 2026-04-13: CRT Math Upgrade terms -->
+
+  <div class="term-entry" id="beta-trust">
+    <div class="term-name">Beta Trust <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">Added April 2026. Extends scalar trust with distributional uncertainty via Beta conjugate model.</div>
+    <div class="term-def">
+      Instead of a single trust float, each memory carries Beta(&alpha;, &beta;) parameters. The mean &alpha;/(&alpha;+&beta;) equals the trust score; the variance measures uncertainty. New memories start at Beta(2,2) — moderate trust, high uncertainty. As evidence accumulates, &alpha; (aligned) or &beta; (contradicted) grows, reducing variance. A memory with trust 0.70 and 4 observations is far less stable than one with trust 0.70 and 40 observations.
+    </div>
+    <div class="term-math">
+      \(\text{mean} = \frac{\alpha}{\alpha + \beta}, \quad \text{var} = \frac{\alpha\beta}{(\alpha+\beta)^2(\alpha+\beta+1)}\)
+    </div>
+    <div class="term-example">
+      <strong>Example</strong><br>
+      A new "I like pizza" memory: Beta(2.3, 1.0), trust=0.70, variance=0.049. After 20 confirmations: Beta(14.0, 6.0), trust=0.70, variance=0.010. Same trust, 5x less uncertainty. A contradiction drops the new memory to 0.54; the old memory barely moves to 0.67.
+    </div>
+    <div class="term-related">Related: <a href="#trust">Trust</a>, <a href="#confidence">Confidence</a>, <a href="#belief-locus">Belief Locus</a></div>
+  </div>
+
+  <div class="term-entry" id="learnable-gain-decay">
+    <div class="term-name">Learnable Gain/Decay <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">Added April 2026. Trust evolution rates become domain-dependent via volatility modulation.</div>
+    <div class="term-def">
+      Trust gain and decay rates scale with domain volatility (vol<sub>d</sub>). Low-volatility domains (names, identity facts) gain trust faster and lose it slower. High-volatility domains (opinions, mood) gain trust slowly and lose it faster. The formulas: gain = &eta;<sub>pos</sub> &middot; (1 &minus; &beta; &middot; vol<sub>d</sub>), decay = &eta;<sub>neg</sub> &middot; (1 + &gamma; &middot; vol<sub>d</sub>). Domain volatility is detected from memory text and cached per domain category.
+    </div>
+    <div class="term-math">
+      \(\text{gain} = \eta_{+} \cdot (1 - \beta \cdot v_d), \quad \text{decay} = \eta_{-} \cdot (1 + \gamma \cdot v_d)\)
+    </div>
+    <div class="term-related">Related: <a href="#trust">Trust</a>, <a href="#domain-volatility">Domain Volatility</a>, <a href="#beta-trust">Beta Trust</a></div>
+  </div>
+
+  <div class="term-entry" id="unified-gate">
+    <div class="term-name">Unified Gate <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">Added April 2026. Collapses three separate gate checks into one equation.</div>
+    <div class="term-def">
+      A single continuous gate function that replaces the scattered salience gate, trust gate, and marble drift check: gate(v) = I(R(v) &gt; &theta; + &lambda;&middot;drift) &middot; exp(&minus;&gamma;&middot;depth). The threshold rises with drift (drifting beliefs face a higher bar), and depth attenuates the gate value (deep cascade nodes require stronger relevance). Returns a 0&ndash;1 continuous score.
+    </div>
+    <div class="term-math">
+      \(\text{gate}(v) = \mathbb{1}[R(v) > \theta_0 + \lambda \cdot D(m,v)] \cdot e^{-\gamma \cdot d(v)}\)
+    </div>
+    <div class="term-related">Related: <a href="#trust">Trust</a>, <a href="#reconstruction-gates">Reconstruction Gates</a>, <a href="#fidelity-mirror">Fidelity Mirror</a></div>
+  </div>
+
+  <div class="term-entry" id="typed-edge-damping">
+    <div class="term-name">Typed-Edge Damping <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">Added April 2026. Replaces flat cascade damping with per-edge-type coefficients.</div>
+    <div class="term-def">
+      During cascade propagation, each edge type has a distinct damping coefficient &alpha;. SUPERSEDES edges propagate 85% of the impact (corrections hit hard). CONTRADICTS edges propagate 60%. SUPPORTS edges propagate only 30% (supporting evidence is gentler). RELATED_TO: 20%, DERIVED_FROM: 40%. Previously all edges used a single flat CASCADE_TRUST_FACTOR. Lab-validated: SUPERSEDES propagates 70% stronger than flat; SUPPORTS 40% weaker.
+    </div>
+    <div class="term-related">Related: <a href="#brg">BRG</a>, <a href="#cascade">Revision Cascade</a>, <a href="#belief-backprop">Belief Backpropagation</a></div>
+  </div>
+
+  <div class="term-entry" id="disposition-simplex">
+    <div class="term-name">Disposition Simplex <span class="badge badge-original">CORE-Original</span></div>
+    <div class="term-origin">Added April 2026. Replaces discrete disposition enum with continuous probability vector.</div>
+    <div class="term-def">
+      A 4D probability vector [p<sub>resolve</sub>, p<sub>hold</sub>, p<sub>evolve</sub>, p<sub>dormant</sub>] summing to 1.0. Each contradiction carries this simplex alongside its discrete disposition label. Events shift probability mass: "both_reinforced" pushes toward hold, "clarified" toward resolve, "shift" toward evolve, "idle" toward dormant. The simplex drifts continuously instead of jumping between states. The discrete label (RESOLVABLE, HELD, etc.) is derived as the argmax for backward compatibility.
+    </div>
+    <div class="term-example">
+      <strong>Example</strong><br>
+      "I love my job" vs "work stresses me out" starts at [0.70, 0.10, 0.10, 0.10] (resolvable). After 8 reinforcements of both sides, drifts to [0.00, 0.89, 0.05, 0.05] (held). The contradiction didn't jump — it drifted.
+    </div>
+    <div class="term-related">Related: <a href="#contradiction">Contradiction</a>, <a href="#cascade">Revision Cascade</a>, <a href="#held-contradiction">Held Contradiction</a></div>
   </div>
 
   <div class="term-entry" id="confidence">

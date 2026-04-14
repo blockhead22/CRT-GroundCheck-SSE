@@ -16,8 +16,11 @@ Philosophy:
 - "The mouth must never outweigh the self"
 """
 
+import logging
 import numpy as np
 from typing import Dict, List, Tuple, Optional, Any
+
+logger = logging.getLogger(__name__)
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -57,6 +60,60 @@ def _is_transient_state_value(value: Optional[str]) -> bool:
             if re.search(rf"\b{re.escape(needle)}\b", low):
                 return True
     return False
+
+
+# ---------------------------------------------------------------------------
+# CRT Math Upgrade #2: Beta Distribution Trust
+# ---------------------------------------------------------------------------
+
+@dataclass
+class BetaTrust:
+    """Beta distribution trust representation.
+
+    Instead of scalar trust, model trust as Beta(alpha, beta_param).
+    - mean = alpha / (alpha + beta_param) = trust score
+    - variance = alpha*beta / ((alpha+beta)^2 * (alpha+beta+1)) = uncertainty
+    - confidence = alpha + beta_param (total pseudo-observations)
+
+    New memories start at Beta(2, 2) → mean=0.5, high variance.
+    Confirmed memories accumulate alpha → high mean, low variance.
+    """
+    alpha: float = 2.0
+    beta_param: float = 2.0
+
+    @property
+    def mean(self) -> float:
+        total = self.alpha + self.beta_param
+        return self.alpha / total if total > 0 else 0.5
+
+    @property
+    def variance(self) -> float:
+        a, b = self.alpha, self.beta_param
+        total = a + b
+        if total <= 0:
+            return 0.25
+        return (a * b) / (total * total * (total + 1.0))
+
+    @property
+    def confidence(self) -> float:
+        """Total pseudo-observations. Higher = more certain."""
+        return self.alpha + self.beta_param
+
+    def update_aligned(self, weight: float = 1.0) -> None:
+        """Conjugate Bayesian update for aligned evidence."""
+        self.alpha += weight
+        logger.info(
+            "[CRT_MATH] beta_trust update_aligned: α=%.2f, β=%.2f, mean=%.3f, var=%.4f, conf=%.1f",
+            self.alpha, self.beta_param, self.mean, self.variance, self.confidence,
+        )
+
+    def update_contradicted(self, weight: float = 1.0) -> None:
+        """Conjugate Bayesian update for contradicting evidence."""
+        self.beta_param += weight
+        logger.info(
+            "[CRT_MATH] beta_trust update_contradicted: α=%.2f, β=%.2f, mean=%.3f, var=%.4f, conf=%.1f",
+            self.alpha, self.beta_param, self.mean, self.variance, self.confidence,
+        )
 
 
 class SSEMode(Enum):
@@ -125,6 +182,15 @@ class CRTConfig:
     beta_alignment: float = 0.25
     beta_contradiction: float = 0.3
     beta_fallback: float = 0.15
+
+    # --- CRT Math Upgrade #1: Learnable gain/decay via domain volatility ---
+    vol_beta: float = 0.6     # Gain dampening coefficient (high vol = slower trust gain)
+    vol_gamma: float = 0.8    # Decay amplification coefficient (high vol = faster trust loss)
+
+    # --- CRT Math Upgrade #3: Unified gate equation ---
+    gate_theta_base: float = 0.3   # Base relevance threshold
+    gate_lambda: float = 0.5       # Drift penalty on threshold
+    gate_gamma: float = 0.15       # Depth attenuation factor
     
     @staticmethod
     def load_from_calibration(
@@ -378,42 +444,95 @@ class CRTMath:
     def evolve_trust_aligned(
         self,
         tau_current: float,
-        drift: float
+        drift: float,
+        volatility: float = 0.0,
+        trust_alpha: float = 0.0,
+        trust_beta: float = 0.0,
     ) -> float:
         """
         Trust evolution for aligned memories (low drift).
-        
-        if D_mean ≤ θ_align:
-            τ_new = clip(τ_base + η_pos·(1 - D_mean), 0, 1)
+
+        Upgrade #1: gain = eta_pos * (1 - vol_beta * volatility) * (1 - drift)
+        Upgrade #2: If beta params provided, conjugate update alpha += weight*(1-drift)
         """
-        tau_new = tau_current + self.config.eta_pos * (1.0 - drift)
-        return np.clip(tau_new, 0.0, 1.0)
+        gain_mod = 1.0 - self.config.vol_beta * volatility
+        base_delta = self.config.eta_pos * gain_mod * (1.0 - drift)
+
+        # Upgrade #2: Beta conjugate update
+        if trust_alpha > 0 and trust_beta > 0:
+            weight = base_delta * 10.0  # scale to Beta pseudo-count
+            new_alpha = trust_alpha + weight
+            tau_new = new_alpha / (new_alpha + trust_beta)
+            logger.info(
+                "[CRT_MATH] evolve_aligned(beta): trust %.3f->%.3f, drift=%.3f, vol_d=%.3f, "
+                "α=%.2f->%.2f, β=%.2f",
+                tau_current, tau_new, drift, volatility,
+                trust_alpha, new_alpha, trust_beta,
+            )
+            return float(np.clip(tau_new, 0.0, 1.0))
+
+        tau_new = tau_current + base_delta
+        logger.info(
+            "[CRT_MATH] evolve_aligned: trust %.3f->%.3f, drift=%.3f, vol_d=%.3f, gain_mod=%.3f",
+            tau_current, float(np.clip(tau_new, 0.0, 1.0)), drift, volatility, gain_mod,
+        )
+        return float(np.clip(tau_new, 0.0, 1.0))
     
     def evolve_trust_reinforced(
         self,
         tau_current: float,
-        drift: float
+        drift: float,
+        volatility: float = 0.0,
     ) -> float:
         """
         Trust reinforcement for validated memories.
-        
-        τ_i = clip(τ_i + η_reinforce·(1 - D_mean), 0, 1)
+
+        Upgrade #1: gain = eta_reinforce * (1 - vol_beta * volatility) * (1 - drift)
         """
-        tau_new = tau_current + self.config.eta_reinforce * (1.0 - drift)
-        return np.clip(tau_new, 0.0, 1.0)
+        gain_mod = 1.0 - self.config.vol_beta * volatility
+        tau_new = tau_current + self.config.eta_reinforce * gain_mod * (1.0 - drift)
+        logger.info(
+            "[CRT_MATH] evolve_reinforced: trust %.3f->%.3f, drift=%.3f, vol_d=%.3f",
+            tau_current, float(np.clip(tau_new, 0.0, 1.0)), drift, volatility,
+        )
+        return float(np.clip(tau_new, 0.0, 1.0))
     
     def evolve_trust_contradicted(
         self,
         tau_current: float,
-        drift: float
+        drift: float,
+        volatility: float = 0.0,
+        trust_alpha: float = 0.0,
+        trust_beta: float = 0.0,
     ) -> float:
         """
         Trust degradation for contradicted memories.
-        
-        τ_new = clip(τ_base · (1 - η_neg·D_mean), 0, 1)
+
+        Upgrade #1: decay = eta_neg * (1 + vol_gamma * volatility) * drift
+        Upgrade #2: If beta params provided, conjugate update beta += weight*drift
         """
-        tau_new = tau_current * (1.0 - self.config.eta_neg * drift)
-        return np.clip(tau_new, 0.0, 1.0)
+        decay_mod = 1.0 + self.config.vol_gamma * volatility
+        base_decay = self.config.eta_neg * decay_mod * drift
+
+        # Upgrade #2: Beta conjugate update
+        if trust_alpha > 0 and trust_beta > 0:
+            weight = base_decay * 10.0
+            new_beta = trust_beta + weight
+            tau_new = trust_alpha / (trust_alpha + new_beta)
+            logger.info(
+                "[CRT_MATH] evolve_contradicted(beta): trust %.3f->%.3f, drift=%.3f, vol_d=%.3f, "
+                "α=%.2f, β=%.2f->%.2f",
+                tau_current, tau_new, drift, volatility,
+                trust_alpha, trust_beta, new_beta,
+            )
+            return float(np.clip(tau_new, 0.0, 1.0))
+
+        tau_new = tau_current * (1.0 - base_decay)
+        logger.info(
+            "[CRT_MATH] evolve_contradicted: trust %.3f->%.3f, drift=%.3f, vol_d=%.3f, decay_mod=%.3f",
+            tau_current, float(np.clip(tau_new, 0.0, 1.0)), drift, volatility, decay_mod,
+        )
+        return float(np.clip(tau_new, 0.0, 1.0))
     
     def cap_fallback_trust(self, tau: float, source: MemorySource) -> float:
         """
@@ -426,6 +545,34 @@ class CRTMath:
             return min(tau, self.config.tau_fallback_cap)
         return tau
     
+    # ========================================================================
+    # 4b. Unified Gate Equation (Upgrade #3)
+    # ========================================================================
+
+    def unified_gate(
+        self,
+        relevance: float,
+        drift: float,
+        depth: int = 0,
+    ) -> float:
+        """Unified gate: gate(v) = I(R > θ + λ*drift) * exp(-γ*depth).
+
+        Collapses salience gate + trust gate + marble drift check into one
+        continuous-valued function. Returns 0.0-1.0 gate score.
+        """
+        cfg = self.config
+        theta_eff = cfg.gate_theta_base + cfg.gate_lambda * drift
+        passed = relevance > theta_eff
+        depth_atten = float(np.exp(-cfg.gate_gamma * depth))
+        gate_val = (1.0 if passed else 0.0) * depth_atten
+        logger.info(
+            "[CRT_MATH] unified_gate: R=%.3f, θ_eff=%.3f (base=%.2f+λ*D=%.3f), "
+            "depth_atten=%.3f, gate=%.3f, pass=%s",
+            relevance, theta_eff, cfg.gate_theta_base, cfg.gate_lambda * drift,
+            depth_atten, gate_val, passed,
+        )
+        return gate_val
+
     # ========================================================================
     # 5. Reconstruction Constraints (Holden Gates)
     # ========================================================================

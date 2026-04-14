@@ -763,12 +763,47 @@ def _trigger_cascade_propagation(engine: "CRTEnhancedRAG", entry, old_vector, ne
         skip_ids = {entry.old_memory_id, entry.new_memory_id}
         trust_updates = 0
 
+        # Upgrade #4: Import typed-edge damping coefficients
+        try:
+            from personal_agent.memory_subsystem.graph import EdgeType, DAMPING_BY_EDGE_TYPE
+            _has_typed_damping = True
+        except ImportError:
+            _has_typed_damping = False
+
         for node_id, impact in result.impacts.items():
             if node_id in skip_ids:
                 continue
 
             depth = result.depth_map.get(node_id, 0)
-            trust_delta = impact * CASCADE_TRUST_FACTOR
+
+            # Upgrade #4: Per-edge-type damping instead of flat CASCADE_TRUST_FACTOR
+            edge_type_name = "UNKNOWN"
+            if _has_typed_damping:
+                # Find the edge connecting to this node in the cascade path
+                edge_alpha = CASCADE_TRUST_FACTOR  # fallback
+                try:
+                    edge_data = bdg.bdg.graph.edges.get((entry.old_memory_id, node_id), {})
+                    if not edge_data:
+                        # Check reverse direction or path edges
+                        for pred in bdg.bdg.graph.predecessors(node_id):
+                            edge_data = bdg.bdg.graph.edges.get((pred, node_id), {})
+                            if edge_data:
+                                break
+                    etype_str = edge_data.get("edge_type", "")
+                    if etype_str:
+                        etype = EdgeType(etype_str) if isinstance(etype_str, str) else etype_str
+                        edge_alpha = DAMPING_BY_EDGE_TYPE.get(etype, CASCADE_TRUST_FACTOR)
+                        edge_type_name = etype.name if hasattr(etype, 'name') else str(etype)
+                except Exception:
+                    edge_alpha = CASCADE_TRUST_FACTOR
+                trust_delta = impact * edge_alpha
+            else:
+                edge_alpha = CASCADE_TRUST_FACTOR
+                trust_delta = impact * CASCADE_TRUST_FACTOR
+
+            print(f"[CRT_MATH] cascade: {entry.old_memory_id[:8]}->{node_id[:8]}, "
+                  f"edge={edge_type_name}, alpha={edge_alpha:.2f}, "
+                  f"impact={impact:.3f}, delta_trust={trust_delta:.4f}")
 
             # Get current trust
             try:
@@ -780,14 +815,14 @@ def _trigger_cascade_propagation(engine: "CRTEnhancedRAG", entry, old_vector, ne
                     engine.memory.update_trust(
                         node_id,
                         new_trust,
-                        reason=f"cascade(depth={depth}, impact={impact:.3f}, source={entry.ledger_id[:20]})",
+                        reason=f"cascade(depth={depth}, impact={impact:.3f}, edge={edge_type_name}, source={entry.ledger_id[:20]})",
                         drift=impact,
                     )
                     # Update the BDG's cached trust too
                     bdg.bdg.graph.nodes[node_id]["trust"] = new_trust
                     trust_updates += 1
                     print(f"[BDG_CASCADE_TRUST] {node_id}: {current_trust:.3f} -> {new_trust:.3f} "
-                          f"(depth={depth}, impact={impact:.3f})")
+                          f"(depth={depth}, impact={impact:.3f}, edge={edge_type_name})")
             except Exception as _tu_err:
                 print(f"[BDG_CASCADE_TRUST] ERROR updating {node_id}: {_tu_err}")
 

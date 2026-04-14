@@ -595,6 +595,8 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
       The <strong>revision cascade</strong> \(C(r)\) from revision event \(r\) on node \(v_0\) is \((S, \delta)\) where \(S \subseteq V\) is the set of affected nodes. For each triggered node \(u'\) with predecessor \(u \in S\):
       \[ \delta_{\mathrm{in}}(u') = \max_{u \in S : (u, u') \in E} w(u, u') \cdot \delta(u) \]
       If \(\delta_{\mathrm{in}}(u') > \tau\), then \(u' \in S\) with \(\delta(u') = L_{u'} \cdot \delta_{\mathrm{in}}(u')\). <strong>Multi-parent aggregation uses MAX</strong> (not sum), preserving per-node geometric decay bounds.
+      <!-- Updated 2026-04-13: Typed-edge damping -->
+      <br><br><em>(Apr 2026)</em> The Lipschitz constant \(L\) is now <strong>edge-type-dependent</strong>: \(L(e) \in \{0.85, 0.60, 0.30, 0.20, 0.40\}\) for SUPERSEDES, CONTRADICTS, SUPPORTS, RELATED_TO, DERIVED_FROM respectively. SUPERSEDES edges transmit corrections at near-full strength; SUPPORTS edges attenuate to 30%. The convergence bound in Theorem 4.3 becomes \(\rho = \max_e L(e) \cdot w_{\max}\), still &lt;1 for all production edge types.
     </div>
   </div>
   <div class="remark">
@@ -616,6 +618,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <div class="impl-block">
     <span class="impl-label">Implementation</span>
     <p><code>classify_contradiction()</code> in <code>disposition_classifier.py</code>. Four-way classification using subjectivity, temporal gap, entity specificity, sentiment, and domain signals. 18/18 on test suite.</p>
+  </div>
+  <!-- Updated 2026-04-13: Continuous disposition simplex -->
+  <div class="remark">
+    <strong>Continuous Disposition Simplex (Apr 2026).</strong> Alongside the discrete disposition, each contradiction now carries a 4D probability vector \([p_{\text{resolve}}, p_{\text{hold}}, p_{\text{evolve}}, p_{\text{dormant}}]\) summing to 1. Evidence events shift mass continuously: "both_reinforced" → hold, "clarified" → resolve, "idle" → dormant. The discrete label is the argmax for backward compatibility. Lab 5 validates convergence across 4 scenarios. Schema: <code>disp_resolve</code>, <code>disp_hold</code>, <code>disp_evolve</code>, <code>disp_dormant</code> columns in <code>crt_ledger.py</code>.
   </div>
 </section>
 
@@ -669,6 +675,10 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     <p><strong>(a) Geometric decay.</strong> At depth 1, each successor receives incoming impact \(\leq w_{\max} \cdot \delta_0\). After local re-evaluation: \(\delta(v) \leq L \cdot w_{\max} \cdot \delta_0 = \rho \cdot \delta_0\). By induction at depth \(j\): \(\delta(v) \leq \rho^j \cdot \delta_0\). The MAX aggregation rule ensures multiple predecessors do not accumulate impact beyond the worst single predecessor. \(\square\)</p>
     <p><strong>(b)</strong> Cascade terminates when \(\rho^j \cdot \delta_0 \leq \tau\), giving \(j \geq \log(\delta_0/\tau) / \log(1/\rho)\). \(\square\)</p>
     <p><strong>(c)</strong> Along any single path: \(\sum_{j=0}^{k^*} \delta_j \leq \sum_{j=0}^{k^*} \rho^j \cdot \delta_0 \leq \delta_0 / (1 - \rho)\). \(\square\)</p>
+  </div>
+  <!-- Updated 2026-04-13: Typed-edge damping note -->
+  <div class="remark">
+    <strong>Typed-Edge Extension (Apr 2026).</strong> With per-edge-type \(L(e)\), define \(\rho_{\text{path}} = \prod_{e \in \text{path}} L(e) \cdot w(e)\). The worst-case \(\rho\) becomes \(\max_e L(e) \cdot w_{\max} = 0.85 \cdot w_{\max}\) (SUPERSEDES path). For SUPPORTS-only paths, \(\rho = 0.30 \cdot w_{\max}\), converging ~3x faster. Lab 4 validates: SUPERSEDES propagates 70% stronger than flat; SUPPORTS 40% weaker. The theorem holds with \(\rho = \max_e L(e) \cdot w_{\max}\); typed edges only tighten the bound on non-worst-case paths.
   </div>
 
   <!-- Corollary 4.3.1 -->

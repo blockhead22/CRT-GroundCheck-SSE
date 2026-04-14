@@ -44,6 +44,54 @@ HIGH_TRUST_THRESHOLD = 0.85    # stable if also low-volatile
 # Priority boost for volatile memories
 VOLATILITY_BOOST = 1.5         # priority = relevance * (1 + VOLATILITY_BOOST * V)
 
+# ---------------------------------------------------------------------------
+# CRT Math Upgrade #1: Domain-aware volatility for learnable gain/decay
+# ---------------------------------------------------------------------------
+# Default volatility by domain category. Opinions/preferences are volatile
+# (change often), identity facts are stable (change rarely).
+_DOMAIN_VOLATILITY_DEFAULTS: Dict[str, float] = {
+    # Stable domains (low volatility → fast trust gain, slow decay)
+    "identity": 0.05,
+    "family": 0.10,
+    "health": 0.15,
+    "location": 0.20,
+    # Moderate domains
+    "programming": 0.25,
+    "web_dev": 0.25,
+    "ai_ml": 0.30,
+    "small_business": 0.30,
+    "print_shop": 0.30,
+    "work": 0.30,
+    "education": 0.25,
+    # Volatile domains (high volatility → slow trust gain, fast decay)
+    "preferences": 0.55,
+    "opinion": 0.60,
+    "mood": 0.70,
+    "entertainment": 0.50,
+    "social": 0.45,
+    "general": 0.35,
+}
+
+
+def get_domain_volatility(text: str) -> Tuple[float, str]:
+    """Get volatility score for a memory's domain.
+
+    Returns (volatility_score, domain_name). Uses domain_detector to classify
+    the text, then looks up domain volatility from defaults.
+
+    Upgrade #1: This feeds into CRTMath.evolve_trust_* as the volatility parameter.
+    """
+    try:
+        from .domain_detector import detect_domains
+        domains = detect_domains(text, min_keyword_matches=1)
+        primary = domains[0] if domains else "general"
+    except Exception:
+        primary = "general"
+
+    vol = _DOMAIN_VOLATILITY_DEFAULTS.get(primary, 0.35)
+    logger.info("[CRT_MATH] domain_volatility: domain=%s, vol=%.3f, text=%.40s...", primary, vol, text)
+    return vol, primary
+
 
 # ---------------------------------------------------------------------------
 # Data structures

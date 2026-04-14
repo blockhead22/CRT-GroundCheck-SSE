@@ -495,19 +495,28 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
   <h3>Fidelity Mirror</h3>
   <p>After generation, a lightweight post-generation check verifies that the response faithfully represents the belief state. Three checks: belief fidelity (did it use the injected memories?), request alignment (did it answer the question?), and factual grounding (are claims traceable?). The memory set is <strong>wobble-expanded</strong>  - the fidelity check runs against the full resonance pattern, not just the cosine-retrieved memories. Below threshold, the response is flagged (not blocked). Originated as the Holden fidelity mirror (compress → inflate → collapse → validate, 2025).</p>
 
+  <!-- Updated 2026-04-13: CRT Math Upgrades -->
   <h3>Trust Evolution</h3>
   <div class="method-grid">
     <div class="method-card">
       <h4>Decay</h4>
-      <p>Exponential recency curve: &rho; = e<sup>-&Delta;t/&lambda;</sup>. Never below TRUST_FLOOR (0.20) or above TRUST_CEILING (0.95). 7-day grace period for new memories.</p>
+      <p>Exponential recency curve: &rho; = e<sup>-&Delta;t/&lambda;</sup>. Never below TRUST_FLOOR (0.20) or above TRUST_CEILING (0.95). 7-day grace period for new memories. <em>(Apr 2026: decay rate now scales with domain volatility — high-volatility domains decay faster via &eta;<sub>neg</sub> &middot; (1 + &gamma; &middot; vol<sub>d</sub>). Beta confidence further modulates — high-evidence memories resist decay.)</em></p>
     </div>
     <div class="method-card">
       <h4>Reinforcement</h4>
-      <p>On reference uses, drift-aware boost: low semantic drift = large boost; high drift (tangential reference) = small boost. Prevents gaming through repeated tangential citations.</p>
+      <p>On reference uses, drift-aware boost: low semantic drift = large boost; high drift (tangential reference) = small boost. Prevents gaming through repeated tangential citations. <em>(Apr 2026: gain rate now domain-volatility-modulated: &eta;<sub>pos</sub> &middot; (1 &minus; &beta; &middot; vol<sub>d</sub>). Opinions gain trust slowly; names gain fast.)</em></p>
+    </div>
+    <div class="method-card">
+      <h4>Beta Distribution Trust</h4>
+      <p><em>(Apr 2026)</em> Each memory carries Beta(&alpha;, &beta;) parameters alongside its scalar trust score. Mean = &alpha;/(&alpha;+&beta;) = trust level; variance = uncertainty. New memories (Beta(2,2)) have high variance and are easily shifted by evidence. Old confirmed memories accumulate &alpha; and become stable. Conjugate Bayesian updates: aligned evidence increments &alpha;, contradicting evidence increments &beta;. <a href="geometric-memory.html">Geometric details →</a></p>
     </div>
     <div class="method-card">
       <h4>Source Authority</h4>
       <p>Direct first-person assertions: 0.95 confidence. Reported speech ("Mike says..."): 0.70. Journal entries: 0.60. Meta-corrections resolve rather than create contradictions.</p>
+    </div>
+    <div class="method-card">
+      <h4>Unified Gate</h4>
+      <p><em>(Apr 2026)</em> gate(v) = I(R &gt; &theta; + &lambda;&middot;drift) &middot; exp(&minus;&gamma;&middot;depth). Collapses salience gate + trust gate + marble drift check into one continuous function. Depth attenuation means deep cascade nodes require stronger relevance to pass. Drift raises the threshold — drifting beliefs face a higher bar.</p>
     </div>
     <div class="method-card">
       <h4>Consolidation</h4>
@@ -515,7 +524,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
     </div>
     <div class="method-card">
       <h4>Backward Pass (Reverse Cascade)</h4>
-      <p>When a correction resolves a contradiction, the error signal flows <em>backward</em> through the BRG, adjusting trust on every upstream belief that contributed to the wrong output. Produces self-pruning (wrong beliefs die from accumulated error signals), domain volatility (correction frequency drives adaptive adjustment rates), and reflexive self-model calibration. <a href="belief-backprop.html">Full paper →</a></p>
+      <p>When a correction resolves a contradiction, the error signal flows <em>backward</em> through the BRG, adjusting trust on every upstream belief that contributed to the wrong output. Produces self-pruning (wrong beliefs die from accumulated error signals), domain volatility (correction frequency drives adaptive adjustment rates), and reflexive self-model calibration. <em>(Apr 2026: cascade now uses typed-edge damping — SUPERSEDES edges propagate at 0.85, CONTRADICTS at 0.60, SUPPORTS at 0.30.)</em> <a href="belief-backprop.html">Full paper →</a></p>
     </div>
   </div>
 
@@ -541,9 +550,9 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
       <div class="pipeline-layer-accent"></div>
       <div class="pipeline-layer-content">
         <div class="pipeline-layer-name">Disposition</div>
-        <div class="pipeline-layer-desc">Resolvable → auto-resolve on evidence. Held → preserve tension as cascade firewall. Evolving → track drift. Contextual → both valid in different contexts.</div>
+        <div class="pipeline-layer-desc">Resolvable → auto-resolve on evidence. Held → preserve tension as cascade firewall. Evolving → track drift. Contextual → both valid in different contexts. <em>(Apr 2026: each contradiction now carries a continuous disposition simplex [p<sub>resolve</sub>, p<sub>hold</sub>, p<sub>evolve</sub>, p<sub>dormant</sub>] that drifts with evidence instead of jumping between discrete states.)</em></div>
       </div>
-      <div class="pipeline-layer-annotation">memory_consolidation.py</div>
+      <div class="pipeline-layer-annotation">disposition_classifier.py</div>
     </div>
     <div class="pipeline-layer pl-pink">
       <div class="pipeline-layer-accent"></div>

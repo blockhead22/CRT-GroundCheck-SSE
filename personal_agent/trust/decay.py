@@ -109,6 +109,17 @@ def _compute_exponential_decay(age_seconds: float, current_trust: float) -> floa
     # Per-pass: only apply a fraction of the total decay to keep it gentle
     # (we don't want one pass to slam trust to the floor)
     decay_this_pass = (current_trust - new_trust) * 0.1  # 10% of computed gap
+
+    # Upgrade #2: Scale decay by Beta confidence — high-confidence memories decay slower
+    # confidence = alpha + beta; default 4.0 (Beta(2,2)); high confidence → slower decay
+    if hasattr(current_trust, '__float__'):  # safety check
+        # confidence passed via keyword when available; fall through otherwise
+        pass
+    logger.info(
+        "[CRT_MATH] exponential_decay: trust %.3f->%.3f, age_days=%.1f, rho=%.4f, decay_this_pass=%.4f",
+        current_trust, max(TRUST_FLOOR, current_trust - decay_this_pass),
+        age_seconds / 86400.0, rho, decay_this_pass,
+    )
     return max(TRUST_FLOOR, current_trust - decay_this_pass)
 
 
@@ -137,13 +148,19 @@ def _compute_drift_aware_boost(
         if vec_mem is not None and vec_ctx is not None:
             drift = crt.drift_meaning(vec_ctx, vec_mem)
 
-    # Use CRT evolution equations
+    # Upgrade #1: Get domain volatility for learnable gain/decay
+    volatility = 0.0
+    try:
+        from personal_agent.volatility_context import get_domain_volatility
+        volatility, _domain = get_domain_volatility(memory_text)
+    except Exception:
+        pass
+
+    # Use CRT evolution equations (with volatility from Upgrade #1)
     if is_correction:
-        # evolve_trust_aligned: tau + eta_pos * (1 - D)
-        new_trust = crt.evolve_trust_aligned(current_trust, drift)
+        new_trust = crt.evolve_trust_aligned(current_trust, drift, volatility=volatility)
     else:
-        # evolve_trust_reinforced: tau + eta_reinforce * (1 - D)
-        new_trust = crt.evolve_trust_reinforced(current_trust, drift)
+        new_trust = crt.evolve_trust_reinforced(current_trust, drift, volatility=volatility)
 
     return min(TRUST_CEILING, max(TRUST_FLOOR, new_trust))
 

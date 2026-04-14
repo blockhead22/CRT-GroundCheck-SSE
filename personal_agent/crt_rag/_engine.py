@@ -2098,7 +2098,16 @@ class CRTEnhancedRAG:
                             contradiction_severity=contradiction_severity,
                             blindspot_gate_boost=_blindspot_gate_boost,
                         )
-                        
+
+                        # Upgrade #3: Unified gate (supplementary signal, logged alongside v2 gates)
+                        try:
+                            _unified_relevance = (intent_align + memory_align + grounding_score) / 3.0
+                            _unified_drift = getattr(self, '_last_drift', 0.0)
+                            _unified_depth = len(retrieved) if retrieved else 0
+                            self.crt_math.unified_gate(_unified_relevance, _unified_drift, _unified_depth)
+                        except Exception:
+                            pass
+
                         # Log gate event
                         if self.active_learning:
                             try:
@@ -2239,7 +2248,16 @@ class CRTEnhancedRAG:
                             contradiction_severity=contradiction_severity,
                             blindspot_gate_boost=_blindspot_gate_boost,
                         )
-                        
+
+                        # Upgrade #3: Unified gate (supplementary signal, logged alongside v2 gates)
+                        try:
+                            _unified_relevance = (intent_align + memory_align + grounding_score) / 3.0
+                            _unified_drift = getattr(self, '_last_drift', 0.0)
+                            _unified_depth = len(retrieved) if retrieved else 0
+                            self.crt_math.unified_gate(_unified_relevance, _unified_drift, _unified_depth)
+                        except Exception:
+                            pass
+
                         # Log gate event
                         if self.active_learning:
                             try:
@@ -2864,6 +2882,15 @@ class CRTEnhancedRAG:
             contradiction_severity=contradiction_severity,
             blindspot_gate_boost=_blindspot_gate_boost,
         )
+
+        # Upgrade #3: Unified gate (supplementary signal)
+        try:
+            _unified_relevance = (intent_align + memory_align + grounding_score) / 3.0
+            _unified_drift = getattr(self, '_last_drift', 0.0)
+            _unified_depth = len(retrieved) if retrieved else 0
+            self.crt_math.unified_gate(_unified_relevance, _unified_drift, _unified_depth)
+        except Exception:
+            pass
 
         # General knowledge bypass: don't penalize for low memory/intent/grounding
         # alignment on questions that were never about personal facts.

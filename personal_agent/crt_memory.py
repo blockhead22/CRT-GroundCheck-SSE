@@ -330,6 +330,24 @@ class MemoryItem:
     stable_cycles: int = 0                      # consecutive low-volatility heartbeat cycles
     contradiction_count: int = 0                # times contradicted
     access_count: int = 0                       # retrieval hit count
+
+    # CRT Math Upgrade #2: Beta distribution trust
+    trust_alpha: float = 2.0                    # Beta α parameter (aligned evidence count)
+    trust_beta: float = 2.0                     # Beta β parameter (contradicting evidence count)
+
+    @property
+    def trust_variance(self) -> float:
+        """Uncertainty of trust via Beta distribution variance."""
+        a, b = self.trust_alpha, self.trust_beta
+        total = a + b
+        if total <= 0:
+            return 0.25
+        return (a * b) / (total * total * (total + 1.0))
+
+    @property
+    def trust_confidence(self) -> float:
+        """Total pseudo-observations (α + β). Higher = more certain."""
+        return self.trust_alpha + self.trust_beta
     
     def to_dict(self) -> Dict:
         """Convert to dictionary (for storage)."""
@@ -684,7 +702,15 @@ class CRTMemorySystem:
                 deprecation_reason TEXT
             )
         """)
-        
+
+        # CRT Math Upgrade #2: Beta distribution trust columns
+        for col, default in [("trust_alpha", 2.0), ("trust_beta", 2.0)]:
+            try:
+                cursor.execute(f"ALTER TABLE memories ADD COLUMN {col} REAL DEFAULT {default}")
+                logger.info("[CRT_MATH] Added Beta trust column: memories.%s", col)
+            except Exception:
+                pass  # Column already exists
+
         # Trust evolution log
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS trust_log (

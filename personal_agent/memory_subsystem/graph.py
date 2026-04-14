@@ -65,6 +65,18 @@ class EdgeType(Enum):
     DERIVED_FROM = "derived_from"
 
 
+# CRT Math Upgrade #4: Per-edge-type damping coefficients for cascade propagation.
+# SUPERSEDES propagates strongest (85%), CONTRADICTS moderate (60%),
+# SUPPORTS weakest (30%). Lab 4 validated these values.
+DAMPING_BY_EDGE_TYPE = {
+    EdgeType.SUPERSEDES: 0.85,
+    EdgeType.CONTRADICTS: 0.60,
+    EdgeType.SUPPORTS: 0.30,
+    EdgeType.RELATED_TO: 0.20,
+    EdgeType.DERIVED_FROM: 0.40,
+}
+
+
 class Disposition(Enum):
     RESOLVABLE = "resolvable"
     HELD = "held"
