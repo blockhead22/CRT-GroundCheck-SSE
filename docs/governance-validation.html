@@ -214,6 +214,18 @@
     </div>
     <div class="test-score" style="color:#34d399;">3</div>
   </div>
+
+  <!-- Added 2026-04-13: CRT Math Upgrade validation -->
+  <div class="test-row">
+    <div>
+      <div class="tier-label tier-1">Test 1.7</div>
+      <div class="test-claim">Unified Gate + Typed-Edge Damping (Apr 2026)</div>
+      <div class="test-pass"><strong>Pass:</strong> The unified gate equation fires on every query (logged as <code>[CRT_MATH] unified_gate</code>). Cascade propagation uses per-edge-type damping coefficients (logged as <code>[CRT_MATH] cascade</code>). Beta trust parameters are stored and updated on evidence.</div>
+      <div class="test-fail">Fail: Gate checks fall through to old scattered logic. Cascade uses flat damping. Beta columns not populated.</div>
+      <div class="result-log"><strong>Lab-validated (April 13, 2026):</strong> 10/10 math labs pass (<code>top10_math_labs.py</code>). Smoke tests confirm: unified gate returns 0.741 for R=0.8/drift=0.1/depth=2. Typed-edge damping dict loaded (SUPERSEDES=0.85, CONTRADICTS=0.60, SUPPORTS=0.30). BetaTrust dataclass functional (conjugate updates verified). Domain volatility detection operational across 5 categories. Disposition simplex drifts correctly across 4 scenarios. <strong>Awaiting production test with live queries.</strong></div>
+    </div>
+    <div class="test-score" style="color:#fbbf24;">1</div>
+  </div>
 </section>
 
 <!-- ===== TIER 2: INTERVENTION ===== -->

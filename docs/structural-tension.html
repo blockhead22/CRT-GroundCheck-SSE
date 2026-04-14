@@ -411,6 +411,14 @@ MathJax = {
   <div class="remark">
     <strong>Coverage:</strong> These seven types partition the space of belief-pair interactions. Every pair maps to exactly one type through the decision tree: first check proximity threshold (UNRELATED), then check slot overlap and divergence, then check temporal alignment (COMPATIBLE), then check confidence signals (TENSION vs. CONFLICT), and finally check trust decay (DECAYED). The mapping is deterministic  - no model judgment, no ambiguity.
   </div>
+
+  <!-- Added 2026-04-13: Typed-edge damping + disposition simplex -->
+  <div class="remark">
+    <strong>Typed-Edge Damping (Apr 2026).</strong> When these relationship types map to BRG edges during cascade propagation, each edge type now carries a distinct damping coefficient &alpha;. SUPERSEDES (corrections): &alpha;=0.85 — corrections propagate at near-full strength. CONTRADICTS (conflicts): &alpha;=0.60 — genuine contradictions carry moderate impact. SUPPORTS: &alpha;=0.30 — supporting evidence is gentle. RELATED_TO: &alpha;=0.20, DERIVED_FROM: &alpha;=0.40. The TENSION type maps to held contradictions, which act as cascade firewalls (propagation stops). Previously all edge types used a single flat damping factor. See <a href="glossary.html#typed-edge-damping">glossary</a> and <a href="cascade-complexity.html">cascade paper</a>.
+  </div>
+  <div class="remark">
+    <strong>Continuous Disposition (Apr 2026).</strong> TENSION and CONFLICT classifications now carry a continuous disposition simplex [p<sub>resolve</sub>, p<sub>hold</sub>, p<sub>evolve</sub>, p<sub>dormant</sub>] that drifts with evidence. A TENSION pair starts biased toward "hold" but can drift toward "resolve" if one side accumulates evidence, or toward "dormant" if neither side is touched. This replaces the hard boundary between TENSION and CONFLICT with a probability gradient. See <a href="glossary.html#disposition-simplex">glossary</a>.
+  </div>
 </section>
 
 <!-- ============================================================ -->
