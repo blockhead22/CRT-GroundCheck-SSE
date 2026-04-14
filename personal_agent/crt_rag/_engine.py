@@ -3881,6 +3881,8 @@ class CRTEnhancedRAG:
         from ._security import build_gaslighting_citation; return build_gaslighting_citation(self, *args, **kwargs)
     def strip_continuity_augmented_text(self, *args, **kwargs):
         from ._security import strip_continuity_augmented_text; return strip_continuity_augmented_text(self, *args, **kwargs)
+    def _strip_continuity_augmented_text(self, *args, **kwargs):
+        return self.strip_continuity_augmented_text(*args, **kwargs)
     def detect_gaslighting_attempt(self, *args, **kwargs):
         from ._security import detect_gaslighting_attempt; return detect_gaslighting_attempt(self, *args, **kwargs)
     def detect_blindside_attack(self, *args, **kwargs):
