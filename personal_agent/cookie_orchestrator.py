@@ -190,18 +190,24 @@ class OllamaBrain(BrainProvider):
         import requests
         t0 = time.perf_counter()
         try:
+            # Disable thinking mode for qwen3 models — without think:false, qwen3
+            # spends all its token budget on reasoning and returns empty content.
+            _is_qwen3 = "qwen3" in self._model.lower()
+            _payload: dict = {
+                "model": self._model,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt},
+                ],
+                "stream": False,
+                "options": {"num_predict": max_tokens},
+            }
+            if _is_qwen3:
+                _payload["think"] = False
             response = requests.post(
                 f"{self._base_url}/api/chat",
-                json={
-                    "model": self._model,
-                    "messages": [
-                        {"role": "system", "content": system},
-                        {"role": "user", "content": prompt},
-                    ],
-                    "stream": False,
-                    "options": {"num_predict": max_tokens},
-                },
-                timeout=60,
+                json=_payload,
+                timeout=120,
             )
             data = response.json()
             content = data.get("message", {}).get("content", "")

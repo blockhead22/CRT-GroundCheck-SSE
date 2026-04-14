@@ -212,6 +212,15 @@ def check_fidelity(
         "how does aether", "how does crt", "what can you do",
         "what concerns you", "what do you think", "could you improve",
         "how do you think", "explain deeper", "explain how",
+        # System-opinion queries: introspective but grounded in system docs, not user memories
+        "goal of this", "what is the goal", "what's the goal",
+        "worst part", "best part", "coolest part", "most interesting part",
+        "what would you change", "one big change", "one change",
+        "what makes this", "how is it different", "what is special",
+        "biggest problem", "biggest weakness", "biggest strength",
+        # Codebase exploration queries
+        "using the codebase", "find.*codebase", "in the codebase",
+        "look at the code", "in the code",
     ]
     if any(p in _q_lower for p in _SELF_REF_PATTERNS):
         threshold = min(threshold, 0.10)  # Very relaxed for self-description

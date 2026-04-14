@@ -65,7 +65,7 @@ _DEFAULT_ESCALATION_CONFIG: Dict[str, Any] = {
     },
     "query_routing": {
         "token_threshold_for_cloud": 6000,
-        "gate_boost_threshold": 0.10,
+        "gate_boost_threshold": 0.20,
     },
 }
 
@@ -222,7 +222,9 @@ class EscalationPolicy:
         # mid-thread. A short follow-up like "what about this one?" after a deep
         # cloud-generated analysis needs the same depth. Without this, the system
         # drops from Claude to gemma3 and produces garbage.
-        if "local" not in skip and recent_cloud_turns >= 2:
+        # Threshold raised to 3 (all of last 3) so a single cloud escalation
+        # doesn't lock out local for the rest of the session.
+        if "local" not in skip and recent_cloud_turns >= 3:
             skip.append("local")
             reasons.append(f"conversation_momentum:{recent_cloud_turns}/3_recent_cloud")
             boosted = True

@@ -6,7 +6,7 @@ from typing import Optional, Dict, Any
 class OllamaClient:
     """Client for local Ollama instance."""
     
-    def __init__(self, base_url: str = "http://localhost:11434", timeout: int = 30):
+    def __init__(self, base_url: str = "http://localhost:11434", timeout: int = 120):
         self.base_url = base_url
         self.timeout = timeout
         self._cache = {}
@@ -26,11 +26,16 @@ class OllamaClient:
             return self._cache[cache_key]
         
         try:
+            # Disable thinking mode for qwen3 models — without think:false, qwen3
+            # spends all token budget on reasoning and returns empty content.
+            _is_qwen3 = "qwen3" in model.lower()
             payload = {
                 "model": model,
                 "prompt": prompt,
                 "stream": False,
             }
+            if _is_qwen3:
+                payload["think"] = False
             if system:
                 payload["system"] = system
             
