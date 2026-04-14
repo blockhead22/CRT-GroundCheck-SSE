@@ -159,7 +159,9 @@ def run_orchestrator(
                     est_depth = orch_event.get("estimated_depth")
                     if est_depth is not None:
                         try:
-                            clamped = max(5, min(10, int(est_depth) + 1))
+                            # Floor raised 5->7 so low-depth plans still have headroom
+                            # for the done-shape gap check to fire + one follow-up tool call.
+                            clamped = max(7, min(10, int(est_depth) + 2))
                             orch.max_iterations = clamped
                             runtime.safe_print(
                                 f"[ORCHESTRATOR] Adaptive depth: plan declared estimated_depth={est_depth} -> "
@@ -803,30 +805,19 @@ def run_orchestrator(
                 }
                 if not _fidelity.passed:
                     runtime.safe_print(
-                        f"[FIDELITY_MIRROR] FAILED composite={_fidelity.composite:.3f}"
+                        f"[FIDELITY_MIRROR] diagnostic composite={_fidelity.composite:.3f} "
+                        f"(orchestrator path — hedge suppressed, answer grounded in tool results not user memory)"
                     )
-                    # Enforcement: hedge the response with disclosure (Bug #9 fix)
-                    _fm_findings = []
-                    if _fidelity.belief_fidelity < 0.2:
-                        _fm_findings.append("I may not be drawing on what I know about you")
-                    if _fidelity.request_alignment < 0.2:
-                        _fm_findings.append("I may not be directly answering your question")
-                    if _fidelity.factual_grounding < 0.1:
-                        _fm_findings.append("my claims aren't well-grounded in stored facts")
-                    if _fm_findings:
-                        _hedge = (
-                            "**Heads up:** " + ", and ".join(_fm_findings) + ". "
-                            "Take this with lower confidence.\n\n---\n\n"
-                        )
-                        accumulated_answer = _hedge + accumulated_answer
-                        runtime.safe_print(
-                            f"[FIDELITY_ENFORCEMENT] Hedged response ({len(_fm_findings)} findings)"
-                        )
-                    # Emit a fidelity warning event for the frontend
+                    # OPTION 3: Do NOT inject hedge in orchestrator path.
+                    # The orchestrator already runs per-step alignment, drift detection,
+                    # and verification. Fidelity mirror uses user-memory similarity,
+                    # which is the wrong metric for tool-grounded / informational answers.
+                    # Keep the score as telemetry and emit the event for the UI,
+                    # but don't mutate the response.
                     yield runtime.emit({
                         "type": "epistemic_event",
-                        "content": f"Fidelity check failed (score={_fidelity.composite:.2f})",
-                        "metadata": {"event": "fidelity_fail", **_fidelity_meta},
+                        "content": f"Fidelity diagnostic (score={_fidelity.composite:.2f})",
+                        "metadata": {"event": "fidelity_diagnostic", **_fidelity_meta},
                     })
                 else:
                     runtime.safe_print(

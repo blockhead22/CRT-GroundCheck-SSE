@@ -4773,32 +4773,43 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     logger.warning("[STREAM] Correction fast-path failed: %s", _corr_err, exc_info=True)
                     # Fall through to normal generation
 
-            # ── LAYER 4: EPISTEMIC ROUTING (runs FIRST, before agent loop) ──
-            # Decides: orchestrator (agent loop) vs conversational vs agent tool loop.
-            # If Layer 4 says orchestrator, skip the agent loop entirely.
+            # ── OPTION 3: DEFAULT-ON ORCHESTRATOR ────────────────────────
+            # Every turn enters the agent loop. The loop itself decides whether
+            # to call tools — no pre-gate denies tooling based on keyword heuristics.
+            # Routing_beliefs is kept for telemetry + the two narrow escape hatches
+            # below (pure greeting, pure transformation).
             _orch_msg = str(req.message or "")
-            _layer4_orchestrator = False
+            _layer4_orchestrator = not _user_confirmed
             try:
                 from personal_agent.routing_beliefs import should_orchestrate as _route_check
                 _routing = _route_check(_orch_msg, _task_intent)
-                _layer4_orchestrator = not _user_confirmed and _routing.route == "orchestrator"
-                _safe_print(f"[ROUTING] {_routing.route} (conf={_routing.confidence:.2f}, reasons={_routing.reasons})")
-
-                # ── Pure transformation guard ──────────────────────────
-                # Tasks like "rewrite as table", "convert to list", "format as markdown"
-                # need zero tools — sending them through the orchestrator wastes iterations
-                # on tool calls that can't help. Route to direct generation instead.
-                if _layer4_orchestrator and _task_intent and _task_intent.intent_type == "conversational":
-                    import re as _re_transform
-                    _is_pure_transform = bool(_re_transform.search(
-                        r"\b(?:rewrite|convert|format|transform|rephrase|restructure|reorganize)\b.*\b(?:as|into|to)\b.*\b(?:table|list|json|csv|markdown|bullet|summary|paragraph)\b",
-                        _orch_msg, _re_transform.IGNORECASE,
-                    ))
-                    if _is_pure_transform:
-                        _layer4_orchestrator = False
-                        _safe_print("[ROUTING] Pure transformation detected — skipping orchestrator, direct generation")
+                _safe_print(f"[ROUTING] advisory={_routing.route} (conf={_routing.confidence:.2f}, reasons={_routing.reasons}) — orchestrator default-on")
             except Exception as _route_err:
-                _safe_print(f"[ROUTING] Belief routing failed, falling back: {_route_err}")
+                _safe_print(f"[ROUTING] Belief routing failed (advisory only): {_route_err}")
+
+            # ── Escape hatch 1: pure greeting / single-token ack ─────────
+            # "hi" / "hello" / "thanks" / "ok" — no task, no tools needed.
+            # Orchestrator on these would waste iterations looking for intent.
+            import re as _re_route_esc
+            _stripped = _orch_msg.strip().lower()
+            if _layer4_orchestrator and len(_stripped) <= 40 and _re_route_esc.fullmatch(
+                r"(?:hi|hello|hey|yo|sup|thanks|thank you|ty|ok|okay|cool|nice|great|lol|lmao|k)"
+                r"[\s!.,?]*",
+                _stripped,
+            ):
+                _layer4_orchestrator = False
+                _safe_print("[ROUTING] Pure greeting/ack — skipping orchestrator, direct generation")
+
+            # ── Escape hatch 2: pure transformation ──────────────────────
+            # "rewrite as table", "convert to list" — no tools help, just transform.
+            if _layer4_orchestrator and _task_intent and _task_intent.intent_type == "conversational":
+                _is_pure_transform = bool(_re_route_esc.search(
+                    r"\b(?:rewrite|convert|format|transform|rephrase|restructure|reorganize)\b.*\b(?:as|into|to)\b.*\b(?:table|list|json|csv|markdown|bullet|summary|paragraph)\b",
+                    _orch_msg, _re_route_esc.IGNORECASE,
+                ))
+                if _is_pure_transform:
+                    _layer4_orchestrator = False
+                    _safe_print("[ROUTING] Pure transformation — skipping orchestrator, direct generation")
 
             # If agent_loop is enabled, use the LLM-driven agentic tool loop
             # instead of the classify-once-execute-blind pattern. The LLM sees
@@ -5108,22 +5119,15 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             "passed": _al_fidelity.passed,
                         }
                         if not _al_fidelity.passed:
-                            _al_gates_passed = False
-                            _fm_findings = []
-                            if _al_fidelity.belief_fidelity < 0.2:
-                                _fm_findings.append("I may not be drawing on what I know about you")
-                            if _al_fidelity.request_alignment < 0.2:
-                                _fm_findings.append("I may not be directly answering your question")
-                            if _al_fidelity.factual_grounding < 0.1:
-                                _fm_findings.append("my claims aren't well-grounded in stored facts")
-                            if _fm_findings:
-                                _hedge = (
-                                    "**Heads up:** " + ", and ".join(_fm_findings) + ". "
-                                    "Take this with lower confidence.\n\n---\n\n"
-                                )
-                                _al_answer = _hedge + _al_answer
-                                _safe_print(f"[FIDELITY_ENFORCEMENT] Agent loop hedged ({len(_fm_findings)} findings)")
-                            yield _sse({"type": "epistemic_event", "content": f"Fidelity check failed", "metadata": {"event": "fidelity_fail", **_al_fidelity_meta}})
+                            # OPTION 3: keep fidelity score as diagnostic telemetry
+                            # but do NOT inject the hedge — agent loop responses are
+                            # grounded in tool results, not in user-memory retrieval,
+                            # so user-memory similarity is the wrong metric to hedge on.
+                            _safe_print(
+                                f"[FIDELITY_MIRROR] diagnostic composite={_al_fidelity.composite:.3f} "
+                                f"(agent loop path — hedge suppressed)"
+                            )
+                            yield _sse({"type": "epistemic_event", "content": f"Fidelity diagnostic", "metadata": {"event": "fidelity_diagnostic", **_al_fidelity_meta}})
                     except Exception as _al_fm_err:
                         _safe_print(f"[FIDELITY_MIRROR] Agent loop skipped: {_al_fm_err}")
 
@@ -5350,8 +5354,9 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             _est_depth = _orch_event.get("estimated_depth")
                             if _est_depth is not None:
                                 try:
-                                    # Floor is 5: plan burns slot 0, so need at least 4 working slots
-                                    _clamped = max(5, min(10, int(_est_depth) + 1))
+                                    # Floor raised 5->7 so low-depth plans still have headroom
+                                    # for the done-shape gap check to fire + one follow-up tool call.
+                                    _clamped = max(7, min(10, int(_est_depth) + 2))
                                     _orch.max_iterations = _clamped
                                     _safe_print(f"[ORCHESTRATOR] Adaptive depth: plan declared estimated_depth={_est_depth} → max_iterations={_clamped}")
                                 except (TypeError, ValueError):

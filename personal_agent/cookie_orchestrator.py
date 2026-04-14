@@ -531,7 +531,7 @@ A separate system will execute your decisions and return results.
 You communicate ONLY in JSON. Every response must be a single JSON object.
 
 Available actions:
-- {"action": "plan", "message": "One sentence describing what you will do and why.", "steps": ["step 1", "step 2"], "estimated_depth": 3}
+- {"action": "plan", "message": "One sentence describing what you will do and why.", "steps": ["step 1", "step 2"], "estimated_depth": 3, "success_criteria": ["concrete observable thing that proves you answered — e.g. 'found function X with signature Y'", "another slot"], "absence_criteria": ["evidence required to confidently say NO/absent — e.g. 'searched salience.py, _engine.py, and grepped for alt names'"]}
 - {"action": "tool_call", "tool": "file_read", "args": {"path": "relative/path.py"}, "reasoning": "why"}
 - {"action": "tool_call", "tool": "dir_list", "args": {"path": "."}, "reasoning": "why"}
 - {"action": "tool_call", "tool": "search_code", "args": {"query": "class Foo", "path": ".", "file_extensions": [".py"]}, "reasoning": "why"}  // file_extensions optional, e.g. [".py"] [".ts"] [".tsx",".ts"]
@@ -558,7 +558,7 @@ Available actions:
 
 Rules:
 1. ONLY output a JSON object. No other text. No explanation. No markdown.
-2. Your FIRST action must always be "plan" — do this EXACTLY ONCE at the start. Include: "message" (what you'll do), "steps" (list of planned actions), and "estimated_depth" (integer: how many tool calls you expect to need, NOT counting the plan itself — e.g. read+write = 2). Be specific. After the plan, immediately proceed to tool_call actions. Never plan again after the first iteration.
+2. Your FIRST action must always be "plan" — do this EXACTLY ONCE at the start. Include: "message" (what you'll do), "steps" (list of planned actions), "estimated_depth" (integer: how many tool calls you expect to need, NOT counting the plan itself — e.g. read+write = 2), and CRITICAL: "success_criteria" + "absence_criteria". These are your DONE-SHAPE — concrete observable slots that prove the answer is complete. You will be checked against these before responding. If claiming absence/negation (e.g., "X is not in the codebase"), absence_criteria MUST list the specific files/terms/patterns you will rule out first. Be specific. After the plan, immediately proceed to tool_call actions. Never plan again after the first iteration.
 3. When you need information from a file, use tool_call with file_read.
 4. When you need user memories, use tool_call with memory_recall.
 5. Use "think" to reason about results before your next action.
@@ -750,7 +750,7 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
             if _ext_filter:
                 _ext_filter = tuple(e if e.startswith(".") else f".{e}" for e in _ext_filter)
             import subprocess, re as _re
-            _SKIP_DIRS = {'.venv', 'node_modules', '.git', '__pycache__', 'dist', 'build', '.next', '.claude'}
+            _SKIP_DIRS = {'.venv', 'node_modules', '.git', '__pycache__', 'dist', 'build', '.next'}
             _search_done = False
             # Try rg first
             try:
@@ -758,7 +758,7 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
                            "--max-count", "10",
                            "--max-filesize", "256K",
                            "--glob", "!.venv", "--glob", "!node_modules",
-                           "--glob", "!.claude", "--glob", "!dist", "--glob", "!build", "--glob", "!src/src",
+                           "--glob", "!dist", "--glob", "!build", "--glob", "!src/src",
                            "--glob", "!*.min.js", "--glob", "!*.min.css",
                            "--glob", "!*.lock", "--glob", "!*.map",
                            "--glob", "!_write_copilot_page.py"]
@@ -1952,12 +1952,27 @@ class Orchestrator:
                 _plan_msg = decision.get("message", "")
                 _plan_steps = decision.get("steps", [])
                 _plan_depth = decision.get("estimated_depth")
+                # DONE-SHAPE: capture success/absence criteria as persistent target.
+                # These get checked before any `respond` is accepted.
+                _success = decision.get("success_criteria") or []
+                _absence = decision.get("absence_criteria") or []
+                if isinstance(_success, str):
+                    _success = [_success]
+                if isinstance(_absence, str):
+                    _absence = [_absence]
+                state._success_criteria = [str(x) for x in _success if x]
+                state._absence_criteria = [str(x) for x in _absence if x]
+                state._gap_check_fired = False
+                if state._success_criteria or state._absence_criteria:
+                    print(f"  [DONE_SHAPE] success={len(state._success_criteria)} absence={len(state._absence_criteria)}")
                 if _plan_msg:
                     yield {
                         "type": "plan",
                         "content": _plan_msg,
                         "steps": _plan_steps,
                         "estimated_depth": _plan_depth,
+                        "success_criteria": state._success_criteria,
+                        "absence_criteria": state._absence_criteria,
                     }
                 state.thinking.append(f"[plan] {_plan_msg}")
                 last_result = "Plan declared. Now execute using tool_call actions. Do NOT plan again."
@@ -2339,6 +2354,58 @@ class Orchestrator:
                                 "content": f"[Mirror] Caught resolving posture ({_posture_score:.2f}). Reflecting for retry.",
                             }
                             continue  # go back to the loop — don't break
+
+                # ── DONE-SHAPE GAP CHECK ─────────────────────────────────
+                # Before accepting respond, compare the draft against the
+                # success/absence criteria declared in the plan. Fire once
+                # per run. If any slots are UNFILLED, bounce back with the gap
+                # list and let the model decide whether to search more or defend.
+                _sc = getattr(state, '_success_criteria', []) or []
+                _ac = getattr(state, '_absence_criteria', []) or []
+                _gap_fired = getattr(state, '_gap_check_fired', False)
+                if (_sc or _ac) and not _gap_fired and iteration < self.max_iterations - 1:
+                    state._gap_check_fired = True
+                    # Summarize tool trail for the check prompt
+                    _tool_trail = []
+                    for _s in state.steps[-20:]:
+                        _sd = _s.__dict__ if hasattr(_s, '__dict__') else _s
+                        if _sd.get("action") == "tool_call":
+                            _tool_trail.append(f"- {_sd.get('tool', '?')}({str(_sd.get('args', ''))[:120]})")
+                    _trail_str = "\n".join(_tool_trail) if _tool_trail else "(no tool calls made yet)"
+                    _criteria_str = ""
+                    if _sc:
+                        _criteria_str += "SUCCESS CRITERIA (what needs to be FILLED to answer yes):\n"
+                        for i, c in enumerate(_sc, 1):
+                            _criteria_str += f"  {i}. {c}\n"
+                    if _ac:
+                        _criteria_str += "ABSENCE CRITERIA (what needs to be ruled out to answer no/absent):\n"
+                        for i, c in enumerate(_ac, 1):
+                            _criteria_str += f"  {i}. {c}\n"
+                    _gap_prompt = (
+                        f"[DONE-SHAPE GAP CHECK — structural, not from the user]\n"
+                        f"You declared this done-shape at the start of the run:\n\n"
+                        f"{_criteria_str}\n"
+                        f"Tool calls you've made:\n{_trail_str}\n\n"
+                        f"Your draft response: \"{message[:300]}{'...' if len(message) > 300 else ''}\"\n\n"
+                        f"For EACH criterion above, answer honestly: FILLED (with one sentence of evidence) or UNFILLED. "
+                        f"If ALL are FILLED, respond with action=respond again and the same message to confirm. "
+                        f"If ANY are UNFILLED, do NOT respond — issue the next tool_call that would fill the gap. "
+                        f"Persistence is the expected behavior. Claiming absence without matching absence_criteria is not acceptable."
+                    )
+                    last_result = _gap_prompt
+                    run_log.add_step(LogStep(
+                        iteration=iteration, action="gap_check",
+                        reasoning=f"criteria: {len(_sc)} success / {len(_ac)} absence",
+                        latency_ms=brain_result.latency_ms,
+                        intent_alignment=_align if '_align' in dir() else 0.5,
+                    ))
+                    print(f"  [DONE_SHAPE] Gap check fired — bouncing respond back to model")
+                    yield {
+                        "type": "thinking",
+                        "content": f"[Gap check] Verifying {len(_sc)+len(_ac)} done-shape criteria before answering.",
+                    }
+                    iteration += 1
+                    continue  # back to the loop
 
                 state.final_response = message
                 state.done = True
