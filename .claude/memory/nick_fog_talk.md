@@ -110,3 +110,13 @@ Ideas that surface during work, not as formal design docs but as directional ins
 **How to apply:** After the co-retrieval heatmap exists (previous entry), use the data to decide which classes to split off. If a candidate class shows a distinct cluster with its own volatility regime and low cross-class contradiction, split justifies itself. Don't split on intuition — split on measured distinctness.
 **Sequence:** Measurement first (co-retrieval heatmap), then data-driven split. Premature separation without data risks creating stores that should have stayed unified.
 **Status:** Future idea, dependent on co-retrieval heatmap shipping first.
+
+---
+
+### 2026-04-15: LLM Fallback for `aether_done_shape` / `aether_done_check`
+**Context:** Shipped 7 MCP differentiator tools (fidelity, lineage, cascade_preview, session_diff, done_shape, done_check, sanction). `done_shape` uses regex heuristics to map task verbs → success/absence criteria — works cleanly for concrete task types (search, implementation, bugfix, audit, comparison, enumeration, explanation) with confidence 0.7. Falls back to generic criteria at 0.3 for unrecognized tasks.
+**The gap:** `done_check` scores a response against criteria using hybrid cosine + keyword overlap. This works for concrete criteria like "tests pass" or "file X modified" but **under-scores abstract meta-criteria** like "relevance to the query confirmed" or "synonyms ruled out." Even obviously-filled criteria score 0.1–0.3 cosine / 0.0 keyword because the evidence ("salience.py:59 def softmax") doesn't lexically or semantically resemble the criterion text.
+**Idea:** LLM fallback. When `done_shape` returns confidence < 0.5 (generic task), OR when `done_check` would mark all criteria unfilled despite visible work, route to a small local model (gemma3, qwen2.5) with a prompt like: "Given this task, response, and tool trail, for each criterion answer FILLED|UNFILLED with one-sentence evidence. No extra text." Parse the structured output. Cache by (task_hash, response_hash) so repeated checks don't re-call.
+**Why it matters:** The current heuristic is useful for concrete code tasks but becomes noise on exploratory or ambiguous ones — exactly the cases where done-shape is most valuable (preventing premature "I looked, nothing found" responses).
+**How to apply:** Add `use_llm: bool = False` param to both tools. When True, call the local model. Keep heuristic as default (fast, no-dep). Measurement to gate deploy: run on 20 real orchestrator runs, compare hybrid vs LLM verdict agreement; if LLM disagrees >30% and is right more often, flip default.
+**Status:** Heuristic shipped. LLM fallback is the documented next step.

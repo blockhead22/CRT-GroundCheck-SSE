@@ -758,30 +758,60 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
             import subprocess, re as _re
             _SKIP_DIRS = {'.venv', 'node_modules', '.git', '__pycache__', 'dist', 'build', '.next'}
             _search_done = False
+            # FIX A: detect if path is a file (not a dir). When searching a single
+            # file, rg's --glob filters can silently exclude it — strip them.
+            _path_is_file = os.path.isfile(search_path)
             # Try rg first
             try:
                 _rg_cmd = ["rg", "--no-heading", "-n", "-i",
                            "--max-count", "10",
-                           "--max-filesize", "256K",
-                           "--glob", "!.venv", "--glob", "!node_modules",
-                           "--glob", "!dist", "--glob", "!build", "--glob", "!src/src",
-                           "--glob", "!*.min.js", "--glob", "!*.min.css",
-                           "--glob", "!*.lock", "--glob", "!*.map",
-                           "--glob", "!_write_copilot_page.py"]
-                if _ext_filter:
-                    for _ext in _ext_filter:
-                        _rg_cmd += ["--glob", f"*{_ext}"]
+                           "--max-filesize", "256K"]
+                if not _path_is_file:
+                    _rg_cmd += ["--glob", "!.venv", "--glob", "!node_modules",
+                                "--glob", "!dist", "--glob", "!build", "--glob", "!src/src",
+                                "--glob", "!*.min.js", "--glob", "!*.min.css",
+                                "--glob", "!*.lock", "--glob", "!*.map",
+                                "--glob", "!_write_copilot_page.py"]
+                    if _ext_filter:
+                        for _ext in _ext_filter:
+                            _rg_cmd += ["--glob", f"*{_ext}"]
                 _rg_cmd += [query, search_path]
                 proc = subprocess.run(_rg_cmd, capture_output=True, text=True, timeout=15)
+                # FIX B: rg returns 2 on regex parse errors (e.g. unbalanced "(" in
+                # "def |class |main("). Retry once with --fixed-strings so the model
+                # gets useful results instead of a silent failure.
+                if proc.returncode == 2 and ("regex parse error" in (proc.stderr or "").lower()
+                                             or "unrecognized escape" in (proc.stderr or "").lower()):
+                    _rg_cmd_fs = list(_rg_cmd)
+                    _rg_cmd_fs.insert(1, "--fixed-strings")
+                    proc = subprocess.run(_rg_cmd_fs, capture_output=True, text=True, timeout=15)
                 if proc.returncode in (0, 1):  # 0=matches, 1=no matches
                     _raw = proc.stdout or ""
                     _lines = _raw.splitlines()
                     if not _lines:
-                        result["content"] = "No matches found."
+                        if _path_is_file:
+                            result["content"] = (
+                                f"No matches found in {os.path.basename(search_path)}. "
+                                f"NOTE: this is a single-file search. If you already have the file "
+                                f"contents from a prior file_read, re-read your context — your answer "
+                                f"may already be there."
+                            )
+                        else:
+                            result["content"] = "No matches found."
                     elif len(_lines) > 200:
                         result["content"] = "\n".join(_lines[:200]) + f"\n... [{len(_lines) - 200} more lines — use a narrower path or query]"
                     else:
                         result["content"] = _raw
+                    _search_done = True
+                elif proc.returncode == 2:
+                    # Surface the actual regex error to the model instead of returning empty.
+                    _err_msg = (proc.stderr or "").strip()[:300]
+                    result["content"] = (
+                        f"search_code regex error: {_err_msg or 'unknown'}. "
+                        f"Tip: special chars (, ), |, *, + are regex metachars. "
+                        f"Either escape them (\\() or use a simpler literal query."
+                    )
+                    result["status"] = "error"
                     _search_done = True
             except (FileNotFoundError, subprocess.TimeoutExpired):
                 pass
@@ -789,38 +819,61 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
             if not _search_done:
                 try:
                     import time as _time
-                    _pattern = _re.compile(query, _re.IGNORECASE)
+                    # FIX: try compiling regex; on failure, fall back to literal substring.
+                    # Without this, queries like "softmax(" or "def |class |main(" silently
+                    # raise re.error and the whole search returns empty.
+                    try:
+                        _pattern = _re.compile(query, _re.IGNORECASE)
+                        _use_regex = True
+                    except _re.error as _rerr:
+                        _pattern = None
+                        _use_regex = False
+                        _q_lower = query.lower()
                     _hits = []
                     _t_start = _time.time()
                     _timed_out = False
                     # Default extensions when no filter given
                     _default_exts = ('.py', '.ts', '.tsx', '.js', '.jsx', '.md', '.txt', '.json')
                     _allowed_exts = _ext_filter if _ext_filter else _default_exts
-                    for _root, _dirs, _files in os.walk(search_path):
-                        if _time.time() - _t_start > 8.0:
-                            _timed_out = True
-                            break
-                        _dirs[:] = [d for d in _dirs if d not in _SKIP_DIRS]
-                        for _fname in _files:
-                            if not _fname.endswith(_allowed_exts):
-                                continue
-                            _fpath = os.path.join(_root, _fname)
-                            try:
-                                # Skip files > 256KB to avoid hanging on generated code
-                                if os.path.getsize(_fpath) > 256 * 1024:
+
+                    def _scan_file(_fpath):
+                        """Scan a single file, append to _hits. Returns True if we should keep going."""
+                        try:
+                            if os.path.getsize(_fpath) > 256 * 1024:
+                                return True
+                            with open(_fpath, 'r', encoding='utf-8', errors='replace') as _f:
+                                for _lno, _line in enumerate(_f, 1):
+                                    _matched = (_pattern.search(_line) if _use_regex else _q_lower in _line.lower())
+                                    if _matched:
+                                        _rel = os.path.relpath(_fpath, PROJECT_ROOT)
+                                        _hits.append(f"{_rel}:{_lno}:{_line.rstrip()}")
+                                        if len(_hits) >= 100:
+                                            return False
+                        except OSError:
+                            pass
+                        return True
+
+                    # FIX: when search_path is a single file, scan it directly instead
+                    # of os.walk (which yields nothing for a file path).
+                    if _path_is_file:
+                        _scan_file(search_path)
+                    else:
+                        for _root, _dirs, _files in os.walk(search_path):
+                            if _time.time() - _t_start > 8.0:
+                                _timed_out = True
+                                break
+                            _dirs[:] = [d for d in _dirs if d not in _SKIP_DIRS]
+                            for _fname in _files:
+                                if not _fname.endswith(_allowed_exts):
                                     continue
-                                with open(_fpath, 'r', encoding='utf-8', errors='replace') as _f:
-                                    for _lno, _line in enumerate(_f, 1):
-                                        if _pattern.search(_line):
-                                            _rel = os.path.relpath(_fpath, PROJECT_ROOT)
-                                            _hits.append(f"{_rel}:{_lno}:{_line.rstrip()}")
-                                            if len(_hits) >= 100:
-                                                break
-                            except OSError:
-                                pass
+                                _fpath = os.path.join(_root, _fname)
+                                if not _scan_file(_fpath):
+                                    break
                             if len(_hits) >= 100:
                                 break
                     _suffix = "\n... [search timeout after 8s, partial results]" if _timed_out else ""
+                    if not _use_regex:
+                        _suffix += "\n[note: query had a regex error, fell back to literal substring]"
                     result["content"] = ("\n".join(_hits[:100]) + _suffix) if _hits else ("No matches found." + _suffix)
                 except Exception as _se:
                     result["content"] = f"Search error: {_se}"
@@ -2371,12 +2424,19 @@ class Orchestrator:
                 _gap_fired = getattr(state, '_gap_check_fired', False)
                 if (_sc or _ac) and not _gap_fired and iteration < self.max_iterations - 1:
                     state._gap_check_fired = True
-                    # Summarize tool trail for the check prompt
+                    # Summarize tool trail for the check prompt — INCLUDE result previews
+                    # so the model sees what evidence it already has in context. Without
+                    # this, models forget that file_read returned the file contents and
+                    # claim absence based on later (failed) search_code attempts.
                     _tool_trail = []
                     for _s in state.steps[-20:]:
                         _sd = _s.__dict__ if hasattr(_s, '__dict__') else _s
                         if _sd.get("action") == "tool_call":
-                            _tool_trail.append(f"- {_sd.get('tool', '?')}({str(_sd.get('args', ''))[:120]})")
+                            _tool = _sd.get('tool', '?')
+                            _args = str(_sd.get('args', ''))[:100]
+                            _status = _sd.get('status', 'ok')
+                            _preview = str(_sd.get('result_preview') or _sd.get('result', ''))[:200].replace('\n', ' ')
+                            _tool_trail.append(f"- {_tool}({_args}) -> {_status} | result: {_preview}")
                     _trail_str = "\n".join(_tool_trail) if _tool_trail else "(no tool calls made yet)"
                     _criteria_str = ""
                     if _sc:
@@ -2391,9 +2451,14 @@ class Orchestrator:
                         f"[DONE-SHAPE GAP CHECK — structural, not from the user]\n"
                         f"You declared this done-shape at the start of the run:\n\n"
                         f"{_criteria_str}\n"
-                        f"Tool calls you've made:\n{_trail_str}\n\n"
+                        f"Tool calls and results you have in context:\n{_trail_str}\n\n"
                         f"Your draft response: \"{message[:300]}{'...' if len(message) > 300 else ''}\"\n\n"
-                        f"For EACH criterion above, answer honestly: FILLED (with one sentence of evidence) or UNFILLED. "
+                        f"CRITICAL: Re-read the tool results above. If a prior file_read or "
+                        f"search_code already contained the evidence you need, USE IT — do not "
+                        f"claim absence based on a later failed lookup. Successful tool results "
+                        f"do not expire.\n\n"
+                        f"For EACH criterion above, answer honestly: FILLED (with one sentence of evidence "
+                        f"citing which prior tool result) or UNFILLED. "
                         f"If ALL are FILLED, respond with action=respond again and the same message to confirm. "
                         f"If ANY are UNFILLED, do NOT respond — issue the next tool_call that would fill the gap. "
                         f"Persistence is the expected behavior. Claiming absence without matching absence_criteria is not acceptable."
