@@ -132,6 +132,7 @@ class MemorySource(Enum):
     REFLECTION = "reflection"
     SELF_REFLECTION = "self_reflection"
     LLM_OUTPUT = "llm_output"
+    MCP_CLIENT = "mcp_client"
 
 
 @dataclass

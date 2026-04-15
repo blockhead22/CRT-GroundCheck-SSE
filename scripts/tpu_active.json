@@ -1,0 +1,11 @@
+﻿{
+    "zone":  "us-east1-d",
+    "serve_port":  8000,
+    "spot":  true,
+    "tpu_name":  "aether-tpu-1",
+    "accelerator":  "v6e-4",
+    "tp":  4,
+    "resolved_at":  "2026-04-15T16:21:21.9371498-05:00",
+    "external_ip":  "35.229.112.180",
+    "runtime":  "v2-alpha-tpuv6e"
+}
