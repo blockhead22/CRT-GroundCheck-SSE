@@ -150,3 +150,28 @@ Ideas that surface during work, not as formal design docs but as directional ins
 **Why it matters:** clearest scope cut of the session. The shell was the part that felt most like "Nick's thing" but was also the part most exposed to commodity competition. The substrate is where the moat actually is — composable, persistent, contradiction-aware belief state across models and tools.
 **Risk:** infrastructure is harder to demo. "I built a substrate" doesn't screenshot well. The proof has to come from the rediscovery-savings lab + at least one composing client showing real reduction. That's the next milestone, not more docs.
 **Status:** Decided. Next: scope the rediscovery savings lab, ship `pip install aether-mcp` + `aether init` auto-config.
+
+---
+
+### 2026-04-15: Aether as Project-Management Substrate (the wedge)
+**Context:** Mid-conversation realization while talking through composable substrates and the strategic shift away from the shell. The infrastructure already has 80% of what a real PM tool needs — just missing a task graph layer on top.
+**The primitives Aether already ships:**
+  - `aether_done_shape` = task definition with explicit success/absence criteria
+  - `aether_done_check` = "did the work actually meet the bar" vs claimed-done
+  - `aether_sanction` = pre-action gate (assignment approval, deploy guard)
+  - `aether_session_diff` = "what happened on this work since I last looked"
+  - `aether_lineage` = audit trail for any decision
+  - `routing_beliefs` (already logged per-run in cookie_orchestrator) = "who/what is good at what kind of task"
+  - **held contradictions** = "Bob says ready, CI says fail" — both true, surface it instead of forcing resolution
+**The missing layer:** a task graph on top — tasks as first-class memories with assignee + state + done_shape + parent_task. Most PM behavior falls out of that.
+**Real scenarios:**
+  - **Daily kickoff:** "What should the team work on today?" → Aether returns ranked queue (unresolved contradictions in codebase = highest signal because they're actual broken beliefs; tasks with unfilled done_shape = drift; tasks that hit respond but failed done_check = need rework; new tasks routed to whoever's routing_beliefs match best).
+  - **Validation that bites:** contributor marks task done → Aether runs done_check against declared shape + tool/commit trail → if criteria unfilled, task stays open with the gap surfaced. PM doesn't ask "is it really done" — substrate already asked.
+  - **Cross-agent coordination:** Bob touched auth.py Monday; Tuesday Claude Code asked to add a feature there → session_diff tells the next worker "Bob's change rationale was X, his open contradiction was Y, his planned next step was Z." No standup needed for handoff.
+  - **Rework loop closure:** task failed validation because criterion #3 was unfilled → Aether records this contributor / this task type / this codebase area → criterion #3 is high-failure → next similar task gets it bolded with "last time this missed" annotation. **The system learns where work actually breaks down, not just that it broke.**
+**Why this beats Linear/Asana:** existing PM tools are Trello with extra fields. They model task state but have no epistemic backing — "done" means "checkbox clicked." An Aether-backed PM substrate distinguishes claimed-done from validated-done, which is the entire pain of project management. Plus assignees are first-class regardless of human-or-agent — a swarm of Claude Codes can work the same task graph as a team of humans, mediated by the same substrate.
+**The natural shape — new substrate dimension:**
+  Personal (how Bob works) + Project (the codebase) + Company (process/compliance) + **Team substrate** (task graph + assignment policy + routing_beliefs + done_check pipeline).
+**Why this might be the real wedge:** single-substrate Aether competes with mem0 and loses to whatever Anthropic ships next. **Aether-as-PM-substrate** competes with Linear and wins on a feature Linear physically can't ship: validation grounded in actual work product, not status fields. AI-only and human/AI hybrid teams both fall out of the same primitive.
+**The proof chart for this version:** instead of token savings, measure **how many times "done" turns out to not be done.** Run on a real team for a month. If 30% of tasks marked done fail done_check, that's a number every PM in the world recognizes as their lived experience.
+**Status:** Architectural idea. Three related threads today are converging — composable substrates, drop-the-shell, and PM-substrate. Same product underneath, different framing per audience. Not yet decided if PM is THE wedge or one of several. But it's the most concrete buyer-facing pitch so far.
