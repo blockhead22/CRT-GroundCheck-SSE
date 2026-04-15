@@ -120,3 +120,33 @@ Ideas that surface during work, not as formal design docs but as directional ins
 **Why it matters:** The current heuristic is useful for concrete code tasks but becomes noise on exploratory or ambiguous ones — exactly the cases where done-shape is most valuable (preventing premature "I looked, nothing found" responses).
 **How to apply:** Add `use_llm: bool = False` param to both tools. When True, call the local model. Keep heuristic as default (fast, no-dep). Measurement to gate deploy: run on 20 real orchestrator runs, compare hybrid vs LLM verdict agreement; if LLM disagrees >30% and is right more often, flip default.
 **Status:** Heuristic shipped. LLM fallback is the documented next step.
+
+---
+
+### 2026-04-15: Composable Substrates (Multi-Aether Federation)
+**Context:** After shipping single-user Aether MCP, the natural next shape is layered substrates per scope: personal, project, company, community/domain. Client (Claude Code, Cursor, etc.) connects to multiple Aethers concurrently; recall is federated.
+**Idea:**
+  - **Personal substrate** — your prefs, corrections, style. Travels with you between jobs.
+  - **Project substrate** — repo-scoped. "We use callbacks here for legacy reasons." Lives in the repo.
+  - **Company substrate** — team conventions, security policies, postmortem-derived beliefs ("we tried Redis Streams in 2024 and it broke under load — don't propose"). Compliance lives here.
+  - **Community / domain substrate** — "Python ecosystem best practices, maintained by these 3 people." Subscribe model.
+**Why it matters:**
+  - Onboarding day 1 of a new job: connect to company substrate, instantly inherit the runbook that nobody writes.
+  - Compliance that actually fires: pre-commit hook calls aether_sanction against company substrate. Not a regex lint rule — a learned belief with the incident as lineage.
+  - Held contradictions across substrates: personal "I prefer async" + project "this codebase is sync" — both true, no gaslighting, IDE knows which wins where.
+  - Substrate marketplaces: subscribe to "Stripe API best practices" maintained by Stripe. Beliefs from authoritative sources with citations.
+**What's missing for this:** substrate identity/discovery (aether://company.acme.com with OAuth), trust composition policy (security from company always wins; style from personal usually wins), permission model (personal reads company, not vice versa), federated cascade (corrections respect substrate boundaries).
+**Why it's the actual business:** single-substrate Aether is "richer mem0" — Anthropic ships memory next quarter, project dies. Multi-substrate Aether is the protocol layer for AI epistemic state across teams and tools. Anthropic can't ship that — they're a vertical model vendor, not a neutral standard. Companies will pay for compliance + onboarding substrates because both cost real money today.
+**Status:** Architectural idea. Not built. Single-substrate is the prerequisite (shipped).
+
+---
+
+### 2026-04-15: Strategic Shift — Stop Building the Shell
+**Context:** After getting the MCP server working with 32 tools and seeing how it composes, Nick made a clean strategic call: stop competing on the shell (UI / desktop app / harness layer). The shell can't win against Claude Code, Cursor, etc. — they have feature velocity Aether can't match. The substrate is the differentiated layer.
+**Decision:**
+  - **Stop:** spiraling on UI polish, desktop UX, harness-style features. The Electron app stays as a personal tool (and demo), not a product.
+  - **Focus:** the infrastructure layer. Make the substrate undeniable. MCP server, multi-substrate composition, measurement (rediscovery savings lab), packaging for `pip install + aether init`.
+  - **Personal exception:** Nick may still build a personal orchestrator that calls and routes between other AIs. That's allowed because it's *for him*, not for adoption. Different intent.
+**Why it matters:** clearest scope cut of the session. The shell was the part that felt most like "Nick's thing" but was also the part most exposed to commodity competition. The substrate is where the moat actually is — composable, persistent, contradiction-aware belief state across models and tools.
+**Risk:** infrastructure is harder to demo. "I built a substrate" doesn't screenshot well. The proof has to come from the rediscovery-savings lab + at least one composing client showing real reduction. That's the next milestone, not more docs.
+**Status:** Decided. Next: scope the rediscovery savings lab, ship `pip install aether-mcp` + `aether init` auto-config.
