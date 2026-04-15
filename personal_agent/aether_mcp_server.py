@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sys
 from typing import Any, Dict, Optional
 
@@ -28,8 +29,13 @@ from mcp.server import FastMCP
 
 logger = logging.getLogger("aether-mcp")
 
-BASE_URL = "http://127.0.0.1:8000"
-TIMEOUT = 30.0
+BASE_URL = os.environ.get("AETHER_BASE_URL", "http://127.0.0.1:8000")
+TIMEOUT = float(os.environ.get("AETHER_TIMEOUT", "30.0"))
+
+# Default thread the MCP scopes its read/write tools against. Override via
+# AETHER_THREAD_ID in the MCP server's env block (see claude_desktop_config.json).
+# Leave unset to use the API's "default" thread (small/empty for fresh installs).
+_DEFAULT_THREAD = os.environ.get("AETHER_THREAD_ID", "default")
 
 # In-memory registry for async dispatches (lives for the server process lifetime)
 _ACTIVE_DISPATCHES: Dict[str, Dict] = {}
@@ -119,7 +125,7 @@ def aether_search(query: str, limit: int = 5) -> str:
         query: Natural-language search query.
         limit: Max results to return (default 5).
     """
-    data = _get("/api/memory/search", {"q": query, "limit": limit, "thread_id": "default"})
+    data = _get("/api/memory/search", {"q": query, "limit": limit, "thread_id": _DEFAULT_THREAD})
     if isinstance(data, dict) and "error" in data:
         return _fmt(data)
     if isinstance(data, list):
@@ -140,7 +146,7 @@ def aether_profile() -> str:
 
     Call this at the start of a session to personalize your responses.
     """
-    data = _get("/api/profile", {"thread_id": "default"})
+    data = _get("/api/profile", {"thread_id": _DEFAULT_THREAD})
     if isinstance(data, dict) and "error" in data:
         return _fmt(data)
     parts = []
@@ -189,14 +195,16 @@ def aether_contradictions(limit: int = 5) -> str:
 
 
 @mcp.tool()
-def aether_context(thread_id: str = "default") -> str:
+def aether_context(thread_id: str = "") -> str:
     """Dashboard overview — memory count, contradiction count, recent activity.
 
     Gives a quick snapshot of the current state of Aether's belief system.
 
     Args:
-        thread_id: Conversation thread (default "default").
+        thread_id: Conversation thread. Falls back to AETHER_THREAD_ID env var
+            (or "default" if unset).
     """
+    thread_id = thread_id or _DEFAULT_THREAD
     data = _get("/api/dashboard/overview", {"thread_id": thread_id})
     if isinstance(data, dict) and "error" in data:
         return _fmt(data)
@@ -342,7 +350,7 @@ def aether_remember(text: str, kind: str = "observation", confidence: float = 0.
         "text": text,
         "source": "mcp_client",
         "confidence": confidence,
-        "thread_id": "default",
+        "thread_id": _DEFAULT_THREAD,
     })
     if isinstance(data, dict) and "error" in data:
         return _fmt(data)
@@ -396,7 +404,7 @@ def aether_resolve(ledger_id: str, method: str = "user_clarified", new_status: s
 # ===========================================================================
 
 @mcp.tool()
-def aether_ingest(file_path: str, thread_id: str = "default") -> str:
+def aether_ingest(file_path: str, thread_id: str = "") -> str:
     """Ingest a document file into Aether's memory.
 
     Chunks the file and stores each chunk as a memory. Supports text,
@@ -404,8 +412,10 @@ def aether_ingest(file_path: str, thread_id: str = "default") -> str:
 
     Args:
         file_path: Absolute path to the file to ingest.
-        thread_id: Thread context (default "default").
+        thread_id: Thread context. Falls back to AETHER_THREAD_ID env var
+            (or "default" if unset).
     """
+    thread_id = thread_id or _DEFAULT_THREAD
     data = _post("/api/ingest/file", {
         "file_path": file_path,
         "thread_id": thread_id,
@@ -421,7 +431,7 @@ def aether_ingest(file_path: str, thread_id: str = "default") -> str:
 
 
 @mcp.tool()
-def aether_ask(message: str, thread_id: str = "default") -> str:
+def aether_ask(message: str, thread_id: str = "") -> str:
     """Ask Aether a question and get a full response (non-streaming).
 
     This sends a message through Aether's full pipeline — memory retrieval,
@@ -430,8 +440,10 @@ def aether_ask(message: str, thread_id: str = "default") -> str:
 
     Args:
         message: The question or message to send.
-        thread_id: Conversation thread (default "default").
+        thread_id: Conversation thread. Falls back to AETHER_THREAD_ID env var
+            (or "default" if unset).
     """
+    thread_id = thread_id or _DEFAULT_THREAD
     data = _post("/api/chat/send", {
         "message": message,
         "thread_id": thread_id,
@@ -488,7 +500,7 @@ def aether_dispatch(
 
     # Fetch relevant context from Aether memory
     try:
-        context = _get("/api/memory/search", {"q": task, "limit": 3, "thread_id": "default"})
+        context = _get("/api/memory/search", {"q": task, "limit": 3, "thread_id": _DEFAULT_THREAD})
         if isinstance(context, list) and context:
             context_lines = []
             for m in context:
@@ -529,7 +541,7 @@ def aether_dispatch(
                 "text": f"[agent_dispatch:failed] task=\"{task[:60]}\" error=\"{error_text[:100]}\"",
                 "source": "agent_dispatch",
                 "confidence": 0.3,
-                "thread_id": "default",
+                "thread_id": _DEFAULT_THREAD,
             })
             return f"Dispatch FAILED (exit {proc.returncode}):\n{error_text}"
 
@@ -566,7 +578,7 @@ def aether_dispatch(
             "text": metrics_text,
             "source": "agent_dispatch",
             "confidence": 0.9,
-            "thread_id": "default",
+            "thread_id": _DEFAULT_THREAD,
         })
 
         # Update cost accumulator
@@ -640,7 +652,7 @@ def aether_dispatch_async(
 
     # Fetch relevant context from Aether memory
     try:
-        context = _get("/api/memory/search", {"q": task, "limit": 3, "thread_id": "default"})
+        context = _get("/api/memory/search", {"q": task, "limit": 3, "thread_id": _DEFAULT_THREAD})
         if isinstance(context, list) and context:
             context_lines = [f"- [{m.get('kind', '?')}] {m.get('text', '')[:100]}" for m in context]
             prompt_parts.append(f"\nRelevant context from memory:\n" + "\n".join(context_lines))
@@ -725,7 +737,7 @@ def aether_dispatch_async(
                 ),
                 "source": "agent_dispatch",
                 "confidence": 0.9,
-                "thread_id": "default",
+                "thread_id": _DEFAULT_THREAD,
             })
 
         except subprocess.TimeoutExpired:
@@ -826,7 +838,7 @@ def aether_dispatch_metrics(limit: int = 10) -> str:
     data = _get("/api/memory/search", {
         "q": "agent_dispatch success OR failed",
         "limit": limit,
-        "thread_id": "default",
+        "thread_id": _DEFAULT_THREAD,
     })
     if isinstance(data, dict) and "error" in data:
         return _fmt(data)
