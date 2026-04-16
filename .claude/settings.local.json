@@ -51,7 +51,8 @@
       "mcp__aether__aether_search",
       "mcp__aether__aether_profile",
       "mcp__aether__aether_sanction",
-      "mcp__aether__aether_fidelity"
+      "mcp__aether__aether_fidelity",
+      "mcp__aether__crt_search_sessions"
     ]
   }
 }
