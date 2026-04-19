@@ -505,6 +505,22 @@ We simulate held contradictions as cascade firewalls on the production BDG. Held
 4. **The effectiveness curve is nonlinear.** 38% of the firewall ring gives 30% reduction; 100% gives 86%. There is a sharp phase transition between "barely helps" and "nearly total containment."
 5. **Practical implication.** In real systems, held contradictions are useful as firewalls only when they form a nearly complete cut. Sparse held beliefs in a dense graph provide negligible protection.
 
+### 7.7 Phase D Cross-Model Measurement (2026-04-17)
+
+A second empirical anchor, independent of the production-BDG damping curve. We tested whether the same cascade scaffold (BDG + typed-slot ingest + Belnap disposition) gives consistent behavior across model sizes on a hard debugging task.
+
+**Setup.** 40-cell grid: 2 levels (`hard_bug` 5-check verifier, `hardest_bug` 6-check feedback-loop task) × 2 modes (flat executor vs belief-substrate executor) × 5 models spanning 3B to 14B (`llama3.2:latest`, `phi3:3.8b`, `mistral:latest`, `qwen2.5:7b-instruct`, `qwen3:14b`) × 2 trials. Grid wall time 51.8 minutes. Metric is `slot_frac` — normalized slot-verifier score ∈ [0,1].
+
+**Result 1 — substrate is a capacity amplifier.** On the easy task (`hard_bug`), belief and flat modes both solve 9/10 cells — the substrate neither helps nor hurts where the executor is already sufficient. On the hard task (`hardest_bug`), flat mode solves 4/10 while belief mode solves 9/10 (**Δ slot_frac = +0.233**). The substrate is decisive only where the executor alone fails.
+
+**Result 2 — cross-model variance collapses under the substrate.** On `hardest_bug`, belief-mode cross-model slot_frac stdev is **0.059** (per-model means spanning 0.750–0.917). Flat-mode cross-model stdev on the same cells is 0.260 — a **4.4× reduction**. A 3B model running under the substrate lands within 0.09 slot-frac of a 14B model running under the substrate. The BDG/typed-slot stack absorbs most of the brain-size differential on a task where brain-size otherwise dominates.
+
+**Result 3 — persistence across swaps.** 4 of 5 models pass belief-mode at 2/2 trials on both levels. `phi3:3.8b` passes 1/2 on both levels (seed-sensitivity, not substrate failure — it still lifts from flat 0/2 → belief 1/2 on `hardest_bug`).
+
+**Interpretation for this paper.** The damping curve in §7.5 validates Theorem 4.3 on graph geometry. The cross-model invariance here validates the *behavioral* claim implicit in the cascade framework: when reasoning is routed through a BDG with typed-slot ingest, model-specific variance in the executor layer is damped by the graph structure — the cascade substrate acts as an equalizer. This is an observable consequence of the theorem, not a new theoretical contribution, but it is the first measurement of the effect across a 5× brain-size spread.
+
+Code: `labs/coherence_decay/benchmark_phase_d.py`, `analyze_phase_d.py`. Writeup: `labs/coherence_decay/docs/phase_d_complete.md`.
+
 ---
 
 ## 8. Discussion

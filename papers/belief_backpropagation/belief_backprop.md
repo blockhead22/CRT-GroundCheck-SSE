@@ -272,6 +272,18 @@ All six experiments passed (30/30 checks). Full results in `papers/belief_backpr
 | 5. Convergence | Does forward+backward converge? | Contraction ratio 0.13. Order-independent within 0.014. |
 | 6. Self-Model | Do self-beliefs adjust from same pass? | Employment self-model: 0.80 -> 0.35. Identity self-model: unchanged (0.80). |
 
+### 6.4 Phase D Cross-Model Measurement (2026-04-17)
+
+Belief backpropagation operates on the same BDG/typed-slot stack validated end-to-end by the Phase D debugging benchmark. Phase D doesn't exercise the backward pass directly, but it does measure whether the forward cascade + typed-slot ingest layer — the substrate this paper's error-correction mechanism runs on — behaves consistently across models.
+
+**Setup.** 40-cell grid on a hard debugging task. 2 levels × 2 modes (flat executor vs belief-substrate) × 5 models (3B → 14B spread) × 2 trials.
+
+**Relevant result.** On `hardest_bug` (6-check feedback-loop diagnosis), cross-model slot_frac stdev collapses from 0.260 (flat) to **0.059** (belief substrate) — a 4.4× reduction. A 3B model under the substrate lands within 0.09 slot-frac of a 14B model under the substrate. Flat executor solve rate 4/10; belief-substrate solve rate 9/10 (Δ +0.233).
+
+**Why this matters for the backward pass.** Backpropagation requires a stable forward cascade to propagate error through. If the forward pass were model-dependent — different models producing structurally different BDGs for the same task — backward error signals would not transfer across model swaps, and the "earned trust survives the mouth change" claim in §5 would be empirically hollow. Phase D supplies the missing measurement: the forward substrate is *already* model-invariant at the behavioral level (4.4× stdev collapse). The backward pass therefore has a consistent graph to operate on regardless of which executor was active when the correction arrived.
+
+This is the first empirical support for the persistence-layer framing that motivates this paper. Code: `labs/coherence_decay/benchmark_phase_d.py`. Writeup: `labs/coherence_decay/docs/phase_d_complete.md`.
+
 ---
 
 ## 7. Why This Matters

@@ -1,0 +1,5 @@
+level,mode,model,trial,use_slots,solved,solved_epoch,epochs_run,final_kw_score,final_slot_score,total_beliefs,paradigm_shifts,slot_birthed_total,gap_count,total_tension,hints_used,elapsed_sec
+hard_bug,belief,llama3.2:latest,1,True,True,6,6,5,5,14,0,5,5,2.7,0,52.25
+hard_bug,belief,phi3:3.8b,1,True,True,7,7,5,4,12,0,4,3,2.4,0,64.65
+hard_bug,belief-no-slots,llama3.2:latest,1,False,False,,10,3,1,7,0,0,0,1.2,0,71.2
+hard_bug,belief-no-slots,phi3:3.8b,1,False,False,,10,4,2,9,0,0,0,1.2,0,90.14
