@@ -52,7 +52,77 @@
       "mcp__aether__aether_profile",
       "mcp__aether__aether_sanction",
       "mcp__aether__aether_fidelity",
-      "mcp__aether__crt_search_sessions"
+      "mcp__aether__crt_search_sessions",
+      "mcp__aether__crt_get_user_context",
+      "WebFetch(domain:crates.io)",
+      "WebFetch(domain:larstofus.com)",
+      "mcp__aether__aether_session_diff",
+      "mcp__aether-oss__aether_remember",
+      "mcp__aether-oss__aether_search",
+      "mcp__aether-oss__aether_sanction",
+      "mcp__aether-oss__aether_fidelity",
+      "mcp__aether-oss__aether_context",
+      "mcp__aether-oss__aether_correct",
+      "mcp__aether-oss__aether_lineage",
+      "mcp__aether-oss__aether_cascade_preview",
+      "mcp__aether-oss__aether_belief_history",
+      "mcp__aether-oss__aether_contradictions",
+      "mcp__aether-oss__aether_resolve",
+      "mcp__aether-oss__aether_session_diff",
+      "mcp__aether-oss__aether_memory_detail",
+      "mcp__aether-oss__aether_ingest_turn",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "mcp__aether-oss__aether_link",
+      "mcp__aether-oss__aether_path",
+      "mcp__aether-oss__aether_receipt",
+      "mcp__aether-oss__aether_receipts",
+      "mcp__aether-oss__aether_receipt_detail",
+      "mcp__aether-oss__aether_receipt_summary"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "aether-oss"
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python D:/AI_round2/.aether-hooks/session_start_upgrade.py",
+            "timeout": 30,
+            "statusMessage": "Checking for aether-core updates",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python D:/AI_round2/.aether-hooks/stop_auto_ingest.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python D:/AI_round2/.aether-hooks/pre_compact_brief.py",
+            "timeout": 10,
+            "statusMessage": "Surfacing substrate brief"
+          }
+        ]
+      }
     ]
   }
 }

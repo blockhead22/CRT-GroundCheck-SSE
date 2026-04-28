@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "aether-oss": {
+      "command": "python",
+      "args": ["-m", "aether.mcp"]
+    }
+  }
+}
