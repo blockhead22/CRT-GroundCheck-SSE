@@ -65,6 +65,36 @@ const COLORS = {
   textMuted: '#a89d8a',
 }
 
+type ColorMode = 'type' | 'topic' | 'trust' | 'recency'
+
+// Deterministic distinct palette for topic coloring (12 hues, warm-to-cool).
+const TOPIC_PALETTE = [
+  '#D4845C', '#E8B36B', '#C2C26B', '#7FB47A', '#5DAFA1', '#5C9BD4',
+  '#7E7BD4', '#B17BD4', '#D47BB1', '#A88B6E', '#94A088', '#B58E5C',
+]
+const colorForTopic = (topicId: number | null) => {
+  if (topicId === null || topicId < 0) return '#635c50'
+  return TOPIC_PALETTE[topicId % TOPIC_PALETTE.length]
+}
+// Trust → warm gradient (low=cold gray, high=warm orange)
+const colorForTrust = (trust: number | null) => {
+  const t = Math.max(0, Math.min(1, trust ?? 0.5))
+  // interpolate gray (#635c50) -> belief orange (#D4845C)
+  const r = Math.round(0x63 + (0xD4 - 0x63) * t)
+  const g = Math.round(0x5c + (0x84 - 0x5c) * t)
+  const b = Math.round(0x50 + (0x5c - 0x50) * t)
+  return `rgb(${r},${g},${b})`
+}
+// Recency → cool→warm by age. now=warm, old=cold.
+const colorForRecency = (timestamp: number, minTs: number, maxTs: number) => {
+  if (maxTs <= minTs) return '#D4845C'
+  const t = (timestamp - minTs) / (maxTs - minTs) // 0=oldest, 1=newest
+  const r = Math.round(0x4a + (0xD4 - 0x4a) * t)
+  const g = Math.round(0x6a + (0x84 - 0x6a) * t)
+  const b = Math.round(0x90 + (0x5c - 0x90) * t)
+  return `rgb(${r},${g},${b})`
+}
+
 export default function BeliefMapPage({ threadId }: { threadId?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -73,6 +103,7 @@ export default function BeliefMapPage({ threadId }: { threadId?: string }) {
   const [selectedTopic, setSelectedTopic] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [view3D, setView3D] = useState(false)
+  const [colorMode, setColorMode] = useState<ColorMode>('type')
 
   // Camera state
   const cameraRef = useRef({ offsetX: 0, offsetY: 0, zoom: 1 })
@@ -229,6 +260,15 @@ export default function BeliefMapPage({ threadId }: { threadId?: string }) {
       ctx.globalAlpha = 1.0
     }
 
+    // Compute timestamp range for recency coloring
+    let minTs = Infinity, maxTs = -Infinity
+    if (colorMode === 'recency') {
+      for (const p of data.points) {
+        if (p.timestamp < minTs) minTs = p.timestamp
+        if (p.timestamp > maxTs) maxTs = p.timestamp
+      }
+    }
+
     // Points
     for (const p of data.points) {
       const { sx, sy } = worldToScreen(p.x, p.y, canvas)
@@ -238,14 +278,30 @@ export default function BeliefMapPage({ threadId }: { threadId?: string }) {
       const isHighlighted = selectedTopic === null || selectedTopic === p.topic_id
       const alpha = isHighlighted ? 1.0 : 0.15
 
+      let fill: string
+      switch (colorMode) {
+        case 'topic':
+          fill = colorForTopic(p.topic_id)
+          break
+        case 'trust':
+          fill = colorForTrust(p.trust_avg)
+          break
+        case 'recency':
+          fill = colorForRecency(p.timestamp, minTs, maxTs)
+          break
+        case 'type':
+        default:
+          fill = p.is_belief ? COLORS.belief : COLORS.speech
+      }
+
       ctx.globalAlpha = alpha
       ctx.beginPath()
       ctx.arc(sx, sy, radius, 0, Math.PI * 2)
-      ctx.fillStyle = p.is_belief ? COLORS.belief : COLORS.speech
+      ctx.fillStyle = fill
       ctx.fill()
 
-      // Subtle glow for high-trust beliefs
-      if (p.is_belief && trust > 0.7) {
+      // Subtle glow for high-trust beliefs (only in type mode)
+      if (colorMode === 'type' && p.is_belief && trust > 0.7) {
         ctx.globalAlpha = alpha * 0.2
         ctx.beginPath()
         ctx.arc(sx, sy, radius + 4, 0, Math.PI * 2)
@@ -255,25 +311,61 @@ export default function BeliefMapPage({ threadId }: { threadId?: string }) {
       ctx.globalAlpha = 1.0
     }
 
-    // Legend
+    // Legend (mode-aware)
     const lx = 16
     const ly = rect.height - 50
     ctx.font = '10px monospace'
     ctx.textAlign = 'left'
 
-    ctx.fillStyle = COLORS.belief
-    ctx.beginPath()
-    ctx.arc(lx, ly, 5, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = COLORS.textMuted
-    ctx.fillText('Belief (grounded)', lx + 12, ly + 4)
+    if (colorMode === 'type') {
+      ctx.fillStyle = COLORS.belief
+      ctx.beginPath(); ctx.arc(lx, ly, 5, 0, Math.PI * 2); ctx.fill()
+      ctx.fillStyle = COLORS.textMuted
+      ctx.fillText('Belief (grounded)', lx + 12, ly + 4)
 
-    ctx.fillStyle = COLORS.speech
-    ctx.beginPath()
-    ctx.arc(lx, ly + 18, 5, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = COLORS.textMuted
-    ctx.fillText('Speech (ungrounded)', lx + 12, ly + 22)
+      ctx.fillStyle = COLORS.speech
+      ctx.beginPath(); ctx.arc(lx, ly + 18, 5, 0, Math.PI * 2); ctx.fill()
+      ctx.fillStyle = COLORS.textMuted
+      ctx.fillText('Speech (ungrounded)', lx + 12, ly + 22)
+    } else if (colorMode === 'topic') {
+      // Show top-N topics seen in points
+      const counts = new Map<number, number>()
+      for (const p of data.points) {
+        if (p.topic_id !== null && p.topic_id >= 0) {
+          counts.set(p.topic_id, (counts.get(p.topic_id) || 0) + 1)
+        }
+      }
+      const topicLabels = new Map<number, string>()
+      for (const t of data.topics) topicLabels.set(t.topic_id, t.label || `t${t.topic_id}`)
+      const top = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6)
+      top.forEach(([tid], i) => {
+        const yy = ly + i * 14
+        ctx.fillStyle = colorForTopic(tid)
+        ctx.beginPath(); ctx.arc(lx, yy, 4, 0, Math.PI * 2); ctx.fill()
+        ctx.fillStyle = COLORS.textMuted
+        const label = topicLabels.get(tid) || `topic ${tid}`
+        ctx.fillText(label.slice(0, 28), lx + 10, yy + 3)
+      })
+    } else if (colorMode === 'trust') {
+      // Gradient bar
+      const grad = ctx.createLinearGradient(lx, 0, lx + 80, 0)
+      grad.addColorStop(0, colorForTrust(0))
+      grad.addColorStop(1, colorForTrust(1))
+      ctx.fillStyle = grad
+      ctx.fillRect(lx, ly, 80, 8)
+      ctx.fillStyle = COLORS.textMuted
+      ctx.fillText('low trust', lx, ly + 22)
+      ctx.fillText('high', lx + 60, ly + 22)
+    } else if (colorMode === 'recency') {
+      const grad = ctx.createLinearGradient(lx, 0, lx + 80, 0)
+      grad.addColorStop(0, colorForRecency(0, 0, 1))
+      grad.addColorStop(1, colorForRecency(1, 0, 1))
+      ctx.fillStyle = grad
+      ctx.fillRect(lx, ly, 80, 8)
+      ctx.fillStyle = COLORS.textMuted
+      ctx.fillText('older', lx, ly + 22)
+      ctx.fillText('newer', lx + 60, ly + 22)
+    }
 
     // Edge legend items
     if (data.contradictions.length > 0 || (data.bdg_edges && data.bdg_edges.length > 0)) {
@@ -317,7 +409,7 @@ export default function BeliefMapPage({ threadId }: { threadId?: string }) {
       (edgeCount > 0 ? ` | ${edgeCount} edges` : ''),
       rect.width - 16, rect.height - 16
     )
-  }, [data, selectedTopic, worldToScreen])
+  }, [data, selectedTopic, worldToScreen, colorMode])
 
   // Mouse interactions
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -428,6 +520,23 @@ export default function BeliefMapPage({ threadId }: { threadId?: string }) {
               clear filter
             </button>
           )}
+          <div className="flex items-center gap-1 rounded p-0.5"
+               style={{ background: 'rgba(240,235,225,0.04)' }}>
+            <span className="text-[9px] font-mono px-1" style={{ color: COLORS.textMuted }}>color:</span>
+            {(['type', 'topic', 'trust', 'recency'] as ColorMode[]).map(m => (
+              <button
+                key={m}
+                onClick={() => setColorMode(m)}
+                className="rounded px-1.5 py-0.5 text-[10px] font-mono"
+                style={{
+                  background: colorMode === m ? 'rgba(212,132,92,0.2)' : 'transparent',
+                  color: colorMode === m ? COLORS.belief : COLORS.textMuted,
+                }}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
           <button
             onClick={() => setView3D(v => !v)}
             className="rounded px-2 py-0.5 text-[10px] font-mono"

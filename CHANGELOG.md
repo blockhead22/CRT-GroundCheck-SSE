@@ -6,6 +6,30 @@ For the full roadmap see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## [Unreleased] — 2026-05-07
+
+### Added — Geometry-aware grounding measurement
+
+- **Cosine vs Fisher-Rao A/B benchmark** (`labs/fidelity_bench/run_bench_metric_ab.py`): runs both metrics on N=200 real query/response pairs sampled from `belief_speech`, computes per-dimension and composite scores, and reports discrimination AUC against the substrate's own stored `is_belief` flag. **Result: Fisher-Rao AUC 0.699 vs cosine 0.626 (Δ +0.073); Pearson r 0.312 vs 0.235 (+33% relative).** First substrate-layer measurement validating the geometry-matters claim from Goodfire's *The world inside neural networks* (2026-05) and Anthropic's *Natural Language Autoencoders* (2026-05) — both at the activation layer; this is the substrate analog. Uses default type-calibrated sigma; lower bound on the real Fisher advantage with stored sigmas.
+- **`docs/NORTH_STAR.md`** — project thesis, persistence-layer framing, timeline of receipts, convergence analysis with the May 2026 activation-layer papers.
+- **`docs/PORTFOLIO.md`** — single-page hire-pitch summary.
+- **`docs/figures/cosine_vs_fisher_n200.png`** + **`belief_speech_gap_n30.png`** — embedded chart artifacts.
+
+### Added — fidelity benchmark scaffolding
+
+- **`labs/fidelity_bench/run_bench.py`** — runs `personal_agent.fidelity_mirror.check_fidelity` over a stratified sample of real query/response pairs, reports composite distribution + per-dimension means + JSON dump + chart. **Result on N=30: 50% measured-grounded vs 20% stored-grounded — 30 percentage-point belief/speech gap.** Anthropic NLA-analog at the substrate layer.
+
+### Added — aether-core (separate repo)
+
+- **Quote/mention guard in `aether-core/aether/memory/slots.py`** — `_strip_quoted_mentions` precondition. When a quoted span follows a mention frame (`said`, `the example`, `the claim`, `the string`, etc.), the quoted region is replaced with whitespace before extraction so downstream regexes can't pick the quoted assertion up as an active fact. Repro test (`tests/test_quote_mention_bug.py`) was 7/9 → 9/9. 145 existing slot/extract/fact tests still pass. Surfaced by the 2026-05-01 Mac eval against a 130-turn ChatGPT thread.
+- **`aether-core/docs/specs/multi_turn_stance_flip_detector.md`** — full spec (schema + API + classification rules + 6 test cases) for the missing multi-turn stance-flip detector. Self-contained; smaller-model-implementable.
+
+### Added — frontend (personal viewer)
+
+- **Belief Map color modes** (`frontend/src/pages/BeliefMapPage.tsx`): toggle between `type | topic | trust | recency`. Topic mode uses a 12-hue deterministic palette. Trust + recency render as gradient legends. Mode-aware legend rebuilds on switch.
+
+---
+
 ## [Unreleased] — 2026-04-07
 
 ### Added — Session 2026-04-07 (18 features)

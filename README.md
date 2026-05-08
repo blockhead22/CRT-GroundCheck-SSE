@@ -7,6 +7,25 @@
 [![Status: Active Development](https://img.shields.io/badge/status-active%20development-orange.svg)](#current-status)
 [![Docs](https://img.shields.io/badge/docs-aeteros.com-818cf8.svg)](https://aeteros.com)
 
+> See [`docs/NORTH_STAR.md`](docs/NORTH_STAR.md) for the project thesis in two pages, or [`docs/PORTFOLIO.md`](docs/PORTFOLIO.md) for the one-page summary.
+
+---
+
+## Latest result — geometry-aware grounding (2026-05-07)
+
+Fisher–Rao distance discriminates **grounded vs. ungrounded** responses substantially better than cosine on real conversation data:
+
+| Metric | AUC | Pearson r with stored `is_belief` |
+|---|---|---|
+| Cosine | 0.626 | 0.235 |
+| **Fisher–Rao** | **0.699 (+0.073)** | **0.312 (+33%)** |
+
+N = 200 random samples from the substrate's `belief_speech` table. The Fisher–Rao path uses default type-calibrated sigma (lower bound on the real advantage with stored sigmas).
+
+![Cosine vs Fisher-Rao](docs/figures/cosine_vs_fisher_n200.png)
+
+Why this matters: the same week, Goodfire published [*The world inside neural networks*](https://www.goodfire.ai/research/the-world-inside-neural-networks) (curved manifolds in activation space) and Anthropic published [*Natural Language Autoencoders*](https://www.anthropic.com/research/natural-language-autoencoders) (verbalize/reconstruct gap measurement). Both make the geometry-matters claim at the **activation layer**. This is the first measurement of the same claim at the **belief substrate layer** — and the geometry-aware metric was already in the codebase, built March 2026, predating both papers. Reproduce: `python labs/fidelity_bench/run_bench_metric_ab.py`.
+
 ---
 
 ## The Problem
