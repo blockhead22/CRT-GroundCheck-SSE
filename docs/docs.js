@@ -8,7 +8,7 @@
   // ── Doc manifest (reading order) ──
   // Reading order: Evidence → Architecture → Theory → Reference
   var DOCS = [
-    { href: 'index.html',                 label: 'Home',                   group: null },
+    { href: 'home.html',                  label: 'Home',                   group: null },
     // Evidence (what's broken, proof, and pipeline validation)
     { href: 'experiments.html',            label: 'Evidence Overview',      group: 'Evidence' },
     { href: 'contradiction-density.html',  label: 'Contradiction Density',  group: 'Evidence' },
@@ -54,7 +54,7 @@
 
     var home = document.createElement('a');
     home.className = 'docnav-home';
-    home.href = prefix + 'index.html';
+    home.href = prefix + 'home.html';
     home.textContent = 'Aeteros';
     nav.appendChild(home);
 

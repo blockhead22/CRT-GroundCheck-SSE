@@ -78,7 +78,20 @@
       "mcp__aether-oss__aether_receipt",
       "mcp__aether-oss__aether_receipts",
       "mcp__aether-oss__aether_receipt_detail",
-      "mcp__aether-oss__aether_receipt_summary"
+      "mcp__aether-oss__aether_receipt_summary",
+      "PowerShell(if \\(Test-Path \"$env:USERPROFILE\\\\.aether-venv\"\\) { Write-Host \"venv exists at $env:USERPROFILE\\\\.aether-venv\" } else { Write-Host \"no venv yet\"; python --version })",
+      "PowerShell(python -m venv \"$env:USERPROFILE\\\\.aether-venv\"; & \"$env:USERPROFILE\\\\.aether-venv\\\\Scripts\\\\python.exe\" --version; & \"$env:USERPROFILE\\\\.aether-venv\\\\Scripts\\\\python.exe\" -m pip install --upgrade pip --quiet 2>&1 | Select-Object -Last 3)",
+      "mcp__aether-oss__aether_substrate_stats",
+      "mcp__aether-oss__aether_substrate_slots",
+      "mcp__aether-direct__aether_substrate_stats",
+      "mcp__aether-direct__aether_context",
+      "mcp__aether-direct__aether_contradictions",
+      "mcp__aether-direct__aether_substrate_velocity_report",
+      "mcp__aether-direct__aether_search",
+      "mcp__aether-direct__aether_substrate_topology",
+      "PowerShell(npx wrangler --version 2>$null)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__browser_batch"
     ]
   },
   "enabledMcpjsonServers": [
@@ -95,6 +108,18 @@
             "timeout": 30,
             "statusMessage": "Checking for aether-core updates",
             "async": true
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python D:/AI_round2/.aether-hooks/inject_substrate_context.py",
+            "timeout": 5
           }
         ]
       }

@@ -11,6 +11,7 @@ Phase 2.2: LLM Claim Tracker
 Production extension points marked with # PROD:
 """
 
+import os
 import re
 import sqlite3
 import logging
@@ -20,6 +21,153 @@ from typing import Optional, Dict, List, Any, Tuple
 from enum import Enum
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Aether C3 (consult) gate — log-only first wire-up.
+#
+# Calls aether-core's substrate-grounded gate before each fact write so we
+# can observe the verdict distribution on real CRT traffic. The gate is
+# read-only and non-blocking: a `warn` verdict is logged but the write
+# still proceeds. Disabled unless AETHER_CRT_INTEGRATION is set to
+# `consult` or `full`.
+# ---------------------------------------------------------------------------
+
+_aether_substrate_singleton = None
+_aether_import_failed = False
+
+
+def _get_aether_substrate():
+    """Module-level lazy substrate. None when aether-core isn't installed."""
+    global _aether_substrate_singleton, _aether_import_failed
+    if _aether_substrate_singleton is not None:
+        return _aether_substrate_singleton
+    if _aether_import_failed:
+        return None
+    try:
+        from aether.substrate import SubstrateGraph  # noqa: WPS433
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"[AETHER C3] aether-core not importable: {e}")
+        _aether_import_failed = True
+        return None
+    sub = SubstrateGraph()
+    snapshot = os.environ.get("AETHER_SUBSTRATE_PATH", "").strip()
+    if snapshot and os.path.exists(snapshot):
+        try:
+            sub.load(snapshot)
+            logger.info(f"[AETHER C3] loaded substrate snapshot from {snapshot}")
+        except Exception as e:  # noqa: BLE001
+            logger.debug(f"[AETHER C3] substrate snapshot load failed: {e}")
+    else:
+        # No snapshot configured: try a one-shot C2 sync from CRT's facts
+        # store so the gate has a non-empty baseline. Requires `full` mode
+        # (write+consult) to fire — `consult`-only leaves substrate empty.
+        try:
+            from aether.integrations import crt as aether_crt  # noqa: WPS433
+            result = aether_crt.sync_to_substrate(sub)
+            if result.get("status") == "ok":
+                logger.info(
+                    "[AETHER C3] startup sync: imported=%d scanned=%d",
+                    result.get("imported", 0),
+                    result.get("scanned", 0),
+                )
+            else:
+                logger.debug(f"[AETHER C3] startup sync no-op: {result.get('status')}")
+        except Exception as e:  # noqa: BLE001
+            logger.debug(f"[AETHER C3] startup sync failed: {e}")
+    _aether_substrate_singleton = sub
+    return sub
+
+
+def _aether_consult_write(fact: "Fact") -> None:
+    """Best-effort C3 consult on a proposed fact write. Logs verdict, never raises.
+
+    No-op when aether-core's `AETHER_CRT_INTEGRATION` is unset / `read` /
+    `write`. The gate handles its own enabled-check; we just wire the call.
+    """
+    try:
+        from aether.integrations import crt as aether_crt  # noqa: WPS433
+    except Exception:  # noqa: BLE001
+        return
+    sub = _get_aether_substrate()
+    if sub is None:
+        return
+    try:
+        result = aether_crt.consult_substrate_for_action(
+            sub,
+            {
+                "kind": "write",
+                "slot": fact.slot,
+                "value": fact.value,
+                "trust": float(fact.trust),
+            },
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"[AETHER C3] consult raised: {e}")
+        return
+    status = result.get("status")
+    if status == "disabled":
+        return
+    verdict = result.get("verdict")
+    if verdict in (None, "pass-through", "pass"):
+        # Quiet on no-signal verdicts to avoid log spam in the common path.
+        return
+    evidence = result.get("evidence") or {}
+    print(
+        f"[AETHER C3] verdict={verdict} slot={fact.slot} "
+        f"proposed={fact.value!r} substrate={evidence.get('value')!r} "
+        f"proposed_trust={float(fact.trust):.2f} "
+        f"substrate_trust={float(evidence.get('effective_trust', 0.0)):.2f}",
+        flush=True,
+    )
+
+
+def _aether_consult_governance(slot: str, value: str, trust: float = 0.9,
+                               *, blocked: bool = False) -> None:
+    """Best-effort C3 consult on a governance-layer fact-write candidate.
+
+    Mirrors `_aether_consult_write` but is invoked from the chat pipeline's
+    PROFILE_GATE check, before fact_store sees the write (and often instead
+    of it — governance frequently blocks the write upstream). Surfaces the
+    substrate's view next to the existing PROFILE_GATE log.
+
+    `blocked` is annotated into the log so we can distinguish gate verdicts
+    on writes governance let through vs. ones it suppressed — this is the
+    P5 finding's payoff: most load-bearing demand sits in the suppressed bucket.
+    """
+    try:
+        from aether.integrations import crt as aether_crt  # noqa: WPS433
+    except Exception:  # noqa: BLE001
+        return
+    sub = _get_aether_substrate()
+    if sub is None:
+        return
+    # Governance slots come without the user. namespace prefix in many paths;
+    # normalize so the substrate lookup matches what fact_store writes.
+    qualified = slot if "." in slot else f"user.{slot}"
+    try:
+        result = aether_crt.consult_substrate_for_action(
+            sub,
+            {"kind": "write", "slot": qualified, "value": str(value),
+             "trust": float(trust)},
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"[AETHER C3 GOV] consult raised: {e}")
+        return
+    if result.get("status") == "disabled":
+        return
+    verdict = result.get("verdict")
+    if verdict in (None, "pass-through", "pass"):
+        return
+    evidence = result.get("evidence") or {}
+    print(
+        f"[AETHER C3 GOV] verdict={verdict} slot={qualified} "
+        f"proposed={str(value)!r} substrate={evidence.get('value')!r} "
+        f"proposed_trust={float(trust):.2f} "
+        f"substrate_trust={float(evidence.get('effective_trust', 0.0)):.2f} "
+        f"gov_blocked={bool(blocked)}",
+        flush=True,
+    )
 
 
 class FactSource(Enum):
@@ -716,6 +864,7 @@ class FactStore:
             return -1
         thread_key = self._normalize_thread_id(thread_id or getattr(fact, "thread_id", None))
         fact.thread_id = thread_key
+        _aether_consult_write(fact)
         def _insert(conn):
             cur = conn.execute(
                 "INSERT INTO facts (slot, value, trust, source, timestamp, thread_id) VALUES (?, ?, ?, ?, ?, ?)",
@@ -723,7 +872,7 @@ class FactStore:
             )
             return cur.lastrowid
         return self._execute_db(_insert)
-    
+
     def _update_fact(self, old_id: int, new_fact: Fact, thread_id: Optional[str] = None):
         """Supersede old fact with new one."""
         # Guard: reject None-like or empty values
@@ -732,6 +881,7 @@ class FactStore:
             return
         thread_key = self._normalize_thread_id(thread_id or getattr(new_fact, "thread_id", None))
         new_fact.thread_id = thread_key
+        _aether_consult_write(new_fact)
         def _update(conn):
             # Insert new fact
             cur = conn.execute(

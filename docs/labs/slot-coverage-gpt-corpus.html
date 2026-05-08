@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slot Coverage on the GPT Corpus | Aeteros Research</title>
+<link rel="stylesheet" href="../base.css">
+<link rel="stylesheet" href="../theme.css">
+<style>
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 24px 0; }
+  @media (max-width: 800px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+  .stat-card-big { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 12px; padding: 22px 20px; text-align: center; }
+  .stat-num { font-family: var(--mono); font-size: 1.8em; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .stat-num.bad { color: var(--red); }
+  .stat-num.ok { color: var(--green); }
+  .stat-num.dim { color: var(--accent-indigo); }
+  .stat-card-big .stat-label { font-size: 0.74em; color: var(--text-faint); text-transform: uppercase; letter-spacing: 1.4px; font-weight: 600; }
+
+  .bar-row { display: grid; grid-template-columns: 200px 1fr 90px; gap: 14px; align-items: center; margin: 7px 0; font-size: 0.85em; }
+  @media (max-width: 700px) { .bar-row { grid-template-columns: 130px 1fr 80px; } }
+  .bar-label { font-family: var(--mono); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-track { background: var(--bg-inset); border-radius: 4px; height: 18px; overflow: hidden; border: 1px solid var(--border); }
+  .bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent-indigo) 0%, var(--accent-purple) 100%); transition: width 0.4s ease; }
+  .bar-fill.warn { background: linear-gradient(90deg, var(--amber) 0%, var(--red) 100%); }
+  .bar-value { font-family: var(--mono); color: var(--text-secondary); font-size: 0.82em; text-align: right; }
+
+  .toggle-row { display: flex; gap: 10px; margin: 18px 0 12px 0; flex-wrap: wrap; }
+  .toggle-btn { background: var(--bg-raised); border: 1px solid var(--border); color: var(--text-secondary); padding: 7px 14px; border-radius: 8px; font-size: 0.78em; cursor: pointer; font-family: var(--mono); transition: all 0.15s; }
+  .toggle-btn:hover { border-color: var(--accent-indigo); color: var(--text); }
+  .toggle-btn.active { background: var(--accent-indigo); color: #fff; border-color: var(--accent-indigo); }
+
+  .key-finding { background: rgba(212,112,88,0.08); border: 1px solid rgba(212,112,88,0.25); border-left: 4px solid var(--red); border-radius: 10px; padding: 18px 22px; margin: 22px 0; }
+  .key-finding .label { font-family: var(--mono); font-size: 0.7em; font-weight: 700; color: var(--red); letter-spacing: 1.6px; text-transform: uppercase; margin-bottom: 8px; }
+  .key-finding p { color: var(--text); font-size: 0.95em; line-height: 1.7; }
+  .key-finding strong { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="page-layout">
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">Bench &middot; Validation Lab</div>
+    <h1>Slot Coverage<br><span class="grad">on the GPT Corpus</span></h1>
+    <p class="sub">26,049 user turns across 1,235 conversations. How many of them does the slot extractor see at all?</p>
+    <p class="byline">Aeteros Research &bull; 2026-05-01</p>
+    <div class="finding-box">
+      <p><strong>94.92% of user turns produce zero slot tags.</strong> The slot-template contradiction layer cannot, by construction, see a contradiction in any of those turns. This is the floor on what aether-core's structural detector could ever catch on this corpus, regardless of perfect tuning.</p>
+    </div>
+  </div>
+</div>
+
+<nav class="sidebar" id="docSidebar">
+  <div class="sidebar-title">Slot Coverage</div>
+  <div class="sidebar-spacer"></div>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <span class="theme-toggle-icon" id="themeIcon">&#9790;</span>
+    <span id="themeLabel">Light</span>
+  </button>
+  <div class="sidebar-footer">2026 Aeteros</div>
+</nav>
+
+<main class="main">
+
+<section id="summary">
+  <span class="section-number">Section 1</span>
+  <h2>Headline numbers</h2>
+  <div class="accent-line"></div>
+
+  <div class="summary-grid">
+    <div class="stat-card-big">
+      <div class="stat-num">1,235</div>
+      <div class="stat-label">Conversations</div>
+    </div>
+    <div class="stat-card-big">
+      <div class="stat-num">26,049</div>
+      <div class="stat-label">User Turns</div>
+    </div>
+    <div class="stat-card-big">
+      <div class="stat-num bad" id="zero-pct-num">94.92%</div>
+      <div class="stat-label">Zero-Slot Turns</div>
+    </div>
+    <div class="stat-card-big">
+      <div class="stat-num dim">1,324</div>
+      <div class="stat-label">&ge; 1 Slot Turns</div>
+    </div>
+  </div>
+
+  <div class="key-finding">
+    <div class="label">paraphrase-blind floor</div>
+    <p>The contradiction layer's slot-template path can only fire on turns where <code>extract_fact_slots</code> returns at least one slot. <strong>24,725 of 26,049 turns produced none.</strong> The remaining 5.08% is the entire surface area available to the structural detector on this corpus &mdash; even if every other gate (canonicalization, entity awareness, polarity) were perfect.</p>
+  </div>
+</section>
+
+<section id="distribution">
+  <span class="section-number">Section 2</span>
+  <h2>How many slots per turn, when any fired?</h2>
+  <div class="accent-line"></div>
+
+  <p>Most slot-tagged turns produce one or two slots. The long tail is dominated by code/snippet turns where the regex over-fires.</p>
+
+  <div id="distribution-bars" style="margin-top: 24px;"></div>
+</section>
+
+<section id="frequencies">
+  <span class="section-number">Section 3</span>
+  <h2>Slot category frequencies</h2>
+  <div class="accent-line"></div>
+
+  <p>Top slot categories among the 1,324 turns with &ge;1 tag. Percentages are of nonzero turns. Toggle to filter the long tail.</p>
+
+  <div class="toggle-row">
+    <button class="toggle-btn active" data-filter="all">All slots</button>
+    <button class="toggle-btn" data-filter="top10">Top 10</button>
+    <button class="toggle-btn" data-filter="signal">Likely real signal</button>
+    <button class="toggle-btn" data-filter="suspect">Suspect false-positives</button>
+  </div>
+
+  <div id="frequency-bars"></div>
+</section>
+
+<section id="interpretation">
+  <span class="section-number">Section 4</span>
+  <h2>What this number means</h2>
+  <div class="accent-line"></div>
+
+  <p>Two things matter here, and they're easy to conflate.</p>
+
+  <div class="callout">
+    <p><strong>For live single-turn auto-ingest</strong> (your daily Claude Code use), the regex extractor probably works fine because turns are short and conversational, the regexes were tuned for that, and the substrate's existing 180 memories show plausible structure.</p>
+  </div>
+
+  <div class="callout">
+    <p><strong>For batch ingestion of conversational corpora</strong> (this GPT export, anyone else's history, support transcripts), the extractor is unsafe to point at directly. 95% of turns are invisible to it, and the 5% it does fire on contain heavy false-positive contamination from code blocks and abstract prose.</p>
+  </div>
+
+  <p>The README's "Does NOT (yet)" section currently says <em>"contradictions go undetected outside that vocabulary."</em> This bench puts a number on it: <strong>outside-vocabulary is 95% of real conversational data.</strong> The roadmap's Phase C (entity-aware extractor) is the relevant fix.</p>
+</section>
+
+<section id="reproduce">
+  <span class="section-number">Section 5</span>
+  <h2>Reproduce</h2>
+  <div class="accent-line"></div>
+  <pre style="background: var(--bg-raised); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; color: var(--text-secondary); font-size: 0.82em; line-height: 1.65;">
+# Set CORPUS_DIR to your ChatGPT export directory
+export CORPUS_DIR="/path/to/conversations-export"
+
+cd aether-core
+python -m bench.slot_coverage_gpt_corpus
+
+# results: bench/slot_coverage_results.json
+  </pre>
+  <p>Source: <code>bench/slot_coverage_gpt_corpus.py</code> (~120 lines, no extras required).</p>
+</section>
+
+</main>
+</div>
+
+<script>
+const DATA = {"corpus_dir": "C:\\Users\\block\\Downloads\\fbf5a239c1af822f50241d4b5999b53954689723b9d4deb7ceb1e41a31847485-2026-03-27-22-39-55-cf0803cbc48c446cb8c3b317ea5f11ea", "conversations": 1235, "user_turns_total": 26049, "zero_slot_turns": 24725, "nonzero_slot_turns": 1324, "zero_slot_pct": 94.91727129640293, "elapsed_seconds": 287.6703004837036, "slots_per_turn": {"0": 24725, "1": 682, "5": 7, "3": 141, "2": 460, "4": 28, "6": 1, "15": 1, "12": 1, "11": 1, "7": 1, "8": 1}, "slot_frequencies": {"occupation": 746, "location": 411, "first_language": 210, "favorite_color": 171, "pet": 170, "pet_name": 170, "employer": 122, "project_vector_store": 85, "project_embedding_dim": 34, "programming_years": 28, "title": 19, "age": 8, "hobby": 8, "school": 7, "remote_preference": 6, "favorite_drink": 5, "project_framework": 5, "masters_school": 4, "degree_type": 4, "programming_language": 4, "editor": 3, "team_size": 3, "undergrad_school": 3, "favorite_food": 2, "graduation_year": 1, "coffee": 1, "book": 1}};
+
+function pct(n, d) { return d ? (100 * n / d) : 0; }
+
+// Distribution bars
+(function() {
+  const dist = DATA.slots_per_turn || {};
+  const total = DATA.user_turns_total || 1;
+  const container = document.getElementById('distribution-bars');
+  const keys = Object.keys(dist).map(Number).sort((a, b) => a - b);
+  const max = Math.max(...keys.map(k => dist[k]));
+  keys.forEach(k => {
+    const c = dist[k];
+    const p = pct(c, total);
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML = `
+      <div class="bar-label">${k} slot${k === 1 ? '' : 's'}</div>
+      <div class="bar-track"><div class="bar-fill ${k === 0 ? 'warn' : ''}" style="width: ${100 * c / max}%"></div></div>
+      <div class="bar-value">${c.toLocaleString()} (${p.toFixed(2)}%)</div>
+    `;
+    container.appendChild(row);
+  });
+})();
+
+// Slot frequencies
+const SIGNAL = ['editor', 'programming_language', 'project_framework', 'project_embedding_dim', 'project_vector_store', 'employer', 'undergrad_school', 'masters_school', 'degree_type', 'graduation_year', 'remote_preference', 'team_size'];
+const SUSPECT = ['pet', 'pet_name', 'location', 'occupation', 'first_language', 'hobby', 'title', 'school', 'favorite_color', 'favorite_drink', 'favorite_food', 'book', 'coffee', 'age', 'programming_years'];
+
+let currentFilter = 'all';
+
+function renderFrequencies() {
+  const freqs = DATA.slot_frequencies || {};
+  const nonzero = DATA.nonzero_slot_turns || 1;
+  const container = document.getElementById('frequency-bars');
+  container.innerHTML = '';
+  let entries = Object.entries(freqs).sort((a, b) => b[1] - a[1]);
+  if (currentFilter === 'top10') entries = entries.slice(0, 10);
+  if (currentFilter === 'signal') entries = entries.filter(([k]) => SIGNAL.includes(k));
+  if (currentFilter === 'suspect') entries = entries.filter(([k]) => SUSPECT.includes(k));
+  if (!entries.length) { container.innerHTML = '<p style="color:var(--text-faint);font-size:0.85em;">No matches for this filter.</p>'; return; }
+  const max = entries[0][1];
+  entries.forEach(([slot, count]) => {
+    const p = pct(count, nonzero);
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    const cls = SUSPECT.includes(slot) ? 'warn' : '';
+    row.innerHTML = `
+      <div class="bar-label" title="${slot}">${slot}</div>
+      <div class="bar-track"><div class="bar-fill ${cls}" style="width: ${100 * count / max}%"></div></div>
+      <div class="bar-value">${count.toLocaleString()} (${p.toFixed(1)}%)</div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+    renderFrequencies();
+  });
+});
+
+renderFrequencies();
+</script>
+<script src="../docs.js"></script>
+</body>
+</html>

@@ -177,6 +177,24 @@ def _last_message_inline(payload: dict, *roles: str) -> str:
     return ""
 
 
+def _debug_log(line: str) -> None:
+    """Append-only audit log: every Stop hook fire writes one line so we
+    can verify the hook is actually in the loop (even when the extractor
+    finds nothing worth ingesting).
+
+    Path: ~/.aether/auto_ingest.log. Best-effort — never fails the hook.
+    """
+    try:
+        from pathlib import Path
+        import time as _time
+        log = Path.home() / ".aether" / "auto_ingest.log"
+        log.parent.mkdir(parents=True, exist_ok=True)
+        with log.open("a", encoding="utf-8") as f:
+            f.write(f"{_time.strftime('%Y-%m-%d %H:%M:%S')}  {line}\n")
+    except Exception:
+        pass
+
+
 def main() -> int:
     payload = _read_stdin_payload()
 
@@ -192,6 +210,12 @@ def main() -> int:
             print("[aether auto-ingest] transcript read error (suppressed):",
                   file=sys.stderr)
             traceback.print_exc()
+
+    _debug_log(
+        f"FIRE  user_len={len(user_msg)}  asst_len={len(asst_msg)}  "
+        f"transcript={bool(transcript_path)}  "
+        f"keys={sorted(payload.keys())[:5]}"
+    )
 
     # Legacy fallback: messages embedded in the payload (other clients,
     # unit tests). Only use these if transcript-path extraction came up
@@ -218,6 +242,7 @@ def main() -> int:
             user_message=user_msg or None,
             assistant_response=asst_msg or None,
         )
+        _debug_log(f"INGEST writes={len(writes)}")
         if writes:
             print(f"[aether auto-ingest] wrote {len(writes)} fact(s)",
                   file=sys.stderr)
@@ -225,7 +250,12 @@ def main() -> int:
                 print(f"  - ({w.get('signal')}) trust={w['trust']:.2f} "
                       f"-> {w['memory_id']}",
                       file=sys.stderr)
-    except Exception:
+                _debug_log(
+                    f"WRITE id={w['memory_id']} signal={w.get('signal')} "
+                    f"trust={w['trust']:.2f}"
+                )
+    except Exception as e:
+        _debug_log(f"ERROR  {type(e).__name__}: {e}")
         print("[aether auto-ingest] error (suppressed):", file=sys.stderr)
         traceback.print_exc()
     return 0

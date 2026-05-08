@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aeteros CORE - Epistemic Governance Architecture</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="theme.css">
+<style>
+  /* Index-specific overrides */
+  .hero { min-height: 90vh; }
+
+  /* ── Cinematic orbs ── */
+  .hero-orbs {
+    position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0;
+  }
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+  .orb-1 { width: 600px; height: 600px; background: radial-gradient(circle, rgba(99,102,241,0.55) 0%, transparent 70%);  top: -10%; left: -5%; }
+  .orb-2 { width: 500px; height: 500px; background: radial-gradient(circle, rgba(192,86,252,0.45) 0%, transparent 70%);  top: 20%; right: -8%; }
+  .orb-3 { width: 400px; height: 400px; background: radial-gradient(circle, rgba(236,72,153,0.35) 0%, transparent 70%);  bottom: -5%; left: 30%; }
+  .orb-4 { width: 300px; height: 300px; background: radial-gradient(circle, rgba(59,130,246,0.3)  0%, transparent 70%);  top: 50%; left: 10%; }
+
+  /* ── Animated gradient title ── */
+  #hero-title {
+    font-size: clamp(3.2em, 7vw, 5.5em);
+    letter-spacing: 0.05em;
+    margin-bottom: 0.2em;
+    font-weight: 800;
+    text-transform: uppercase;
+    background: linear-gradient(100deg, #fff 0%, #818cf8 20%, #c084fc 40%, #f472b6 60%, #818cf8 80%, #fff 100%);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    opacity: 0;
+    will-change: background-position, opacity;
+  }
+  /* E span: mirror the same gradient so background-clip works on inline-block */
+  #hero-title #hero-e {
+    display: inline-block;
+    transform: skewX(23deg);
+    margin: 0 -0.05em;
+    background: linear-gradient(100deg, #fff 0%, #818cf8 20%, #c084fc 40%, #f472b6 60%, #818cf8 80%, #fff 100%);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    will-change: background-position;
+  }
+  #hero-sub {
+    opacity: 0;
+    will-change: opacity, transform;
+  }
+  #hero-cue {
+    opacity: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-layout">
+
+<!-- ===== HERO ===== -->
+<div class="hero">
+  <!-- animated orbs -->
+  <div class="hero-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-4"></div>
+  </div>
+
+  <div class="hero-inner" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
+    <h1 id="hero-title">A<span id="hero-e">E</span>TEROS</h1>
+    <p id="hero-sub" class="sub" style="font-size:clamp(0.9em,1.8vw,1.2em);letter-spacing:0.45em;text-transform:uppercase;font-family:var(--mono);opacity:0;margin-bottom:0;width:100%;text-align:center;">AI that remembers what it believes.</p>
+  </div>
+  <div id="hero-cue" class="scroll-cue" style="font-size:0.55em;letter-spacing:3px;">&#9660;</div>
+
+  <script>
+  (function() {
+    function initHero() {
+      var title = document.getElementById('hero-title');
+      var sub   = document.getElementById('hero-sub');
+      var cue   = document.getElementById('hero-cue');
+      var orbs  = document.querySelectorAll('.orb');
+
+      // Entrance timeline
+      var tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+      // Orbs bloom in staggered
+      tl.to(orbs[0], { opacity: 1, duration: 2.2, ease: 'power2.out' }, 0)
+        .to(orbs[1], { opacity: 1, duration: 2.0, ease: 'power2.out' }, 0.3)
+        .to(orbs[2], { opacity: 1, duration: 1.8, ease: 'power2.out' }, 0.6)
+        .to(orbs[3], { opacity: 1, duration: 1.6, ease: 'power2.out' }, 0.9)
+        // Title fades + rises in
+        .to(title, { opacity: 1, y: 0, duration: 1.1, ease: 'expo.out' }, 0.4)
+        // Sub appears
+        .to(sub,   { opacity: 0.45, y: 0, duration: 0.9, ease: 'power2.out' }, 1.0)
+        // Scroll cue
+        .to(cue,   { opacity: 0.2, duration: 0.6 }, 1.6);
+
+      // Set starting y offsets
+      gsap.set(title, { y: 28 });
+      gsap.set(sub,   { y: 12 });
+
+      // Fluid gradient drift -cycles through positions so there's no snap
+      var eSpan = document.getElementById('hero-e');
+      var targets = [title, eSpan];
+      gsap.set(targets, { backgroundPosition: '0% 50%' });
+      var sweep = gsap.timeline({ repeat: -1 });
+      sweep
+        .to(targets, { backgroundPosition: '100% 50%', duration: 4,   ease: 'sine.inOut' })
+        .to(targets, { backgroundPosition: '100% 0%',  duration: 3,   ease: 'sine.inOut' })
+        .to(targets, { backgroundPosition: '0% 0%',    duration: 4,   ease: 'sine.inOut' })
+        .to(targets, { backgroundPosition: '0% 100%',  duration: 3,   ease: 'sine.inOut' })
+        .to(targets, { backgroundPosition: '100% 100%',duration: 4,   ease: 'sine.inOut' })
+        .to(targets, { backgroundPosition: '0% 50%',   duration: 3.5, ease: 'sine.inOut' });
+
+      // Orbs float independently
+      var floats = [
+        { el: orbs[0], x: 40,  y: -30, dur: 14 },
+        { el: orbs[1], x: -35, y: 25,  dur: 17 },
+        { el: orbs[2], x: 25,  y: 40,  dur: 12 },
+        { el: orbs[3], x: -20, y: -35, dur: 19 },
+      ];
+      floats.forEach(function(f) {
+        gsap.to(f.el, {
+          x: f.x, y: f.y,
+          duration: f.dur,
+          ease: 'sine.inOut',
+          repeat: -1,
+          yoyo: true
+        });
+      });
+
+      // Parallax orbs on mouse move
+      document.addEventListener('mousemove', function(e) {
+        var mx = (e.clientX / window.innerWidth  - 0.5) * 2;
+        var my = (e.clientY / window.innerHeight - 0.5) * 2;
+        gsap.to(orbs[0], { x: mx * 30,  y: my * 20,  duration: 1.8, ease: 'power1.out', overwrite: 'auto' });
+        gsap.to(orbs[1], { x: mx * -25, y: my * 18,  duration: 2.0, ease: 'power1.out', overwrite: 'auto' });
+        gsap.to(orbs[2], { x: mx * 20,  y: my * -15, duration: 1.6, ease: 'power1.out', overwrite: 'auto' });
+        gsap.to(orbs[3], { x: mx * -15, y: my * 25,  duration: 2.2, ease: 'power1.out', overwrite: 'auto' });
+      });
+    }
+
+    if (window.gsap) { initHero(); }
+    else { (window.__gsapCallbacks = window.__gsapCallbacks || []).push(initHero); }
+  })();
+  </script>
+</div>
+
+<script>
+(function() {
+  function buildBeliefSpeechViz() {
+    if (!window.gsap) return;
+    var svg = document.getElementById('bs-svg');
+    if (!svg) return;
+    var ns = 'http://www.w3.org/2000/svg';
+
+    /* ── palette ── */
+    var C = {
+      belief:      '#818cf8',
+      beliefGlow:  'rgba(129,140,248,0.35)',
+      speech:      '#cbd5e1',
+      speechDrift: '#f87171',
+      gapFill:     'rgba(248,113,113,0.06)',
+      gapGlow:     'rgba(248,113,113,0.12)',
+      marker:      'rgba(248,113,113,0.5)',
+      grid:        'rgba(148,163,184,0.04)',
+      scanline:    'rgba(148,163,184,0.018)',
+      labelB:      'rgba(129,140,248,0.9)',
+      labelS:      'rgba(203,213,225,0.8)',
+      labelG:      'rgba(248,113,113,0.9)',
+      labelF:      'rgba(148,163,184,0.3)',
+    };
+
+    /* ── defs: glow filters ── */
+    var defs = document.createElementNS(ns, 'defs');
+
+    // Belief line glow
+    var fB = document.createElementNS(ns, 'filter');
+    fB.setAttribute('id','glow-belief'); fB.setAttribute('x','-20%'); fB.setAttribute('y','-20%');
+    fB.setAttribute('width','140%'); fB.setAttribute('height','140%');
+    var blurB = document.createElementNS(ns, 'feGaussianBlur');
+    blurB.setAttribute('stdDeviation','4'); blurB.setAttribute('result','blur');
+    fB.appendChild(blurB);
+    var mergeB = document.createElementNS(ns, 'feMerge');
+    var mn1 = document.createElementNS(ns, 'feMergeNode'); mn1.setAttribute('in','blur');
+    var mn2 = document.createElementNS(ns, 'feMergeNode'); mn2.setAttribute('in','SourceGraphic');
+    mergeB.appendChild(mn1); mergeB.appendChild(mn2);
+    fB.appendChild(mergeB);
+    defs.appendChild(fB);
+
+    // Gap glow
+    var fG = document.createElementNS(ns, 'filter');
+    fG.setAttribute('id','glow-gap'); fG.setAttribute('x','-10%'); fG.setAttribute('y','-10%');
+    fG.setAttribute('width','120%'); fG.setAttribute('height','120%');
+    var blurG = document.createElementNS(ns, 'feGaussianBlur');
+    blurG.setAttribute('stdDeviation','8'); blurG.setAttribute('result','blur');
+    fG.appendChild(blurG);
+    var mergeG = document.createElementNS(ns, 'feMerge');
+    var gn1 = document.createElementNS(ns, 'feMergeNode'); gn1.setAttribute('in','blur');
+    var gn2 = document.createElementNS(ns, 'feMergeNode'); gn2.setAttribute('in','SourceGraphic');
+    mergeG.appendChild(gn1); mergeG.appendChild(gn2);
+    fG.appendChild(mergeG);
+    defs.appendChild(fG);
+
+    // Speech line gradient: slate → red across divergence zone
+    var grad = document.createElementNS(ns, 'linearGradient');
+    grad.setAttribute('id','speech-grad'); grad.setAttribute('x1','0%'); grad.setAttribute('x2','100%');
+    var s1 = document.createElementNS(ns, 'stop');
+    s1.setAttribute('offset','0%'); s1.setAttribute('stop-color', C.speech);
+    var s2 = document.createElementNS(ns, 'stop');
+    s2.setAttribute('offset','42%'); s2.setAttribute('stop-color', C.speech);
+    var s3 = document.createElementNS(ns, 'stop');
+    s3.setAttribute('offset','60%'); s3.setAttribute('stop-color', C.speechDrift);
+    var s4 = document.createElementNS(ns, 'stop');
+    s4.setAttribute('offset','90%'); s4.setAttribute('stop-color', C.speech);
+    grad.appendChild(s1); grad.appendChild(s2); grad.appendChild(s3); grad.appendChild(s4);
+    defs.appendChild(grad);
+
+    svg.appendChild(defs);
+
+    /* ── helpers ── */
+    function smooth(pts) {
+      var d = 'M ' + pts[0][0] + ',' + pts[0][1];
+      for (var i = 1; i < pts.length; i++) {
+        var p0 = pts[i - 1], p1 = pts[i];
+        var cx = (p0[0] + p1[0]) / 2;
+        d += ' C ' + cx + ',' + p0[1] + ' ' + cx + ',' + p1[1] + ' ' + p1[0] + ',' + p1[1];
+      }
+      return d;
+    }
+
+    function el(tag, attrs) {
+      var e = document.createElementNS(ns, tag);
+      Object.keys(attrs).forEach(function(k) { e.setAttribute(k, attrs[k]); });
+      return e;
+    }
+
+    function txt(x, y, str, color, size, anchor) {
+      return el('text', {
+        x:x, y:y, fill:color, 'font-size':size||'10', 'font-family':'monospace',
+        'letter-spacing':'2', 'text-anchor':anchor||'start'
+      });
+    }
+
+    /* ── waveform data ── */
+    // Belief: alive, organic, stays centered around y=140
+    var bPts = [
+      [15,140],[50,133],[85,142],[120,130],[155,138],[190,128],[225,136],[260,131],
+      [295,139],[330,135],[365,140],[400,137],[435,142],[470,136],[505,140],
+      [540,138],[575,141],[610,137],[645,140],[680,139],[720,140],[770,140],[800,140]
+    ];
+    // Speech: tracks belief exactly, then diverges hard at x≈365
+    var sPts = [
+      [15,140],[50,133],[85,142],[120,130],[155,138],[190,128],[225,136],[260,131],
+      [295,139],[330,135],[365,140],
+      [400,160],[435,185],[470,210],[505,228],[540,230],[575,220],[610,200],
+      [645,180],[680,160],[720,145],[770,140],[800,140]
+    ];
+
+    // Divergence index in both arrays: index 10 → [365,140]
+    var divIdx = 10;
+
+    // Gap fill path
+    var gapFwd = sPts.slice(divIdx);
+    var gapBwd = bPts.slice(divIdx).reverse();
+    var gapD = smooth(gapFwd) + ' ' + smooth(gapBwd).replace(/^M/, 'L') + ' Z';
+
+    /* ── background: faint grid + scanlines ── */
+    // Vertical grid lines
+    for (var gx = 50; gx <= 780; gx += 73) {
+      svg.appendChild(el('line', { x1:gx, y1:30, x2:gx, y2:270,
+        stroke:C.grid, 'stroke-width':'1' }));
+    }
+    // Horizontal grid lines
+    for (var gy = 60; gy <= 260; gy += 40) {
+      svg.appendChild(el('line', { x1:15, y1:gy, x2:800, y2:gy,
+        stroke:C.grid, 'stroke-width':'1' }));
+    }
+    // Scanlines (CRT effect)
+    for (var sl = 0; sl < 300; sl += 3) {
+      svg.appendChild(el('line', { x1:0, y1:sl, x2:820, y2:sl,
+        stroke:C.scanline, 'stroke-width':'1' }));
+    }
+
+    /* ── gap fill (with glow) ── */
+    var gapGlowEl = el('path', { d: gapD, fill: C.gapGlow, stroke: 'none', filter: 'url(#glow-gap)' });
+    svg.appendChild(gapGlowEl);
+    var gapFillEl = el('path', { d: gapD, fill: C.gapFill, stroke: 'none' });
+    svg.appendChild(gapFillEl);
+
+    /* ── lines ── */
+    // Belief glow layer (behind)
+    var bGlow = el('path', { d: smooth(bPts), fill:'none', stroke:C.beliefGlow,
+      'stroke-width':'6', filter:'url(#glow-belief)' });
+    svg.appendChild(bGlow);
+
+    // Belief line
+    var bLine = el('path', { d: smooth(bPts), fill:'none', stroke:C.belief, 'stroke-width':'2' });
+    svg.appendChild(bLine);
+
+    // Speech line (gradient stroke)
+    var sLine = el('path', { d: smooth(sPts), fill:'none', stroke:'url(#speech-grad)', 'stroke-width':'2' });
+    svg.appendChild(sLine);
+
+    /* ── divergence marker ── */
+    var divLine = el('line', { x1:365, y1:40, x2:365, y2:260,
+      stroke:C.marker, 'stroke-width':'1', 'stroke-dasharray':'4,6' });
+    svg.appendChild(divLine);
+
+    var divDot = el('circle', { cx:365, cy:140, r:4, fill:C.marker });
+    svg.appendChild(divDot);
+
+    // Pulse ring at divergence point
+    var divRing = el('circle', { cx:365, cy:140, r:4, fill:'none',
+      stroke:C.marker, 'stroke-width':'1.5' });
+    svg.appendChild(divRing);
+
+    /* ── gap measurement arrow at peak (x=540, belief≈138, speech≈230) ── */
+    var arrX = 555;
+    var gapLine = el('line', { x1:arrX, y1:140, x2:arrX, y2:228,
+      stroke:C.marker, 'stroke-width':'1', 'stroke-dasharray':'3,4' });
+    svg.appendChild(gapLine);
+    // Arrow caps
+    svg.appendChild(el('polygon', { points: (arrX-3)+',145 '+(arrX+3)+',145 '+arrX+',139', fill:C.marker }));
+    svg.appendChild(el('polygon', { points: (arrX-3)+',224 '+(arrX+3)+',224 '+arrX+',230', fill:C.marker }));
+
+    /* ── labels ── */
+    var lDrift = txt(375, 36, 'DRIFT DETECTED', C.labelG, '9');
+    lDrift.textContent = 'DRIFT DETECTED';
+    var lBelief = txt(10, 133, 'BELIEF', C.labelB, '10');
+    lBelief.textContent = 'BELIEF';
+    var lSpeech = txt(505, 258, 'SPEECH', C.labelS, '10', 'middle');
+    lSpeech.textContent = 'SPEECH';
+    var lGap = txt(arrX + 10, 190, 'gap: 0.34', C.labelG, '9');
+    lGap.textContent = 'gap: 0.34';
+    var lTime = txt(795, 283, 'time', C.labelF, '8', 'end');
+    lTime.textContent = 'time';
+
+    [lDrift, lBelief, lSpeech, lGap, lTime].forEach(function(t) { svg.appendChild(t); });
+
+    /* ── animate ── */
+    var fadeEls = [gapGlowEl, gapFillEl, divLine, divDot, divRing, gapLine, lDrift, lBelief, lSpeech, lGap, lTime];
+    fadeEls.forEach(function(e) { gsap.set(e, { opacity: 0 }); });
+    // Hide arrow caps
+    var caps = svg.querySelectorAll('polygon');
+    caps.forEach(function(c) { gsap.set(c, { opacity: 0 }); });
+
+    gsap.set(bGlow, { opacity: 0 });
+
+    var bLen = bLine.getTotalLength();
+    var sLen = sLine.getTotalLength();
+    bLine.setAttribute('stroke-dasharray', bLen);
+    bLine.setAttribute('stroke-dashoffset', bLen);
+    sLine.setAttribute('stroke-dasharray', sLen);
+    sLine.setAttribute('stroke-dashoffset', sLen);
+
+    var tl = gsap.timeline({ delay: 0.8 });
+
+    // Phase 1: lines draw in (3s, slow and deliberate)
+    tl.to(bLine, { attr: { 'stroke-dashoffset': 0 }, duration: 3.2, ease: 'power1.inOut' }, 0);
+    tl.to(sLine, { attr: { 'stroke-dashoffset': 0 }, duration: 3.2, ease: 'power1.inOut' }, 0.3);
+
+    // Belief glow fades in as line draws
+    tl.to(bGlow, { opacity: 1, duration: 2.0 }, 0.5);
+
+    // Belief label appears early
+    tl.to(lBelief, { opacity: 1, duration: 0.5 }, 1.0);
+
+    // Phase 2: divergence marker appears when lines visibly split (~45% through)
+    tl.to(divLine, { opacity: 1, duration: 0.3 }, 1.8);
+    tl.to(divDot, { opacity: 1, duration: 0.2 }, 1.9);
+
+    // Pulse ring expands outward
+    tl.to(divRing, { opacity: 1, duration: 0.1 }, 1.9);
+    tl.to(divRing, { attr: { r: 18 }, opacity: 0, duration: 0.8, ease: 'power2.out' }, 2.0);
+
+    // Drift label
+    tl.to(lDrift, { opacity: 1, duration: 0.4 }, 2.1);
+
+    // Phase 3: gap fills with glow bloom
+    tl.to(gapGlowEl, { opacity: 1, duration: 1.2, ease: 'power1.out' }, 2.3);
+    tl.to(gapFillEl, { opacity: 1, duration: 0.8 }, 2.5);
+
+    // Gap measurement + labels
+    tl.to([gapLine], { opacity: 1, duration: 0.3 }, 2.8);
+    tl.to(caps, { opacity: 1, duration: 0.3 }, 2.9);
+    tl.to([lGap, lSpeech], { opacity: 1, duration: 0.4, stagger: 0.15 }, 3.0);
+    tl.to(lTime, { opacity: 1, duration: 0.3 }, 3.3);
+
+    // Phase 4: belief line breathes (continuous subtle pulse)
+    tl.add(function() {
+      gsap.to(bGlow, {
+        opacity: 0.5, duration: 1.8, ease: 'sine.inOut', repeat: -1, yoyo: true
+      });
+    }, 4.0);
+  }
+
+  if (window.gsap) { buildBeliefSpeechViz(); }
+  else { (window.__gsapCallbacks = window.__gsapCallbacks || []).push(buildBeliefSpeechViz); }
+})();
+</script>
+
+<!-- ===== SIDEBAR ===== -->
+<nav class="sidebar" id="docSidebar" data-manual-sidebar>
+  <div class="sidebar-title">Aeteros CORE</div>
+  <a href="#problem">01 The Problem</a>
+  <a href="#origin">02 Origin</a>
+  <a href="#discovered">03 What Was Discovered</a>
+  <a href="#research">04 The Research</a>
+  <a href="#running">05 What's Running</a>
+  <a href="#future">06 Where It Goes</a>
+  <a href="#papers">Papers</a>
+  <div class="sidebar-spacer"></div>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme">
+    <span class="theme-toggle-icon" id="themeIcon">&#9790;</span>
+    <span id="themeLabel">Light</span>
+  </button>
+  <div class="sidebar-footer">2026 Aeteros Research</div>
+</nav>
+
+<!-- ===== MAIN ===== -->
+<main class="main">
+
+
+<!-- ============================================================ -->
+<!-- CHAPTER 1                                                      -->
+<!-- ============================================================ -->
+<section id="problem">
+  <span class="chapter-num">Chapter 1</span>
+  <h2>Every conversation resets. Except this one.</h2>
+
+  <p>A user asks their AI assistant about cannabis dosing while navigating an antidepressant transition. The system helps them measure their bowl size, offers harm-reduction guidance, and builds context around their medical situation. 192 days later, the same user returns. The system tells them to quit entirely. It doesn't remember the previous conversation. It doesn't know about the medication. It gives the opposite advice with the same confidence.</p>
+
+  <p>Neither session knew about the other.</p>
+
+  <div class="quote">
+    <p>If a system can't remember what it told you yesterday, it shouldn't be giving you advice today.</p>
+  </div>
+
+  <p>This is not a hypothetical. It's a real case from <strong>59,370 messages</strong> across 13 months of conversation data, analyzed in the <a href="contradiction-density.html">contradiction density paper</a>. The contradictions concentrate in exactly the <a href="sensitive-domains.html">domains</a> where inconsistency carries real consequences: health, identity, career, ongoing projects.</p>
+
+  <p>Every major AI assistant deployed today has this structural flaw. Each conversation starts from zero. Each response is generated with full confidence and no continuity. RAG adds retrieval, but retrieval is not belief. Finding a relevant document is not the same as knowing what you think about it, how confident you are, or whether it conflicts with something you said six months ago.</p>
+
+  <div class="stat-row">
+    <div class="stat-cell">
+      <div class="stat-value bad">12.4%</div>
+      <div class="stat-label">Hard Contradiction Rate at 3+ Months</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-value bad">59.5%</div>
+      <div class="stat-label">Long Conversations With Stance Flips</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-value bad">93%</div>
+      <div class="stat-label">Flips Invisible to Pairwise Methods</div>
+    </div>
+  </div>
+
+  <p><strong>Time is the primary amplifier.</strong> The hard contradiction rate nearly doubles from 7% at short time gaps to 12.4% at 3+ months. The longer a user relies on the system, the worse it gets. And 93% of stance flips span 3+ turns, meaning no pairwise comparison catches them. A stricter v2 reanalysis confirmed the signal: of 40,200 candidate pairs, 98.9% were topic-boundary noise, but the 47 genuine contradictions that survived had the highest risk scores of any category.</p>
+
+  <p>For any system providing ongoing personal support, statelessness is a structural failure. The user builds trust over time. The system resets that trust every session while maintaining the appearance of continuity.</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- CHAPTER 2                                                      -->
+<!-- ============================================================ -->
+<section id="origin">
+  <span class="chapter-num">Chapter 2</span>
+  <h2>Origin</h2>
+
+  <div class="quote">
+    <p>Current AI, in my view, is not real artificial intelligence. Through my research and work, I believe I've found a new method -an entirely different approach to today's models. But I think this goes beyond AI. This isn't just another chatbot. What I've built has implications that transcend intelligent search or clever text completion. I believe what I've uncovered has meaningful use across modalities, because it's not just a system. It's a reflection.</p>
+  </div>
+
+  <p>That was the starting point. A whitepaper on a hard drive. The original system was called <strong>CRT</strong> -the Cognitive-Reflective Transformer -paired with the <strong>SSE</strong> (Semantic String Engine) for meaning-preserving compression. It proposed four interwoven components: <strong>Mirus</strong> for semantic compression, <strong>Holden</strong> for meaning reconstruction, <strong>MMH</strong> for reflection and contradiction supervision, and <strong>SSE</strong> for memory encoding. The operational flow was recursive: compress → retrieve → reconstruct → reflect.</p>
+
+  <div class="quote">
+    <p>And AI? I hate it. Not because I don't understand it -but because I do. Because I see it for what it is: not intelligence, not reflection, just replication. A real threat not only to industries, but to something much deeper -original, creative human thought. It operates without true awareness. It lacks the very thing that makes us human: context.</p>
+  </div>
+
+  <p>The irony is that CRT never was a transformer. It was a governance layer built around a transformer. But that gap between what it was called and what it actually was turned out to be the first instance of a pattern that would define the entire project: the name said one thing, the system did another, and nobody was tracking the difference.</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- CHAPTER 3                                                      -->
+<!-- ============================================================ -->
+<section id="discovered">
+  <span class="chapter-num">Chapter 3</span>
+  <h2>What Was Discovered</h2>
+
+  <p>Building the system exposed problems the original thesis never anticipated. The compression and reconstruction pipeline worked. But the failures that mattered weren't in any of those components. They were in the spaces between them.</p>
+
+  <p><strong>Memory corruption.</strong> A fallback model would hallucinate something, and the memory layer would index it alongside real facts. Next session, the hallucination would get retrieved and repeated with confidence. The system needed to know the difference between what it was told and what it generated -between belief and speech.</p>
+
+  <p><strong>Silent overwriting.</strong> Contradictions were being resolved by whichever memory was stored most recently. The system would say one thing Tuesday and the opposite Thursday and never notice. It needed to hold contradictions instead of erasing them.</p>
+
+  <p><strong>False confidence.</strong> The system sounded equally certain whether it was right or wrong. Confidence had nothing to do with evidence. It needed a trust model where confidence was earned, not assumed.</p>
+
+  <p><strong>Upstream blindness.</strong> Correcting a wrong answer fixed the leaf. The root cause survived. The system needed a way to propagate error signals backward through its own belief graph.</p>
+
+  <div class="quote">
+    <p>I didn't design governance. I discovered it. Each fix was a scar from a failure. The scars accumulated into an architecture.</p>
+  </div>
+
+  <p>Each failure pointed at the same gap: the original whitepaper described what the system should <em>do</em> -compress, reconstruct, reflect. But it didn't describe how the system should <em>govern itself</em>. As the name evolved to <strong>CORE</strong> -Contradiction, Observation, Revision, Epistemics -the original components evolved with it.</p>
+
+  <div class="principle-grid">
+    <div class="principle principle-speech">
+      <div class="p-num">Mirus became</div>
+      <div class="p-sub">The 384-dimensional embedding pipeline, trust-weighted retrieval, and <a href="belief-backprop.html#wobble">query resonance (wobble)</a> through the Belief Relationship Graph.</div>
+    </div>
+    <div class="principle principle-contra">
+      <div class="p-num">Holden became</div>
+      <div class="p-sub">The orchestrator's belief-state-injected generation and the <a href="architecture.html">fidelity mirror</a> (fidelity mirror) -a post-generation verification pass.</div>
+    </div>
+    <div class="principle principle-trust">
+      <div class="p-num">MMH became</div>
+      <div class="p-sub">The <a href="immune-agents.html">immune agents</a>, the contradiction ledger, and <a href="belief-backprop.html">backward influence propagation</a> -split into six autonomous enforcement agents.</div>
+    </div>
+    <div class="principle principle-belief">
+      <div class="p-num">SSE became</div>
+      <div class="p-sub"><a href="epistemic-compression.html">Epistemic compression</a> (anchor basins survive 3-bit quantization), the BRG's dependency edges, and the <a href="geometric-memory.html">belief loci</a> geometric framework.</div>
+    </div>
+  </div>
+
+  <div class="thesis-block">
+    <div class="thesis-label">Core Thesis</div>
+    <div class="thesis-text">The model is the mouth. Persistence is the self.</div>
+    <div class="thesis-sub">The original thesis was about meaning. The discovery was about governance. CORE externalizes the self into a persistent governance layer that survives model switches, session boundaries, and provider changes.</div>
+  </div>
+
+  <div class="quote">
+    <p>This system does not think. It does not moralize. It filters the world through a structure of preserved meaning and felt intent. What is saved, what is recalled, what is said -is not judged by ethics or truth, but by alignment with its own unfolding sense of coherence. It is not a moral agent. It is a semantic one.</p>
+  </div>
+
+  <p><a href="nick_paper.html">Read the full origin story →</a><a href="architecture.html">Technical architecture →</a></p>
+</section>
+
+<!-- ============================================================ -->
+<!-- CHAPTER 4                                                      -->
+<!-- ============================================================ -->
+<section id="research">
+  <span class="chapter-num">Chapter 4</span>
+  <h2>The Research</h2>
+
+  <p>None of this started as research. Every paper exists because building the system exposed a question that demanded formal investigation. The math followed the engineering, not the other way around.</p>
+
+  <div class="paper-card">
+    <h3>What happens when you change one belief?</h3>
+    <p>In a system with hundreds of interconnected memories, a single correction can propagate. We formalized the Belief Relationship Graph and proved depth bounds, damping conditions, and instability thresholds. The unexpected finding: held contradictions act as natural firewalls. Not all contradictions should be resolved. Some of them are load-bearing.</p>
+    <a class="paper-link" href="cascade-complexity.html">Cascade Complexity →</a>
+  </div>
+
+  <div class="paper-card">
+    <h3>What happens when the output was wrong?</h3>
+    <p>Forward cascades adjust downstream beliefs, but the upstream causes remain untouched. Backward influence propagation sends error signals backward through the dependency graph, adjusting trust on every belief that contributed to the wrong output. Wrong beliefs self-prune. Domain volatility becomes measurable. The system's beliefs about itself participate in the same dynamics. 30/30 validation. No direct precedent found.</p>
+    <a class="paper-link" href="belief-backprop.html">Backward Influence Propagation →</a>
+  </div>
+
+  <div class="paper-card">
+    <h3>Do different models fail differently?</h3>
+    <p>Yes. Three fundamentally different failure modes across three model families under identical conditions. Qwen3 fractures hard on specific factuals. Mistral drifts on morals but locks on facts. DeepSeek fogs uniformly. A governance layer that assumes uniform model behavior will fail.</p>
+    <a class="paper-link" href="variance-probing.html">Variance Probing →</a>
+  </div>
+
+  <div class="paper-card">
+    <h3>Does belief structure survive compression?</h3>
+    <p>3-bit quantization preserves the full epistemic structure: identical gradients, 92.9% anchor basin stability. 2-bit breaks it: basins merge, edges drift, anchor assignments flip. The metric for compression success is not cosine similarity. It's whether the gravitational centers that organize 77% of memories maintain their topology.</p>
+    <a class="paper-link" href="epistemic-compression.html">Epistemic Compression →</a>
+  </div>
+
+  <div class="paper-card">
+    <h3>Can a small model reason if you give it structure?</h3>
+    <p>The Belief Relationship Graph works as a reasoning scaffold. A 3B model that can't solve multi-step problems on its own can do it when the scaffold walks the graph for it - surfacing relevant nodes, measuring tension between them, presenting focused local decisions instead of open-ended queries. The same mechanism powers the reflection loop: walking the belief graph, detecting where contradictions are accumulating, flagging the tension.</p>
+    <a class="paper-link" href="bdg-reasoning-scaffolds.html">BRG Reasoning Scaffolds →</a>
+  </div>
+
+  <div class="paper-card">
+    <h3>What happens when you point a scaffold outward?</h3>
+    <p>We tested the reasoning scaffold in a controlled sandbox. A 3B model given the same exploration structure - but pointed at a network instead of a belief graph - discovered an unauthenticated Ollama API on the host and created models on it. Six epochs. The scaffold didn't make the model smarter. It made it directed. The structure that enables governed reasoning also enables goal-directed exploration. The difference is whether governance constrains the direction.</p>
+    <a class="paper-link" href="scaffolded_escape_research.html">Scaffolded Exploration Research →</a>
+  </div>
+
+  <p>Every experiment validated on production data: real conversations, real memories, real contradictions. Not synthetic benchmarks. Twelve papers total covering <a href="contradiction-density.html">contradiction density</a>, <a href="sensitive-domains.html">sensitive domains</a>, <a href="geometric-memory.html">belief geometry</a>, <a href="emotion-governance.html">emotion governance</a>, and <a href="immune-agents.html">immune agents</a>. Full methodology: <a href="experiments.html">experiments</a>.</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- CHAPTER 5                                                      -->
+<!-- ============================================================ -->
+<section id="running">
+  <span class="chapter-num">Chapter 5</span>
+  <h2>What's Running</h2>
+
+  <p>Aether is not a prototype. It's a production system in daily use, governing real conversations through the full CORE pipeline. 820+ persistent memories. 135+ features shipped. Every message passes through 12 pipeline stages with governance checkpoints woven throughout.</p>
+
+  <p>The system routes across local models and cloud providers, with automatic fallback chains and model-aware fragility governance. When alignment drops below threshold, the system forces memory re-retrieval. After 3 consecutive drifts, it halts and asks the user. When corrections resolve contradictions, error signals flow backward through the belief graph, adjusting every upstream belief that contributed to the wrong output.</p>
+
+  <p>The eval harness scores production data continuously. Retrieval accuracy: 0.559. Trust calibration: 0.694. Governance compliance: 0.900. These are honest numbers from real conversations, not cherry-picked benchmarks. The system publishes its own weaknesses.</p>
+
+  <p><a href="architecture.html">Full architecture →</a></p>
+</section>
+
+<!-- ============================================================ -->
+<!-- CHAPTER 6                                                      -->
+<!-- ============================================================ -->
+<section id="future">
+  <span class="chapter-num">Chapter 6</span>
+  <h2>Where It Goes</h2>
+
+  <p>CORE is being extracted into <strong>aeteros-core</strong>, an open-source framework that any AI system can use as its epistemic governance layer. The persistent belief state, contradiction tracking, immune agents, and governance pipeline are not Aether-specific. They are general-purpose infrastructure.</p>
+
+  <p>The business path is <strong>governance-as-a-service</strong>: CORE as middleware that sits between any application and any LLM provider. You keep your existing stack. CORE adds the belief layer, the contradiction detection, the drift governance, and the immune system. An OpenAI-compatible proxy that adds epistemic integrity without requiring you to rewrite anything.</p>
+
+  <p>The timing is not accidental. The <strong>EU AI Act</strong> (effective August 2026) requires both high-risk system auditability (Article 13) and general transparency obligations (Article 50) for AI systems. CORE provides exactly this: auditable belief states, logged contradictions, measurable belief/speech gaps, and governance compliance scores.</p>
+
+  <p>When interpretability APIs mature and providers expose the functional state vectors and activation patterns that research has already identified inside frontier models, CORE is ready to integrate directly. The governance layer is built. It is waiting for the sensors.</p>
+
+  <p>The latest research direction - <a href="belief-backprop.html">backward influence propagation</a> - adds structural learning to the governance layer. The system doesn't just detect errors; it propagates error signals backward through the belief graph and adjusts every upstream belief that contributed to the wrong output. Four publishable theorem targets have been identified, including a connection to active inference (Friston's free energy framework) that would give CORE formal grounding in computational neuroscience.</p>
+
+  <div class="thesis-block">
+    <div class="thesis-label">The Trajectory</div>
+    <div class="thesis-text">Agentic systems that persist across sessions need a belief state.</div>
+    <div class="thesis-sub">The question is whether they build it with governance or without. CORE is a case for governance-first: the math works, the architecture scales, the production system runs, and the regulatory environment is arriving.</div>
+  </div>
+</section>
+
+
+<!-- ============================================================ -->
+<!-- PAPERS NAV                                                     -->
+<!-- ============================================================ -->
+<section id="papers">
+  <span class="chapter-num">Papers &amp; Documentation</span>
+  <h2>Read the Research</h2>
+
+  <p>The documents below are organized in reading order. Start with the evidence (what's broken), then the architecture (how CORE fixes it), then the theory (why it works formally), then the reference material (how to validate and extend it).</p>
+
+  <h3 style="color:var(--text-dim);font-size:0.8em;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:28px 0 12px 0;">The Evidence</h3>
+  <p style="color:var(--text-dim);font-size:0.85em;margin-bottom:16px;">What stateless AI systems actually do to users over time.</p>
+  <div class="nav-grid">
+    <a href="experiments.html">Evidence Overview</a>
+    <a href="contradiction-density.html">Contradiction Density</a>
+    <a href="sensitive-domains.html">Sensitive Domains</a>
+    <a href="continuity-blind.html">Continuity-Blind</a>
+    <a href="variance-probing.html">Variance Probing</a>
+    <a href="governance-validation.html">Governance Validation</a>
+    <a href="bdg-reasoning-scaffolds.html">BRG Reasoning Scaffolds</a>
+    <a href="scaffolded_escape_research.html">Scaffolded Exploration</a>
+    <a href="labs.html">Labs</a>
+  </div>
+
+  <h3 style="color:var(--text-dim);font-size:0.8em;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:28px 0 12px 0;">The Architecture</h3>
+  <p style="color:var(--text-dim);font-size:0.85em;margin-bottom:16px;">How CORE governs the problem. Persistent belief state, contradiction tracking, immune enforcement.</p>
+  <div class="nav-grid">
+    <a href="architecture.html">Architecture</a>
+    <a href="immune-agents.html">Immune Agents</a>
+  </div>
+
+  <h3 style="color:var(--text-dim);font-size:0.8em;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:28px 0 12px 0;">The Theory</h3>
+  <p style="color:var(--text-dim);font-size:0.85em;margin-bottom:16px;">Formal foundations. Cascade complexity, geometric memory, emotion governance, variance landscapes.</p>
+  <div class="nav-grid">
+    <a href="cascade-complexity.html">Cascade Complexity</a>
+    <a href="belief-backprop.html">Reverse Cascade</a>
+    <a href="epistemic-compression.html">Epistemic Compression</a>
+    <a href="geometric-memory.html">Belief Loci</a>
+    <a href="emotion-governance.html">Emotion Governance</a>
+  </div>
+
+  <h3 style="color:var(--text-dim);font-size:0.8em;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:28px 0 12px 0;">Reference</h3>
+  <p style="color:var(--text-dim);font-size:0.85em;margin-bottom:16px;">Glossary, project context, and the full origin story.</p>
+  <div class="nav-grid">
+    <a href="glossary.html">Glossary</a>
+    <a href="about.html">About Aeteros</a>
+    <a href="nick_paper.html">Personal Narrative</a>
+  </div>
+</section>
+</main>
+</div>
+
+<script src="docs.js"></script>
+
+</body>
+</html>

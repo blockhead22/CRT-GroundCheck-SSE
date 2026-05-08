@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Note: Slots as the Substrate Anchor | Aeteros Research</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="theme.css">
+<style>
+  .note-meta { color: var(--text-faint); font-size: 0.78em; font-family: var(--mono); margin-top: 8px; }
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin: 24px 0;
+  }
+  @media (max-width: 800px) { .compare { grid-template-columns: 1fr; } }
+  .compare-card {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 22px;
+  }
+  .compare-card.now { border-left: 3px solid var(--text-faint); }
+  .compare-card.proposed { border-left: 3px solid var(--accent-indigo); }
+  .compare-card h3 { font-size: 0.96em; color: var(--text); margin-bottom: 10px; }
+  .compare-card .label { font-family: var(--mono); font-size: 0.7em; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-faint); margin-bottom: 6px; font-weight: 600; }
+  .compare-card.proposed .label { color: var(--accent-indigo); }
+  .compare-card ul { color: var(--text-secondary); font-size: 0.86em; line-height: 1.75; margin: 8px 0 0 18px; }
+  .compare-card li { margin-bottom: 5px; }
+
+  .tradeoff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0; }
+  @media (max-width: 700px) { .tradeoff-grid { grid-template-columns: 1fr; } }
+  .tradeoff {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .tradeoff .head { font-family: var(--mono); font-size: 0.74em; letter-spacing: 1.4px; text-transform: uppercase; font-weight: 700; margin-bottom: 8px; }
+  .tradeoff.pro .head { color: var(--green); }
+  .tradeoff.con .head { color: var(--red); }
+  .tradeoff p { color: var(--text-secondary); font-size: 0.86em; line-height: 1.7; }
+
+  .three-extensions {
+    background: var(--bg-inset);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 26px;
+    margin: 22px 0;
+  }
+  .three-extensions h3 { font-size: 0.95em; color: var(--text); margin-bottom: 12px; }
+  .ext-item { padding: 12px 0; border-bottom: 1px dashed var(--border); }
+  .ext-item:last-child { border-bottom: none; }
+  .ext-item .name { font-family: var(--mono); font-size: 0.86em; color: var(--accent-indigo); font-weight: 700; margin-bottom: 4px; }
+  .ext-item p { color: var(--text-secondary); font-size: 0.86em; line-height: 1.65; }
+
+  .status-banner {
+    background: rgba(212,168,83,0.08);
+    border: 1px solid rgba(212,168,83,0.25);
+    border-left: 4px solid var(--amber);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin: 18px 0;
+  }
+  .status-banner .label { font-family: var(--mono); font-size: 0.7em; letter-spacing: 1.4px; text-transform: uppercase; color: var(--amber); font-weight: 700; margin-bottom: 4px; }
+  .status-banner p { color: var(--text); font-size: 0.9em; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="page-layout">
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">Architecture Note &middot; Captured Insight</div>
+    <h1>Slots as<br><span class="grad">the Substrate Anchor</span></h1>
+    <p class="sub">An inversion of the current memory-first architecture: make slots the typed primitive, treat memories as observations on slots.</p>
+    <p class="byline">Aeteros Research &bull; 2026-05-01</p>
+    <p class="note-meta">Stoned-Nick insight, captured for sober-Nick. Not a commitment to refactor &mdash; a design idea worth preserving.</p>
+  </div>
+</div>
+
+<nav class="sidebar" id="docSidebar">
+  <div class="sidebar-title">Slot Anchor</div>
+  <div class="sidebar-spacer"></div>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <span class="theme-toggle-icon" id="themeIcon">&#9790;</span>
+    <span id="themeLabel">Light</span>
+  </button>
+</nav>
+
+<main class="main">
+
+<section>
+  <span class="section-number">The insight</span>
+  <h2>Everything is anchored</h2>
+  <div class="accent-line"></div>
+
+  <p>Tonight the bench on the GPT corpus surfaced a question larger than the bench itself. The slot extractor produces structured tags (<code>location: Milwaukee</code>, <code>employer: Microsoft</code>) at write time. After that, the slot is mostly forgotten. The memory becomes a free-text node in the BDG; the BDG&apos;s edges are between memories; trust and cascade flow through memory-to-memory relations. Slots decorate the substrate but don&apos;t organize it.</p>
+
+  <p>The insight: <strong>slots should be first-class. Memories should be derivative.</strong> Every belief is a typed observation on some slot at some point in time. The dependency graph is a graph over slots, not over text. &quot;Everything is anchored&quot; means every belief has a typed channel it sits in, and corrections cascade through slot relations rather than through textual similarity.</p>
+
+  <div class="compare">
+    <div class="compare-card now">
+      <div class="label">Today</div>
+      <h3>Memory-first</h3>
+      <ul>
+        <li>Memory is the BDG node</li>
+        <li>Slots produced at write time, mostly discarded</li>
+        <li>Edges: SUPPORTS / DERIVED_FROM / CONTRADICTS / SUPERSEDES between memory nodes</li>
+        <li>Trust attaches to memories</li>
+        <li>Cascade flows through textual relations</li>
+        <li>Slots are decoration</li>
+      </ul>
+    </div>
+    <div class="compare-card proposed">
+      <div class="label">Proposed</div>
+      <h3>Slot-first</h3>
+      <ul>
+        <li>Slot is the typed channel (the anchor)</li>
+        <li>Memory is an observation: (slot, value, timestamp, source)</li>
+        <li>BDG edges between slot states, not text</li>
+        <li>Trust attaches to slot:value tuples</li>
+        <li>Cascade flows along typed slot relations</li>
+        <li>Memory is the audit trail</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <span class="section-number">Why it might be right</span>
+  <h2>The cleaning effect</h2>
+  <div class="accent-line"></div>
+
+  <p>Three things get cleaner under the slot-first model.</p>
+
+  <p><strong>Contradiction becomes typed.</strong> Today, "I live in Milwaukee" contradicting "I live in Seattle" requires the contradiction layer to extract slots from both at comparison time. Under slot-first, the contradiction is a slot-state transition that&apos;s detected at write time without re-extraction. The slot <em>is</em> the contradiction surface.</p>
+
+  <p><strong>Cascade has structure to flow through.</strong> Today the BDG has edges between memories that share textual similarity. Under slot-first, edges encode genuine epistemic relations: <em>employer</em> depends on <em>location</em> if the employer is geographically tied. Correcting <em>location</em> cascades to <em>employer</em> through a typed edge, not through cosine.</p>
+
+  <p><strong>The system can hold its own audit trail.</strong> Memory becomes the journal of slot-state changes. Lineage queries (&quot;why do I believe employer=Microsoft&quot;) walk the journal of that slot, not arbitrary text edges.</p>
+</section>
+
+<section>
+  <span class="section-number">Three extensions this enables</span>
+  <h2>Slots beyond personal facts</h2>
+  <div class="accent-line"></div>
+
+  <p>If slots are the primitive, the namespace can extend without changing the substrate.</p>
+
+  <div class="three-extensions">
+    <div class="ext-item">
+      <div class="name">user:* &mdash; personal facts (today)</div>
+      <p>The current scope. <code>user:location</code>, <code>user:employer</code>, <code>user:favorite_color</code>. Same as ExtractedFact today. No change required.</p>
+    </div>
+    <div class="ext-item">
+      <div class="name">code:* &mdash; codebase observations</div>
+      <p>The substrate watches a dev session and learns: <code>code:my_project:func_x:co_occurs_with</code> = <code>{slot_reversal_case, contradiction_layer}</code>. Temporal too &mdash; <code>code:foo:return_type</code> changes when the source changes. <code>aether_lineage</code> on a code slot answers &quot;why do I believe foo() returns Result[T]&quot; with the commits that established it.</p>
+    </div>
+    <div class="ext-item">
+      <div class="name">session:* &mdash; behavioral state</div>
+      <p>The substrate watches turn signatures and infers: <code>session:focus_level=scattered</code>, <code>session:tone=frustrated</code>, <code>session:demand=brevity</code>. These slots have higher decay rates and come from a windowed observer rather than per-turn extraction. They <em>fire BDG actions</em> &mdash; switching prompt strategies, surfacing earlier-said-this warnings &mdash; rather than just describing.</p>
+    </div>
+  </div>
+
+  <p>Each namespace is a different ingestion pipeline (regex, LLM, code-watcher, behavioral observer) writing into the same substrate primitive. The contradiction layer, cascade, trust evolution, and lineage all work uniformly.</p>
+</section>
+
+<section>
+  <span class="section-number">The cache-and-codify pattern</span>
+  <h2>Regex distillation from LLM extraction</h2>
+  <div class="accent-line"></div>
+
+  <p>Independently useful and trivially compatible with the slot-first model. Three stages:</p>
+
+  <ul style="color: var(--text-secondary); font-size: 0.9em; line-height: 1.8; margin: 12px 0 12px 22px;">
+    <li><strong>Discovery.</strong> When the LLM extracts a slot the regex bank missed, log <code>(text &rarr; slot:value)</code> to <code>~/.aether/learned_slots.jsonl</code>.</li>
+    <li><strong>Promotion.</strong> When N occurrences of a mapping share enough surface structure, distill a regex from the surface forms and add it to a <em>learned</em> regex bank.</li>
+    <li><strong>Custodial.</strong> Learned regex catches the codified pattern next time. LLM only fires on what neither bank handles. The system gets cheaper over time.</li>
+  </ul>
+
+  <p>Failure mode is bounded: the curated regex bank is never modified, only an additive learned bank that can be wiped with one env var. The LLM is the oracle, the regex is the student.</p>
+</section>
+
+<section>
+  <span class="section-number">Tradeoffs</span>
+  <h2>What this costs</h2>
+  <div class="accent-line"></div>
+
+  <div class="tradeoff-grid">
+    <div class="tradeoff pro">
+      <div class="head">Pro &middot; Cleaner contradiction</div>
+      <p>Slot-state transitions are structural; the meter doesn&apos;t need to re-extract from prose at every comparison.</p>
+    </div>
+    <div class="tradeoff pro">
+      <div class="head">Pro &middot; Typed cascade</div>
+      <p>BDG edges encode epistemic relations between channels, not text-similarity proxies. The 599-node BRG becomes interpretable.</p>
+    </div>
+    <div class="tradeoff pro">
+      <div class="head">Pro &middot; Namespace extensibility</div>
+      <p>Code slots, behavioral slots, meta slots all use the same primitive. New domains are new namespaces, not new architecture.</p>
+    </div>
+    <div class="tradeoff pro">
+      <div class="head">Pro &middot; Behavioral slots become tractable</div>
+      <p>Inferred-from-aggregate state has a place to live. <code>session:focus_level</code> isn&apos;t a memory hack; it&apos;s a typed slot with a decay rate.</p>
+    </div>
+    <div class="tradeoff con">
+      <div class="head">Con &middot; Major refactor</div>
+      <p>Inverting the BDG primitive is a v0.14 &rarr; v0.15 architectural pivot, not a patch. Migration of the existing 180-memory substrate is non-trivial.</p>
+    </div>
+    <div class="tradeoff con">
+      <div class="head">Con &middot; Slot vocabulary becomes load-bearing</div>
+      <p>Today the regex extractor is best-effort. Under slot-first, an unknown slot means an un-anchored belief. The vocabulary needs a curation discipline.</p>
+    </div>
+    <div class="tradeoff con">
+      <div class="head">Con &middot; LLM extraction on the critical path</div>
+      <p>For namespaces beyond the curated regex (codebase, behavioral), LLM extraction is required. That changes cost and latency profiles in ways the current README doesn&apos;t describe.</p>
+    </div>
+    <div class="tradeoff con">
+      <div class="head">Con &middot; Memory-as-journal needs more storage</div>
+      <p>Every slot transition becomes a memory entry. The substrate grows faster. Current rotation/retention policies need rethinking.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <span class="section-number">Decision</span>
+  <h2>Status: captured, not committed</h2>
+  <div class="accent-line"></div>
+
+  <div class="status-banner">
+    <div class="label">Not a refactor commitment</div>
+    <p>This note exists so the insight survives the night. Sober-Nick can read this and decide whether to pursue it as a v0.14 &rarr; v0.15 architectural pivot. If yes, the cache-and-codify pattern is the natural first step (it&apos;s additive and compatible with both architectures). If no, the existing memory-first model continues to work and this note is filed under "design ideas considered."</p>
+  </div>
+
+  <p>The bench tonight (94.92% paraphrase-blind floor on archival corpora) shows the existing model has a real limitation that motivated this thinking. The LLM extractor stub <a href="../aether-core/aether/memory/llm_extract.py" style="color: var(--accent-indigo);"><code>aether/memory/llm_extract.py</code></a> can be used to test slot-first ideas incrementally without inverting the primitive.</p>
+
+  <p style="color: var(--text-faint); font-size: 0.85em; margin-top: 24px; font-style: italic;">First-class slots, second-class memory. The system doesn&apos;t change shape; it changes which thing is the anchor.</p>
+</section>
+
+</main>
+</div>
+<script src="docs.js"></script>
+</body>
+</html>

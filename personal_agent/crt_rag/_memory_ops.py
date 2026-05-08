@@ -25,6 +25,10 @@ from personal_agent.fact_slots import (
     is_explicit_name_declaration_text,
     names_look_equivalent,
 )
+try:
+    from personal_agent.fact_store import _aether_consult_governance
+except Exception:  # noqa: BLE001 — keep import-time failures non-fatal
+    _aether_consult_governance = None
 
 logger = logging.getLogger(__name__)
 
@@ -230,7 +234,30 @@ def ingest_memory_write(
     profile_result: Dict[str, Any] = {}
     profile_updates: List[Dict[str, str]] = []
 
-    if engine.memory.can_update_user_profile(memory):
+    # ── AETHER C3 governance gate (P5 follow-up) ────────────────────────
+    # Run the substrate-grounded consult on every extracted slot/value
+    # candidate, BEFORE the can_update_user_profile gate filters anything
+    # out. P5 showed the load-bearing waypoints are personality/preference
+    # slots that downstream gates frequently suppress — so hoisting the
+    # consult to the top is the only place we see the full traffic.
+    _can_update = engine.memory.can_update_user_profile(memory)
+    if _aether_consult_governance is not None:
+        try:
+            _early_facts = extract_fact_slots(text) or {}
+            for _eslot, _eval in _early_facts.items():
+                if _eslot in ("assistant_name",):
+                    continue
+                # extract_fact_slots may return ExtractedFact dataclasses;
+                # pull the underlying string so the gate log is readable.
+                _val_str = getattr(_eval, "value", _eval)
+                _aether_consult_governance(
+                    _eslot, _val_str, trust=0.9,
+                    blocked=(not _can_update),
+                )
+        except Exception:  # noqa: BLE001
+            pass
+
+    if _can_update:
         if engine.fact_store is not None:
             fact_result = engine.fact_store.process_input(
                 text,
@@ -263,14 +290,19 @@ def ingest_memory_write(
                 """, (_pslot,))
                 _pg_row = _cur_pg.fetchone()
                 _conn_pg.close()
+                _gov_blocked = False
                 if _pg_row:
                     _existing_val = str(_pg_row[0]).strip().lower()
                     _existing_trust = _pg_row[1]
                     if _existing_trust > 0.8 and _existing_val != _new_val_lower:
                         _profile_blocked_slots.add(_pslot)
+                        _gov_blocked = True
                         print(f"[PROFILE_GATE] BLOCKED: {_pslot}={_pval} conflicts with "
                               f"memory {_pslot}={_pg_row[0]} at trust {_existing_trust:.2f} "
                               f"({_pg_row[2]})")
+                # The substrate gate is hoisted above this block (runs on
+                # every ingest_memory_write candidate, blocked or not), so we
+                # don't double-call it here.
         except Exception as _pg_err:
             print(f"[PROFILE_GATE] Error checking trust gate: {_pg_err}")
 
