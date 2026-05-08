@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Geometry-Aware Grounding: Fisher–Rao at the Belief Layer | Aeteros Research</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="theme.css">
+<style>
+  .chart-wrap { margin: 28px 0; padding: 18px; background: var(--bg-raised, rgba(255,255,255,0.02)); border: 1px solid var(--border, rgba(255,255,255,0.06)); border-radius: 12px; }
+  .chart-wrap img { width: 100%; height: auto; display: block; border-radius: 6px; }
+  .chart-cap { font-size: 0.78em; color: var(--text-faint, #888); font-style: italic; margin-top: 10px; text-align: center; }
+  .table-wrap { overflow-x: auto; margin: 20px 0; }
+  .table-wrap table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+  .table-wrap th { text-align: left; font-weight: 600; color: var(--text-dim, #aaa); font-size: 0.78em; letter-spacing: 1px; text-transform: uppercase; padding: 10px 14px; border-bottom: 1px solid var(--border, rgba(255,255,255,0.08)); }
+  .table-wrap td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-secondary, #ccc); }
+  .table-wrap tr.hi td { background: rgba(92,155,212,0.08); }
+  .pullquote { border-left: 3px solid #5C9BD4; padding: 8px 18px; margin: 24px 0; font-size: 1.05em; color: var(--text-primary, #eee); }
+  .twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 24px 0; }
+  @media (max-width: 720px) { .twocol { grid-template-columns: 1fr; } }
+  .twocol .col { padding: 18px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; }
+  .twocol h4 { font-size: 0.85em; letter-spacing: 1px; text-transform: uppercase; color: var(--text-faint, #888); margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div class="page-layout">
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">Result · 2026-05-07</div>
+    <h1>Geometry-Aware Grounding:<br><span class="grad">Fisher–Rao at the Belief Layer</span></h1>
+    <p class="sub">A curvature-aware metric beats cosine at separating grounded from ungrounded responses on real conversation data — at the belief substrate, not the activation layer.</p>
+    <p class="byline">Nick Block · Aeteros Research · 2026-05-07</p>
+    <div class="finding-box">
+      <p>On the same week Goodfire published <em>The world inside neural networks</em> (curved manifolds in activation space) and Anthropic published <em>Natural Language Autoencoders</em> (verbalize/reconstruct gap measurement), I ran the substrate-layer analog. Fisher–Rao distance over diagonal-Gaussian belief loci hits <strong>AUC 0.699</strong> at separating grounded from ungrounded responses, vs <strong>0.626</strong> for cosine — a <strong>+0.073 AUC delta</strong>, with a <strong>+33% relative bump in Pearson correlation</strong> with the substrate's stored ground-truth labels (0.235 → 0.312). N = 200 random samples from the substrate's <code>belief_speech</code> log. The Fisher path uses default type-calibrated sigma — a lower bound on the real advantage with stored sigmas. The geometry-aware metric was already in the repo, built March 2026, predating both papers.</p>
+    </div>
+  </div>
+</div>
+
+<main class="main">
+
+<h2>The Result</h2>
+
+<div class="chart-wrap">
+  <img src="figures/cosine_vs_fisher_n200.png" alt="Cosine vs Fisher-Rao A/B on N=200 substrate samples" />
+  <div class="chart-cap">N = 200. Composite distribution (left) and per-dimension means (right). Cosine in orange, Fisher–Rao in blue. Threshold lines at 0.25.</div>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>Metric</th><th>AUC vs <code>is_belief</code></th><th>Pearson r</th><th>Pass-rate flips</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Cosine</td><td>0.626</td><td>0.235</td><td rowspan="2" style="vertical-align:middle;">107 of 200<br><span style="font-size:0.78em;color:var(--text-faint, #888);">samples disagree across metrics</span></td></tr>
+    <tr class="hi"><td><strong>Fisher–Rao</strong></td><td><strong>0.699</strong> (<span style="color:#5C9BD4;">+0.073</span>)</td><td><strong>0.312</strong> (<span style="color:#5C9BD4;">+33%</span>)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>What's Being Measured</h2>
+
+<p>Aether's substrate stores every memory as a <strong>belief locus</strong> — a center vector plus a per-dimension uncertainty (sigma). The fidelity mirror grades each generated response against the relevant memories: did it actually use what the substrate believes, or did it speak past the grounding? Today's bench computes that grade two ways, on the same 200 samples, with the same composite weights:</p>
+
+<ul>
+  <li><strong>Cosine path.</strong> The current production metric. Flat-space angular similarity between response and memory embeddings. Equal weight on every dimension.</li>
+  <li><strong>Fisher–Rao path.</strong> Treats each memory as a Gaussian belief locus. Distance is precision-weighted: dimensions where the substrate is sure (low sigma) count more; dimensions where it's uncertain (high sigma) count less. Plus a covariance-shape divergence term for differences in uncertainty profile.</li>
+</ul>
+
+<p>The discrimination test (AUC against the substrate's own stored <code>is_belief</code> flag) is scale-invariant — it asks <em>which metric ranks grounded responses higher than ungrounded ones</em>, independent of where you put a threshold. Fisher wins by 7.3 percentage points of AUC on N=200.</p>
+
+<h2>Why This Was Predictable, and Why I Hadn't Predicted It</h2>
+
+<div class="pullquote">
+  The geometry-aware metric was built March 2026. Today's measurement is the first time I ran the head-to-head against cosine on real substrate data. The shape was right; the receipt arrived two months late.
+</div>
+
+<p>The Fisher–Rao machinery has been in <code>personal_agent/info_geometry.py</code> since the splat work in March. The 2026-03-26 deep-research session noted that "Fisher metric reranks by certainty," but the metric was never plugged into the production fidelity mirror — that surface kept using plain cosine. Today's A/B closes the gap, with a number.</p>
+
+<div class="twocol">
+  <div class="col">
+    <h4>What's at the activation layer</h4>
+    <p>Goodfire's recent work demonstrates that concepts in language and vision models live on <em>curved manifolds</em>, not linear directions. Linear steering interventions fail; manifold-aware ones succeed. SAEs shard the manifold and lose the larger structure.</p>
+  </div>
+  <div class="col">
+    <h4>What's at the belief layer</h4>
+    <p>The substrate stores beliefs as Gaussians, not points. Fisher–Rao distance is the natural metric on that space — it's the geodesic on the manifold of probability distributions. Cosine on the centers throws away the per-dimension uncertainty that the substrate spent its compute building.</p>
+  </div>
+</div>
+
+<p>Same shape, different layer. The activation papers don't make this claim about belief substrates — there isn't a belief substrate in their architecture. But the result transfers cleanly: <em>geometry-aware metrics on geometry-aware representations beat flat-space metrics, regardless of which layer of the stack you're operating on</em>.</p>
+
+<h2>What This Doesn't Show</h2>
+
+<ul>
+  <li>N = 200 is enough to see the effect, not enough to publish. The paper-figure version is N ≥ 1000 with stored sigma instead of default sigma.</li>
+  <li>Both AUCs are well below 0.8. Neither metric is a strong predictor of the substrate's own <code>is_belief</code> flag — the relative improvement is what's load-bearing, not the absolute number. The stored flag itself is imperfect ground truth.</li>
+  <li>Single embedding model (MiniLM-L6-v2, 384D). Behavior at 768D / 1024D is a follow-up.</li>
+  <li>This isn't the activation-layer result. It's the substrate-layer analog. The two layers may correlate; whether they do is an open empirical question.</li>
+</ul>
+
+<h2>What Ships Next</h2>
+
+<ol>
+  <li><strong>Wire Fisher–Rao into <code>fidelity_mirror.py</code> as the default metric</strong> when sigma is available; fall back to cosine otherwise. ~30 LOC change.</li>
+  <li><strong>N = 1000 sweep with stored sigma.</strong> Overnight bench. The expected shape: Fisher's edge widens because the stored sigmas carry real information that defaults flatten away.</li>
+  <li><strong>Multi-metric comparison.</strong> <code>info_geometry.compare_all_metrics</code> already covers Bhattacharyya and KL-symmetrized. Same data, four numbers side by side. Paper figure.</li>
+  <li><strong>Cross-encoder check.</strong> Does Fisher's advantage scale with embedding dimension?</li>
+</ol>
+
+<h2>Reproduce</h2>
+
+<p>Both bench scripts are self-contained — no external services, no LLM calls, runs offline against the substrate's own SQLite.</p>
+
+<pre style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:14px 18px;font-size:0.85em;overflow-x:auto;color:var(--text-secondary, #ccc);"><code>git clone https://github.com/blockhead22/CRT-GroundCheck-SSE.git
+cd CRT-GroundCheck-SSE
+pip install -e .
+python labs/fidelity_bench/run_bench_metric_ab.py</code></pre>
+
+<p>Results land in <code>labs/fidelity_bench/results/</code> as a JSON dump and a chart. Source: <a href="https://github.com/blockhead22/CRT-GroundCheck-SSE/blob/main/labs/fidelity_bench/run_bench_metric_ab.py">run_bench_metric_ab.py</a>. Bench README with limitations and follow-ups: <a href="https://github.com/blockhead22/CRT-GroundCheck-SSE/blob/main/labs/fidelity_bench/README.md">labs/fidelity_bench/README.md</a>.</p>
+
+<h2>Related</h2>
+<ul>
+  <li>Goodfire — <a href="https://www.goodfire.ai/research/the-world-inside-neural-networks">The world inside neural networks</a> (2026-05)</li>
+  <li>Anthropic — <a href="https://www.anthropic.com/research/natural-language-autoencoders">Natural Language Autoencoders</a> (2026-05)</li>
+  <li>Anthropic — <a href="https://transformer-circuits.pub/2026/emotions/index.html">Emotion Concepts and their Function in a Large Language Model</a> (2026-04)</li>
+  <li>Aeteros — <a href="belief-backprop.html">Backward Influence Propagation</a></li>
+  <li>Aeteros — <a href="cascade-complexity.html">Cascade Complexity</a></li>
+  <li>Aeteros — <a href="contradiction-density.html">Contradiction Density Across 13 Months</a></li>
+</ul>
+
+</main>
+</div>
+<script src="docs.js"></script>
+</body>
+</html>
