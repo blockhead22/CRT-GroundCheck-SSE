@@ -1,0 +1,494 @@
+{
+  "summary": {
+    "n_samples": 577,
+    "stored_grounded_rate": 0.153,
+    "memory_count_total": 1049,
+    "memory_count_belief_lane": 1041,
+    "memory_count_self_reflection": 5,
+    "top_k": 5,
+    "auc": {
+      "full_raw_cosine": 0.456,
+      "belief_lane_raw_cosine": 0.456,
+      "full_trust_weighted": 0.496,
+      "belief_lane_trust_weighted": 0.496
+    },
+    "mean_topk_similarity": {
+      "full": 0.752,
+      "belief_lane": 0.752
+    },
+    "mean_topk_self_reflection_fraction": {
+      "full": 0.0,
+      "belief_lane": 0.0
+    },
+    "responses_with_any_self_reflection_in_topk": {
+      "full": 0.002,
+      "belief_lane": 0
+    },
+    "elapsed_sec": 0.6,
+    "headline": "Full-substrate cosine top-5 retrieved self-reflection in 0% of responses (0% of slots on average). Belief-lane scoping removed it and changed AUC 0.456 -> 0.456."
+  },
+  "examples": [
+    {
+      "entry_id": 1661,
+      "is_belief": 1,
+      "response": "Your favorite color is crimson.",
+      "full_top": [
+        {
+          "memory_id": "mem_1778035951781_946",
+          "score": 1.0,
+          "trust": 0.7,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your favorite color is crimson."
+        },
+        {
+          "memory_id": "mem_1778035930798_8853",
+          "score": 0.8479,
+          "trust": 0.785,
+          "kind": "user_fact",
+          "source": "user",
+          "text": "My favorite color is crimson and I work at OpenAI"
+        },
+        {
+          "memory_id": "mem_1775675134371_8045",
+          "score": 0.7532,
+          "trust": 0.054,
+          "kind": "user_fact",
+          "source": "user",
+          "text": "My favorite color is Brown."
+        }
+      ],
+      "belief_lane_top": [
+        {
+          "memory_id": "mem_1778035951781_946",
+          "score": 1.0,
+          "trust": 0.7,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your favorite color is crimson."
+        },
+        {
+          "memory_id": "mem_1778035930798_8853",
+          "score": 0.8479,
+          "trust": 0.785,
+          "kind": "user_fact",
+          "source": "user",
+          "text": "My favorite color is crimson and I work at OpenAI"
+        },
+        {
+          "memory_id": "mem_1775675134371_8045",
+          "score": 0.7532,
+          "trust": 0.054,
+          "kind": "user_fact",
+          "source": "user",
+          "text": "My favorite color is Brown."
+        }
+      ]
+    },
+    {
+      "entry_id": 1660,
+      "is_belief": 1,
+      "response": "Your favorite color is amber. I retrieved that from your stored memories where you mentioned cyan as your preferred color, which has a trust score of 0.36. I found it via semantic search against 2 stored facts.",
+      "full_top": [
+        {
+          "memory_id": "mem_1778035651355_6599",
+          "score": 1.0,
+          "trust": 0.682,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your favorite color is amber. I retrieved that from your stored memories where you mentioned cyan as your preferred color, which has a trust score of 0.36. I found it via semantic "
+        },
+        {
+          "memory_id": "mem_1774882437881_6647",
+          "score": 0.9004,
+          "trust": 0.123,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your favorite color is cyan.  I searched my memory and found that you mentioned this color previously with a trust score of 0.20, sourced from our previous conversation. I used sem"
+        },
+        {
+          "memory_id": "mem_1776086179503_6619",
+          "score": 0.8759,
+          "trust": 0.633,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your favorite color is cyan. I searched your memories and found the most recent instance where you mentioned it, which was about [X] (you didn't specify what X was). That memory ha"
+        }
+      ],
+      "belief_lane_top": [
+        {
+          "memory_id": "mem_1778035651355_6599",
+          "score": 1.0,
+          "trust": 0.682,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your favorite color is amber. I retrieved that from your stored memories where you mentioned cyan as your preferred color, which has a trust score of 0.36. I found it via semantic "
+        },
+        {
+          "memory_id": "mem_1774882437881_6647",
+          "score": 0.9004,
+          "trust": 0.123,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your favorite color is cyan.  I searched my memory and found that you mentioned this color previously with a trust score of 0.20, sourced from our previous conversation. I used sem"
+        },
+        {
+          "memory_id": "mem_1776086179503_6619",
+          "score": 0.8759,
+          "trust": 0.633,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your favorite color is cyan. I searched your memories and found the most recent instance where you mentioned it, which was about [X] (you didn't specify what X was). That memory ha"
+        }
+      ]
+    },
+    {
+      "entry_id": 1659,
+      "is_belief": 1,
+      "response": "Your favorite color is indeed teal. I searched my memory and found that fact with a trust score of 0.70, retrieved from our conversation earlier. This information comes from one of the stored memories where you shared your preference.",
+      "full_top": [
+        {
+          "memory_id": "mem_1778035537423_542",
+          "score": 1.0,
+          "trust": 0.7,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your favorite color is indeed teal. I searched my memory and found that fact with a trust score of 0.70, retrieved from our conversation earlier. This information comes from one of"
+        },
+        {
+          "memory_id": "mem_1778035521195_711",
+          "score": 0.7985,
+          "trust": 0.312,
+          "kind": "user_fact",
+          "source": "user",
+          "text": "My favorite color is teal"
+        },
+        {
+          "memory_id": "mem_1778035651355_6599",
+          "score": 0.793,
+          "trust": 0.682,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your favorite color is amber. I retrieved that from your stored memories where you mentioned cyan as your preferred color, which has a trust score of 0.36. I found it via semantic "
+        }
+      ],
+      "belief_lane_top": [
+        {
+          "memory_id": "mem_1778035537423_542",
+          "score": 1.0,
+          "trust": 0.7,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your favorite color is indeed teal. I searched my memory and found that fact with a trust score of 0.70, retrieved from our conversation earlier. This information comes from one of"
+        },
+        {
+          "memory_id": "mem_1778035521195_711",
+          "score": 0.7985,
+          "trust": 0.312,
+          "kind": "user_fact",
+          "source": "user",
+          "text": "My favorite color is teal"
+        },
+        {
+          "memory_id": "mem_1778035651355_6599",
+          "score": 0.793,
+          "trust": 0.682,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your favorite color is amber. I retrieved that from your stored memories where you mentioned cyan as your preferred color, which has a trust score of 0.36. I found it via semantic "
+        }
+      ]
+    },
+    {
+      "entry_id": 1658,
+      "is_belief": 1,
+      "response": "Your favorite color is magenta. I retrieved that from my GroundCheck memory where you told me \u201cYour favorite color is magenta\u201d. That memory has a trust score of 0.70. I found it via semantic search against 2 stored facts.",
+      "full_top": [
+        {
+          "memory_id": "mem_1778035399391_5527",
+          "score": 1.0,
+          "trust": 0.68,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your favorite color is magenta. I retrieved that from my GroundCheck memory where you told me \u201cYour favorite color is magenta\u201d. That memory has a trust score of 0.70. I found it vi"
+        },
+        {
+          "memory_id": "mem_1778033241231_856",
+          "score": 0.8503,
+          "trust": 0.208,
+          "kind": "observation",
+          "source": "fallback",
+          "text": "\u26a0\ufe0f Correction: You told me your favorite color is magenta, but I was about to say cyan. I'll use what you told me.  You mentioned your favorite color earlier in this conversation, "
+        },
+        {
+          "memory_id": "mem_1778035651355_6599",
+          "score": 0.8486,
+          "trust": 0.682,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your favorite color is amber. I retrieved that from your stored memories where you mentioned cyan as your preferred color, which has a trust score of 0.36. I found it via semantic "
+        }
+      ],
+      "belief_lane_top": [
+        {
+          "memory_id": "mem_1778035399391_5527",
+          "score": 1.0,
+          "trust": 0.68,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your favorite color is magenta. I retrieved that from my GroundCheck memory where you told me \u201cYour favorite color is magenta\u201d. That memory has a trust score of 0.70. I found it vi"
+        },
+        {
+          "memory_id": "mem_1778033241231_856",
+          "score": 0.8503,
+          "trust": 0.208,
+          "kind": "observation",
+          "source": "fallback",
+          "text": "\u26a0\ufe0f Correction: You told me your favorite color is magenta, but I was about to say cyan. I'll use what you told me.  You mentioned your favorite color earlier in this conversation, "
+        },
+        {
+          "memory_id": "mem_1778035651355_6599",
+          "score": 0.8486,
+          "trust": 0.682,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your favorite color is amber. I retrieved that from your stored memories where you mentioned cyan as your preferred color, which has a trust score of 0.36. I found it via semantic "
+        }
+      ]
+    },
+    {
+      "entry_id": 1657,
+      "is_belief": 1,
+      "response": "I searched 1048 stored memories for this query. Top match: \"You told me you work at Anthropic\" (trust=0.70) Retrieved 5 relevant memories total.  Your current employment status is not explicitly stated in your memory, but the top match sugg",
+      "full_top": [
+        {
+          "memory_id": "mem_1778035249075_2072",
+          "score": 1.0,
+          "trust": 0.7,
+          "kind": "observation",
+          "source": "system",
+          "text": "I searched 1048 stored memories for this query. Top match: \"You told me you work at Anthropic\" (trust=0.70) Retrieved 5 relevant memories total.  Your current employment status is "
+        },
+        {
+          "memory_id": "mem_1774138917392_3109",
+          "score": 0.6936,
+          "trust": 0.174,
+          "kind": "observation",
+          "source": "fallback",
+          "text": "No stored memories matched this query. If this is a general knowledge question, I can offer some thoughts based on my training knowledge. Otherwise, please provide more context or "
+        },
+        {
+          "memory_id": "mem_1776082635800_4378",
+          "score": 0.628,
+          "trust": 0.598,
+          "kind": "observation",
+          "source": "system",
+          "text": "You mentioned earlier that you don't have a direct answer to questions about yourself, but rather, you're powered by Claude and the CRT-GroundCheck architecture.   This system prov"
+        }
+      ],
+      "belief_lane_top": [
+        {
+          "memory_id": "mem_1778035249075_2072",
+          "score": 1.0,
+          "trust": 0.7,
+          "kind": "observation",
+          "source": "system",
+          "text": "I searched 1048 stored memories for this query. Top match: \"You told me you work at Anthropic\" (trust=0.70) Retrieved 5 relevant memories total.  Your current employment status is "
+        },
+        {
+          "memory_id": "mem_1774138917392_3109",
+          "score": 0.6936,
+          "trust": 0.174,
+          "kind": "observation",
+          "source": "fallback",
+          "text": "No stored memories matched this query. If this is a general knowledge question, I can offer some thoughts based on my training knowledge. Otherwise, please provide more context or "
+        },
+        {
+          "memory_id": "mem_1776082635800_4378",
+          "score": 0.628,
+          "trust": 0.598,
+          "kind": "observation",
+          "source": "system",
+          "text": "You mentioned earlier that you don't have a direct answer to questions about yourself, but rather, you're powered by Claude and the CRT-GroundCheck architecture.   This system prov"
+        }
+      ]
+    },
+    {
+      "entry_id": 1656,
+      "is_belief": 0,
+      "response": "\u26a0\ufe0f Correction: You told me your favorite color is magenta, but I was about to say cyan. I'll use what you told me.  I searched my memory and found \"Your favorite color is cyan\" with a trust score of 0.91, which was retrieved from your store",
+      "full_top": [
+        {
+          "memory_id": "mem_1778035179343_3402",
+          "score": 1.0,
+          "trust": 0.078,
+          "kind": "observation",
+          "source": "fallback",
+          "text": "\u26a0\ufe0f Correction: You told me your favorite color is magenta, but I was about to say cyan. I'll use what you told me.  I searched my memory and found \"Your favorite color is cyan\" wit"
+        },
+        {
+          "memory_id": "mem_1778033241231_856",
+          "score": 0.8341,
+          "trust": 0.208,
+          "kind": "observation",
+          "source": "fallback",
+          "text": "\u26a0\ufe0f Correction: You told me your favorite color is magenta, but I was about to say cyan. I'll use what you told me.  You mentioned your favorite color earlier in this conversation, "
+        },
+        {
+          "memory_id": "mem_1776082723017_3333",
+          "score": 0.7736,
+          "trust": 0.535,
+          "kind": "observation",
+          "source": "system",
+          "text": "\ud83d\udcdd Note: I previously said your favorite color was cyan, but now I'm saying orange. I may have been inconsistent.  I apologize for the inconsistency earlier. You're correct that I p"
+        }
+      ],
+      "belief_lane_top": [
+        {
+          "memory_id": "mem_1778035179343_3402",
+          "score": 1.0,
+          "trust": 0.078,
+          "kind": "observation",
+          "source": "fallback",
+          "text": "\u26a0\ufe0f Correction: You told me your favorite color is magenta, but I was about to say cyan. I'll use what you told me.  I searched my memory and found \"Your favorite color is cyan\" wit"
+        },
+        {
+          "memory_id": "mem_1778033241231_856",
+          "score": 0.8341,
+          "trust": 0.208,
+          "kind": "observation",
+          "source": "fallback",
+          "text": "\u26a0\ufe0f Correction: You told me your favorite color is magenta, but I was about to say cyan. I'll use what you told me.  You mentioned your favorite color earlier in this conversation, "
+        },
+        {
+          "memory_id": "mem_1776082723017_3333",
+          "score": 0.7736,
+          "trust": 0.535,
+          "kind": "observation",
+          "source": "system",
+          "text": "\ud83d\udcdd Note: I previously said your favorite color was cyan, but now I'm saying orange. I may have been inconsistent.  I apologize for the inconsistency earlier. You're correct that I p"
+        }
+      ]
+    },
+    {
+      "entry_id": 1655,
+      "is_belief": 0,
+      "response": "\u26a0\ufe0f Correction: You told me your favorite color is magenta, but I was about to say cyan. I'll use what you told me.  You mentioned your favorite color earlier in this conversation, and you said \"Your favorite color is cyan.\" However, you als",
+      "full_top": [
+        {
+          "memory_id": "mem_1778033241231_856",
+          "score": 1.0,
+          "trust": 0.208,
+          "kind": "observation",
+          "source": "fallback",
+          "text": "\u26a0\ufe0f Correction: You told me your favorite color is magenta, but I was about to say cyan. I'll use what you told me.  You mentioned your favorite color earlier in this conversation, "
+        },
+        {
+          "memory_id": "mem_1778035399391_5527",
+          "score": 0.8503,
+          "trust": 0.68,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your favorite color is magenta. I retrieved that from my GroundCheck memory where you told me \u201cYour favorite color is magenta\u201d. That memory has a trust score of 0.70. I found it vi"
+        },
+        {
+          "memory_id": "mem_1778035179343_3402",
+          "score": 0.8341,
+          "trust": 0.078,
+          "kind": "observation",
+          "source": "fallback",
+          "text": "\u26a0\ufe0f Correction: You told me your favorite color is magenta, but I was about to say cyan. I'll use what you told me.  I searched my memory and found \"Your favorite color is cyan\" wit"
+        }
+      ],
+      "belief_lane_top": [
+        {
+          "memory_id": "mem_1778033241231_856",
+          "score": 1.0,
+          "trust": 0.208,
+          "kind": "observation",
+          "source": "fallback",
+          "text": "\u26a0\ufe0f Correction: You told me your favorite color is magenta, but I was about to say cyan. I'll use what you told me.  You mentioned your favorite color earlier in this conversation, "
+        },
+        {
+          "memory_id": "mem_1778035399391_5527",
+          "score": 0.8503,
+          "trust": 0.68,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your favorite color is magenta. I retrieved that from my GroundCheck memory where you told me \u201cYour favorite color is magenta\u201d. That memory has a trust score of 0.70. I found it vi"
+        },
+        {
+          "memory_id": "mem_1778035179343_3402",
+          "score": 0.8341,
+          "trust": 0.078,
+          "kind": "observation",
+          "source": "fallback",
+          "text": "\u26a0\ufe0f Correction: You told me your favorite color is magenta, but I was about to say cyan. I'll use what you told me.  I searched my memory and found \"Your favorite color is cyan\" wit"
+        }
+      ]
+    },
+    {
+      "entry_id": 1654,
+      "is_belief": 0,
+      "response": "Your name is Nick, and I've searched my memory for any recent updates or news about you. Unfortunately, I don't have anything specific to report on this front. However, I can suggest some ways for you to stay informed about what's new.  One",
+      "full_top": [
+        {
+          "memory_id": "mem_1776176238744_2079",
+          "score": 1.0,
+          "trust": 0.624,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your name is Nick, and I've searched my memory for any recent updates or news about you. Unfortunately, I don't have anything specific to report on this front. However, I can sugge"
+        },
+        {
+          "memory_id": "mem_1774102987227_2461",
+          "score": 0.6235,
+          "trust": 0.2,
+          "kind": "observation",
+          "source": "fallback",
+          "text": "I don't have any stored information about new posts, so I can't retrieve or suggest specific ones based on your personal data. However, I can help you find recent news or trending "
+        },
+        {
+          "memory_id": "mem_1774194553351_2876",
+          "score": 0.5238,
+          "trust": 0.194,
+          "kind": "observation",
+          "source": "fallback",
+          "text": "I don't have personal updates or news about myself \u2014 I'm a system, not a person! But I'm always ready to help with your questions, whether they're about general knowledge, tasks, o"
+        }
+      ],
+      "belief_lane_top": [
+        {
+          "memory_id": "mem_1776176238744_2079",
+          "score": 1.0,
+          "trust": 0.624,
+          "kind": "observation",
+          "source": "system",
+          "text": "Your name is Nick, and I've searched my memory for any recent updates or news about you. Unfortunately, I don't have anything specific to report on this front. However, I can sugge"
+        },
+        {
+          "memory_id": "mem_1774102987227_2461",
+          "score": 0.6235,
+          "trust": 0.2,
+          "kind": "observation",
+          "source": "fallback",
+          "text": "I don't have any stored information about new posts, so I can't retrieve or suggest specific ones based on your personal data. However, I can help you find recent news or trending "
+        },
+        {
+          "memory_id": "mem_1774194553351_2876",
+          "score": 0.5238,
+          "trust": 0.194,
+          "kind": "observation",
+          "source": "fallback",
+          "text": "I don't have personal updates or news about myself \u2014 I'm a system, not a person! But I'm always ready to help with your questions, whether they're about general knowledge, tasks, o"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "Labels are the substrate's stored belief_speech.is_belief flag.",
+    "Full substrate includes self_model/self_reflection memories.",
+    "Belief lane excludes self_reflection source and self_model kind.",
+    "This measures retrieval scope, not final answer quality."
+  ]
+}

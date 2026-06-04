@@ -52,6 +52,65 @@ _W_GROUNDING = 0.4
 # Threshold below which the response should be hedged
 FIDELITY_THRESHOLD = 0.25
 
+_USER_BELIEF_KINDS = {
+    "user_fact",
+    "user_belief",
+    "preference",
+    "identity_constant",
+    "default",
+}
+_SYSTEM_BELIEF_KINDS = {
+    "ops",
+    "policy",
+    "hypothesis",
+    "identity_constant",
+    "evolution_observation",
+}
+_GENERATED_SPEECH_SOURCES = {
+    "llm_output",
+    "model_output",
+    "self_reflection",
+}
+
+
+def _memory_attr(memory: Dict[str, Any], name: str, default: str = "") -> str:
+    """Read a memory dict/object field as a normalized lowercase string."""
+    if isinstance(memory, dict):
+        value = memory.get(name, default)
+    else:
+        value = getattr(memory, name, default)
+    if hasattr(value, "value"):
+        value = value.value
+    return str(value or default).strip().lower()
+
+
+def _is_belief_support_memory(memory: Dict[str, Any]) -> bool:
+    """Return True when a memory can be used as evidence for grounding.
+
+    Generated speech is allowed to remain in logs and traces, but it cannot
+    serve as belief support. Otherwise the system can "ground" a new answer in
+    an old answer that merely sounds similar.
+    """
+    kind = _memory_attr(memory, "kind", "observation")
+    source = _memory_attr(memory, "source", "")
+    source_kind = _memory_attr(memory, "source_kind", "")
+
+    if source in _GENERATED_SPEECH_SOURCES or source_kind in {"model_output", "llm_output"}:
+        return False
+    if source == "system" and kind == "observation":
+        return False
+    if source == "user":
+        return kind in _USER_BELIEF_KINDS or kind.startswith("user_")
+    if source in {"system", "external", "mcp_client", "api", "file_ingest"}:
+        return kind in _SYSTEM_BELIEF_KINDS or kind in {"user_fact", "preference"}
+    return kind in (_USER_BELIEF_KINDS | _SYSTEM_BELIEF_KINDS)
+
+
+def _filter_belief_support_memories(memories: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], int]:
+    """Drop memories that are trace/speech, not belief evidence."""
+    filtered = [m for m in memories if _is_belief_support_memory(m)]
+    return filtered, len(memories) - len(filtered)
+
 
 def _encode(text: str) -> Optional[np.ndarray]:
     """Encode text to embedding vector. Returns None on failure."""
@@ -247,8 +306,38 @@ def check_fidelity(
             latency_ms=(time.perf_counter() - t0) * 1000,
         )
 
+    memories, filtered_count = _filter_belief_support_memories(memories)
+    if filtered_count:
+        findings.append(
+            f"Excluded {filtered_count} generated-speech/trace memories from belief support"
+        )
+
+    if not memories:
+        request_alignment = _cosine_sim(response_vec, query_vec)
+        composite = _W_REQUEST * request_alignment
+        findings.append("No belief-support memories available after speech-lane filtering")
+        if composite < threshold:
+            findings.append(
+                f"Fidelity check FAILED (composite={composite:.3f}, threshold={threshold})"
+            )
+        elapsed = (time.perf_counter() - t0) * 1000
+        return FidelityScore(
+            belief_fidelity=0.0,
+            request_alignment=round(request_alignment, 3),
+            factual_grounding=0.0,
+            composite=round(composite, 3),
+            passed=composite >= threshold,
+            findings=findings,
+            latency_ms=round(elapsed, 1),
+        )
+
     # Wobble expansion: use BDG edges to find associated memories
     memories = _wobble_expand(memories, query_vec)
+    memories, wobble_filtered = _filter_belief_support_memories(memories)
+    if wobble_filtered:
+        findings.append(
+            f"Excluded {wobble_filtered} generated-speech/trace memories after BDG expansion"
+        )
 
     # --- Check 1: Belief Fidelity ---
     # How much does the response overlap with the injected memories?
