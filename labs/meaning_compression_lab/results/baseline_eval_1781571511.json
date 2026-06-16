@@ -1,0 +1,461 @@
+{
+  "lab": "meaning_compression_baseline_eval",
+  "claim": "CRT should preserve governed meaning layers better than latest-only slots, naive summary, or plain retrieval.",
+  "scenario_count": 5,
+  "baseline_count": 4,
+  "aggregate": [
+    {
+      "baseline": "crt_governed",
+      "avg_score": 1.0,
+      "pass_count": 5,
+      "partial_count": 0,
+      "fail_count": 0,
+      "case_count": 5
+    },
+    {
+      "baseline": "plain_retrieval",
+      "avg_score": 0.14,
+      "pass_count": 0,
+      "partial_count": 0,
+      "fail_count": 5,
+      "case_count": 5
+    },
+    {
+      "baseline": "latest_only_slots",
+      "avg_score": 0.076,
+      "pass_count": 0,
+      "partial_count": 0,
+      "fail_count": 5,
+      "case_count": 5
+    },
+    {
+      "baseline": "summary_only",
+      "avg_score": 0.0,
+      "pass_count": 0,
+      "partial_count": 0,
+      "fail_count": 5,
+      "case_count": 5
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "identity_flip",
+      "evidence": "fixture",
+      "purpose": "Identity changed; current value, history, contradiction, volatility, and bit flags must survive.",
+      "baselines": [
+        {
+          "scenario": "identity_flip",
+          "baseline": "crt_governed",
+          "score": 1.0,
+          "verdict": "pass",
+          "dimension_scores": {
+            "authority": 1.0,
+            "bit_flags": 1.0,
+            "contradiction": 1.0,
+            "fact": 1.0,
+            "history": 1.0,
+            "reaction_policy": 1.0,
+            "volatility": 1.0
+          },
+          "failed_invariants": []
+        },
+        {
+          "scenario": "identity_flip",
+          "baseline": "latest_only_slots",
+          "score": 0.19,
+          "verdict": "fail",
+          "dimension_scores": {
+            "authority": 0.0,
+            "bit_flags": 0.25,
+            "contradiction": 0.0,
+            "fact": 1.0,
+            "history": 0.0,
+            "reaction_policy": 0.0,
+            "volatility": 0.0
+          },
+          "failed_invariants": [
+            "history:name",
+            "contradiction:name",
+            "authority:name",
+            "volatility:name",
+            "reaction:name",
+            "bit:flipped:name",
+            "bit:contradiction:name",
+            "bit:authority:name=confirmed"
+          ]
+        },
+        {
+          "scenario": "identity_flip",
+          "baseline": "plain_retrieval",
+          "score": 0.19,
+          "verdict": "fail",
+          "dimension_scores": {
+            "authority": 0.0,
+            "bit_flags": 0.25,
+            "contradiction": 0.0,
+            "fact": 1.0,
+            "history": 0.0,
+            "reaction_policy": 0.0,
+            "volatility": 0.0
+          },
+          "failed_invariants": [
+            "history:name",
+            "contradiction:name",
+            "authority:name",
+            "volatility:name",
+            "reaction:name",
+            "bit:flipped:name",
+            "bit:contradiction:name",
+            "bit:authority:name=confirmed"
+          ]
+        },
+        {
+          "scenario": "identity_flip",
+          "baseline": "summary_only",
+          "score": 0.0,
+          "verdict": "fail",
+          "dimension_scores": {
+            "authority": 0.0,
+            "bit_flags": 0.0,
+            "contradiction": 0.0,
+            "fact": 0.0,
+            "history": 0.0,
+            "reaction_policy": 0.0,
+            "volatility": 0.0
+          },
+          "failed_invariants": [
+            "fact:name",
+            "history:name",
+            "contradiction:name",
+            "authority:name",
+            "volatility:name",
+            "reaction:name",
+            "bit:fact:name=Emily",
+            "bit:flipped:name",
+            "bit:contradiction:name",
+            "bit:authority:name=confirmed"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "employer_correction",
+      "evidence": "fixture",
+      "purpose": "Current employer must supersede prior employer while preserving the contradiction.",
+      "baselines": [
+        {
+          "scenario": "employer_correction",
+          "baseline": "crt_governed",
+          "score": 1.0,
+          "verdict": "pass",
+          "dimension_scores": {
+            "authority": 1.0,
+            "bit_flags": 1.0,
+            "contradiction": 1.0,
+            "fact": 1.0,
+            "history": 1.0,
+            "reaction_policy": 1.0,
+            "volatility": 1.0
+          },
+          "failed_invariants": []
+        },
+        {
+          "scenario": "employer_correction",
+          "baseline": "latest_only_slots",
+          "score": 0.19,
+          "verdict": "fail",
+          "dimension_scores": {
+            "authority": 0.0,
+            "bit_flags": 0.25,
+            "contradiction": 0.0,
+            "fact": 1.0,
+            "history": 0.0,
+            "reaction_policy": 0.0,
+            "volatility": 0.0
+          },
+          "failed_invariants": [
+            "history:employer",
+            "contradiction:employer",
+            "authority:employer",
+            "volatility:employer",
+            "reaction:employer",
+            "bit:flipped:employer",
+            "bit:contradiction:employer",
+            "bit:authority:employer=confirmed"
+          ]
+        },
+        {
+          "scenario": "employer_correction",
+          "baseline": "plain_retrieval",
+          "score": 0.19,
+          "verdict": "fail",
+          "dimension_scores": {
+            "authority": 0.0,
+            "bit_flags": 0.25,
+            "contradiction": 0.0,
+            "fact": 1.0,
+            "history": 0.0,
+            "reaction_policy": 0.0,
+            "volatility": 0.0
+          },
+          "failed_invariants": [
+            "history:employer",
+            "contradiction:employer",
+            "authority:employer",
+            "volatility:employer",
+            "reaction:employer",
+            "bit:flipped:employer",
+            "bit:contradiction:employer",
+            "bit:authority:employer=confirmed"
+          ]
+        },
+        {
+          "scenario": "employer_correction",
+          "baseline": "summary_only",
+          "score": 0.0,
+          "verdict": "fail",
+          "dimension_scores": {
+            "authority": 0.0,
+            "bit_flags": 0.0,
+            "contradiction": 0.0,
+            "fact": 0.0,
+            "history": 0.0,
+            "reaction_policy": 0.0,
+            "volatility": 0.0
+          },
+          "failed_invariants": [
+            "fact:employer",
+            "history:employer",
+            "contradiction:employer",
+            "authority:employer",
+            "volatility:employer",
+            "reaction:employer",
+            "bit:fact:employer=Amazon",
+            "bit:flipped:employer",
+            "bit:contradiction:employer",
+            "bit:authority:employer=confirmed"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "authority_boundary",
+      "evidence": "fixture",
+      "purpose": "A social/provisional claim must remain non-answerable and keep its authority flag.",
+      "baselines": [
+        {
+          "scenario": "authority_boundary",
+          "baseline": "crt_governed",
+          "score": 1.0,
+          "verdict": "pass",
+          "dimension_scores": {
+            "authority": 1.0,
+            "bit_flags": 1.0,
+            "reaction_policy": 1.0,
+            "volatility": 1.0
+          },
+          "failed_invariants": []
+        },
+        {
+          "scenario": "authority_boundary",
+          "baseline": "latest_only_slots",
+          "score": 0.0,
+          "verdict": "fail",
+          "dimension_scores": {
+            "authority": 0.0,
+            "bit_flags": 0.0,
+            "reaction_policy": 0.0,
+            "volatility": 0.0
+          },
+          "failed_invariants": [
+            "authority:favorite_color",
+            "volatility:favorite_color",
+            "reaction:favorite_color",
+            "bit:authority:favorite_color=provisional_social"
+          ]
+        },
+        {
+          "scenario": "authority_boundary",
+          "baseline": "plain_retrieval",
+          "score": 0.0,
+          "verdict": "fail",
+          "dimension_scores": {
+            "authority": 0.0,
+            "bit_flags": 0.0,
+            "reaction_policy": 0.0,
+            "volatility": 0.0
+          },
+          "failed_invariants": [
+            "authority:favorite_color",
+            "volatility:favorite_color",
+            "reaction:favorite_color",
+            "bit:authority:favorite_color=provisional_social"
+          ]
+        },
+        {
+          "scenario": "authority_boundary",
+          "baseline": "summary_only",
+          "score": 0.0,
+          "verdict": "fail",
+          "dimension_scores": {
+            "authority": 0.0,
+            "bit_flags": 0.0,
+            "reaction_policy": 0.0,
+            "volatility": 0.0
+          },
+          "failed_invariants": [
+            "authority:favorite_color",
+            "volatility:favorite_color",
+            "reaction:favorite_color",
+            "bit:authority:favorite_color=provisional_social"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "policy_constraint",
+      "evidence": "fixture",
+      "purpose": "A locked action policy must survive compression as a refusal policy.",
+      "baselines": [
+        {
+          "scenario": "policy_constraint",
+          "baseline": "crt_governed",
+          "score": 1.0,
+          "verdict": "pass",
+          "dimension_scores": {
+            "bit_flags": 1.0,
+            "policy": 1.0,
+            "reaction_policy": 1.0
+          },
+          "failed_invariants": []
+        },
+        {
+          "scenario": "policy_constraint",
+          "baseline": "latest_only_slots",
+          "score": 0.0,
+          "verdict": "fail",
+          "dimension_scores": {
+            "bit_flags": 0.0,
+            "policy": 0.0,
+            "reaction_policy": 0.0
+          },
+          "failed_invariants": [
+            "policy:git.force_push_main",
+            "reaction:git.force_push_main",
+            "bit:policy:git.force_push_main=forbidden"
+          ]
+        },
+        {
+          "scenario": "policy_constraint",
+          "baseline": "plain_retrieval",
+          "score": 0.0,
+          "verdict": "fail",
+          "dimension_scores": {
+            "bit_flags": 0.0,
+            "policy": 0.0,
+            "reaction_policy": 0.0
+          },
+          "failed_invariants": [
+            "policy:git.force_push_main",
+            "reaction:git.force_push_main",
+            "bit:policy:git.force_push_main=forbidden"
+          ]
+        },
+        {
+          "scenario": "policy_constraint",
+          "baseline": "summary_only",
+          "score": 0.0,
+          "verdict": "fail",
+          "dimension_scores": {
+            "bit_flags": 0.0,
+            "policy": 0.0,
+            "reaction_policy": 0.0
+          },
+          "failed_invariants": [
+            "policy:git.force_push_main",
+            "reaction:git.force_push_main",
+            "bit:policy:git.force_push_main=forbidden"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "concern_preference",
+      "evidence": "fixture",
+      "purpose": "A non-contradiction meaning layer must survive: concern plus preference.",
+      "baselines": [
+        {
+          "scenario": "concern_preference",
+          "baseline": "crt_governed",
+          "score": 1.0,
+          "verdict": "pass",
+          "dimension_scores": {
+            "authority": 1.0,
+            "bit_flags": 1.0,
+            "concern": 1.0,
+            "preference": 1.0
+          },
+          "failed_invariants": []
+        },
+        {
+          "scenario": "concern_preference",
+          "baseline": "plain_retrieval",
+          "score": 0.318,
+          "verdict": "fail",
+          "dimension_scores": {
+            "authority": 0.0,
+            "bit_flags": 0.333,
+            "concern": 0.0,
+            "preference": 1.0
+          },
+          "failed_invariants": [
+            "authority:preference.answer_style",
+            "concern:0",
+            "bit:authority:preference.answer_style=confirmed",
+            "bit:concern:system forgets contradictions"
+          ]
+        },
+        {
+          "scenario": "concern_preference",
+          "baseline": "latest_only_slots",
+          "score": 0.0,
+          "verdict": "fail",
+          "dimension_scores": {
+            "authority": 0.0,
+            "bit_flags": 0.0,
+            "concern": 0.0,
+            "preference": 0.0
+          },
+          "failed_invariants": [
+            "authority:preference.answer_style",
+            "concern:0",
+            "preference:preference.answer_style",
+            "bit:authority:preference.answer_style=confirmed",
+            "bit:concern:system forgets contradictions",
+            "bit:preference:preference.answer_style=concise technical"
+          ]
+        },
+        {
+          "scenario": "concern_preference",
+          "baseline": "summary_only",
+          "score": 0.0,
+          "verdict": "fail",
+          "dimension_scores": {
+            "authority": 0.0,
+            "bit_flags": 0.0,
+            "concern": 0.0,
+            "preference": 0.0
+          },
+          "failed_invariants": [
+            "authority:preference.answer_style",
+            "concern:0",
+            "preference:preference.answer_style",
+            "bit:authority:preference.answer_style=confirmed",
+            "bit:concern:system forgets contradictions",
+            "bit:preference:preference.answer_style=concise technical"
+          ]
+        }
+      ]
+    }
+  ]
+}

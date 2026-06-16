@@ -435,7 +435,11 @@ class MemoryItem:
         """True if review_after is set and has passed (soft staleness — still retrievable)."""
         if self.review_after is None:
             return False
-        return (now if now is not None else time.time()) > self.review_after
+        try:
+            review_after = float(self.review_after)
+        except (TypeError, ValueError):
+            return False
+        return float(now if now is not None else time.time()) > review_after
 
 
 # ---------------------------------------------------------------------------
@@ -1706,6 +1710,11 @@ class CRTMemorySystem:
 
         # Normalize provenance fields.
         resolved_source_kind = self._normalize_source_kind(source_kind)
+
+        if self.is_social_channel(channel):
+            authority = "provisional"
+            kind = "observation" if kind != "evolution_observation" else kind
+            resolved_source_kind = "social"
 
         # model_output provenance → always provisional (except quiet ops promotion handled separately)
         if resolved_source_kind == "model_output" and authority not in {"locked"}:
@@ -4104,69 +4113,72 @@ class CRTMemorySystem:
         if len(row) > 12:
             memory.deprecation_reason = row[12]
         if len(row) > 13:
-            memory.fact_tuples = row[13]
+            memory.trust_alpha = float(row[13]) if row[13] is not None else 2.0
         if len(row) > 14:
-            memory.extraction_method = row[14] if row[14] else 'regex'
+            memory.trust_beta = float(row[14]) if row[14] is not None else 2.0
         if len(row) > 15:
-            memory.temporal_status = row[15] if row[15] else 'active'
+            memory.fact_tuples = row[15]
         if len(row) > 16:
-            memory.valid_from = row[16]
+            memory.extraction_method = row[16] if row[16] else 'regex'
         if len(row) > 17:
-            memory.valid_until = row[17]
+            memory.temporal_status = row[17] if row[17] else 'active'
         if len(row) > 18:
-            memory.domain_tags = json.loads(row[18]) if row[18] else None
+            memory.valid_from = row[18]
         if len(row) > 19:
-            memory.authority = self._normalize_authority(row[19])
+            memory.valid_until = row[19]
         if len(row) > 20:
-            memory.channel = self._normalize_channel(row[20])
+            memory.domain_tags = json.loads(row[20]) if row[20] else None
         if len(row) > 21:
-            memory.origin = row[21]
+            memory.authority = self._normalize_authority(row[21])
         if len(row) > 22:
-            memory.kind = self._normalize_kind(row[22], source=memory.source, context=memory.context)
+            memory.channel = self._normalize_channel(row[22])
         if len(row) > 23:
-            memory.review_after = row[23]
+            memory.origin = row[23]
         if len(row) > 24:
-            memory.source_kind = self._normalize_source_kind(row[24])
+            memory.kind = self._normalize_kind(row[24], source=memory.source, context=memory.context)
         if len(row) > 25:
-            memory.model_id = row[25]
+            memory.review_after = row[25]
         if len(row) > 26:
-            memory.run_id = row[26]
-        # Adaptive compression fields (columns 27-32)
+            memory.source_kind = self._normalize_source_kind(row[26])
         if len(row) > 27:
-            memory.compression_tier = int(row[27]) if row[27] is not None else 2
-        if len(row) > 29 and row[29]:
+            memory.model_id = row[27]
+        if len(row) > 28:
+            memory.run_id = row[28]
+        # Adaptive compression fields (columns 29-34)
+        if len(row) > 29:
+            memory.compression_tier = int(row[29]) if row[29] is not None else 2
+        if len(row) > 31 and row[31]:
             try:
-                memory.cogni_seed = json.loads(row[29])
+                memory.cogni_seed = json.loads(row[31])
             except Exception:
                 pass
-        if len(row) > 28 and row[28]:
+        if len(row) > 30 and row[30]:
             try:
                 # Detect format: memquant stores uint8 indices, legacy stores float32
                 if isinstance(memory.cogni_seed, dict) and memory.cogni_seed.get("method") == "memquant":
-                    memory.compressed_vector = np.array(json.loads(row[28]), dtype=np.uint8)
+                    memory.compressed_vector = np.array(json.loads(row[30]), dtype=np.uint8)
                 else:
-                    memory.compressed_vector = np.array(json.loads(row[28]), dtype=np.float32)
+                    memory.compressed_vector = np.array(json.loads(row[30]), dtype=np.float32)
             except Exception:
                 pass
-        if len(row) > 30:
-            memory.stable_cycles = int(row[30]) if row[30] is not None else 0
-        if len(row) > 31:
-            memory.contradiction_count = int(row[31]) if row[31] is not None else 0
         if len(row) > 32:
-            memory.access_count = int(row[32]) if row[32] is not None else 0
-        # user_id (column 33 — added AFTER compression columns in migration order)
+            memory.stable_cycles = int(row[32]) if row[32] is not None else 0
         if len(row) > 33:
-            memory.user_id = row[33]
-        # Geometric memory (columns 34-36 — sigma BLOB, belnap_state, memory_type)
-        if len(row) > 34 and row[34] is not None:
+            memory.contradiction_count = int(row[33]) if row[33] is not None else 0
+        if len(row) > 34:
+            memory.access_count = int(row[34]) if row[34] is not None else 0
+        if len(row) > 35:
+            memory.user_id = row[35]
+        # Geometric memory (columns 36-38 — sigma BLOB, belnap_state, memory_type)
+        if len(row) > 36 and row[36] is not None:
             try:
-                memory.sigma = np.frombuffer(row[34], dtype=np.float32)
+                memory.sigma = np.frombuffer(row[36], dtype=np.float32)
             except Exception:
                 pass
-        if len(row) > 35:
-            memory.belnap_state = row[35] if row[35] else "true"
-        if len(row) > 36:
-            memory.memory_type = row[36] if row[36] else "observation"
+        if len(row) > 37:
+            memory.belnap_state = row[37] if row[37] else "true"
+        if len(row) > 38:
+            memory.memory_type = row[38] if row[38] else "observation"
         return memory
     
     def _load_all_memories(self, user_id: Optional[str] = None) -> List[MemoryItem]:

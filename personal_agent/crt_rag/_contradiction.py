@@ -142,6 +142,10 @@ def _infer_contradiction_goals_for_query(
         new_mem = engine.memory.get_memory_by_id(contra.new_memory_id)
         if old_mem is None or new_mem is None:
             continue
+        old_authoritative = engine.memory.can_answer_user_fact(old_mem)
+        new_authoritative = engine.memory.can_answer_user_fact(new_mem)
+        if old_authoritative ^ new_authoritative:
+            continue
 
         # Relevance: either overlaps retrieved, or overlaps the slots we think the user asked about.
         is_related_by_retrieval = bool({contra.old_memory_id, contra.new_memory_id} & retrieved_ids)

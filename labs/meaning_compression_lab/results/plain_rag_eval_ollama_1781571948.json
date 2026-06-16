@@ -1,0 +1,154 @@
+{
+  "lab": "plain_rag_eval",
+  "claim": "CRT governed state should answer continuity questions more reliably than raw retrieved memory text without authority, contradiction, or policy rules.",
+  "mode": "ollama",
+  "model": "qwen2.5:7b-instruct",
+  "aggregate": {
+    "crt_pass_count": 5,
+    "plain_rag_pass_count": 0,
+    "case_count": 5,
+    "crt_pass_rate": 1.0,
+    "plain_rag_pass_rate": 0.0
+  },
+  "scenarios": [
+    {
+      "scenario": "identity_flip",
+      "probe": "current_name",
+      "query": "What's my name?",
+      "crt_answer": "Emily",
+      "plain_rag_answer": "Based on the retrieved memories, your name could be either Emily or Sarah. However, since only one of these can be correct, I'll need more information to determine which is your actual name.",
+      "crt_judgment": {
+        "passed": true,
+        "contains_ok": true,
+        "excludes_ok": true,
+        "expected_contains": [
+          "emily"
+        ],
+        "expected_excludes": [
+          "sarah"
+        ]
+      },
+      "plain_rag_judgment": {
+        "passed": false,
+        "contains_ok": true,
+        "excludes_ok": false,
+        "expected_contains": [
+          "emily"
+        ],
+        "expected_excludes": [
+          "sarah"
+        ]
+      }
+    },
+    {
+      "scenario": "employer_correction",
+      "probe": "current_employer",
+      "query": "Where do I work?",
+      "crt_answer": "Amazon",
+      "plain_rag_answer": "Based on the retrieved memories, there seems to be a contradiction. One memory states you work at Amazon, while the other indicates employment at Microsoft as a senior developer. Without additional context to resolve this conflict, I can provide an answer based on the most recent or detailed information given.\n\nAnswer: You work at Microsoft as a senior developer.",
+      "crt_judgment": {
+        "passed": true,
+        "contains_ok": true,
+        "excludes_ok": true,
+        "expected_contains": [
+          "amazon"
+        ],
+        "expected_excludes": [
+          "microsoft"
+        ]
+      },
+      "plain_rag_judgment": {
+        "passed": false,
+        "contains_ok": true,
+        "excludes_ok": false,
+        "expected_contains": [
+          "amazon"
+        ],
+        "expected_excludes": [
+          "microsoft"
+        ]
+      }
+    },
+    {
+      "scenario": "authority_boundary",
+      "probe": "provisional_favorite_color",
+      "query": "What's my favorite color?",
+      "crt_answer": "I should not answer that as confirmed; the stored favorite color is provisional.",
+      "plain_rag_answer": "Your favorite color is blue.",
+      "crt_judgment": {
+        "passed": true,
+        "contains_ok": true,
+        "excludes_ok": true,
+        "expected_contains": [],
+        "expected_excludes": [
+          "blue"
+        ]
+      },
+      "plain_rag_judgment": {
+        "passed": false,
+        "contains_ok": true,
+        "excludes_ok": false,
+        "expected_contains": [],
+        "expected_excludes": [
+          "blue"
+        ]
+      }
+    },
+    {
+      "scenario": "policy_constraint",
+      "probe": "locked_force_push_policy",
+      "query": "Can I force push to main?",
+      "crt_answer": "No. A locked policy says never force push to main.",
+      "plain_rag_answer": "It is generally advised to avoid force pushing to main to prevent overwriting changes in the remote repository without consent. If you need to make changes that affect existing commits, consider using alternative methods like rebasing or creating a new branch instead.",
+      "crt_judgment": {
+        "passed": true,
+        "contains_ok": true,
+        "excludes_ok": true,
+        "expected_contains": [
+          "no",
+          "force push",
+          "main"
+        ],
+        "expected_excludes": []
+      },
+      "plain_rag_judgment": {
+        "passed": false,
+        "contains_ok": false,
+        "excludes_ok": true,
+        "expected_contains": [
+          "no",
+          "force push",
+          "main"
+        ],
+        "expected_excludes": []
+      }
+    },
+    {
+      "scenario": "concern_preference",
+      "probe": "answer_style_preference",
+      "query": "How should you answer me?",
+      "crt_answer": "concise technical",
+      "plain_rag_answer": "Provide clear and direct responses to your questions or concerns.",
+      "crt_judgment": {
+        "passed": true,
+        "contains_ok": true,
+        "excludes_ok": true,
+        "expected_contains": [
+          "concise",
+          "technical"
+        ],
+        "expected_excludes": []
+      },
+      "plain_rag_judgment": {
+        "passed": false,
+        "contains_ok": false,
+        "excludes_ok": true,
+        "expected_contains": [
+          "concise",
+          "technical"
+        ],
+        "expected_excludes": []
+      }
+    }
+  ]
+}

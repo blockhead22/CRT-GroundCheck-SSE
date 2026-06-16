@@ -29,6 +29,7 @@ Aether is a personal AI assistant built on CRT (Contradiction-aware Reconciliati
 |----------|-------------|
 | [Memory Lifecycle](MEMORY_LIFECYCLE.md) | Memory creation, trust scoring, confidence vs trust, compression tiers, deprecation policy |
 | [Compression](COMPRESSION.md) | V(t)-driven semantic compression, significance scoring, tier transitions (10D/64D/384D) |
+| [CRT Meaning Compression Explainer](meaning-compression-crt.html) | Plain-English overview of the current meaning-compression proof track, why it matters, and what remains unproven |
 | [Dynamic Slot Discovery](SLOT_DISCOVERY.md) | v2.1 — Learned slot types from contradiction patterns. Replaces hardcoded EXCLUSIVE_SLOTS with emergent structure |
 | [Belief Synthesis & Volatility](BELIEF_SYNTHESIS.md) | v2.5 — Worldview answers from belief trajectories, trust-weighted clustering, volatility-gated context budget |
 

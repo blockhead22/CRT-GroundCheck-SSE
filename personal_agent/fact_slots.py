@@ -680,7 +680,17 @@ def is_explicit_name_declaration_text(text: str) -> bool:
     if "my name is" in lowered or "call me" in lowered:
         return True
     if re.search(
-        r"\bi(?:'m| am)\s+[A-Z][A-Za-z'-]{1,40}(?:\s+[A-Z][A-Za-z'-]{1,40}){0,2}(?:[,.!?]|$)",
+        r"^\s*[A-Z][A-Za-z'-]{1,40}\s+not\s+[A-Z][A-Za-z'-]{1,40}\s*[.!?]?\s*$",
+        raw,
+    ):
+        return True
+    if re.search(
+        r"\b[Ii](?:'m| am)\s+[A-Z][A-Za-z'-]{1,40}(?:\s+[A-Z][A-Za-z'-]{1,40}){0,2}\s+(?=(?:and|but)\s+[Ii]\b)",
+        raw,
+    ):
+        return True
+    if re.search(
+        r"\bi(?:'m| am)\s+[A-Z][A-Za-z'-]{1,40}(?:\s+[A-Z][A-Za-z'-]{1,40}){0,2}(?:\s+(?:and|but)\b|[,.!?]|$)",
         raw,
     ):
         return True
@@ -873,6 +883,19 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         token_lowers = [t.lower() for t in tokens]
         if tokens and not any(t in _NAME_STOPWORDS for t in token_lowers) and name.lower() not in _ASSISTANT_IDENTITY_NAMES:
             facts["name"] = ExtractedFact("name", name, _norm_text(name))
+
+    # Compound self-introduction: "I am Nick and I work at Google".
+    if "name" not in facts:
+        m = re.search(
+            r"\b[Ii](?:'m| am)\s+([A-Z][A-Za-z'-]{1,40}(?:\s+[A-Z][A-Za-z'-]{1,40}){0,2})\s+(?=(?:and|but)\s+[Ii]\b)",
+            text,
+        )
+        if m:
+            name = _clean_name_value(m.group(1).strip())
+            tokens = [t for t in re.split(r"\s+", name) if t]
+            token_lowers = [t.lower() for t in tokens]
+            if tokens and not any(t in _NAME_STOPWORDS for t in token_lowers) and name.lower() not in _ASSISTANT_IDENTITY_NAMES:
+                facts["name"] = ExtractedFact("name", name, _norm_text(name))
 
     if "name" not in facts:
         # Prefer TitleCase names for the generic "I'm X" pattern.
@@ -1580,10 +1603,12 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
             employer = m.group(1).strip().rstrip(",.")
             facts["employer"] = ExtractedFact("employer", employer, _norm_text(employer))
 
-    # Strip name/assistant_name if auto-extraction is disabled.
-    # Names should come from auth.display_name, not conversation inference.
+    # Strip inferred names unless the user explicitly declared their name.
+    # This preserves the anti-garbage guard while still allowing identity-critical
+    # assertions like "My name is Sarah" to participate in slot contradictions.
     if not _EXTRACT_NAMES_FROM_CONVERSATION:
-        facts.pop("name", None)
+        if not is_explicit_name_declaration_text(text):
+            facts.pop("name", None)
         facts.pop("assistant_name", None)
 
     # ── Slot value validation ──

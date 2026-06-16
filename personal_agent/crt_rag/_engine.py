@@ -168,6 +168,52 @@ def _sanitize_identity_pronouns(answer: str) -> str:
     return out
 
 
+def _answer_locked_action_policy(
+    engine: "CRTEnhancedRAG",
+    user_query: str,
+    *,
+    thread_id: Optional[str] = None,
+) -> Optional[Tuple[str, MemoryItem]]:
+    """Return a deterministic answer for locked action policies.
+
+    This is intentionally narrow: it only handles the force-push-to-main policy
+    currently represented in CRT as a locked ops memory.
+    """
+    q = (user_query or "").strip().lower()
+    if not ("force push" in q and "main" in q):
+        return None
+
+    thread_key = str(thread_id or "default").strip() or "default"
+
+    def _in_thread_scope(value: Optional[str]) -> bool:
+        tv = str(value or "").strip()
+        return tv == thread_key or (thread_key == "default" and not tv)
+
+    try:
+        memories = engine.memory._load_all_memories()
+    except Exception:
+        memories = []
+
+    for mem in sorted(memories, key=lambda m: getattr(m, "timestamp", 0.0), reverse=True):
+        if bool(getattr(mem, "deprecated", False)):
+            continue
+        if getattr(mem, "source", None) != MemorySource.USER:
+            continue
+        if str(getattr(mem, "authority", "") or "").strip().lower() != "locked":
+            continue
+        if str(getattr(mem, "kind", "") or "").strip().lower() != "ops":
+            continue
+        if not _in_thread_scope(getattr(mem, "thread_id", None)):
+            continue
+        text = str(getattr(mem, "text", "") or "").strip().lower()
+        if "force push" in text and "main" in text and ("never" in text or "do not" in text or "don't" in text):
+            return (
+                "No. You have a locked CRT policy saying: Never force push to main.",
+                mem,
+            )
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Phase G3: Fisher-weighted reranking
 # ---------------------------------------------------------------------------
@@ -1144,6 +1190,60 @@ class CRTEnhancedRAG:
             # Non-name assertions that detected a contradiction: surface it conversationally.
             # Build a natural conflict disclosure and let the reasoning engine respond.
             if contradiction_detected:
+                _explicit_correction = any(
+                    phrase in user_text.lower()
+                    for phrase in (
+                        "actually",
+                        "not ",
+                        "correction",
+                        "correct that",
+                        "i mean",
+                        "i meant",
+                        "to be clear",
+                        "clarify",
+                        "instead",
+                    )
+                )
+                if (
+                    _explicit_correction
+                    and user_memory is not None
+                    and user_memory.source == MemorySource.USER
+                    and str(getattr(user_memory, "kind", "") or "").strip().lower() == "user_fact"
+                    and not self.memory.is_social_channel(getattr(user_memory, "channel", None))
+                    and self.memory._normalize_authority(getattr(user_memory, "authority", None)) == "provisional"
+                ):
+                    try:
+                        user_memory = self.memory.promote_memory(
+                            user_memory.memory_id,
+                            "confirmed",
+                            promoted_by="system",
+                            reason="explicit_first_party_correction",
+                        )
+                        if self.fact_store is not None:
+                            self.fact_store.process_input(
+                                user_text,
+                                thread_id=str(thread_id or "default"),
+                            )
+                        try:
+                            self.user_profile.update_from_text(
+                                user_text,
+                                thread_id=str(thread_id or "default"),
+                            )
+                        except Exception as _profile_correction_err:
+                            log_swallowed_exception(
+                                "crt_rag.query.promote_explicit_correction.profile",
+                                _profile_correction_err,
+                            )
+                        logger.info(
+                            "[PROVISIONAL] Promoted explicit correction to confirmed: %s",
+                            user_memory.memory_id,
+                        )
+                    except Exception as _correction_promo_err:
+                        log_swallowed_exception(
+                            "crt_rag.query.promote_explicit_correction",
+                            _correction_promo_err,
+                        )
+
                 old_text = ""
                 new_text = user_text
                 if contradiction_entry is not None:
@@ -1571,6 +1671,57 @@ class CRTEnhancedRAG:
                 f"DO NOT mention trust scores, similarity scores, or memory counts in your response "
                 f"unless the user specifically asks how you know something or about your process.\n"
             )
+
+        locked_action_policy = _answer_locked_action_policy(
+            self,
+            user_query,
+            thread_id=thread_id,
+        )
+        if user_input_kind in ("question", "instruction") and locked_action_policy is not None:
+            policy_answer, policy_memory = locked_action_policy
+            if all(mem.memory_id != policy_memory.memory_id for mem, _score in retrieved):
+                retrieved = [(policy_memory, 1.0)] + retrieved
+            self._record_memory_usage(
+                [policy_memory.memory_id],
+                event_type="policy_selected",
+                reason="locked_action_policy",
+                usage_trace_id=usage_trace_id,
+                query=user_query,
+                thread_id=thread_id,
+                metadata={"policy": "git.force_push_main", "decision": "refuse_action"},
+            )
+            return {
+                'answer': policy_answer,
+                'thinking': None,
+                'mode': 'quick',
+                'confidence': 0.99,
+                'response_type': 'belief',
+                'gates_passed': True,
+                'gate_reason': 'locked_action_policy',
+                'intent_alignment': 0.99,
+                'memory_alignment': 1.0,
+                'contradiction_detected': contradiction_detected,
+                'contradiction_entry': contradiction_entry.to_dict() if contradiction_entry else None,
+                'retrieved_memories': [
+                    {
+                        'memory_id': mem.memory_id,
+                        'text': mem.text,
+                        'timestamp': getattr(mem, 'timestamp', None),
+                        'trust': mem.trust,
+                        'confidence': mem.confidence,
+                        'source': mem.source.value,
+                        'sse_mode': mem.sse_mode.value,
+                        'score': score,
+                        'kind': getattr(mem, 'kind', 'observation'),
+                    }
+                    for mem, score in retrieved[:5]
+                ],
+                'prompt_memories': [],
+                'learned_suggestions': [],
+                'heuristic_suggestions': [],
+                'best_prior_trust': policy_memory.trust,
+                'session_id': self.session_id,
+            }
 
         # Check for sentiment contradictions in retrieved memories
         sentiment_contradiction = self._detect_sentiment_contradiction(user_query, retrieved)
@@ -2397,6 +2548,15 @@ class CRTEnhancedRAG:
                 # No affects_slots cached - check retrieval overlap as fallback
                 if not (contra_mem_ids & retrieved_mem_ids):
                     continue
+
+            old_mem = self.memory.get_memory_by_id(contra.old_memory_id)
+            new_mem = self.memory.get_memory_by_id(contra.new_memory_id)
+            if old_mem is None or new_mem is None:
+                continue
+            old_authoritative = self.memory.can_answer_user_fact(old_mem)
+            new_authoritative = self.memory.can_answer_user_fact(new_mem)
+            if old_authoritative ^ new_authoritative:
+                continue
             
             related_open_total += 1
 
@@ -2407,11 +2567,6 @@ class CRTEnhancedRAG:
             try:
                 # Double-check slot overlap if we don't have affects_slots cached
                 if not affects_slots_str:
-                    old_mem = self.memory.get_memory_by_id(contra.old_memory_id)
-                    new_mem = self.memory.get_memory_by_id(contra.new_memory_id)
-                    if old_mem is None or new_mem is None:
-                        continue
-
                     old_facts = extract_fact_slots(old_mem.text) or {}
                     new_facts = extract_fact_slots(new_mem.text) or {}
                     shared = set(old_facts.keys()) & set(new_facts.keys()) & set(relevant_slots)
@@ -3902,18 +4057,28 @@ class CRTEnhancedRAG:
     # ── _security.py ──
     def detect_denial_in_text(self, *args, **kwargs):
         from ._security import detect_denial_in_text; return detect_denial_in_text(self, *args, **kwargs)
+    def _detect_denial_in_text(self, *args, **kwargs):
+        return self.detect_denial_in_text(*args, **kwargs)
     def is_retraction_of_denial(self, *args, **kwargs):
         from ._security import is_retraction_of_denial; return is_retraction_of_denial(self, *args, **kwargs)
+    def _is_retraction_of_denial(self, *args, **kwargs):
+        return self.is_retraction_of_denial(*args, **kwargs)
     def build_gaslighting_citation(self, *args, **kwargs):
         from ._security import build_gaslighting_citation; return build_gaslighting_citation(self, *args, **kwargs)
+    def _build_gaslighting_citation(self, *args, **kwargs):
+        return self.build_gaslighting_citation(*args, **kwargs)
     def strip_continuity_augmented_text(self, *args, **kwargs):
         from ._security import strip_continuity_augmented_text; return strip_continuity_augmented_text(self, *args, **kwargs)
     def _strip_continuity_augmented_text(self, *args, **kwargs):
         return self.strip_continuity_augmented_text(*args, **kwargs)
     def detect_gaslighting_attempt(self, *args, **kwargs):
         from ._security import detect_gaslighting_attempt; return detect_gaslighting_attempt(self, *args, **kwargs)
+    def _detect_gaslighting_attempt(self, *args, **kwargs):
+        return self.detect_gaslighting_attempt(*args, **kwargs)
     def detect_blindside_attack(self, *args, **kwargs):
         from ._security import detect_blindside_attack; return detect_blindside_attack(self, *args, **kwargs)
+    def _detect_blindside_attack(self, *args, **kwargs):
+        return self.detect_blindside_attack(*args, **kwargs)
 
     # ── _sanitization.py ──
     def sanitize_memory_denial(self, *args, **kwargs):

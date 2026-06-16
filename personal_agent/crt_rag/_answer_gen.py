@@ -625,11 +625,11 @@ def _augment_retrieval_with_slot_memories(
             facts = extract_fact_slots(mem.text)
             if slot not in facts:
                 continue
-            # Stale confirmed memories yield to fresh confirmed when competing for a slot.
-            # Trust is the PRIMARY signal for slot resolution --- a memory with trust=1.0
-            # must outrank trust=0.97 regardless of timestamp. Timestamp is tiebreaker only.
+            # Fresh confirmed memories yield the active slot value. Trust is a
+            # tiebreaker so a slightly reinforced stale value does not override
+            # an explicit newer correction.
             freshness = 0 if (hasattr(mem, "is_stale") and mem.is_stale()) else 1
-            key = (freshness, _source_priority(mem), mem.trust, mem.timestamp)
+            key = (freshness, _source_priority(mem), mem.timestamp, mem.trust)
             if best is None or (best_key is not None and key > best_key):
                 best = mem
                 best_key = key
