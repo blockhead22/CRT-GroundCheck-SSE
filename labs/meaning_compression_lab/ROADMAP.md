@@ -20,6 +20,7 @@ python labs/meaning_compression_lab/baseline_eval.py
 python labs/meaning_compression_lab/plain_rag_eval.py --mode simulated
 python labs/meaning_compression_lab/scaffold_eval.py --include-adversarial
 python labs/meaning_compression_lab/scaffold_eval.py --mode ollama --model qwen2.5:7b-instruct --include-adversarial
+python labs/meaning_compression_lab/scaffold_model_sweep.py --models qwen2.5:7b-instruct phi3:3.8b llama3.2:latest mistral:latest
 python labs/meaning_compression_lab/plain_rag_eval.py --mode ollama --model qwen2.5:7b-instruct
 python -m pytest tests/test_meaning_scaffold_eval.py tests/test_meaning_compression_lab.py tests/test_meaning_baseline_eval.py tests/test_plain_rag_eval.py tests/test_crt_compact_meaning_loop.py tests/test_crt_rag_behavior_bridge.py -q
 ```
@@ -27,7 +28,7 @@ python -m pytest tests/test_meaning_scaffold_eval.py tests/test_meaning_compress
 Last focused result:
 
 ```text
-26 passed, 1 warning
+29 passed, 1 warning
 ```
 
 Current lab signal:
@@ -38,6 +39,7 @@ Structural baseline eval: CRT governed 15/15, simpler baselines 0/15 with --incl
 Plain-RAG simulated answer eval: CRT 15/15, plain RAG 4/15 with --include-adversarial.
 Meaning scaffold eval: scaffold 15/15, raw transcript fragments 4/15, avg scaffold ratio 0.442 with --include-adversarial.
 Meaning scaffold Ollama eval: qwen2.5 scaffold 15/15, qwen2.5 raw RAG 7/15, avg scaffold ratio 0.468 with --include-adversarial.
+Meaning scaffold model sweep: scaffold advantage 4/4 models, avg raw rate 0.417, avg scaffold rate 0.833.
 Plain-RAG Ollama answer eval: CRT 5/5, qwen2.5 raw RAG 0/5.
 ```
 
@@ -167,6 +169,9 @@ average scaffold size: 44.2% of full transcript representation
 Ollama scaffold eval added
 15-case qwen2.5 result: scaffold 15/15, raw 7/15
 average scaffold size with policy plain text: 46.8% of full transcript representation
+Cross-model sweep added
+4-model result: scaffold beats raw for qwen2.5, phi3, llama3.2, and mistral
+Mistral failure count shows scaffold/executor coupling remains a real variable
 ```
 
 Pass condition:
@@ -354,7 +359,7 @@ Existing validation packs still pass after the pipeline is simplified.
 
 ## Recommended Immediate Order
 
-1. Run scaffold eval across more local models.
+1. Analyze scaffold failures by model and tighten the scaffold contract without overfitting.
 2. Expand adversarial memory pack to 20+ cases.
 3. Harden `plain_rag_eval.py` into a fairer raw-RAG baseline.
 4. Make policy memory first-class instead of narrow force-push handling.

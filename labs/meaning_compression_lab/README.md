@@ -103,6 +103,7 @@ Meaning scaffold comparison:
 python labs/meaning_compression_lab/scaffold_eval.py
 python labs/meaning_compression_lab/scaffold_eval.py --include-adversarial
 python labs/meaning_compression_lab/scaffold_eval.py --mode ollama --model qwen2.5:7b-instruct --include-adversarial
+python labs/meaning_compression_lab/scaffold_model_sweep.py --models qwen2.5:7b-instruct phi3:3.8b llama3.2:latest mistral:latest
 ```
 
 This compares raw transcript fragments against compact compressed meaning
@@ -110,6 +111,9 @@ fragments. It is the first explicit test of whether the LLM-facing scaffold can
 carry answer behavior without replaying the full transcript. The default mode
 is deterministic and offline. Ollama mode asks the local model to answer from
 raw retrieved memory text and then from compressed scaffold text.
+
+The model sweep repeats the Ollama scaffold comparison across multiple local
+executors and reports whether the scaffold advantage survives model changes.
 
 Run:
 

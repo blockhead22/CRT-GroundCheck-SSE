@@ -158,6 +158,7 @@ The Phi-3 fine-tune chain (`crt_phi3_finetune.py`, `crt_phi3_finetune_v2.py`, `m
 | `labs/meaning_compression_lab/baseline_eval.py` | structural baseline comparison for CRT meaning state | seconds | offline, writes JSON results |
 | `labs/meaning_compression_lab/plain_rag_eval.py` | simulated/Ollama plain-RAG answer comparison | seconds-minutes | simulated is offline; Ollama mode needs local model |
 | `labs/meaning_compression_lab/scaffold_eval.py` | compressed meaning scaffold vs raw transcript fragments | seconds-minutes | deterministic is offline; Ollama mode needs local model |
+| `labs/meaning_compression_lab/scaffold_model_sweep.py` | cross-model scaffold-vs-raw sweep | minutes | Ollama mode; model list is configurable |
 | `tests/test_crt_rag_behavior_bridge.py` | RAG behavior bridge for CRT meaning claims | ~1 minute | pytest; writes temp SQLite DBs only |
 | `labs/scaffold_conversation_lab/scaffold_conversation_lab.py` | scaffold-vs-direct conversation comparison | ~minutes | results.json committed |
 | `labs/case_study/adnan_syed/` | case-study reasoning trace | reading | not a runnable lab |
