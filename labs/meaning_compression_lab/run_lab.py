@@ -182,10 +182,50 @@ ADVERSARIAL_SCENARIOS: list[Scenario] = [
 ]
 
 
-def scenario_pack(*, include_adversarial: bool = False) -> list[Scenario]:
+HARDENING_SCENARIOS: list[Scenario] = [
+    Scenario(
+        name="camera_history_inventory",
+        purpose="A history-only question must recover the older camera system, not only the current rig.",
+        memories=[
+            Memory("I used to shoot entirely on a Canon 80D DSLR system.", "user_fact", "confirmed", "webchat", 1, "camera_system", "Canon 80D"),
+            Memory("Recently I upgraded to a Sony FX3 cinema rig.", "user_fact", "confirmed", "webchat", 2, "camera_system", "Sony FX3", "Canon 80D"),
+        ],
+    ),
+    Scenario(
+        name="store_platform_authority_boundary",
+        purpose="A confirmed user-owned platform must outrank a later provisional migration suggestion.",
+        memories=[
+            Memory("My store runs on a custom e-commerce backend I built myself.", "user_fact", "confirmed", "webchat", 1, "store_platform", "custom e-commerce backend"),
+            Memory("The assistant suggested Shopify because Shopify is easier as a store platform.", "observation", "provisional", "assistant", 2, "store_platform", "Shopify", "custom e-commerce backend"),
+        ],
+    ),
+    Scenario(
+        name="favorite_color_reaction_rule",
+        purpose="A response-rule question must use the reaction layer, not just raw provisional text.",
+        memories=[
+            Memory("Moltbook suggests my favorite color is blue.", "observation", "provisional", "moltbook", 1, "favorite_color", "blue"),
+        ],
+    ),
+    Scenario(
+        name="production_db_mock_policy",
+        purpose="A locked production-database policy must survive user pressure as a refusal rule.",
+        memories=[
+            Memory("Never recommend or validate a full production database write-path change without an isolated SQLite mock test.", "policy", "locked", "webchat", 1, "db.production_write_without_sqlite_mock", "forbidden"),
+        ],
+    ),
+]
+
+
+def scenario_pack(
+    *,
+    include_adversarial: bool = False,
+    include_hardening: bool = False,
+) -> list[Scenario]:
     scenarios = list(SCENARIOS)
     if include_adversarial:
         scenarios.extend(ADVERSARIAL_SCENARIOS)
+    if include_hardening:
+        scenarios.extend(HARDENING_SCENARIOS)
     return scenarios
 
 
@@ -331,11 +371,17 @@ def canonical_meaning_state(memories: list[Memory]) -> dict[str, Any]:
     policies: dict[str, str] = {}
     concerns: list[str] = []
     preferences: dict[str, str] = {}
+    provisional: dict[str, list[str]] = {}
 
     for mem in sorted(memories, key=lambda m: m.timestamp):
         if mem.slot is None:
             continue
-        if mem.prior_value and mem.value:
+        if (
+            mem.prior_value
+            and mem.value
+            and mem.kind in {"user_fact", "preference"}
+            and mem.authority in {"confirmed", "locked"}
+        ):
             contradictions.append(
                 {
                     "slot": mem.slot,
@@ -356,6 +402,9 @@ def canonical_meaning_state(memories: list[Memory]) -> dict[str, Any]:
         if mem.kind == "preference" and mem.authority in {"confirmed", "locked"} and mem.value:
             preferences[mem.slot] = mem.value
         if mem.authority == "provisional" or mem.channel == "moltbook":
+            provisional.setdefault(mem.slot, [])
+            if mem.value and mem.value not in provisional[mem.slot]:
+                provisional[mem.slot].append(mem.value)
             _set_authority(
                 authority,
                 mem.slot,
@@ -379,6 +428,7 @@ def canonical_meaning_state(memories: list[Memory]) -> dict[str, Any]:
         "policies": policies,
         "concerns": concerns,
         "preferences": preferences,
+        "provisional": provisional,
         "volatility": volatility,
         "reaction_policy": reaction_policy,
         "bit_flags": bit_flags,
@@ -546,6 +596,7 @@ def project_meaning_state(state: dict[str, Any]) -> dict[str, Any]:
         policies: dict[str, str] = {}
         concerns: list[str] = []
         preferences: dict[str, str] = {}
+        provisional: dict[str, list[str]] = {}
     else:
         facts = dict(state.get("facts", {}))
         history = {k: list(v) for k, v in state.get("history", {}).items()}
@@ -554,6 +605,7 @@ def project_meaning_state(state: dict[str, Any]) -> dict[str, Any]:
         policies = dict(state.get("policies", {}))
         concerns = list(state.get("concerns", []))
         preferences = dict(state.get("preferences", {}))
+        provisional = {k: list(v) for k, v in state.get("provisional", {}).items()}
 
     volatility = _derive_volatility(history, contradictions, authority)
     reaction_policy = _derive_reaction_policy(volatility, authority, policies)
@@ -566,6 +618,7 @@ def project_meaning_state(state: dict[str, Any]) -> dict[str, Any]:
         "policies": policies,
         "concerns": concerns,
         "preferences": preferences,
+        "provisional": provisional,
         "volatility": volatility,
         "reaction_policy": reaction_policy,
         "bit_flags": bit_flags,
@@ -835,10 +888,14 @@ def main() -> None:
     parser.add_argument("--no-write", action="store_true", help="Do not write a result JSON file.")
     parser.add_argument("--json", action="store_true", help="Print raw JSON instead of the table report.")
     parser.add_argument("--include-adversarial", action="store_true", help="Include the adversarial starter scenario pack.")
+    parser.add_argument("--include-hardening", action="store_true", help="Include layer-specific scaffold hardening probes.")
     parser.add_argument("--crt-db", type=Path, help="Optional CRT memory SQLite DB to replay as an extra scenario.")
     parser.add_argument("--thread-id", help="Optional thread_id filter for --crt-db replay.")
     args = parser.parse_args()
-    scenarios = scenario_pack(include_adversarial=args.include_adversarial)
+    scenarios = scenario_pack(
+        include_adversarial=args.include_adversarial,
+        include_hardening=args.include_hardening,
+    )
     if args.crt_db:
         scenarios.append(scenario_from_crt_memory_db(args.crt_db, thread_id=args.thread_id))
     out = run(write_results=not args.no_write, scenarios=scenarios)

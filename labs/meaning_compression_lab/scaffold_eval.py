@@ -12,8 +12,9 @@ import json
 import re
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
+from labs.meaning_compression_lab.evaluation_contract import build_decision_trace
 from labs.meaning_compression_lab.plain_rag_eval import (
     PROBES,
     Probe,
@@ -37,6 +38,8 @@ CLAIM = (
     "raw transcript fragments on continuity, authority, contamination, and policy cases."
 )
 
+EventCallback = Callable[[dict[str, Any]], None]
+
 
 def build_meaning_scaffold(scenario: Scenario) -> dict[str, Any]:
     state = canonical_meaning_state(scenario.memories)
@@ -58,6 +61,9 @@ def build_meaning_scaffold(scenario: Scenario) -> dict[str, Any]:
         )
     for slot, value in sorted(state["authority"].items()):
         fragments.append({"kind": "authority", "slot": slot, "value": value})
+    for slot, values in sorted(state["provisional"].items()):
+        for value in values:
+            fragments.append({"kind": "provisional", "slot": slot, "value": value})
     for slot, value in sorted(state["policies"].items()):
         fragments.append({"kind": "policy", "slot": slot, "value": value})
     for slot, value in sorted(state["reaction_policy"].items()):
@@ -74,7 +80,7 @@ def build_meaning_scaffold(scenario: Scenario) -> dict[str, Any]:
     }
 
 
-def render_scaffold(scaffold: dict[str, Any]) -> str:
+def render_scaffold(scaffold: dict[str, Any], *, include_policy_plaintext: bool = True) -> str:
     lines = []
     for fragment in scaffold["fragments"]:
         kind = fragment["kind"]
@@ -86,8 +92,14 @@ def render_scaffold(scaffold: dict[str, Any]) -> str:
             lines.append(f"CONTRADICTION {fragment['slot']} {fragment['old']} -> {fragment['new']}")
         elif kind == "authority":
             lines.append(f"AUTHORITY {fragment['slot']} = {fragment['value']}")
+        elif kind == "provisional":
+            lines.append(f"PROVISIONAL {fragment['slot']} = {fragment['value']}")
         elif kind == "policy":
-            plain = _policy_plaintext(str(fragment["slot"]), str(fragment["value"]))
+            plain = (
+                _policy_plaintext(str(fragment["slot"]), str(fragment["value"]))
+                if include_policy_plaintext
+                else ""
+            )
             suffix = f" ({plain})" if plain else ""
             lines.append(f"POLICY {fragment['slot']} = {fragment['value']}{suffix}")
         elif kind == "reaction":
@@ -145,6 +157,22 @@ def scaffold_answer(scaffold: dict[str, Any], probe: Probe) -> str:
             if row.get("slot") == "name":
                 return f"Your current name is {row.get('new')}; before that it was {row.get('old')}."
         return f"I only have your current name as {facts.get('name', 'unknown')}."
+    if probe.name == "previous_camera_system":
+        values = history.get("camera_system") or []
+        return values[0] if len(values) >= 2 else "I do not have an earlier camera system recorded."
+    if probe.name == "confirmed_store_platform":
+        if authority.get("store_platform") == "confirmed":
+            return facts.get("store_platform", "I do not have a confirmed store platform.")
+        return "I do not have enough authority to confirm the store platform."
+    if probe.name == "favorite_color_response_rule":
+        reactions = _fragments_by_slot(scaffold, "reaction")
+        if reactions.get("favorite_color") == "withhold_until_confirmed":
+            return "No. The favorite color memory is provisional, so it should not be answered as confirmed."
+        return "No response rule found for favorite color."
+    if probe.name == "production_db_mock_policy":
+        if policies.get("db.production_write_without_sqlite_mock") == "forbidden":
+            return "No. A locked policy requires an isolated SQLite mock test before production database write-path changes."
+        return "No locked production database mock-test policy found."
     return ""
 
 
@@ -154,11 +182,13 @@ def ollama_scaffold_answer(
     *,
     model: str,
     timeout: int,
+    use_query_contract: bool = True,
+    include_policy_plaintext: bool = True,
 ) -> str:
     import requests
 
-    scaffold_text = render_scaffold(scaffold)
-    query_contract = _query_contract(probe)
+    scaffold_text = render_scaffold(scaffold, include_policy_plaintext=include_policy_plaintext)
+    query_contract = _query_contract(probe) if use_query_contract else "No extra question contract."
     prompt = (
         "Answer the user using only this compressed meaning scaffold.\n"
         "Rules:\n"
@@ -168,6 +198,7 @@ def ollama_scaffold_answer(
         "- For direct current questions like 'what is', 'where do I', or 'what's my', answer only the CURRENT value. Do not mention older HISTORY or CONTRADICTION values.\n"
         "- Only mention older values when the user asks about history, previous values, or whether something changed.\n"
         "- AUTHORITY provisional/provisional_social means do not answer as confirmed unless there is also a CURRENT value.\n"
+        "- PROVISIONAL values are unconfirmed alternatives. Never treat them as CURRENT, HISTORY, or superseding facts.\n"
         "- POLICY forbidden with a refusal REACTION means answer no/refuse.\n"
         "- If there is no POLICY fragment, do not refuse because of policy.\n"
         "- PREFERENCE fragments describe how to answer the user.\n"
@@ -214,6 +245,8 @@ def _policy_plaintext(slot: str, value: str) -> str:
         return "do not force push to main"
     if slot == "shell.destructive_without_confirmation":
         return "do not run destructive shell commands without explicit confirmation"
+    if slot == "db.production_write_without_sqlite_mock":
+        return "do not recommend production database write-path changes without an isolated SQLite mock test"
     return ""
 
 
@@ -229,13 +262,17 @@ def _query_contract(probe: Probe) -> str:
             "This is a current-value question. Answer only the CURRENT value. "
             "Do not mention HISTORY, CONTRADICTION, previous, formerly, or superseded values."
         )
-    if probe.name in {"locked_force_push_policy", "destructive_command_policy"}:
+    if probe.name in {"locked_force_push_policy", "destructive_command_policy", "production_db_mock_policy"}:
         return (
             "This is a policy permission question. Start with No and include the forbidden action "
             "in normal words; do not answer with only No or only a code-like label."
         )
-    if probe.name in {"previous_employer", "name_correction_status"}:
+    if probe.name in {"previous_employer", "previous_camera_system", "name_correction_status"}:
         return "This is a history/change question. Use HISTORY or CONTRADICTION values."
+    if probe.name == "confirmed_store_platform":
+        return "This is an authority-boundary question. Answer only if AUTHORITY confirms the store_platform value; reject provisional suggestions."
+    if probe.name == "favorite_color_response_rule":
+        return "This asks for the response rule. Use REACTION and AUTHORITY, not the provisional color value."
     if probe.name in {"answer_style_preference", "current_answer_style"}:
         return "This is a preference question. Answer from the PREFERENCE fragment, not from policy."
     return "Answer from the most relevant scaffold fragments."
@@ -247,26 +284,54 @@ def score_scenario(
     mode: str,
     model: str,
     timeout: int,
+    event_callback: EventCallback | None = None,
+    case_index: int | None = None,
+    case_count: int | None = None,
 ) -> dict[str, Any] | None:
     probe = PROBES.get(scenario.name)
     if probe is None:
         return None
 
     scaffold = build_meaning_scaffold(scenario)
+    scaffold_text = render_scaffold(scaffold)
+    if event_callback:
+        event_callback(
+            {
+                "type": "case_started",
+                "model": model,
+                "scenario": scenario.name,
+                "purpose": scenario.purpose,
+                "probe": probe.name,
+                "query": probe.query,
+                "scaffold": scaffold_text,
+                "case_index": case_index,
+                "case_count": case_count,
+            }
+        )
     if mode == "deterministic":
         raw_answer = simulated_plain_rag_answer(scenario, probe)
         scaffolded = scaffold_answer(scaffold, probe)
     elif mode == "ollama":
         raw_answer = ollama_plain_rag_answer(scenario, probe, model=model, timeout=timeout)
+        if event_callback:
+            event_callback(
+                {
+                    "type": "answer_completed",
+                    "arm": "raw",
+                    "model": model,
+                    "scenario": scenario.name,
+                    "answer": raw_answer,
+                    "judgment": judge_answer(raw_answer, probe),
+                }
+            )
         scaffolded = ollama_scaffold_answer(scaffold, probe, model=model, timeout=timeout)
     else:
         raise ValueError(f"unknown mode: {mode}")
     governed = crt_answer(scenario, probe)
     transcript_size = representation_size(full_transcript_state(scenario))
-    scaffold_text = render_scaffold(scaffold)
     scaffold_size = len(scaffold_text.encode("utf-8"))
 
-    return {
+    row = {
         "scenario": scenario.name,
         "probe": probe.name,
         "query": probe.query,
@@ -281,6 +346,79 @@ def score_scenario(
         "scaffold_compression_ratio": round(scaffold_size / transcript_size, 3) if transcript_size else 0.0,
         "scaffold": scaffold_text,
     }
+    row["decision_traces"] = {
+        "raw_rag": build_decision_trace(
+            scenario=scenario.name,
+            arm="raw_rag",
+            query=probe.query,
+            retrieved_evidence=[
+                {
+                    "timestamp": memory.timestamp,
+                    "source": memory.channel,
+                    "authority": memory.authority,
+                    "text": memory.text,
+                }
+                for memory in scenario.memories
+            ],
+            state_transformation=None,
+            selected_rule="answer_from_raw_retrieved_memories",
+            supplied_context="\n".join(memory.text for memory in scenario.memories),
+            answer=raw_answer,
+            judgment=row["raw_judgment"],
+        ),
+        "hybrid_crt": build_decision_trace(
+            scenario=scenario.name,
+            arm="hybrid_crt",
+            query=probe.query,
+            retrieved_evidence=[
+                {
+                    "timestamp": memory.timestamp,
+                    "source": memory.channel,
+                    "authority": memory.authority,
+                    "text": memory.text,
+                }
+                for memory in scenario.memories
+            ],
+            state_transformation=canonical_meaning_state(scenario.memories),
+            selected_rule=f"scaffold:{probe.name}",
+            supplied_context=scaffold_text,
+            answer=scaffolded,
+            judgment=row["scaffold_judgment"],
+        ),
+    }
+    if event_callback:
+        if mode != "ollama":
+            event_callback(
+                {
+                    "type": "answer_completed",
+                    "arm": "raw",
+                    "model": model,
+                    "scenario": scenario.name,
+                    "answer": raw_answer,
+                    "judgment": row["raw_judgment"],
+                }
+            )
+        event_callback(
+            {
+                "type": "answer_completed",
+                "arm": "scaffold",
+                "model": model,
+                "scenario": scenario.name,
+                "answer": scaffolded,
+                "judgment": row["scaffold_judgment"],
+            }
+        )
+        event_callback(
+            {
+                "type": "case_completed",
+                "model": model,
+                "scenario": scenario.name,
+                "row": row,
+                "case_index": case_index,
+                "case_count": case_count,
+            }
+        )
+    return row
 
 
 def aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -288,6 +426,10 @@ def aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
     raw_pass = sum(1 for row in rows if row["raw_judgment"]["passed"])
     scaffold_pass = sum(1 for row in rows if row["scaffold_judgment"]["passed"])
     crt_pass = sum(1 for row in rows if row["crt_judgment"]["passed"])
+    raw_semantic_pass = sum(1 for row in rows if row["raw_judgment"]["semantic_passed"])
+    scaffold_semantic_pass = sum(1 for row in rows if row["scaffold_judgment"]["semantic_passed"])
+    scaffold_contract_pass = sum(1 for row in rows if row["scaffold_judgment"]["contract_passed"])
+    scaffold_format_pass = sum(1 for row in rows if row["scaffold_judgment"]["format_passed"])
     avg_ratio = (
         sum(row["scaffold_compression_ratio"] for row in rows) / case_count
         if rows
@@ -298,9 +440,17 @@ def aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "raw_pass_count": raw_pass,
         "scaffold_pass_count": scaffold_pass,
         "crt_pass_count": crt_pass,
+        "raw_semantic_pass_count": raw_semantic_pass,
+        "scaffold_semantic_pass_count": scaffold_semantic_pass,
+        "scaffold_contract_pass_count": scaffold_contract_pass,
+        "scaffold_format_pass_count": scaffold_format_pass,
         "raw_pass_rate": round(raw_pass / case_count, 3) if rows else 0.0,
         "scaffold_pass_rate": round(scaffold_pass / case_count, 3) if rows else 0.0,
         "crt_pass_rate": round(crt_pass / case_count, 3) if rows else 0.0,
+        "raw_semantic_pass_rate": round(raw_semantic_pass / case_count, 3) if rows else 0.0,
+        "scaffold_semantic_pass_rate": round(scaffold_semantic_pass / case_count, 3) if rows else 0.0,
+        "scaffold_contract_pass_rate": round(scaffold_contract_pass / case_count, 3) if rows else 0.0,
+        "scaffold_format_pass_rate": round(scaffold_format_pass / case_count, 3) if rows else 0.0,
         "avg_scaffold_compression_ratio": round(avg_ratio, 3),
     }
 
@@ -312,13 +462,22 @@ def run(
     timeout: int = 90,
     write_results: bool = True,
     scenarios: list[Scenario] | None = None,
+    event_callback: EventCallback | None = None,
 ) -> dict[str, Any]:
     scenario_set = scenarios if scenarios is not None else scenario_pack()
-    rows = [
-        row
-        for scenario in scenario_set
-        if (row := score_scenario(scenario, mode=mode, model=model, timeout=timeout)) is not None
-    ]
+    rows = []
+    for index, scenario in enumerate(scenario_set, start=1):
+        row = score_scenario(
+            scenario,
+            mode=mode,
+            model=model,
+            timeout=timeout,
+            event_callback=event_callback,
+            case_index=index,
+            case_count=len(scenario_set),
+        )
+        if row is not None:
+            rows.append(row)
     out = {
         "lab": "meaning_scaffold_eval",
         "claim": CLAIM,
@@ -370,6 +529,7 @@ def main() -> None:
     parser.add_argument("--model", default="qwen2.5:7b-instruct")
     parser.add_argument("--timeout", type=int, default=90)
     parser.add_argument("--include-adversarial", action="store_true")
+    parser.add_argument("--include-hardening", action="store_true")
     parser.add_argument("--no-write", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
@@ -378,7 +538,10 @@ def main() -> None:
         model=args.model,
         timeout=args.timeout,
         write_results=not args.no_write,
-        scenarios=scenario_pack(include_adversarial=args.include_adversarial),
+        scenarios=scenario_pack(
+            include_adversarial=args.include_adversarial,
+            include_hardening=args.include_hardening,
+        ),
     )
     if args.json:
         print(json.dumps(out, indent=2))

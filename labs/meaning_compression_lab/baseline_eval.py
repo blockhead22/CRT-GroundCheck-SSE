@@ -210,11 +210,15 @@ def main() -> None:
     parser.add_argument("--no-write", action="store_true", help="Do not write a result JSON file.")
     parser.add_argument("--json", action="store_true", help="Print raw JSON instead of table report.")
     parser.add_argument("--include-adversarial", action="store_true", help="Include the adversarial starter scenario pack.")
+    parser.add_argument("--include-hardening", action="store_true", help="Include layer-specific scaffold hardening probes.")
     parser.add_argument("--crt-db", type=Path, help="Optional CRT memory SQLite DB to replay as an extra scenario.")
     parser.add_argument("--thread-id", help="Optional thread_id filter for --crt-db replay.")
     args = parser.parse_args()
 
-    scenarios = scenario_pack(include_adversarial=args.include_adversarial)
+    scenarios = scenario_pack(
+        include_adversarial=args.include_adversarial,
+        include_hardening=args.include_hardening,
+    )
     if args.crt_db:
         scenarios.append(scenario_from_crt_memory_db(args.crt_db, thread_id=args.thread_id))
     out = run(write_results=not args.no_write, scenarios=scenarios)

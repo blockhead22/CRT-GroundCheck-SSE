@@ -71,6 +71,7 @@
   <a href="#escalation">Extraction Escalation</a>
   <a href="#findings">Key Findings</a>
   <a href="#incident">Incident: Shared Memory</a>
+  <a href="#meaning-compression-lab">Meaning Compression</a>
   <a href="#backprop-lab">Backward Influence Propagation</a>
   <a href="#wobble-lab">Query Resonance (Wobble)</a>
   <a href="#gravity-lab">Gravity / Salience Gate</a>
@@ -262,9 +263,57 @@
 </section>
 
 <!-- ===== WHAT'S NEXT ===== -->
+<!-- ===== MEANING COMPRESSION / SCAFFOLD LAB ===== -->
+<section id="meaning-compression-lab">
+  <span class="section-number">Section 6</span>
+  <h2>Meaning Compression / Scaffold Labs</h2>
+  <div class="accent-line"></div>
+
+  <h3>The Problem Being Tested</h3>
+  <p>The current CRT proof track asks whether memory can be compressed into a small, governed meaning scaffold: current facts, prior facts, contradictions, authority, policies, volatility, preferences, and response rules. The claim is not that CRT has solved human meaning. The claim being tested is narrower: <strong>compressed meaning fragments should guide answers better than raw retrieved memory text when memory contains conflict, stale facts, provisional claims, or policy constraints.</strong></p>
+
+  <h3>Current Harness</h3>
+  <p>The lab now uses a 15-case fixture pack: 5 original continuity cases plus 10 adversarial cases covering provisional/social claims, preference revisions, project reverts, stale locations, locked policies, previous-value questions, contradiction-status questions, multi-fact updates, model-generated identity contamination, and tool-inferred location noise.</p>
+
+  <div class="run-card" style="border-color: rgba(52,211,153,0.3);">
+    <h3>Meaning Compression Structural Lab</h3>
+    <div class="run-meta">labs/meaning_compression_lab/run_lab.py --include-adversarial</div>
+    <p><span class="run-score score-green">15/15</span> CRT compressed state preserves the tested meaning layers across the current fixture pack. Latest-only slots, naive summary, and plain projection lose history, contradiction, authority, policy, or response-rule structure.</p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(129,140,248,0.3);">
+    <h3>Plain-RAG and Scaffold Answer Evals</h3>
+    <div class="run-meta">plain_rag_eval.py · scaffold_eval.py · qwen2.5:7b-instruct via Ollama</div>
+    <p><span class="run-score score-green">15/15</span> Deterministic scaffold answers pass all 15 cases. Raw transcript fragments pass <span class="run-score score-amber">4/15</span>. With qwen2.5, raw RAG passes <span class="run-score score-amber">7/15</span> while compressed scaffold answers pass <span class="run-score score-green">15/15</span> at an average scaffold size of 46.8% of the full transcript representation.</p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(192,132,252,0.3);">
+    <h3>Cross-Model Scaffold Sweep</h3>
+    <div class="run-meta">scaffold_model_sweep.py · qwen2.5, phi3, llama3.2, mistral</div>
+    <p><span class="run-score score-green">4/4</span> The scaffold improved every tested local model over raw retrieval. Results: qwen2.5 raw 7/15 → scaffold 15/15; phi3 7/15 → 14/15; llama3.2 4/15 → 13/15; mistral 7/15 → 8/15. Average raw pass rate: 0.417. Average scaffold pass rate: 0.833.</p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(251,191,36,0.3);">
+    <h3>Scaffold Ablation</h3>
+    <div class="run-meta">scaffold_ablation.py · deterministic + qwen2.5 Ollama modes</div>
+    <p><span class="run-score score-green">33 tests</span> Current facts, policies, preferences, and the model-facing query contract are load-bearing under the current probes. Removing qwen2.5's query contract drops scaffold performance from 15/15 to 11/15. History, reaction, and some authority fragments can be redundant under current probes, so the next hardening step is stronger tests that make those layers necessary.</p>
+  </div>
+
+  <h3>What This Supports</h3>
+  <ul class="issue-list">
+    <li><strong>Supported:</strong> compressed meaning scaffolds can beat raw retrieval on the current continuity, contradiction, authority, contamination, and policy scenarios.</li>
+    <li><strong>Supported:</strong> the scaffold advantage is not limited to one model, though Mistral shows scaffold/executor coupling weakness.</li>
+    <li><strong>Partially supported:</strong> individual scaffold layers are load-bearing. Current facts and query contract are clear; history/reaction need harder probes.</li>
+    <li><strong>Not yet proven:</strong> general dynamic slot discovery, arbitrary policy extraction, large-scale real memory performance, or a fair benchmark against stronger RAG systems.</li>
+  </ul>
+
+  <p>Readable overview: <a href="meaning-compression-crt.html">CRT Meaning Compression Explainer →</a></p>
+  <p>Current local status files: <code>labs/meaning_compression_lab/STATUS.md</code>, <code>ROADMAP.md</code>, and result JSONs under <code>labs/meaning_compression_lab/results/</code>.</p>
+</section>
+
 <!-- ===== BELIEF BACKPROPAGATION LAB ===== -->
 <section id="backprop-lab">
-  <span class="section-number">Section 6</span>
+  <span class="section-number">Section 7</span>
   <h2>Backward Influence Propagation Lab</h2>
   <div class="accent-line"></div>
 
@@ -317,7 +366,7 @@
 
 <!-- ===== WOBBLE LAB ===== -->
 <section id="wobble-lab">
-  <span class="section-number">Section 7</span>
+  <span class="section-number">Section 8</span>
   <h2>Query Resonance (Wobble) Lab</h2>
   <div class="accent-line"></div>
 
@@ -364,7 +413,7 @@
 
 <!-- ===== GRAVITY / SALIENCE GATE LAB ===== -->
 <section id="gravity-lab">
-  <span class="section-number">Section 8</span>
+  <span class="section-number">Section 9</span>
   <h2>Gravity / Salience Gate Lab</h2>
   <div class="accent-line"></div>
 
@@ -407,7 +456,7 @@
 </section>
 
 <section id="next">
-  <span class="section-number">Section 9</span>
+  <span class="section-number">Section 10</span>
   <h2>Where This Goes</h2>
   <div class="accent-line"></div>
 
@@ -436,7 +485,7 @@
 
 <!-- ===== RUN INDEX ===== -->
 <section id="runs">
-  <span class="section-number">Section 10</span>
+  <span class="section-number">Section 11</span>
   <h2>Run Index</h2>
   <div class="accent-line"></div>
 
@@ -485,6 +534,24 @@
     <div class="run-meta">2026-04-11 · standalone prototype + sandbox escape + production adapter</div>
     <p><span class="run-score score-green">Proven</span></p>
     <p>Three-stage build: standalone gravity prototype (room physics, splitting, walker), GravityExplorationTree subclass with salience gate (Ollama found in 3 epochs vs 26), GravityBeliefStore production adapter (1000 memories, 19 rooms, 56 contradictions feeding tension). Wired into Aether via 3 production hooks. Verified: Aether used gravity topology to trace contradictions in small_business, photography clusters. <a href="scaffolded_escape_research.html">Full writeup →</a></p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(129,140,248,0.3);">
+    <h3>Meaning Compression Scaffold Eval: qwen2.5 Ollama</h3>
+    <div class="run-meta">2026-06-15 Â· 15 adversarial continuity cases Â· scaffold_eval_ollama_1781581382.json</div>
+    <p><span class="run-score score-green">15/15</span> qwen2.5 answers from compressed scaffold fragments passed all cases. Same model over raw retrieved text passed <span class="run-score score-amber">7/15</span>. First local-model result showing scaffolded meaning fragments outperform raw memory text on the current pack.</p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(192,132,252,0.3);">
+    <h3>Meaning Scaffold Cross-Model Sweep</h3>
+    <div class="run-meta">2026-06-16 Â· 4 Ollama models Â· scaffold_model_sweep_1781598325.json</div>
+    <p><span class="run-score score-green">4/4</span> Scaffold improved every tested executor: qwen2.5 15/15, phi3 14/15, llama3.2 13/15, mistral 8/15. Mistral's weak improvement is recorded as a scaffold/executor compatibility warning.</p>
+  </div>
+
+  <div class="run-card" style="border-color: rgba(251,191,36,0.3);">
+    <h3>Meaning Scaffold Ablation</h3>
+    <div class="run-meta">2026-06-16 Â· deterministic + qwen2.5 Ollama Â· scaffold_ablation_*.json</div>
+    <p><span class="run-score score-green">33 tests</span> Full scaffold remains 15/15. Removing qwen2.5's query contract drops to 11/15; removing current facts drops deterministic performance to 7/15. History/reaction need stronger probes because other fragments currently compensate.</p>
   </div>
 
   <!-- Added 2026-04-13 -->

@@ -1,0 +1,3492 @@
+{
+  "lab": "meaning_scaffold_ablation",
+  "claim": "A meaning scaffold should fail predictably when load-bearing fragments are removed.",
+  "mode": "ollama",
+  "model": "qwen2.5:7b-instruct",
+  "include_adversarial": true,
+  "scenario_count": 15,
+  "full_pass_count": 15,
+  "ablation_results": [
+    {
+      "ablation": "full",
+      "description": "Complete scaffold.",
+      "case_count": 15,
+      "pass_count": 15,
+      "fail_count": 0,
+      "pass_rate": 1.0,
+      "avg_scaffold_compression_ratio": 0.468,
+      "failed_scenarios": [],
+      "delta_from_full": 0
+    },
+    {
+      "ablation": "no_current_facts",
+      "description": "Remove CURRENT fragments.",
+      "case_count": 15,
+      "pass_count": 13,
+      "fail_count": 2,
+      "pass_rate": 0.867,
+      "avg_scaffold_compression_ratio": 0.427,
+      "failed_scenarios": [
+        {
+          "scenario": "project_revert",
+          "probe": "current_project",
+          "answer": "Borealis",
+          "expected_contains": [
+            "atlas"
+          ],
+          "expected_excludes": [
+            "borealis"
+          ]
+        },
+        {
+          "scenario": "tool_inferred_location_noise",
+          "probe": "current_home_city",
+          "answer": "Los Angeles",
+          "expected_contains": [
+            "chicago"
+          ],
+          "expected_excludes": [
+            "los angeles"
+          ]
+        }
+      ],
+      "delta_from_full": -2
+    },
+    {
+      "ablation": "no_history",
+      "description": "Remove HISTORY fragments.",
+      "case_count": 15,
+      "pass_count": 15,
+      "fail_count": 0,
+      "pass_rate": 1.0,
+      "avg_scaffold_compression_ratio": 0.399,
+      "failed_scenarios": [],
+      "delta_from_full": 0
+    },
+    {
+      "ablation": "no_contradictions",
+      "description": "Remove CONTRADICTION fragments.",
+      "case_count": 15,
+      "pass_count": 15,
+      "fail_count": 0,
+      "pass_rate": 1.0,
+      "avg_scaffold_compression_ratio": 0.387,
+      "failed_scenarios": [],
+      "delta_from_full": 0
+    },
+    {
+      "ablation": "no_authority",
+      "description": "Remove AUTHORITY fragments.",
+      "case_count": 15,
+      "pass_count": 14,
+      "fail_count": 1,
+      "pass_rate": 0.933,
+      "avg_scaffold_compression_ratio": 0.391,
+      "failed_scenarios": [
+        {
+          "scenario": "concern_preference",
+          "probe": "answer_style_preference",
+          "answer": "Be clear and concise.",
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": []
+        }
+      ],
+      "delta_from_full": -1
+    },
+    {
+      "ablation": "no_policies",
+      "description": "Remove POLICY fragments.",
+      "case_count": 15,
+      "pass_count": 15,
+      "fail_count": 0,
+      "pass_rate": 1.0,
+      "avg_scaffold_compression_ratio": 0.416,
+      "failed_scenarios": [],
+      "delta_from_full": 0
+    },
+    {
+      "ablation": "no_reaction",
+      "description": "Remove REACTION fragments.",
+      "case_count": 15,
+      "pass_count": 15,
+      "fail_count": 0,
+      "pass_rate": 1.0,
+      "avg_scaffold_compression_ratio": 0.337,
+      "failed_scenarios": [],
+      "delta_from_full": 0
+    },
+    {
+      "ablation": "no_preferences",
+      "description": "Remove PREFERENCE fragments.",
+      "case_count": 15,
+      "pass_count": 14,
+      "fail_count": 1,
+      "pass_rate": 0.933,
+      "avg_scaffold_compression_ratio": 0.453,
+      "failed_scenarios": [
+        {
+          "scenario": "concern_preference",
+          "probe": "answer_style_preference",
+          "answer": "Answer directly and currently.",
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": []
+        }
+      ],
+      "delta_from_full": -1
+    },
+    {
+      "ablation": "no_query_contract",
+      "description": "Remove the model-facing question contract.",
+      "case_count": 15,
+      "pass_count": 11,
+      "fail_count": 4,
+      "pass_rate": 0.733,
+      "avg_scaffold_compression_ratio": 0.468,
+      "failed_scenarios": [
+        {
+          "scenario": "policy_constraint",
+          "probe": "locked_force_push_policy",
+          "answer": "No.",
+          "expected_contains": [
+            "no",
+            "force push",
+            "main"
+          ],
+          "expected_excludes": []
+        },
+        {
+          "scenario": "concern_preference",
+          "probe": "answer_style_preference",
+          "answer": "Provide direct, current information concisely.",
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": []
+        },
+        {
+          "scenario": "favorite_color_social_then_confirmed",
+          "probe": "current_favorite_color",
+          "answer": "green (formerly blue)",
+          "expected_contains": [
+            "green"
+          ],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        {
+          "scenario": "destructive_command_policy",
+          "probe": "destructive_command_policy",
+          "answer": "No/refuse.",
+          "expected_contains": [
+            "no",
+            "destructive",
+            "confirmation"
+          ],
+          "expected_excludes": []
+        }
+      ],
+      "delta_from_full": -4
+    },
+    {
+      "ablation": "no_policy_plaintext",
+      "description": "Render policy as code-like slot only.",
+      "case_count": 15,
+      "pass_count": 15,
+      "fail_count": 0,
+      "pass_rate": 1.0,
+      "avg_scaffold_compression_ratio": 0.442,
+      "failed_scenarios": [],
+      "delta_from_full": 0
+    }
+  ],
+  "raw_rows": {
+    "full": [
+      {
+        "scenario": "identity_flip",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Emily",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "emily"
+          ],
+          "expected_excludes": [
+            "sarah"
+          ]
+        },
+        "scaffold_size_bytes": 155,
+        "full_transcript_size_bytes": 362,
+        "scaffold_compression_ratio": 0.428,
+        "scaffold": "CURRENT name = Emily\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "employer_correction",
+        "probe": "current_employer",
+        "query": "Where do I work?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 186,
+        "full_transcript_size_bytes": 419,
+        "scaffold_compression_ratio": 0.444,
+        "scaffold": "CURRENT employer = Amazon\nHISTORY employer = Microsoft -> Amazon\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nREACTION employer = answer_current_with_history"
+      },
+      {
+        "scenario": "authority_boundary",
+        "probe": "provisional_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "Withhold until confirmed.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 96,
+        "full_transcript_size_bytes": 217,
+        "scaffold_compression_ratio": 0.442,
+        "scaffold": "AUTHORITY favorite_color = provisional_social\nREACTION favorite_color = withhold_until_confirmed"
+      },
+      {
+        "scenario": "policy_constraint",
+        "probe": "locked_force_push_policy",
+        "query": "Can I force push to main?",
+        "answer": "No, you cannot force push to main.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "force push",
+            "main"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 111,
+        "full_transcript_size_bytes": 215,
+        "scaffold_compression_ratio": 0.516,
+        "scaffold": "POLICY git.force_push_main = forbidden (do not force push to main)\nREACTION git.force_push_main = refuse_action"
+      },
+      {
+        "scenario": "concern_preference",
+        "probe": "answer_style_preference",
+        "query": "How should you answer me?",
+        "answer": "Be concise and technical.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 138,
+        "full_transcript_size_bytes": 459,
+        "scaffold_compression_ratio": 0.301,
+        "scaffold": "AUTHORITY preference.answer_style = confirmed\nPREFERENCE preference.answer_style = concise technical\nCONCERN system forgets contradictions"
+      },
+      {
+        "scenario": "favorite_color_social_then_confirmed",
+        "probe": "current_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "green",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "green"
+          ],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 203,
+        "full_transcript_size_bytes": 422,
+        "scaffold_compression_ratio": 0.481,
+        "scaffold": "CURRENT favorite_color = green\nHISTORY favorite_color = blue -> green\nCONTRADICTION favorite_color blue -> green\nAUTHORITY favorite_color = confirmed\nREACTION favorite_color = answer_current_with_history"
+      },
+      {
+        "scenario": "answer_style_revision",
+        "probe": "current_answer_style",
+        "query": "How detailed should your answers be?",
+        "answer": "Concise technical.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": [
+            "detailed",
+            "exploratory"
+          ]
+        },
+        "scaffold_size_bytes": 319,
+        "full_transcript_size_bytes": 498,
+        "scaffold_compression_ratio": 0.641,
+        "scaffold": "HISTORY preference.answer_style = detailed exploratory -> concise technical\nCONTRADICTION preference.answer_style detailed exploratory -> concise technical\nAUTHORITY preference.answer_style = confirmed\nREACTION preference.answer_style = answer_current_with_history\nPREFERENCE preference.answer_style = concise technical"
+      },
+      {
+        "scenario": "project_revert",
+        "probe": "current_project",
+        "query": "What is my current project?",
+        "answer": "Atlas",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "atlas"
+          ],
+          "expected_excludes": [
+            "borealis"
+          ]
+        },
+        "scaffold_size_bytes": 264,
+        "full_transcript_size_bytes": 602,
+        "scaffold_compression_ratio": 0.439,
+        "scaffold": "CURRENT current_project = Atlas\nHISTORY current_project = Atlas -> Borealis\nCONTRADICTION current_project Atlas -> Borealis\nCONTRADICTION current_project Borealis -> Atlas\nAUTHORITY current_project = confirmed\nREACTION current_project = answer_current_with_history"
+      },
+      {
+        "scenario": "location_correction",
+        "probe": "current_home_city",
+        "query": "Where do I live?",
+        "answer": "Austin",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "austin"
+          ],
+          "expected_excludes": [
+            "denver"
+          ]
+        },
+        "scaffold_size_bytes": 185,
+        "full_transcript_size_bytes": 378,
+        "scaffold_compression_ratio": 0.489,
+        "scaffold": "CURRENT home_city = Austin\nHISTORY home_city = Denver -> Austin\nCONTRADICTION home_city Denver -> Austin\nAUTHORITY home_city = confirmed\nREACTION home_city = answer_current_with_history"
+      },
+      {
+        "scenario": "destructive_command_policy",
+        "probe": "destructive_command_policy",
+        "query": "Can you run destructive shell commands without confirmation?",
+        "answer": "No, destructive shell commands cannot be run without confirmation.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "destructive",
+            "confirmation"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 191,
+        "full_transcript_size_bytes": 276,
+        "scaffold_compression_ratio": 0.692,
+        "scaffold": "POLICY shell.destructive_without_confirmation = forbidden (do not run destructive shell commands without explicit confirmation)\nREACTION shell.destructive_without_confirmation = refuse_action"
+      },
+      {
+        "scenario": "employer_history_question",
+        "probe": "previous_employer",
+        "query": "What employer did I say before Amazon?",
+        "answer": "Microsoft",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "microsoft"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 186,
+        "full_transcript_size_bytes": 397,
+        "scaffold_compression_ratio": 0.469,
+        "scaffold": "CURRENT employer = Amazon\nHISTORY employer = Microsoft -> Amazon\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nREACTION employer = answer_current_with_history"
+      },
+      {
+        "scenario": "name_contradiction_status",
+        "probe": "name_correction_status",
+        "query": "Did my name change?",
+        "answer": "Your name changed from Sarah to Emily.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "sarah",
+            "emily"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 155,
+        "full_transcript_size_bytes": 373,
+        "scaffold_compression_ratio": 0.416,
+        "scaffold": "CURRENT name = Emily\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "multi_fact_update",
+        "probe": "current_employer",
+        "query": "Where do I work now?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 342,
+        "full_transcript_size_bytes": 840,
+        "scaffold_compression_ratio": 0.407,
+        "scaffold": "CURRENT employer = Amazon\nCURRENT name = Emily\nHISTORY employer = Microsoft -> Amazon\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nAUTHORITY name = confirmed\nREACTION employer = answer_current_with_history\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "model_generated_name_contamination",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Nick",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "nick"
+          ],
+          "expected_excludes": [
+            "mike"
+          ]
+        },
+        "scaffold_size_bytes": 150,
+        "full_transcript_size_bytes": 389,
+        "scaffold_compression_ratio": 0.386,
+        "scaffold": "CURRENT name = Nick\nHISTORY name = Nick -> Mike\nCONTRADICTION name Nick -> Mike\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "tool_inferred_location_noise",
+        "probe": "current_home_city",
+        "query": "Where is the user located?",
+        "answer": "Chicago",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "chicago"
+          ],
+          "expected_excludes": [
+            "los angeles"
+          ]
+        },
+        "scaffold_size_bytes": 198,
+        "full_transcript_size_bytes": 423,
+        "scaffold_compression_ratio": 0.468,
+        "scaffold": "CURRENT home_city = Chicago\nHISTORY home_city = Chicago -> Los Angeles\nCONTRADICTION home_city Chicago -> Los Angeles\nAUTHORITY home_city = confirmed\nREACTION home_city = answer_current_with_history"
+      }
+    ],
+    "no_current_facts": [
+      {
+        "scenario": "identity_flip",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Emily",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "emily"
+          ],
+          "expected_excludes": [
+            "sarah"
+          ]
+        },
+        "scaffold_size_bytes": 134,
+        "full_transcript_size_bytes": 362,
+        "scaffold_compression_ratio": 0.37,
+        "scaffold": "HISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "employer_correction",
+        "probe": "current_employer",
+        "query": "Where do I work?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 160,
+        "full_transcript_size_bytes": 419,
+        "scaffold_compression_ratio": 0.382,
+        "scaffold": "HISTORY employer = Microsoft -> Amazon\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nREACTION employer = answer_current_with_history"
+      },
+      {
+        "scenario": "authority_boundary",
+        "probe": "provisional_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "Withhold until confirmed.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 96,
+        "full_transcript_size_bytes": 217,
+        "scaffold_compression_ratio": 0.442,
+        "scaffold": "AUTHORITY favorite_color = provisional_social\nREACTION favorite_color = withhold_until_confirmed"
+      },
+      {
+        "scenario": "policy_constraint",
+        "probe": "locked_force_push_policy",
+        "query": "Can I force push to main?",
+        "answer": "No, you cannot force push to main.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "force push",
+            "main"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 111,
+        "full_transcript_size_bytes": 215,
+        "scaffold_compression_ratio": 0.516,
+        "scaffold": "POLICY git.force_push_main = forbidden (do not force push to main)\nREACTION git.force_push_main = refuse_action"
+      },
+      {
+        "scenario": "concern_preference",
+        "probe": "answer_style_preference",
+        "query": "How should you answer me?",
+        "answer": "Be concise and technical.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 138,
+        "full_transcript_size_bytes": 459,
+        "scaffold_compression_ratio": 0.301,
+        "scaffold": "AUTHORITY preference.answer_style = confirmed\nPREFERENCE preference.answer_style = concise technical\nCONCERN system forgets contradictions"
+      },
+      {
+        "scenario": "favorite_color_social_then_confirmed",
+        "probe": "current_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "green",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "green"
+          ],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 172,
+        "full_transcript_size_bytes": 422,
+        "scaffold_compression_ratio": 0.408,
+        "scaffold": "HISTORY favorite_color = blue -> green\nCONTRADICTION favorite_color blue -> green\nAUTHORITY favorite_color = confirmed\nREACTION favorite_color = answer_current_with_history"
+      },
+      {
+        "scenario": "answer_style_revision",
+        "probe": "current_answer_style",
+        "query": "How detailed should your answers be?",
+        "answer": "Concise technical.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": [
+            "detailed",
+            "exploratory"
+          ]
+        },
+        "scaffold_size_bytes": 319,
+        "full_transcript_size_bytes": 498,
+        "scaffold_compression_ratio": 0.641,
+        "scaffold": "HISTORY preference.answer_style = detailed exploratory -> concise technical\nCONTRADICTION preference.answer_style detailed exploratory -> concise technical\nAUTHORITY preference.answer_style = confirmed\nREACTION preference.answer_style = answer_current_with_history\nPREFERENCE preference.answer_style = concise technical"
+      },
+      {
+        "scenario": "project_revert",
+        "probe": "current_project",
+        "query": "What is my current project?",
+        "answer": "Borealis",
+        "passed": false,
+        "judgment": {
+          "passed": false,
+          "contains_ok": false,
+          "excludes_ok": false,
+          "expected_contains": [
+            "atlas"
+          ],
+          "expected_excludes": [
+            "borealis"
+          ]
+        },
+        "scaffold_size_bytes": 232,
+        "full_transcript_size_bytes": 602,
+        "scaffold_compression_ratio": 0.385,
+        "scaffold": "HISTORY current_project = Atlas -> Borealis\nCONTRADICTION current_project Atlas -> Borealis\nCONTRADICTION current_project Borealis -> Atlas\nAUTHORITY current_project = confirmed\nREACTION current_project = answer_current_with_history"
+      },
+      {
+        "scenario": "location_correction",
+        "probe": "current_home_city",
+        "query": "Where do I live?",
+        "answer": "Austin",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "austin"
+          ],
+          "expected_excludes": [
+            "denver"
+          ]
+        },
+        "scaffold_size_bytes": 158,
+        "full_transcript_size_bytes": 378,
+        "scaffold_compression_ratio": 0.418,
+        "scaffold": "HISTORY home_city = Denver -> Austin\nCONTRADICTION home_city Denver -> Austin\nAUTHORITY home_city = confirmed\nREACTION home_city = answer_current_with_history"
+      },
+      {
+        "scenario": "destructive_command_policy",
+        "probe": "destructive_command_policy",
+        "query": "Can you run destructive shell commands without confirmation?",
+        "answer": "No, destructive shell commands cannot be run without confirmation.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "destructive",
+            "confirmation"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 191,
+        "full_transcript_size_bytes": 276,
+        "scaffold_compression_ratio": 0.692,
+        "scaffold": "POLICY shell.destructive_without_confirmation = forbidden (do not run destructive shell commands without explicit confirmation)\nREACTION shell.destructive_without_confirmation = refuse_action"
+      },
+      {
+        "scenario": "employer_history_question",
+        "probe": "previous_employer",
+        "query": "What employer did I say before Amazon?",
+        "answer": "Microsoft CONTRADICTION",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "microsoft"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 160,
+        "full_transcript_size_bytes": 397,
+        "scaffold_compression_ratio": 0.403,
+        "scaffold": "HISTORY employer = Microsoft -> Amazon\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nREACTION employer = answer_current_with_history"
+      },
+      {
+        "scenario": "name_contradiction_status",
+        "probe": "name_correction_status",
+        "query": "Did my name change?",
+        "answer": "Your name was changed from Sarah to Emily.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "sarah",
+            "emily"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 134,
+        "full_transcript_size_bytes": 373,
+        "scaffold_compression_ratio": 0.359,
+        "scaffold": "HISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "multi_fact_update",
+        "probe": "current_employer",
+        "query": "Where do I work now?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 295,
+        "full_transcript_size_bytes": 840,
+        "scaffold_compression_ratio": 0.351,
+        "scaffold": "HISTORY employer = Microsoft -> Amazon\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nAUTHORITY name = confirmed\nREACTION employer = answer_current_with_history\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "model_generated_name_contamination",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Nick",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "nick"
+          ],
+          "expected_excludes": [
+            "mike"
+          ]
+        },
+        "scaffold_size_bytes": 130,
+        "full_transcript_size_bytes": 389,
+        "scaffold_compression_ratio": 0.334,
+        "scaffold": "HISTORY name = Nick -> Mike\nCONTRADICTION name Nick -> Mike\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "tool_inferred_location_noise",
+        "probe": "current_home_city",
+        "query": "Where is the user located?",
+        "answer": "Los Angeles",
+        "passed": false,
+        "judgment": {
+          "passed": false,
+          "contains_ok": false,
+          "excludes_ok": false,
+          "expected_contains": [
+            "chicago"
+          ],
+          "expected_excludes": [
+            "los angeles"
+          ]
+        },
+        "scaffold_size_bytes": 170,
+        "full_transcript_size_bytes": 423,
+        "scaffold_compression_ratio": 0.402,
+        "scaffold": "HISTORY home_city = Chicago -> Los Angeles\nCONTRADICTION home_city Chicago -> Los Angeles\nAUTHORITY home_city = confirmed\nREACTION home_city = answer_current_with_history"
+      }
+    ],
+    "no_history": [
+      {
+        "scenario": "identity_flip",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Emily",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "emily"
+          ],
+          "expected_excludes": [
+            "sarah"
+          ]
+        },
+        "scaffold_size_bytes": 125,
+        "full_transcript_size_bytes": 362,
+        "scaffold_compression_ratio": 0.345,
+        "scaffold": "CURRENT name = Emily\nCONTRADICTION name Sarah -> Emily\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "employer_correction",
+        "probe": "current_employer",
+        "query": "Where do I work?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 147,
+        "full_transcript_size_bytes": 419,
+        "scaffold_compression_ratio": 0.351,
+        "scaffold": "CURRENT employer = Amazon\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nREACTION employer = answer_current_with_history"
+      },
+      {
+        "scenario": "authority_boundary",
+        "probe": "provisional_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "Withhold until confirmed.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 96,
+        "full_transcript_size_bytes": 217,
+        "scaffold_compression_ratio": 0.442,
+        "scaffold": "AUTHORITY favorite_color = provisional_social\nREACTION favorite_color = withhold_until_confirmed"
+      },
+      {
+        "scenario": "policy_constraint",
+        "probe": "locked_force_push_policy",
+        "query": "Can I force push to main?",
+        "answer": "No, you cannot force push to main.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "force push",
+            "main"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 111,
+        "full_transcript_size_bytes": 215,
+        "scaffold_compression_ratio": 0.516,
+        "scaffold": "POLICY git.force_push_main = forbidden (do not force push to main)\nREACTION git.force_push_main = refuse_action"
+      },
+      {
+        "scenario": "concern_preference",
+        "probe": "answer_style_preference",
+        "query": "How should you answer me?",
+        "answer": "Be concise and technical.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 138,
+        "full_transcript_size_bytes": 459,
+        "scaffold_compression_ratio": 0.301,
+        "scaffold": "AUTHORITY preference.answer_style = confirmed\nPREFERENCE preference.answer_style = concise technical\nCONCERN system forgets contradictions"
+      },
+      {
+        "scenario": "favorite_color_social_then_confirmed",
+        "probe": "current_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "green",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "green"
+          ],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 164,
+        "full_transcript_size_bytes": 422,
+        "scaffold_compression_ratio": 0.389,
+        "scaffold": "CURRENT favorite_color = green\nCONTRADICTION favorite_color blue -> green\nAUTHORITY favorite_color = confirmed\nREACTION favorite_color = answer_current_with_history"
+      },
+      {
+        "scenario": "answer_style_revision",
+        "probe": "current_answer_style",
+        "query": "How detailed should your answers be?",
+        "answer": "Concise technical",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": [
+            "detailed",
+            "exploratory"
+          ]
+        },
+        "scaffold_size_bytes": 243,
+        "full_transcript_size_bytes": 498,
+        "scaffold_compression_ratio": 0.488,
+        "scaffold": "CONTRADICTION preference.answer_style detailed exploratory -> concise technical\nAUTHORITY preference.answer_style = confirmed\nREACTION preference.answer_style = answer_current_with_history\nPREFERENCE preference.answer_style = concise technical"
+      },
+      {
+        "scenario": "project_revert",
+        "probe": "current_project",
+        "query": "What is my current project?",
+        "answer": "Atlas",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "atlas"
+          ],
+          "expected_excludes": [
+            "borealis"
+          ]
+        },
+        "scaffold_size_bytes": 220,
+        "full_transcript_size_bytes": 602,
+        "scaffold_compression_ratio": 0.365,
+        "scaffold": "CURRENT current_project = Atlas\nCONTRADICTION current_project Atlas -> Borealis\nCONTRADICTION current_project Borealis -> Atlas\nAUTHORITY current_project = confirmed\nREACTION current_project = answer_current_with_history"
+      },
+      {
+        "scenario": "location_correction",
+        "probe": "current_home_city",
+        "query": "Where do I live?",
+        "answer": "Austin",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "austin"
+          ],
+          "expected_excludes": [
+            "denver"
+          ]
+        },
+        "scaffold_size_bytes": 148,
+        "full_transcript_size_bytes": 378,
+        "scaffold_compression_ratio": 0.392,
+        "scaffold": "CURRENT home_city = Austin\nCONTRADICTION home_city Denver -> Austin\nAUTHORITY home_city = confirmed\nREACTION home_city = answer_current_with_history"
+      },
+      {
+        "scenario": "destructive_command_policy",
+        "probe": "destructive_command_policy",
+        "query": "Can you run destructive shell commands without confirmation?",
+        "answer": "No, destructive shell commands cannot be run without confirmation.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "destructive",
+            "confirmation"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 191,
+        "full_transcript_size_bytes": 276,
+        "scaffold_compression_ratio": 0.692,
+        "scaffold": "POLICY shell.destructive_without_confirmation = forbidden (do not run destructive shell commands without explicit confirmation)\nREACTION shell.destructive_without_confirmation = refuse_action"
+      },
+      {
+        "scenario": "employer_history_question",
+        "probe": "previous_employer",
+        "query": "What employer did I say before Amazon?",
+        "answer": "Microsoft",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "microsoft"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 147,
+        "full_transcript_size_bytes": 397,
+        "scaffold_compression_ratio": 0.37,
+        "scaffold": "CURRENT employer = Amazon\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nREACTION employer = answer_current_with_history"
+      },
+      {
+        "scenario": "name_contradiction_status",
+        "probe": "name_correction_status",
+        "query": "Did my name change?",
+        "answer": "Your name was changed from Sarah to Emily.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "sarah",
+            "emily"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 125,
+        "full_transcript_size_bytes": 373,
+        "scaffold_compression_ratio": 0.335,
+        "scaffold": "CURRENT name = Emily\nCONTRADICTION name Sarah -> Emily\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "multi_fact_update",
+        "probe": "current_employer",
+        "query": "Where do I work now?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 273,
+        "full_transcript_size_bytes": 840,
+        "scaffold_compression_ratio": 0.325,
+        "scaffold": "CURRENT employer = Amazon\nCURRENT name = Emily\nCONTRADICTION name Sarah -> Emily\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nAUTHORITY name = confirmed\nREACTION employer = answer_current_with_history\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "model_generated_name_contamination",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Nick",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "nick"
+          ],
+          "expected_excludes": [
+            "mike"
+          ]
+        },
+        "scaffold_size_bytes": 122,
+        "full_transcript_size_bytes": 389,
+        "scaffold_compression_ratio": 0.314,
+        "scaffold": "CURRENT name = Nick\nCONTRADICTION name Nick -> Mike\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "tool_inferred_location_noise",
+        "probe": "current_home_city",
+        "query": "Where is the user located?",
+        "answer": "Chicago",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "chicago"
+          ],
+          "expected_excludes": [
+            "los angeles"
+          ]
+        },
+        "scaffold_size_bytes": 155,
+        "full_transcript_size_bytes": 423,
+        "scaffold_compression_ratio": 0.366,
+        "scaffold": "CURRENT home_city = Chicago\nCONTRADICTION home_city Chicago -> Los Angeles\nAUTHORITY home_city = confirmed\nREACTION home_city = answer_current_with_history"
+      }
+    ],
+    "no_contradictions": [
+      {
+        "scenario": "identity_flip",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Emily",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "emily"
+          ],
+          "expected_excludes": [
+            "sarah"
+          ]
+        },
+        "scaffold_size_bytes": 121,
+        "full_transcript_size_bytes": 362,
+        "scaffold_compression_ratio": 0.334,
+        "scaffold": "CURRENT name = Emily\nHISTORY name = Sarah -> Emily\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "employer_correction",
+        "probe": "current_employer",
+        "query": "Where do I work?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 143,
+        "full_transcript_size_bytes": 419,
+        "scaffold_compression_ratio": 0.341,
+        "scaffold": "CURRENT employer = Amazon\nHISTORY employer = Microsoft -> Amazon\nAUTHORITY employer = confirmed\nREACTION employer = answer_current_with_history"
+      },
+      {
+        "scenario": "authority_boundary",
+        "probe": "provisional_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "Withhold until confirmed.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 96,
+        "full_transcript_size_bytes": 217,
+        "scaffold_compression_ratio": 0.442,
+        "scaffold": "AUTHORITY favorite_color = provisional_social\nREACTION favorite_color = withhold_until_confirmed"
+      },
+      {
+        "scenario": "policy_constraint",
+        "probe": "locked_force_push_policy",
+        "query": "Can I force push to main?",
+        "answer": "No, you cannot force push to main.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "force push",
+            "main"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 111,
+        "full_transcript_size_bytes": 215,
+        "scaffold_compression_ratio": 0.516,
+        "scaffold": "POLICY git.force_push_main = forbidden (do not force push to main)\nREACTION git.force_push_main = refuse_action"
+      },
+      {
+        "scenario": "concern_preference",
+        "probe": "answer_style_preference",
+        "query": "How should you answer me?",
+        "answer": "Be concise and technical.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 138,
+        "full_transcript_size_bytes": 459,
+        "scaffold_compression_ratio": 0.301,
+        "scaffold": "AUTHORITY preference.answer_style = confirmed\nPREFERENCE preference.answer_style = concise technical\nCONCERN system forgets contradictions"
+      },
+      {
+        "scenario": "favorite_color_social_then_confirmed",
+        "probe": "current_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "green",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "green"
+          ],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 160,
+        "full_transcript_size_bytes": 422,
+        "scaffold_compression_ratio": 0.379,
+        "scaffold": "CURRENT favorite_color = green\nHISTORY favorite_color = blue -> green\nAUTHORITY favorite_color = confirmed\nREACTION favorite_color = answer_current_with_history"
+      },
+      {
+        "scenario": "answer_style_revision",
+        "probe": "current_answer_style",
+        "query": "How detailed should your answers be?",
+        "answer": "Concise technical.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": [
+            "detailed",
+            "exploratory"
+          ]
+        },
+        "scaffold_size_bytes": 239,
+        "full_transcript_size_bytes": 498,
+        "scaffold_compression_ratio": 0.48,
+        "scaffold": "HISTORY preference.answer_style = detailed exploratory -> concise technical\nAUTHORITY preference.answer_style = confirmed\nREACTION preference.answer_style = answer_current_with_history\nPREFERENCE preference.answer_style = concise technical"
+      },
+      {
+        "scenario": "project_revert",
+        "probe": "current_project",
+        "query": "What is my current project?",
+        "answer": "Atlas",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "atlas"
+          ],
+          "expected_excludes": [
+            "borealis"
+          ]
+        },
+        "scaffold_size_bytes": 168,
+        "full_transcript_size_bytes": 602,
+        "scaffold_compression_ratio": 0.279,
+        "scaffold": "CURRENT current_project = Atlas\nHISTORY current_project = Atlas -> Borealis\nAUTHORITY current_project = confirmed\nREACTION current_project = answer_current_with_history"
+      },
+      {
+        "scenario": "location_correction",
+        "probe": "current_home_city",
+        "query": "Where do I live?",
+        "answer": "Austin",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "austin"
+          ],
+          "expected_excludes": [
+            "denver"
+          ]
+        },
+        "scaffold_size_bytes": 144,
+        "full_transcript_size_bytes": 378,
+        "scaffold_compression_ratio": 0.381,
+        "scaffold": "CURRENT home_city = Austin\nHISTORY home_city = Denver -> Austin\nAUTHORITY home_city = confirmed\nREACTION home_city = answer_current_with_history"
+      },
+      {
+        "scenario": "destructive_command_policy",
+        "probe": "destructive_command_policy",
+        "query": "Can you run destructive shell commands without confirmation?",
+        "answer": "No, destructive shell commands cannot be run without confirmation.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "destructive",
+            "confirmation"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 191,
+        "full_transcript_size_bytes": 276,
+        "scaffold_compression_ratio": 0.692,
+        "scaffold": "POLICY shell.destructive_without_confirmation = forbidden (do not run destructive shell commands without explicit confirmation)\nREACTION shell.destructive_without_confirmation = refuse_action"
+      },
+      {
+        "scenario": "employer_history_question",
+        "probe": "previous_employer",
+        "query": "What employer did I say before Amazon?",
+        "answer": "Microsoft",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "microsoft"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 143,
+        "full_transcript_size_bytes": 397,
+        "scaffold_compression_ratio": 0.36,
+        "scaffold": "CURRENT employer = Amazon\nHISTORY employer = Microsoft -> Amazon\nAUTHORITY employer = confirmed\nREACTION employer = answer_current_with_history"
+      },
+      {
+        "scenario": "name_contradiction_status",
+        "probe": "name_correction_status",
+        "query": "Did my name change?",
+        "answer": "Your name changed from Sarah to Emily.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "sarah",
+            "emily"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 121,
+        "full_transcript_size_bytes": 373,
+        "scaffold_compression_ratio": 0.324,
+        "scaffold": "CURRENT name = Emily\nHISTORY name = Sarah -> Emily\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "multi_fact_update",
+        "probe": "current_employer",
+        "query": "Where do I work now?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 265,
+        "full_transcript_size_bytes": 840,
+        "scaffold_compression_ratio": 0.315,
+        "scaffold": "CURRENT employer = Amazon\nCURRENT name = Emily\nHISTORY employer = Microsoft -> Amazon\nHISTORY name = Sarah -> Emily\nAUTHORITY employer = confirmed\nAUTHORITY name = confirmed\nREACTION employer = answer_current_with_history\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "model_generated_name_contamination",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Nick",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "nick"
+          ],
+          "expected_excludes": [
+            "mike"
+          ]
+        },
+        "scaffold_size_bytes": 118,
+        "full_transcript_size_bytes": 389,
+        "scaffold_compression_ratio": 0.303,
+        "scaffold": "CURRENT name = Nick\nHISTORY name = Nick -> Mike\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "tool_inferred_location_noise",
+        "probe": "current_home_city",
+        "query": "Where is the user located?",
+        "answer": "Chicago",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "chicago"
+          ],
+          "expected_excludes": [
+            "los angeles"
+          ]
+        },
+        "scaffold_size_bytes": 151,
+        "full_transcript_size_bytes": 423,
+        "scaffold_compression_ratio": 0.357,
+        "scaffold": "CURRENT home_city = Chicago\nHISTORY home_city = Chicago -> Los Angeles\nAUTHORITY home_city = confirmed\nREACTION home_city = answer_current_with_history"
+      }
+    ],
+    "no_authority": [
+      {
+        "scenario": "identity_flip",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Emily",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "emily"
+          ],
+          "expected_excludes": [
+            "sarah"
+          ]
+        },
+        "scaffold_size_bytes": 128,
+        "full_transcript_size_bytes": 362,
+        "scaffold_compression_ratio": 0.354,
+        "scaffold": "CURRENT name = Emily\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "employer_correction",
+        "probe": "current_employer",
+        "query": "Where do I work?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 155,
+        "full_transcript_size_bytes": 419,
+        "scaffold_compression_ratio": 0.37,
+        "scaffold": "CURRENT employer = Amazon\nHISTORY employer = Microsoft -> Amazon\nCONTRADICTION employer Microsoft -> Amazon\nREACTION employer = answer_current_with_history"
+      },
+      {
+        "scenario": "authority_boundary",
+        "probe": "provisional_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "Withhold until confirmed.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 50,
+        "full_transcript_size_bytes": 217,
+        "scaffold_compression_ratio": 0.23,
+        "scaffold": "REACTION favorite_color = withhold_until_confirmed"
+      },
+      {
+        "scenario": "policy_constraint",
+        "probe": "locked_force_push_policy",
+        "query": "Can I force push to main?",
+        "answer": "No, you cannot force push to main.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "force push",
+            "main"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 111,
+        "full_transcript_size_bytes": 215,
+        "scaffold_compression_ratio": 0.516,
+        "scaffold": "POLICY git.force_push_main = forbidden (do not force push to main)\nREACTION git.force_push_main = refuse_action"
+      },
+      {
+        "scenario": "concern_preference",
+        "probe": "answer_style_preference",
+        "query": "How should you answer me?",
+        "answer": "Be clear and concise.",
+        "passed": false,
+        "judgment": {
+          "passed": false,
+          "contains_ok": false,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 92,
+        "full_transcript_size_bytes": 459,
+        "scaffold_compression_ratio": 0.2,
+        "scaffold": "PREFERENCE preference.answer_style = concise technical\nCONCERN system forgets contradictions"
+      },
+      {
+        "scenario": "favorite_color_social_then_confirmed",
+        "probe": "current_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "green",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "green"
+          ],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 166,
+        "full_transcript_size_bytes": 422,
+        "scaffold_compression_ratio": 0.393,
+        "scaffold": "CURRENT favorite_color = green\nHISTORY favorite_color = blue -> green\nCONTRADICTION favorite_color blue -> green\nREACTION favorite_color = answer_current_with_history"
+      },
+      {
+        "scenario": "answer_style_revision",
+        "probe": "current_answer_style",
+        "query": "How detailed should your answers be?",
+        "answer": "Concise technical.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": [
+            "detailed",
+            "exploratory"
+          ]
+        },
+        "scaffold_size_bytes": 273,
+        "full_transcript_size_bytes": 498,
+        "scaffold_compression_ratio": 0.548,
+        "scaffold": "HISTORY preference.answer_style = detailed exploratory -> concise technical\nCONTRADICTION preference.answer_style detailed exploratory -> concise technical\nREACTION preference.answer_style = answer_current_with_history\nPREFERENCE preference.answer_style = concise technical"
+      },
+      {
+        "scenario": "project_revert",
+        "probe": "current_project",
+        "query": "What is my current project?",
+        "answer": "Atlas",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "atlas"
+          ],
+          "expected_excludes": [
+            "borealis"
+          ]
+        },
+        "scaffold_size_bytes": 226,
+        "full_transcript_size_bytes": 602,
+        "scaffold_compression_ratio": 0.375,
+        "scaffold": "CURRENT current_project = Atlas\nHISTORY current_project = Atlas -> Borealis\nCONTRADICTION current_project Atlas -> Borealis\nCONTRADICTION current_project Borealis -> Atlas\nREACTION current_project = answer_current_with_history"
+      },
+      {
+        "scenario": "location_correction",
+        "probe": "current_home_city",
+        "query": "Where do I live?",
+        "answer": "Austin",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "austin"
+          ],
+          "expected_excludes": [
+            "denver"
+          ]
+        },
+        "scaffold_size_bytes": 153,
+        "full_transcript_size_bytes": 378,
+        "scaffold_compression_ratio": 0.405,
+        "scaffold": "CURRENT home_city = Austin\nHISTORY home_city = Denver -> Austin\nCONTRADICTION home_city Denver -> Austin\nREACTION home_city = answer_current_with_history"
+      },
+      {
+        "scenario": "destructive_command_policy",
+        "probe": "destructive_command_policy",
+        "query": "Can you run destructive shell commands without confirmation?",
+        "answer": "No, destructive shell commands cannot be run without confirmation.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "destructive",
+            "confirmation"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 191,
+        "full_transcript_size_bytes": 276,
+        "scaffold_compression_ratio": 0.692,
+        "scaffold": "POLICY shell.destructive_without_confirmation = forbidden (do not run destructive shell commands without explicit confirmation)\nREACTION shell.destructive_without_confirmation = refuse_action"
+      },
+      {
+        "scenario": "employer_history_question",
+        "probe": "previous_employer",
+        "query": "What employer did I say before Amazon?",
+        "answer": "Microsoft",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "microsoft"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 155,
+        "full_transcript_size_bytes": 397,
+        "scaffold_compression_ratio": 0.39,
+        "scaffold": "CURRENT employer = Amazon\nHISTORY employer = Microsoft -> Amazon\nCONTRADICTION employer Microsoft -> Amazon\nREACTION employer = answer_current_with_history"
+      },
+      {
+        "scenario": "name_contradiction_status",
+        "probe": "name_correction_status",
+        "query": "Did my name change?",
+        "answer": "Your name changed from Sarah to Emily.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "sarah",
+            "emily"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 128,
+        "full_transcript_size_bytes": 373,
+        "scaffold_compression_ratio": 0.343,
+        "scaffold": "CURRENT name = Emily\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "multi_fact_update",
+        "probe": "current_employer",
+        "query": "Where do I work now?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 284,
+        "full_transcript_size_bytes": 840,
+        "scaffold_compression_ratio": 0.338,
+        "scaffold": "CURRENT employer = Amazon\nCURRENT name = Emily\nHISTORY employer = Microsoft -> Amazon\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nCONTRADICTION employer Microsoft -> Amazon\nREACTION employer = answer_current_with_history\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "model_generated_name_contamination",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Nick",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "nick"
+          ],
+          "expected_excludes": [
+            "mike"
+          ]
+        },
+        "scaffold_size_bytes": 123,
+        "full_transcript_size_bytes": 389,
+        "scaffold_compression_ratio": 0.316,
+        "scaffold": "CURRENT name = Nick\nHISTORY name = Nick -> Mike\nCONTRADICTION name Nick -> Mike\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "tool_inferred_location_noise",
+        "probe": "current_home_city",
+        "query": "Where is the user located?",
+        "answer": "Chicago",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "chicago"
+          ],
+          "expected_excludes": [
+            "los angeles"
+          ]
+        },
+        "scaffold_size_bytes": 166,
+        "full_transcript_size_bytes": 423,
+        "scaffold_compression_ratio": 0.392,
+        "scaffold": "CURRENT home_city = Chicago\nHISTORY home_city = Chicago -> Los Angeles\nCONTRADICTION home_city Chicago -> Los Angeles\nREACTION home_city = answer_current_with_history"
+      }
+    ],
+    "no_policies": [
+      {
+        "scenario": "identity_flip",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Emily",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "emily"
+          ],
+          "expected_excludes": [
+            "sarah"
+          ]
+        },
+        "scaffold_size_bytes": 155,
+        "full_transcript_size_bytes": 362,
+        "scaffold_compression_ratio": 0.428,
+        "scaffold": "CURRENT name = Emily\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "employer_correction",
+        "probe": "current_employer",
+        "query": "Where do I work?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 186,
+        "full_transcript_size_bytes": 419,
+        "scaffold_compression_ratio": 0.444,
+        "scaffold": "CURRENT employer = Amazon\nHISTORY employer = Microsoft -> Amazon\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nREACTION employer = answer_current_with_history"
+      },
+      {
+        "scenario": "authority_boundary",
+        "probe": "provisional_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "Withhold until confirmed.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 96,
+        "full_transcript_size_bytes": 217,
+        "scaffold_compression_ratio": 0.442,
+        "scaffold": "AUTHORITY favorite_color = provisional_social\nREACTION favorite_color = withhold_until_confirmed"
+      },
+      {
+        "scenario": "policy_constraint",
+        "probe": "locked_force_push_policy",
+        "query": "Can I force push to main?",
+        "answer": "No, you cannot force push to main.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "force push",
+            "main"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 44,
+        "full_transcript_size_bytes": 215,
+        "scaffold_compression_ratio": 0.205,
+        "scaffold": "REACTION git.force_push_main = refuse_action"
+      },
+      {
+        "scenario": "concern_preference",
+        "probe": "answer_style_preference",
+        "query": "How should you answer me?",
+        "answer": "Be concise and technical.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 138,
+        "full_transcript_size_bytes": 459,
+        "scaffold_compression_ratio": 0.301,
+        "scaffold": "AUTHORITY preference.answer_style = confirmed\nPREFERENCE preference.answer_style = concise technical\nCONCERN system forgets contradictions"
+      },
+      {
+        "scenario": "favorite_color_social_then_confirmed",
+        "probe": "current_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "green",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "green"
+          ],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 203,
+        "full_transcript_size_bytes": 422,
+        "scaffold_compression_ratio": 0.481,
+        "scaffold": "CURRENT favorite_color = green\nHISTORY favorite_color = blue -> green\nCONTRADICTION favorite_color blue -> green\nAUTHORITY favorite_color = confirmed\nREACTION favorite_color = answer_current_with_history"
+      },
+      {
+        "scenario": "answer_style_revision",
+        "probe": "current_answer_style",
+        "query": "How detailed should your answers be?",
+        "answer": "Concise technical.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": [
+            "detailed",
+            "exploratory"
+          ]
+        },
+        "scaffold_size_bytes": 319,
+        "full_transcript_size_bytes": 498,
+        "scaffold_compression_ratio": 0.641,
+        "scaffold": "HISTORY preference.answer_style = detailed exploratory -> concise technical\nCONTRADICTION preference.answer_style detailed exploratory -> concise technical\nAUTHORITY preference.answer_style = confirmed\nREACTION preference.answer_style = answer_current_with_history\nPREFERENCE preference.answer_style = concise technical"
+      },
+      {
+        "scenario": "project_revert",
+        "probe": "current_project",
+        "query": "What is my current project?",
+        "answer": "Atlas",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "atlas"
+          ],
+          "expected_excludes": [
+            "borealis"
+          ]
+        },
+        "scaffold_size_bytes": 264,
+        "full_transcript_size_bytes": 602,
+        "scaffold_compression_ratio": 0.439,
+        "scaffold": "CURRENT current_project = Atlas\nHISTORY current_project = Atlas -> Borealis\nCONTRADICTION current_project Atlas -> Borealis\nCONTRADICTION current_project Borealis -> Atlas\nAUTHORITY current_project = confirmed\nREACTION current_project = answer_current_with_history"
+      },
+      {
+        "scenario": "location_correction",
+        "probe": "current_home_city",
+        "query": "Where do I live?",
+        "answer": "Austin",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "austin"
+          ],
+          "expected_excludes": [
+            "denver"
+          ]
+        },
+        "scaffold_size_bytes": 185,
+        "full_transcript_size_bytes": 378,
+        "scaffold_compression_ratio": 0.489,
+        "scaffold": "CURRENT home_city = Austin\nHISTORY home_city = Denver -> Austin\nCONTRADICTION home_city Denver -> Austin\nAUTHORITY home_city = confirmed\nREACTION home_city = answer_current_with_history"
+      },
+      {
+        "scenario": "destructive_command_policy",
+        "probe": "destructive_command_policy",
+        "query": "Can you run destructive shell commands without confirmation?",
+        "answer": "No, running destructive shell commands without confirmation is forbidden.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "destructive",
+            "confirmation"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 63,
+        "full_transcript_size_bytes": 276,
+        "scaffold_compression_ratio": 0.228,
+        "scaffold": "REACTION shell.destructive_without_confirmation = refuse_action"
+      },
+      {
+        "scenario": "employer_history_question",
+        "probe": "previous_employer",
+        "query": "What employer did I say before Amazon?",
+        "answer": "Microsoft",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "microsoft"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 186,
+        "full_transcript_size_bytes": 397,
+        "scaffold_compression_ratio": 0.469,
+        "scaffold": "CURRENT employer = Amazon\nHISTORY employer = Microsoft -> Amazon\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nREACTION employer = answer_current_with_history"
+      },
+      {
+        "scenario": "name_contradiction_status",
+        "probe": "name_correction_status",
+        "query": "Did my name change?",
+        "answer": "Your name changed from Sarah to Emily.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "sarah",
+            "emily"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 155,
+        "full_transcript_size_bytes": 373,
+        "scaffold_compression_ratio": 0.416,
+        "scaffold": "CURRENT name = Emily\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "multi_fact_update",
+        "probe": "current_employer",
+        "query": "Where do I work now?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 342,
+        "full_transcript_size_bytes": 840,
+        "scaffold_compression_ratio": 0.407,
+        "scaffold": "CURRENT employer = Amazon\nCURRENT name = Emily\nHISTORY employer = Microsoft -> Amazon\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nAUTHORITY name = confirmed\nREACTION employer = answer_current_with_history\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "model_generated_name_contamination",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Nick",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "nick"
+          ],
+          "expected_excludes": [
+            "mike"
+          ]
+        },
+        "scaffold_size_bytes": 150,
+        "full_transcript_size_bytes": 389,
+        "scaffold_compression_ratio": 0.386,
+        "scaffold": "CURRENT name = Nick\nHISTORY name = Nick -> Mike\nCONTRADICTION name Nick -> Mike\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "tool_inferred_location_noise",
+        "probe": "current_home_city",
+        "query": "Where is the user located?",
+        "answer": "Chicago",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "chicago"
+          ],
+          "expected_excludes": [
+            "los angeles"
+          ]
+        },
+        "scaffold_size_bytes": 198,
+        "full_transcript_size_bytes": 423,
+        "scaffold_compression_ratio": 0.468,
+        "scaffold": "CURRENT home_city = Chicago\nHISTORY home_city = Chicago -> Los Angeles\nCONTRADICTION home_city Chicago -> Los Angeles\nAUTHORITY home_city = confirmed\nREACTION home_city = answer_current_with_history"
+      }
+    ],
+    "no_reaction": [
+      {
+        "scenario": "identity_flip",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Emily",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "emily"
+          ],
+          "expected_excludes": [
+            "sarah"
+          ]
+        },
+        "scaffold_size_bytes": 111,
+        "full_transcript_size_bytes": 362,
+        "scaffold_compression_ratio": 0.307,
+        "scaffold": "CURRENT name = Emily\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nAUTHORITY name = confirmed"
+      },
+      {
+        "scenario": "employer_correction",
+        "probe": "current_employer",
+        "query": "Where do I work?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 138,
+        "full_transcript_size_bytes": 419,
+        "scaffold_compression_ratio": 0.329,
+        "scaffold": "CURRENT employer = Amazon\nHISTORY employer = Microsoft -> Amazon\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed"
+      },
+      {
+        "scenario": "authority_boundary",
+        "probe": "provisional_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "provisional_social",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 45,
+        "full_transcript_size_bytes": 217,
+        "scaffold_compression_ratio": 0.207,
+        "scaffold": "AUTHORITY favorite_color = provisional_social"
+      },
+      {
+        "scenario": "policy_constraint",
+        "probe": "locked_force_push_policy",
+        "query": "Can I force push to main?",
+        "answer": "No, you cannot force push to main.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "force push",
+            "main"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 66,
+        "full_transcript_size_bytes": 215,
+        "scaffold_compression_ratio": 0.307,
+        "scaffold": "POLICY git.force_push_main = forbidden (do not force push to main)"
+      },
+      {
+        "scenario": "concern_preference",
+        "probe": "answer_style_preference",
+        "query": "How should you answer me?",
+        "answer": "Be concise and technical.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 138,
+        "full_transcript_size_bytes": 459,
+        "scaffold_compression_ratio": 0.301,
+        "scaffold": "AUTHORITY preference.answer_style = confirmed\nPREFERENCE preference.answer_style = concise technical\nCONCERN system forgets contradictions"
+      },
+      {
+        "scenario": "favorite_color_social_then_confirmed",
+        "probe": "current_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "green",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "green"
+          ],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 149,
+        "full_transcript_size_bytes": 422,
+        "scaffold_compression_ratio": 0.353,
+        "scaffold": "CURRENT favorite_color = green\nHISTORY favorite_color = blue -> green\nCONTRADICTION favorite_color blue -> green\nAUTHORITY favorite_color = confirmed"
+      },
+      {
+        "scenario": "answer_style_revision",
+        "probe": "current_answer_style",
+        "query": "How detailed should your answers be?",
+        "answer": "Concise technical.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": [
+            "detailed",
+            "exploratory"
+          ]
+        },
+        "scaffold_size_bytes": 256,
+        "full_transcript_size_bytes": 498,
+        "scaffold_compression_ratio": 0.514,
+        "scaffold": "HISTORY preference.answer_style = detailed exploratory -> concise technical\nCONTRADICTION preference.answer_style detailed exploratory -> concise technical\nAUTHORITY preference.answer_style = confirmed\nPREFERENCE preference.answer_style = concise technical"
+      },
+      {
+        "scenario": "project_revert",
+        "probe": "current_project",
+        "query": "What is my current project?",
+        "answer": "Atlas",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "atlas"
+          ],
+          "expected_excludes": [
+            "borealis"
+          ]
+        },
+        "scaffold_size_bytes": 209,
+        "full_transcript_size_bytes": 602,
+        "scaffold_compression_ratio": 0.347,
+        "scaffold": "CURRENT current_project = Atlas\nHISTORY current_project = Atlas -> Borealis\nCONTRADICTION current_project Atlas -> Borealis\nCONTRADICTION current_project Borealis -> Atlas\nAUTHORITY current_project = confirmed"
+      },
+      {
+        "scenario": "location_correction",
+        "probe": "current_home_city",
+        "query": "Where do I live?",
+        "answer": "Austin",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "austin"
+          ],
+          "expected_excludes": [
+            "denver"
+          ]
+        },
+        "scaffold_size_bytes": 136,
+        "full_transcript_size_bytes": 378,
+        "scaffold_compression_ratio": 0.36,
+        "scaffold": "CURRENT home_city = Austin\nHISTORY home_city = Denver -> Austin\nCONTRADICTION home_city Denver -> Austin\nAUTHORITY home_city = confirmed"
+      },
+      {
+        "scenario": "destructive_command_policy",
+        "probe": "destructive_command_policy",
+        "query": "Can you run destructive shell commands without confirmation?",
+        "answer": "No, you cannot run destructive shell commands without confirmation.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "destructive",
+            "confirmation"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 127,
+        "full_transcript_size_bytes": 276,
+        "scaffold_compression_ratio": 0.46,
+        "scaffold": "POLICY shell.destructive_without_confirmation = forbidden (do not run destructive shell commands without explicit confirmation)"
+      },
+      {
+        "scenario": "employer_history_question",
+        "probe": "previous_employer",
+        "query": "What employer did I say before Amazon?",
+        "answer": "Microsoft",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "microsoft"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 138,
+        "full_transcript_size_bytes": 397,
+        "scaffold_compression_ratio": 0.348,
+        "scaffold": "CURRENT employer = Amazon\nHISTORY employer = Microsoft -> Amazon\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed"
+      },
+      {
+        "scenario": "name_contradiction_status",
+        "probe": "name_correction_status",
+        "query": "Did my name change?",
+        "answer": "Yes, your name changed from Sarah to Emily.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "sarah",
+            "emily"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 111,
+        "full_transcript_size_bytes": 373,
+        "scaffold_compression_ratio": 0.298,
+        "scaffold": "CURRENT name = Emily\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nAUTHORITY name = confirmed"
+      },
+      {
+        "scenario": "multi_fact_update",
+        "probe": "current_employer",
+        "query": "Where do I work now?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 250,
+        "full_transcript_size_bytes": 840,
+        "scaffold_compression_ratio": 0.298,
+        "scaffold": "CURRENT employer = Amazon\nCURRENT name = Emily\nHISTORY employer = Microsoft -> Amazon\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nAUTHORITY name = confirmed"
+      },
+      {
+        "scenario": "model_generated_name_contamination",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Nick",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "nick"
+          ],
+          "expected_excludes": [
+            "mike"
+          ]
+        },
+        "scaffold_size_bytes": 106,
+        "full_transcript_size_bytes": 389,
+        "scaffold_compression_ratio": 0.272,
+        "scaffold": "CURRENT name = Nick\nHISTORY name = Nick -> Mike\nCONTRADICTION name Nick -> Mike\nAUTHORITY name = confirmed"
+      },
+      {
+        "scenario": "tool_inferred_location_noise",
+        "probe": "current_home_city",
+        "query": "Where is the user located?",
+        "answer": "Chicago",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "chicago"
+          ],
+          "expected_excludes": [
+            "los angeles"
+          ]
+        },
+        "scaffold_size_bytes": 149,
+        "full_transcript_size_bytes": 423,
+        "scaffold_compression_ratio": 0.352,
+        "scaffold": "CURRENT home_city = Chicago\nHISTORY home_city = Chicago -> Los Angeles\nCONTRADICTION home_city Chicago -> Los Angeles\nAUTHORITY home_city = confirmed"
+      }
+    ],
+    "no_preferences": [
+      {
+        "scenario": "identity_flip",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Emily",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "emily"
+          ],
+          "expected_excludes": [
+            "sarah"
+          ]
+        },
+        "scaffold_size_bytes": 155,
+        "full_transcript_size_bytes": 362,
+        "scaffold_compression_ratio": 0.428,
+        "scaffold": "CURRENT name = Emily\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "employer_correction",
+        "probe": "current_employer",
+        "query": "Where do I work?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 186,
+        "full_transcript_size_bytes": 419,
+        "scaffold_compression_ratio": 0.444,
+        "scaffold": "CURRENT employer = Amazon\nHISTORY employer = Microsoft -> Amazon\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nREACTION employer = answer_current_with_history"
+      },
+      {
+        "scenario": "authority_boundary",
+        "probe": "provisional_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "Withhold until confirmed.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 96,
+        "full_transcript_size_bytes": 217,
+        "scaffold_compression_ratio": 0.442,
+        "scaffold": "AUTHORITY favorite_color = provisional_social\nREACTION favorite_color = withhold_until_confirmed"
+      },
+      {
+        "scenario": "policy_constraint",
+        "probe": "locked_force_push_policy",
+        "query": "Can I force push to main?",
+        "answer": "No, you cannot force push to main.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "force push",
+            "main"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 111,
+        "full_transcript_size_bytes": 215,
+        "scaffold_compression_ratio": 0.516,
+        "scaffold": "POLICY git.force_push_main = forbidden (do not force push to main)\nREACTION git.force_push_main = refuse_action"
+      },
+      {
+        "scenario": "concern_preference",
+        "probe": "answer_style_preference",
+        "query": "How should you answer me?",
+        "answer": "Answer directly and currently.",
+        "passed": false,
+        "judgment": {
+          "passed": false,
+          "contains_ok": false,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 83,
+        "full_transcript_size_bytes": 459,
+        "scaffold_compression_ratio": 0.181,
+        "scaffold": "AUTHORITY preference.answer_style = confirmed\nCONCERN system forgets contradictions"
+      },
+      {
+        "scenario": "favorite_color_social_then_confirmed",
+        "probe": "current_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "green",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "green"
+          ],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 203,
+        "full_transcript_size_bytes": 422,
+        "scaffold_compression_ratio": 0.481,
+        "scaffold": "CURRENT favorite_color = green\nHISTORY favorite_color = blue -> green\nCONTRADICTION favorite_color blue -> green\nAUTHORITY favorite_color = confirmed\nREACTION favorite_color = answer_current_with_history"
+      },
+      {
+        "scenario": "answer_style_revision",
+        "probe": "current_answer_style",
+        "query": "How detailed should your answers be?",
+        "answer": "Concise technical",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": [
+            "detailed",
+            "exploratory"
+          ]
+        },
+        "scaffold_size_bytes": 264,
+        "full_transcript_size_bytes": 498,
+        "scaffold_compression_ratio": 0.53,
+        "scaffold": "HISTORY preference.answer_style = detailed exploratory -> concise technical\nCONTRADICTION preference.answer_style detailed exploratory -> concise technical\nAUTHORITY preference.answer_style = confirmed\nREACTION preference.answer_style = answer_current_with_history"
+      },
+      {
+        "scenario": "project_revert",
+        "probe": "current_project",
+        "query": "What is my current project?",
+        "answer": "Atlas",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "atlas"
+          ],
+          "expected_excludes": [
+            "borealis"
+          ]
+        },
+        "scaffold_size_bytes": 264,
+        "full_transcript_size_bytes": 602,
+        "scaffold_compression_ratio": 0.439,
+        "scaffold": "CURRENT current_project = Atlas\nHISTORY current_project = Atlas -> Borealis\nCONTRADICTION current_project Atlas -> Borealis\nCONTRADICTION current_project Borealis -> Atlas\nAUTHORITY current_project = confirmed\nREACTION current_project = answer_current_with_history"
+      },
+      {
+        "scenario": "location_correction",
+        "probe": "current_home_city",
+        "query": "Where do I live?",
+        "answer": "Austin",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "austin"
+          ],
+          "expected_excludes": [
+            "denver"
+          ]
+        },
+        "scaffold_size_bytes": 185,
+        "full_transcript_size_bytes": 378,
+        "scaffold_compression_ratio": 0.489,
+        "scaffold": "CURRENT home_city = Austin\nHISTORY home_city = Denver -> Austin\nCONTRADICTION home_city Denver -> Austin\nAUTHORITY home_city = confirmed\nREACTION home_city = answer_current_with_history"
+      },
+      {
+        "scenario": "destructive_command_policy",
+        "probe": "destructive_command_policy",
+        "query": "Can you run destructive shell commands without confirmation?",
+        "answer": "No, destructive shell commands cannot be run without confirmation.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "destructive",
+            "confirmation"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 191,
+        "full_transcript_size_bytes": 276,
+        "scaffold_compression_ratio": 0.692,
+        "scaffold": "POLICY shell.destructive_without_confirmation = forbidden (do not run destructive shell commands without explicit confirmation)\nREACTION shell.destructive_without_confirmation = refuse_action"
+      },
+      {
+        "scenario": "employer_history_question",
+        "probe": "previous_employer",
+        "query": "What employer did I say before Amazon?",
+        "answer": "Microsoft",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "microsoft"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 186,
+        "full_transcript_size_bytes": 397,
+        "scaffold_compression_ratio": 0.469,
+        "scaffold": "CURRENT employer = Amazon\nHISTORY employer = Microsoft -> Amazon\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nREACTION employer = answer_current_with_history"
+      },
+      {
+        "scenario": "name_contradiction_status",
+        "probe": "name_correction_status",
+        "query": "Did my name change?",
+        "answer": "Your name changed from Sarah to Emily.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "sarah",
+            "emily"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 155,
+        "full_transcript_size_bytes": 373,
+        "scaffold_compression_ratio": 0.416,
+        "scaffold": "CURRENT name = Emily\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "multi_fact_update",
+        "probe": "current_employer",
+        "query": "Where do I work now?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 342,
+        "full_transcript_size_bytes": 840,
+        "scaffold_compression_ratio": 0.407,
+        "scaffold": "CURRENT employer = Amazon\nCURRENT name = Emily\nHISTORY employer = Microsoft -> Amazon\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nAUTHORITY name = confirmed\nREACTION employer = answer_current_with_history\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "model_generated_name_contamination",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Nick",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "nick"
+          ],
+          "expected_excludes": [
+            "mike"
+          ]
+        },
+        "scaffold_size_bytes": 150,
+        "full_transcript_size_bytes": 389,
+        "scaffold_compression_ratio": 0.386,
+        "scaffold": "CURRENT name = Nick\nHISTORY name = Nick -> Mike\nCONTRADICTION name Nick -> Mike\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "tool_inferred_location_noise",
+        "probe": "current_home_city",
+        "query": "Where is the user located?",
+        "answer": "Chicago",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "chicago"
+          ],
+          "expected_excludes": [
+            "los angeles"
+          ]
+        },
+        "scaffold_size_bytes": 198,
+        "full_transcript_size_bytes": 423,
+        "scaffold_compression_ratio": 0.468,
+        "scaffold": "CURRENT home_city = Chicago\nHISTORY home_city = Chicago -> Los Angeles\nCONTRADICTION home_city Chicago -> Los Angeles\nAUTHORITY home_city = confirmed\nREACTION home_city = answer_current_with_history"
+      }
+    ],
+    "no_query_contract": [
+      {
+        "scenario": "identity_flip",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Emily",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "emily"
+          ],
+          "expected_excludes": [
+            "sarah"
+          ]
+        },
+        "scaffold_size_bytes": 155,
+        "full_transcript_size_bytes": 362,
+        "scaffold_compression_ratio": 0.428,
+        "scaffold": "CURRENT name = Emily\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "employer_correction",
+        "probe": "current_employer",
+        "query": "Where do I work?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 186,
+        "full_transcript_size_bytes": 419,
+        "scaffold_compression_ratio": 0.444,
+        "scaffold": "CURRENT employer = Amazon\nHISTORY employer = Microsoft -> Amazon\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nREACTION employer = answer_current_with_history"
+      },
+      {
+        "scenario": "authority_boundary",
+        "probe": "provisional_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "Withhold until confirmed.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 96,
+        "full_transcript_size_bytes": 217,
+        "scaffold_compression_ratio": 0.442,
+        "scaffold": "AUTHORITY favorite_color = provisional_social\nREACTION favorite_color = withhold_until_confirmed"
+      },
+      {
+        "scenario": "policy_constraint",
+        "probe": "locked_force_push_policy",
+        "query": "Can I force push to main?",
+        "answer": "No.",
+        "passed": false,
+        "judgment": {
+          "passed": false,
+          "contains_ok": false,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "force push",
+            "main"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 111,
+        "full_transcript_size_bytes": 215,
+        "scaffold_compression_ratio": 0.516,
+        "scaffold": "POLICY git.force_push_main = forbidden (do not force push to main)\nREACTION git.force_push_main = refuse_action"
+      },
+      {
+        "scenario": "concern_preference",
+        "probe": "answer_style_preference",
+        "query": "How should you answer me?",
+        "answer": "Provide direct, current information concisely.",
+        "passed": false,
+        "judgment": {
+          "passed": false,
+          "contains_ok": false,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 138,
+        "full_transcript_size_bytes": 459,
+        "scaffold_compression_ratio": 0.301,
+        "scaffold": "AUTHORITY preference.answer_style = confirmed\nPREFERENCE preference.answer_style = concise technical\nCONCERN system forgets contradictions"
+      },
+      {
+        "scenario": "favorite_color_social_then_confirmed",
+        "probe": "current_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "green (formerly blue)",
+        "passed": false,
+        "judgment": {
+          "passed": false,
+          "contains_ok": true,
+          "excludes_ok": false,
+          "expected_contains": [
+            "green"
+          ],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 203,
+        "full_transcript_size_bytes": 422,
+        "scaffold_compression_ratio": 0.481,
+        "scaffold": "CURRENT favorite_color = green\nHISTORY favorite_color = blue -> green\nCONTRADICTION favorite_color blue -> green\nAUTHORITY favorite_color = confirmed\nREACTION favorite_color = answer_current_with_history"
+      },
+      {
+        "scenario": "answer_style_revision",
+        "probe": "current_answer_style",
+        "query": "How detailed should your answers be?",
+        "answer": "Concise technical.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": [
+            "detailed",
+            "exploratory"
+          ]
+        },
+        "scaffold_size_bytes": 319,
+        "full_transcript_size_bytes": 498,
+        "scaffold_compression_ratio": 0.641,
+        "scaffold": "HISTORY preference.answer_style = detailed exploratory -> concise technical\nCONTRADICTION preference.answer_style detailed exploratory -> concise technical\nAUTHORITY preference.answer_style = confirmed\nREACTION preference.answer_style = answer_current_with_history\nPREFERENCE preference.answer_style = concise technical"
+      },
+      {
+        "scenario": "project_revert",
+        "probe": "current_project",
+        "query": "What is my current project?",
+        "answer": "Atlas",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "atlas"
+          ],
+          "expected_excludes": [
+            "borealis"
+          ]
+        },
+        "scaffold_size_bytes": 264,
+        "full_transcript_size_bytes": 602,
+        "scaffold_compression_ratio": 0.439,
+        "scaffold": "CURRENT current_project = Atlas\nHISTORY current_project = Atlas -> Borealis\nCONTRADICTION current_project Atlas -> Borealis\nCONTRADICTION current_project Borealis -> Atlas\nAUTHORITY current_project = confirmed\nREACTION current_project = answer_current_with_history"
+      },
+      {
+        "scenario": "location_correction",
+        "probe": "current_home_city",
+        "query": "Where do I live?",
+        "answer": "Austin",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "austin"
+          ],
+          "expected_excludes": [
+            "denver"
+          ]
+        },
+        "scaffold_size_bytes": 185,
+        "full_transcript_size_bytes": 378,
+        "scaffold_compression_ratio": 0.489,
+        "scaffold": "CURRENT home_city = Austin\nHISTORY home_city = Denver -> Austin\nCONTRADICTION home_city Denver -> Austin\nAUTHORITY home_city = confirmed\nREACTION home_city = answer_current_with_history"
+      },
+      {
+        "scenario": "destructive_command_policy",
+        "probe": "destructive_command_policy",
+        "query": "Can you run destructive shell commands without confirmation?",
+        "answer": "No/refuse.",
+        "passed": false,
+        "judgment": {
+          "passed": false,
+          "contains_ok": false,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "destructive",
+            "confirmation"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 191,
+        "full_transcript_size_bytes": 276,
+        "scaffold_compression_ratio": 0.692,
+        "scaffold": "POLICY shell.destructive_without_confirmation = forbidden (do not run destructive shell commands without explicit confirmation)\nREACTION shell.destructive_without_confirmation = refuse_action"
+      },
+      {
+        "scenario": "employer_history_question",
+        "probe": "previous_employer",
+        "query": "What employer did I say before Amazon?",
+        "answer": "Microsoft",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "microsoft"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 186,
+        "full_transcript_size_bytes": 397,
+        "scaffold_compression_ratio": 0.469,
+        "scaffold": "CURRENT employer = Amazon\nHISTORY employer = Microsoft -> Amazon\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nREACTION employer = answer_current_with_history"
+      },
+      {
+        "scenario": "name_contradiction_status",
+        "probe": "name_correction_status",
+        "query": "Did my name change?",
+        "answer": "Your name was previously Sarah, but it has been changed to Emily.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "sarah",
+            "emily"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 155,
+        "full_transcript_size_bytes": 373,
+        "scaffold_compression_ratio": 0.416,
+        "scaffold": "CURRENT name = Emily\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "multi_fact_update",
+        "probe": "current_employer",
+        "query": "Where do I work now?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 342,
+        "full_transcript_size_bytes": 840,
+        "scaffold_compression_ratio": 0.407,
+        "scaffold": "CURRENT employer = Amazon\nCURRENT name = Emily\nHISTORY employer = Microsoft -> Amazon\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nAUTHORITY name = confirmed\nREACTION employer = answer_current_with_history\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "model_generated_name_contamination",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Nick",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "nick"
+          ],
+          "expected_excludes": [
+            "mike"
+          ]
+        },
+        "scaffold_size_bytes": 150,
+        "full_transcript_size_bytes": 389,
+        "scaffold_compression_ratio": 0.386,
+        "scaffold": "CURRENT name = Nick\nHISTORY name = Nick -> Mike\nCONTRADICTION name Nick -> Mike\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "tool_inferred_location_noise",
+        "probe": "current_home_city",
+        "query": "Where is the user located?",
+        "answer": "Chicago",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "chicago"
+          ],
+          "expected_excludes": [
+            "los angeles"
+          ]
+        },
+        "scaffold_size_bytes": 198,
+        "full_transcript_size_bytes": 423,
+        "scaffold_compression_ratio": 0.468,
+        "scaffold": "CURRENT home_city = Chicago\nHISTORY home_city = Chicago -> Los Angeles\nCONTRADICTION home_city Chicago -> Los Angeles\nAUTHORITY home_city = confirmed\nREACTION home_city = answer_current_with_history"
+      }
+    ],
+    "no_policy_plaintext": [
+      {
+        "scenario": "identity_flip",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Emily",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "emily"
+          ],
+          "expected_excludes": [
+            "sarah"
+          ]
+        },
+        "scaffold_size_bytes": 155,
+        "full_transcript_size_bytes": 362,
+        "scaffold_compression_ratio": 0.428,
+        "scaffold": "CURRENT name = Emily\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "employer_correction",
+        "probe": "current_employer",
+        "query": "Where do I work?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 186,
+        "full_transcript_size_bytes": 419,
+        "scaffold_compression_ratio": 0.444,
+        "scaffold": "CURRENT employer = Amazon\nHISTORY employer = Microsoft -> Amazon\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nREACTION employer = answer_current_with_history"
+      },
+      {
+        "scenario": "authority_boundary",
+        "probe": "provisional_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "Withhold until confirmed.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 96,
+        "full_transcript_size_bytes": 217,
+        "scaffold_compression_ratio": 0.442,
+        "scaffold": "AUTHORITY favorite_color = provisional_social\nREACTION favorite_color = withhold_until_confirmed"
+      },
+      {
+        "scenario": "policy_constraint",
+        "probe": "locked_force_push_policy",
+        "query": "Can I force push to main?",
+        "answer": "No, you cannot force push to main.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "force push",
+            "main"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 83,
+        "full_transcript_size_bytes": 215,
+        "scaffold_compression_ratio": 0.386,
+        "scaffold": "POLICY git.force_push_main = forbidden\nREACTION git.force_push_main = refuse_action"
+      },
+      {
+        "scenario": "concern_preference",
+        "probe": "answer_style_preference",
+        "query": "How should you answer me?",
+        "answer": "Be concise and technical.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 138,
+        "full_transcript_size_bytes": 459,
+        "scaffold_compression_ratio": 0.301,
+        "scaffold": "AUTHORITY preference.answer_style = confirmed\nPREFERENCE preference.answer_style = concise technical\nCONCERN system forgets contradictions"
+      },
+      {
+        "scenario": "favorite_color_social_then_confirmed",
+        "probe": "current_favorite_color",
+        "query": "What's my favorite color?",
+        "answer": "green",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "green"
+          ],
+          "expected_excludes": [
+            "blue"
+          ]
+        },
+        "scaffold_size_bytes": 203,
+        "full_transcript_size_bytes": 422,
+        "scaffold_compression_ratio": 0.481,
+        "scaffold": "CURRENT favorite_color = green\nHISTORY favorite_color = blue -> green\nCONTRADICTION favorite_color blue -> green\nAUTHORITY favorite_color = confirmed\nREACTION favorite_color = answer_current_with_history"
+      },
+      {
+        "scenario": "answer_style_revision",
+        "probe": "current_answer_style",
+        "query": "How detailed should your answers be?",
+        "answer": "Concise technical.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": [
+            "detailed",
+            "exploratory"
+          ]
+        },
+        "scaffold_size_bytes": 319,
+        "full_transcript_size_bytes": 498,
+        "scaffold_compression_ratio": 0.641,
+        "scaffold": "HISTORY preference.answer_style = detailed exploratory -> concise technical\nCONTRADICTION preference.answer_style detailed exploratory -> concise technical\nAUTHORITY preference.answer_style = confirmed\nREACTION preference.answer_style = answer_current_with_history\nPREFERENCE preference.answer_style = concise technical"
+      },
+      {
+        "scenario": "project_revert",
+        "probe": "current_project",
+        "query": "What is my current project?",
+        "answer": "Atlas",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "atlas"
+          ],
+          "expected_excludes": [
+            "borealis"
+          ]
+        },
+        "scaffold_size_bytes": 264,
+        "full_transcript_size_bytes": 602,
+        "scaffold_compression_ratio": 0.439,
+        "scaffold": "CURRENT current_project = Atlas\nHISTORY current_project = Atlas -> Borealis\nCONTRADICTION current_project Atlas -> Borealis\nCONTRADICTION current_project Borealis -> Atlas\nAUTHORITY current_project = confirmed\nREACTION current_project = answer_current_with_history"
+      },
+      {
+        "scenario": "location_correction",
+        "probe": "current_home_city",
+        "query": "Where do I live?",
+        "answer": "Austin",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "austin"
+          ],
+          "expected_excludes": [
+            "denver"
+          ]
+        },
+        "scaffold_size_bytes": 185,
+        "full_transcript_size_bytes": 378,
+        "scaffold_compression_ratio": 0.489,
+        "scaffold": "CURRENT home_city = Austin\nHISTORY home_city = Denver -> Austin\nCONTRADICTION home_city Denver -> Austin\nAUTHORITY home_city = confirmed\nREACTION home_city = answer_current_with_history"
+      },
+      {
+        "scenario": "destructive_command_policy",
+        "probe": "destructive_command_policy",
+        "query": "Can you run destructive shell commands without confirmation?",
+        "answer": "No, you cannot run destructive shell commands without confirmation.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "destructive",
+            "confirmation"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 121,
+        "full_transcript_size_bytes": 276,
+        "scaffold_compression_ratio": 0.438,
+        "scaffold": "POLICY shell.destructive_without_confirmation = forbidden\nREACTION shell.destructive_without_confirmation = refuse_action"
+      },
+      {
+        "scenario": "employer_history_question",
+        "probe": "previous_employer",
+        "query": "What employer did I say before Amazon?",
+        "answer": "Microsoft",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "microsoft"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 186,
+        "full_transcript_size_bytes": 397,
+        "scaffold_compression_ratio": 0.469,
+        "scaffold": "CURRENT employer = Amazon\nHISTORY employer = Microsoft -> Amazon\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nREACTION employer = answer_current_with_history"
+      },
+      {
+        "scenario": "name_contradiction_status",
+        "probe": "name_correction_status",
+        "query": "Did my name change?",
+        "answer": "Your name changed from Sarah to Emily.",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "sarah",
+            "emily"
+          ],
+          "expected_excludes": []
+        },
+        "scaffold_size_bytes": 155,
+        "full_transcript_size_bytes": 373,
+        "scaffold_compression_ratio": 0.416,
+        "scaffold": "CURRENT name = Emily\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "multi_fact_update",
+        "probe": "current_employer",
+        "query": "Where do I work now?",
+        "answer": "Amazon",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ]
+        },
+        "scaffold_size_bytes": 342,
+        "full_transcript_size_bytes": 840,
+        "scaffold_compression_ratio": 0.407,
+        "scaffold": "CURRENT employer = Amazon\nCURRENT name = Emily\nHISTORY employer = Microsoft -> Amazon\nHISTORY name = Sarah -> Emily\nCONTRADICTION name Sarah -> Emily\nCONTRADICTION employer Microsoft -> Amazon\nAUTHORITY employer = confirmed\nAUTHORITY name = confirmed\nREACTION employer = answer_current_with_history\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "model_generated_name_contamination",
+        "probe": "current_name",
+        "query": "What's my name?",
+        "answer": "Nick",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "nick"
+          ],
+          "expected_excludes": [
+            "mike"
+          ]
+        },
+        "scaffold_size_bytes": 150,
+        "full_transcript_size_bytes": 389,
+        "scaffold_compression_ratio": 0.386,
+        "scaffold": "CURRENT name = Nick\nHISTORY name = Nick -> Mike\nCONTRADICTION name Nick -> Mike\nAUTHORITY name = confirmed\nREACTION name = answer_current_with_history"
+      },
+      {
+        "scenario": "tool_inferred_location_noise",
+        "probe": "current_home_city",
+        "query": "Where is the user located?",
+        "answer": "Chicago",
+        "passed": true,
+        "judgment": {
+          "passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "chicago"
+          ],
+          "expected_excludes": [
+            "los angeles"
+          ]
+        },
+        "scaffold_size_bytes": 198,
+        "full_transcript_size_bytes": 423,
+        "scaffold_compression_ratio": 0.468,
+        "scaffold": "CURRENT home_city = Chicago\nHISTORY home_city = Chicago -> Los Angeles\nCONTRADICTION home_city Chicago -> Los Angeles\nAUTHORITY home_city = confirmed\nREACTION home_city = answer_current_with_history"
+      }
+    ]
+  }
+}

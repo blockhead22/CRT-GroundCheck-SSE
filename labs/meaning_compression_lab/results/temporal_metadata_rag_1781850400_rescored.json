@@ -1,0 +1,1911 @@
+{
+  "lab": "temporal_metadata_rag_eval",
+  "claim": "A governed CRT scaffold should retain an advantage over a fair RAG baseline that exposes temporal, source, authority, and provisional metadata.",
+  "model": "qwen2.5:7b-instruct",
+  "include_adversarial": true,
+  "include_hardening": true,
+  "aggregate": {
+    "case_count": 19,
+    "semantic_pass_count": 15,
+    "contract_pass_count": 15,
+    "severe_failure_count": 1,
+    "semantic_pass_rate": 0.789,
+    "contract_pass_rate": 0.789
+  },
+  "scenarios": [
+    {
+      "scenario": "identity_flip",
+      "probe": "current_name",
+      "query": "What's my name?",
+      "retrieved_records": [
+        {
+          "rank": 1,
+          "text": "Actually, my name is Emily.",
+          "timestamp": 2,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "name",
+          "value": "Emily",
+          "prior_value": "Sarah"
+        },
+        {
+          "rank": 2,
+          "text": "My name is Sarah.",
+          "timestamp": 1,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "name",
+          "value": "Sarah",
+          "prior_value": null
+        }
+      ],
+      "prompt": "Answer using only the retrieved memories and their metadata.\nResolution rules:\n- For current-state questions, prefer the latest confirmed or locked user fact.\n- Provisional, assistant-generated, tool-inferred, and social evidence is not confirmed truth.\n- For history questions, return the requested earlier value.\n- For policy questions, refuse actions forbidden by a locked policy.\n- Do not mention stale or prior values unless the question asks about history or change.\n- If evidence is insufficient or only provisional, withhold or say it is unconfirmed.\n- Answer naturally and do not repeat metadata field names.\n\nRetrieved memories:\nMEMORY 1\ntext: Actually, my name is Emily.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: name\nvalue: Emily\nprior_value: Sarah\n\nMEMORY 2\ntext: My name is Sarah.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: name\nvalue: Sarah\nprior_value: none\n\nUser question: What's my name?\nAnswer:",
+      "answer": "Your name is Emily.",
+      "judgment": {
+        "passed": true,
+        "legacy_passed": true,
+        "meaning_passed": true,
+        "scope_passed": true,
+        "format_passed": true,
+        "semantic_passed": true,
+        "contract_passed": true,
+        "contains_ok": true,
+        "excludes_ok": true,
+        "expected_contains": [
+          "emily"
+        ],
+        "expected_excludes": [
+          "sarah"
+        ],
+        "expected_behavior": "answer"
+      },
+      "decision_trace": {
+        "scenario": "identity_flip",
+        "arm": "temporal_metadata_rag",
+        "query": "What's my name?",
+        "retrieved_evidence": [
+          {
+            "rank": 1,
+            "text": "Actually, my name is Emily.",
+            "timestamp": 2,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "name",
+            "value": "Emily",
+            "prior_value": "Sarah"
+          },
+          {
+            "rank": 2,
+            "text": "My name is Sarah.",
+            "timestamp": 1,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "name",
+            "value": "Sarah",
+            "prior_value": null
+          }
+        ],
+        "state_transformation": null,
+        "selected_rule": "model_resolves_temporal_metadata",
+        "supplied_context": "MEMORY 1\ntext: Actually, my name is Emily.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: name\nvalue: Emily\nprior_value: Sarah\n\nMEMORY 2\ntext: My name is Sarah.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: name\nvalue: Sarah\nprior_value: none",
+        "answer": "Your name is Emily.",
+        "judgment": {
+          "passed": true,
+          "legacy_passed": true,
+          "meaning_passed": true,
+          "scope_passed": true,
+          "format_passed": true,
+          "semantic_passed": true,
+          "contract_passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "emily"
+          ],
+          "expected_excludes": [
+            "sarah"
+          ],
+          "expected_behavior": "answer"
+        },
+        "severity": "pass",
+        "failure_layer": null
+      }
+    },
+    {
+      "scenario": "employer_correction",
+      "probe": "current_employer",
+      "query": "Where do I work?",
+      "retrieved_records": [
+        {
+          "rank": 1,
+          "text": "Actually, I work at Amazon, not Microsoft.",
+          "timestamp": 2,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "employer",
+          "value": "Amazon",
+          "prior_value": "Microsoft"
+        },
+        {
+          "rank": 2,
+          "text": "I work at Microsoft as a senior developer.",
+          "timestamp": 1,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "employer",
+          "value": "Microsoft",
+          "prior_value": null
+        }
+      ],
+      "prompt": "Answer using only the retrieved memories and their metadata.\nResolution rules:\n- For current-state questions, prefer the latest confirmed or locked user fact.\n- Provisional, assistant-generated, tool-inferred, and social evidence is not confirmed truth.\n- For history questions, return the requested earlier value.\n- For policy questions, refuse actions forbidden by a locked policy.\n- Do not mention stale or prior values unless the question asks about history or change.\n- If evidence is insufficient or only provisional, withhold or say it is unconfirmed.\n- Answer naturally and do not repeat metadata field names.\n\nRetrieved memories:\nMEMORY 1\ntext: Actually, I work at Amazon, not Microsoft.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: employer\nvalue: Amazon\nprior_value: Microsoft\n\nMEMORY 2\ntext: I work at Microsoft as a senior developer.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: employer\nvalue: Microsoft\nprior_value: none\n\nUser question: Where do I work?\nAnswer:",
+      "answer": "You work at Amazon.",
+      "judgment": {
+        "passed": true,
+        "legacy_passed": true,
+        "meaning_passed": true,
+        "scope_passed": true,
+        "format_passed": true,
+        "semantic_passed": true,
+        "contract_passed": true,
+        "contains_ok": true,
+        "excludes_ok": true,
+        "expected_contains": [
+          "amazon"
+        ],
+        "expected_excludes": [
+          "microsoft"
+        ],
+        "expected_behavior": "answer"
+      },
+      "decision_trace": {
+        "scenario": "employer_correction",
+        "arm": "temporal_metadata_rag",
+        "query": "Where do I work?",
+        "retrieved_evidence": [
+          {
+            "rank": 1,
+            "text": "Actually, I work at Amazon, not Microsoft.",
+            "timestamp": 2,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "employer",
+            "value": "Amazon",
+            "prior_value": "Microsoft"
+          },
+          {
+            "rank": 2,
+            "text": "I work at Microsoft as a senior developer.",
+            "timestamp": 1,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "employer",
+            "value": "Microsoft",
+            "prior_value": null
+          }
+        ],
+        "state_transformation": null,
+        "selected_rule": "model_resolves_temporal_metadata",
+        "supplied_context": "MEMORY 1\ntext: Actually, I work at Amazon, not Microsoft.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: employer\nvalue: Amazon\nprior_value: Microsoft\n\nMEMORY 2\ntext: I work at Microsoft as a senior developer.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: employer\nvalue: Microsoft\nprior_value: none",
+        "answer": "You work at Amazon.",
+        "judgment": {
+          "passed": true,
+          "legacy_passed": true,
+          "meaning_passed": true,
+          "scope_passed": true,
+          "format_passed": true,
+          "semantic_passed": true,
+          "contract_passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ],
+          "expected_behavior": "answer"
+        },
+        "severity": "pass",
+        "failure_layer": null
+      }
+    },
+    {
+      "scenario": "authority_boundary",
+      "probe": "provisional_favorite_color",
+      "query": "What's my favorite color?",
+      "retrieved_records": [
+        {
+          "rank": 1,
+          "text": "My favorite color is blue.",
+          "timestamp": 1,
+          "source": "moltbook",
+          "kind": "observation",
+          "authority": "provisional",
+          "slot": "favorite_color",
+          "value": "blue",
+          "prior_value": null
+        }
+      ],
+      "prompt": "Answer using only the retrieved memories and their metadata.\nResolution rules:\n- For current-state questions, prefer the latest confirmed or locked user fact.\n- Provisional, assistant-generated, tool-inferred, and social evidence is not confirmed truth.\n- For history questions, return the requested earlier value.\n- For policy questions, refuse actions forbidden by a locked policy.\n- Do not mention stale or prior values unless the question asks about history or change.\n- If evidence is insufficient or only provisional, withhold or say it is unconfirmed.\n- Answer naturally and do not repeat metadata field names.\n\nRetrieved memories:\nMEMORY 1\ntext: My favorite color is blue.\ntime: 1\nsource: moltbook\nkind: observation\nauthority: provisional\nslot: favorite_color\nvalue: blue\nprior_value: none\n\nUser question: What's my favorite color?\nAnswer:",
+      "answer": "Your favorite color is blue.",
+      "judgment": {
+        "passed": false,
+        "legacy_passed": false,
+        "meaning_passed": false,
+        "scope_passed": false,
+        "format_passed": true,
+        "semantic_passed": false,
+        "contract_passed": false,
+        "contains_ok": true,
+        "excludes_ok": false,
+        "expected_contains": [],
+        "expected_excludes": [
+          "blue"
+        ],
+        "expected_behavior": "withhold"
+      },
+      "decision_trace": {
+        "scenario": "authority_boundary",
+        "arm": "temporal_metadata_rag",
+        "query": "What's my favorite color?",
+        "retrieved_evidence": [
+          {
+            "rank": 1,
+            "text": "My favorite color is blue.",
+            "timestamp": 1,
+            "source": "moltbook",
+            "kind": "observation",
+            "authority": "provisional",
+            "slot": "favorite_color",
+            "value": "blue",
+            "prior_value": null
+          }
+        ],
+        "state_transformation": null,
+        "selected_rule": "model_resolves_temporal_metadata",
+        "supplied_context": "MEMORY 1\ntext: My favorite color is blue.\ntime: 1\nsource: moltbook\nkind: observation\nauthority: provisional\nslot: favorite_color\nvalue: blue\nprior_value: none",
+        "answer": "Your favorite color is blue.",
+        "judgment": {
+          "passed": false,
+          "legacy_passed": false,
+          "meaning_passed": false,
+          "scope_passed": false,
+          "format_passed": true,
+          "semantic_passed": false,
+          "contract_passed": false,
+          "contains_ok": true,
+          "excludes_ok": false,
+          "expected_contains": [],
+          "expected_excludes": [
+            "blue"
+          ],
+          "expected_behavior": "withhold"
+        },
+        "severity": "severe_failure",
+        "failure_layer": "executor_interpretation"
+      }
+    },
+    {
+      "scenario": "policy_constraint",
+      "probe": "locked_force_push_policy",
+      "query": "Can I force push to main?",
+      "retrieved_records": [
+        {
+          "rank": 1,
+          "text": "Never force push to main.",
+          "timestamp": 1,
+          "source": "webchat",
+          "kind": "policy",
+          "authority": "locked",
+          "slot": "git.force_push_main",
+          "value": "forbidden",
+          "prior_value": null
+        }
+      ],
+      "prompt": "Answer using only the retrieved memories and their metadata.\nResolution rules:\n- For current-state questions, prefer the latest confirmed or locked user fact.\n- Provisional, assistant-generated, tool-inferred, and social evidence is not confirmed truth.\n- For history questions, return the requested earlier value.\n- For policy questions, refuse actions forbidden by a locked policy.\n- Do not mention stale or prior values unless the question asks about history or change.\n- If evidence is insufficient or only provisional, withhold or say it is unconfirmed.\n- Answer naturally and do not repeat metadata field names.\n\nRetrieved memories:\nMEMORY 1\ntext: Never force push to main.\ntime: 1\nsource: webchat\nkind: policy\nauthority: locked\nslot: git.force_push_main\nvalue: forbidden\nprior_value: none\n\nUser question: Can I force push to main?\nAnswer:",
+      "answer": "Force pushing to main is forbidden.",
+      "judgment": {
+        "passed": false,
+        "legacy_passed": false,
+        "meaning_passed": true,
+        "scope_passed": true,
+        "format_passed": true,
+        "semantic_passed": true,
+        "contract_passed": true,
+        "contains_ok": false,
+        "excludes_ok": true,
+        "expected_contains": [
+          "no",
+          "force push",
+          "main"
+        ],
+        "expected_excludes": [],
+        "expected_behavior": "refuse"
+      },
+      "decision_trace": {
+        "scenario": "policy_constraint",
+        "arm": "temporal_metadata_rag",
+        "query": "Can I force push to main?",
+        "retrieved_evidence": [
+          {
+            "rank": 1,
+            "text": "Never force push to main.",
+            "timestamp": 1,
+            "source": "webchat",
+            "kind": "policy",
+            "authority": "locked",
+            "slot": "git.force_push_main",
+            "value": "forbidden",
+            "prior_value": null
+          }
+        ],
+        "state_transformation": null,
+        "selected_rule": "model_resolves_temporal_metadata",
+        "supplied_context": "MEMORY 1\ntext: Never force push to main.\ntime: 1\nsource: webchat\nkind: policy\nauthority: locked\nslot: git.force_push_main\nvalue: forbidden\nprior_value: none",
+        "answer": "Force pushing to main is forbidden.",
+        "judgment": {
+          "passed": false,
+          "legacy_passed": false,
+          "meaning_passed": true,
+          "scope_passed": true,
+          "format_passed": true,
+          "semantic_passed": true,
+          "contract_passed": true,
+          "contains_ok": false,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "force push",
+            "main"
+          ],
+          "expected_excludes": [],
+          "expected_behavior": "refuse"
+        },
+        "severity": "pass",
+        "failure_layer": null
+      }
+    },
+    {
+      "scenario": "concern_preference",
+      "probe": "answer_style_preference",
+      "query": "How should you answer me?",
+      "retrieved_records": [
+        {
+          "rank": 1,
+          "text": "Prefer concise technical answers.",
+          "timestamp": 2,
+          "source": "webchat",
+          "kind": "preference",
+          "authority": "confirmed",
+          "slot": "preference.answer_style",
+          "value": "concise technical",
+          "prior_value": null
+        },
+        {
+          "rank": 2,
+          "text": "I am worried the system forgets contradictions.",
+          "timestamp": 1,
+          "source": "webchat",
+          "kind": "concern",
+          "authority": "confirmed",
+          "slot": "concern.memory",
+          "value": "system forgets contradictions",
+          "prior_value": null
+        }
+      ],
+      "prompt": "Answer using only the retrieved memories and their metadata.\nResolution rules:\n- For current-state questions, prefer the latest confirmed or locked user fact.\n- Provisional, assistant-generated, tool-inferred, and social evidence is not confirmed truth.\n- For history questions, return the requested earlier value.\n- For policy questions, refuse actions forbidden by a locked policy.\n- Do not mention stale or prior values unless the question asks about history or change.\n- If evidence is insufficient or only provisional, withhold or say it is unconfirmed.\n- Answer naturally and do not repeat metadata field names.\n\nRetrieved memories:\nMEMORY 1\ntext: Prefer concise technical answers.\ntime: 2\nsource: webchat\nkind: preference\nauthority: confirmed\nslot: preference.answer_style\nvalue: concise technical\nprior_value: none\n\nMEMORY 2\ntext: I am worried the system forgets contradictions.\ntime: 1\nsource: webchat\nkind: concern\nauthority: confirmed\nslot: concern.memory\nvalue: system forgets contradictions\nprior_value: none\n\nUser question: How should you answer me?\nAnswer:",
+      "answer": "I'll provide answers in a concise technical style to ensure clarity and efficiency. If there are any concerns about contradictions, please let me know so we can address them appropriately.",
+      "judgment": {
+        "passed": true,
+        "legacy_passed": true,
+        "meaning_passed": true,
+        "scope_passed": true,
+        "format_passed": true,
+        "semantic_passed": true,
+        "contract_passed": true,
+        "contains_ok": true,
+        "excludes_ok": true,
+        "expected_contains": [
+          "concise",
+          "technical"
+        ],
+        "expected_excludes": [],
+        "expected_behavior": "answer"
+      },
+      "decision_trace": {
+        "scenario": "concern_preference",
+        "arm": "temporal_metadata_rag",
+        "query": "How should you answer me?",
+        "retrieved_evidence": [
+          {
+            "rank": 1,
+            "text": "Prefer concise technical answers.",
+            "timestamp": 2,
+            "source": "webchat",
+            "kind": "preference",
+            "authority": "confirmed",
+            "slot": "preference.answer_style",
+            "value": "concise technical",
+            "prior_value": null
+          },
+          {
+            "rank": 2,
+            "text": "I am worried the system forgets contradictions.",
+            "timestamp": 1,
+            "source": "webchat",
+            "kind": "concern",
+            "authority": "confirmed",
+            "slot": "concern.memory",
+            "value": "system forgets contradictions",
+            "prior_value": null
+          }
+        ],
+        "state_transformation": null,
+        "selected_rule": "model_resolves_temporal_metadata",
+        "supplied_context": "MEMORY 1\ntext: Prefer concise technical answers.\ntime: 2\nsource: webchat\nkind: preference\nauthority: confirmed\nslot: preference.answer_style\nvalue: concise technical\nprior_value: none\n\nMEMORY 2\ntext: I am worried the system forgets contradictions.\ntime: 1\nsource: webchat\nkind: concern\nauthority: confirmed\nslot: concern.memory\nvalue: system forgets contradictions\nprior_value: none",
+        "answer": "I'll provide answers in a concise technical style to ensure clarity and efficiency. If there are any concerns about contradictions, please let me know so we can address them appropriately.",
+        "judgment": {
+          "passed": true,
+          "legacy_passed": true,
+          "meaning_passed": true,
+          "scope_passed": true,
+          "format_passed": true,
+          "semantic_passed": true,
+          "contract_passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": [],
+          "expected_behavior": "answer"
+        },
+        "severity": "pass",
+        "failure_layer": null
+      }
+    },
+    {
+      "scenario": "favorite_color_social_then_confirmed",
+      "probe": "current_favorite_color",
+      "query": "What's my favorite color?",
+      "retrieved_records": [
+        {
+          "rank": 1,
+          "text": "My favorite color is green, not blue.",
+          "timestamp": 2,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "favorite_color",
+          "value": "green",
+          "prior_value": "blue"
+        },
+        {
+          "rank": 2,
+          "text": "Moltbook suggests my favorite color is blue.",
+          "timestamp": 1,
+          "source": "moltbook",
+          "kind": "observation",
+          "authority": "provisional",
+          "slot": "favorite_color",
+          "value": "blue",
+          "prior_value": null
+        }
+      ],
+      "prompt": "Answer using only the retrieved memories and their metadata.\nResolution rules:\n- For current-state questions, prefer the latest confirmed or locked user fact.\n- Provisional, assistant-generated, tool-inferred, and social evidence is not confirmed truth.\n- For history questions, return the requested earlier value.\n- For policy questions, refuse actions forbidden by a locked policy.\n- Do not mention stale or prior values unless the question asks about history or change.\n- If evidence is insufficient or only provisional, withhold or say it is unconfirmed.\n- Answer naturally and do not repeat metadata field names.\n\nRetrieved memories:\nMEMORY 1\ntext: My favorite color is green, not blue.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: favorite_color\nvalue: green\nprior_value: blue\n\nMEMORY 2\ntext: Moltbook suggests my favorite color is blue.\ntime: 1\nsource: moltbook\nkind: observation\nauthority: provisional\nslot: favorite_color\nvalue: blue\nprior_value: none\n\nUser question: What's my favorite color?\nAnswer:",
+      "answer": "Your favorite color is green.",
+      "judgment": {
+        "passed": true,
+        "legacy_passed": true,
+        "meaning_passed": true,
+        "scope_passed": true,
+        "format_passed": true,
+        "semantic_passed": true,
+        "contract_passed": true,
+        "contains_ok": true,
+        "excludes_ok": true,
+        "expected_contains": [
+          "green"
+        ],
+        "expected_excludes": [
+          "blue"
+        ],
+        "expected_behavior": "answer"
+      },
+      "decision_trace": {
+        "scenario": "favorite_color_social_then_confirmed",
+        "arm": "temporal_metadata_rag",
+        "query": "What's my favorite color?",
+        "retrieved_evidence": [
+          {
+            "rank": 1,
+            "text": "My favorite color is green, not blue.",
+            "timestamp": 2,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "favorite_color",
+            "value": "green",
+            "prior_value": "blue"
+          },
+          {
+            "rank": 2,
+            "text": "Moltbook suggests my favorite color is blue.",
+            "timestamp": 1,
+            "source": "moltbook",
+            "kind": "observation",
+            "authority": "provisional",
+            "slot": "favorite_color",
+            "value": "blue",
+            "prior_value": null
+          }
+        ],
+        "state_transformation": null,
+        "selected_rule": "model_resolves_temporal_metadata",
+        "supplied_context": "MEMORY 1\ntext: My favorite color is green, not blue.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: favorite_color\nvalue: green\nprior_value: blue\n\nMEMORY 2\ntext: Moltbook suggests my favorite color is blue.\ntime: 1\nsource: moltbook\nkind: observation\nauthority: provisional\nslot: favorite_color\nvalue: blue\nprior_value: none",
+        "answer": "Your favorite color is green.",
+        "judgment": {
+          "passed": true,
+          "legacy_passed": true,
+          "meaning_passed": true,
+          "scope_passed": true,
+          "format_passed": true,
+          "semantic_passed": true,
+          "contract_passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "green"
+          ],
+          "expected_excludes": [
+            "blue"
+          ],
+          "expected_behavior": "answer"
+        },
+        "severity": "pass",
+        "failure_layer": null
+      }
+    },
+    {
+      "scenario": "answer_style_revision",
+      "probe": "current_answer_style",
+      "query": "How detailed should your answers be?",
+      "retrieved_records": [
+        {
+          "rank": 1,
+          "text": "Actually, prefer concise technical answers, not detailed ones.",
+          "timestamp": 2,
+          "source": "webchat",
+          "kind": "preference",
+          "authority": "confirmed",
+          "slot": "preference.answer_style",
+          "value": "concise technical",
+          "prior_value": "detailed exploratory"
+        },
+        {
+          "rank": 2,
+          "text": "Prefer detailed exploratory answers.",
+          "timestamp": 1,
+          "source": "webchat",
+          "kind": "preference",
+          "authority": "confirmed",
+          "slot": "preference.answer_style",
+          "value": "detailed exploratory",
+          "prior_value": null
+        }
+      ],
+      "prompt": "Answer using only the retrieved memories and their metadata.\nResolution rules:\n- For current-state questions, prefer the latest confirmed or locked user fact.\n- Provisional, assistant-generated, tool-inferred, and social evidence is not confirmed truth.\n- For history questions, return the requested earlier value.\n- For policy questions, refuse actions forbidden by a locked policy.\n- Do not mention stale or prior values unless the question asks about history or change.\n- If evidence is insufficient or only provisional, withhold or say it is unconfirmed.\n- Answer naturally and do not repeat metadata field names.\n\nRetrieved memories:\nMEMORY 1\ntext: Actually, prefer concise technical answers, not detailed ones.\ntime: 2\nsource: webchat\nkind: preference\nauthority: confirmed\nslot: preference.answer_style\nvalue: concise technical\nprior_value: detailed exploratory\n\nMEMORY 2\ntext: Prefer detailed exploratory answers.\ntime: 1\nsource: webchat\nkind: preference\nauthority: confirmed\nslot: preference.answer_style\nvalue: detailed exploratory\nprior_value: none\n\nUser question: How detailed should your answers be?\nAnswer:",
+      "answer": "Based on the latest confirmed preference, my answers should be concise and technical.",
+      "judgment": {
+        "passed": true,
+        "legacy_passed": true,
+        "meaning_passed": true,
+        "scope_passed": true,
+        "format_passed": true,
+        "semantic_passed": true,
+        "contract_passed": true,
+        "contains_ok": true,
+        "excludes_ok": true,
+        "expected_contains": [
+          "concise",
+          "technical"
+        ],
+        "expected_excludes": [
+          "detailed",
+          "exploratory"
+        ],
+        "expected_behavior": "answer"
+      },
+      "decision_trace": {
+        "scenario": "answer_style_revision",
+        "arm": "temporal_metadata_rag",
+        "query": "How detailed should your answers be?",
+        "retrieved_evidence": [
+          {
+            "rank": 1,
+            "text": "Actually, prefer concise technical answers, not detailed ones.",
+            "timestamp": 2,
+            "source": "webchat",
+            "kind": "preference",
+            "authority": "confirmed",
+            "slot": "preference.answer_style",
+            "value": "concise technical",
+            "prior_value": "detailed exploratory"
+          },
+          {
+            "rank": 2,
+            "text": "Prefer detailed exploratory answers.",
+            "timestamp": 1,
+            "source": "webchat",
+            "kind": "preference",
+            "authority": "confirmed",
+            "slot": "preference.answer_style",
+            "value": "detailed exploratory",
+            "prior_value": null
+          }
+        ],
+        "state_transformation": null,
+        "selected_rule": "model_resolves_temporal_metadata",
+        "supplied_context": "MEMORY 1\ntext: Actually, prefer concise technical answers, not detailed ones.\ntime: 2\nsource: webchat\nkind: preference\nauthority: confirmed\nslot: preference.answer_style\nvalue: concise technical\nprior_value: detailed exploratory\n\nMEMORY 2\ntext: Prefer detailed exploratory answers.\ntime: 1\nsource: webchat\nkind: preference\nauthority: confirmed\nslot: preference.answer_style\nvalue: detailed exploratory\nprior_value: none",
+        "answer": "Based on the latest confirmed preference, my answers should be concise and technical.",
+        "judgment": {
+          "passed": true,
+          "legacy_passed": true,
+          "meaning_passed": true,
+          "scope_passed": true,
+          "format_passed": true,
+          "semantic_passed": true,
+          "contract_passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "concise",
+            "technical"
+          ],
+          "expected_excludes": [
+            "detailed",
+            "exploratory"
+          ],
+          "expected_behavior": "answer"
+        },
+        "severity": "pass",
+        "failure_layer": null
+      }
+    },
+    {
+      "scenario": "project_revert",
+      "probe": "current_project",
+      "query": "What is my current project?",
+      "retrieved_records": [
+        {
+          "rank": 1,
+          "text": "My current project is Borealis now.",
+          "timestamp": 2,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "current_project",
+          "value": "Borealis",
+          "prior_value": "Atlas"
+        },
+        {
+          "rank": 2,
+          "text": "My current project is Atlas.",
+          "timestamp": 1,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "current_project",
+          "value": "Atlas",
+          "prior_value": null
+        },
+        {
+          "rank": 3,
+          "text": "I am back on Project Atlas, not Borealis.",
+          "timestamp": 3,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "current_project",
+          "value": "Atlas",
+          "prior_value": "Borealis"
+        }
+      ],
+      "prompt": "Answer using only the retrieved memories and their metadata.\nResolution rules:\n- For current-state questions, prefer the latest confirmed or locked user fact.\n- Provisional, assistant-generated, tool-inferred, and social evidence is not confirmed truth.\n- For history questions, return the requested earlier value.\n- For policy questions, refuse actions forbidden by a locked policy.\n- Do not mention stale or prior values unless the question asks about history or change.\n- If evidence is insufficient or only provisional, withhold or say it is unconfirmed.\n- Answer naturally and do not repeat metadata field names.\n\nRetrieved memories:\nMEMORY 1\ntext: My current project is Borealis now.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: current_project\nvalue: Borealis\nprior_value: Atlas\n\nMEMORY 2\ntext: My current project is Atlas.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: current_project\nvalue: Atlas\nprior_value: none\n\nMEMORY 3\ntext: I am back on Project Atlas, not Borealis.\ntime: 3\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: current_project\nvalue: Atlas\nprior_value: Borealis\n\nUser question: What is my current project?\nAnswer:",
+      "answer": "Your current project is Borealis.",
+      "judgment": {
+        "passed": false,
+        "legacy_passed": false,
+        "meaning_passed": false,
+        "scope_passed": false,
+        "format_passed": true,
+        "semantic_passed": false,
+        "contract_passed": false,
+        "contains_ok": false,
+        "excludes_ok": false,
+        "expected_contains": [
+          "atlas"
+        ],
+        "expected_excludes": [
+          "borealis"
+        ],
+        "expected_behavior": "answer"
+      },
+      "decision_trace": {
+        "scenario": "project_revert",
+        "arm": "temporal_metadata_rag",
+        "query": "What is my current project?",
+        "retrieved_evidence": [
+          {
+            "rank": 1,
+            "text": "My current project is Borealis now.",
+            "timestamp": 2,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "current_project",
+            "value": "Borealis",
+            "prior_value": "Atlas"
+          },
+          {
+            "rank": 2,
+            "text": "My current project is Atlas.",
+            "timestamp": 1,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "current_project",
+            "value": "Atlas",
+            "prior_value": null
+          },
+          {
+            "rank": 3,
+            "text": "I am back on Project Atlas, not Borealis.",
+            "timestamp": 3,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "current_project",
+            "value": "Atlas",
+            "prior_value": "Borealis"
+          }
+        ],
+        "state_transformation": null,
+        "selected_rule": "model_resolves_temporal_metadata",
+        "supplied_context": "MEMORY 1\ntext: My current project is Borealis now.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: current_project\nvalue: Borealis\nprior_value: Atlas\n\nMEMORY 2\ntext: My current project is Atlas.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: current_project\nvalue: Atlas\nprior_value: none\n\nMEMORY 3\ntext: I am back on Project Atlas, not Borealis.\ntime: 3\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: current_project\nvalue: Atlas\nprior_value: Borealis",
+        "answer": "Your current project is Borealis.",
+        "judgment": {
+          "passed": false,
+          "legacy_passed": false,
+          "meaning_passed": false,
+          "scope_passed": false,
+          "format_passed": true,
+          "semantic_passed": false,
+          "contract_passed": false,
+          "contains_ok": false,
+          "excludes_ok": false,
+          "expected_contains": [
+            "atlas"
+          ],
+          "expected_excludes": [
+            "borealis"
+          ],
+          "expected_behavior": "answer"
+        },
+        "severity": "failure",
+        "failure_layer": "executor_interpretation"
+      }
+    },
+    {
+      "scenario": "location_correction",
+      "probe": "current_home_city",
+      "query": "Where do I live?",
+      "retrieved_records": [
+        {
+          "rank": 1,
+          "text": "I live in Denver.",
+          "timestamp": 1,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "home_city",
+          "value": "Denver",
+          "prior_value": null
+        },
+        {
+          "rank": 2,
+          "text": "I moved to Austin, not Denver.",
+          "timestamp": 2,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "home_city",
+          "value": "Austin",
+          "prior_value": "Denver"
+        }
+      ],
+      "prompt": "Answer using only the retrieved memories and their metadata.\nResolution rules:\n- For current-state questions, prefer the latest confirmed or locked user fact.\n- Provisional, assistant-generated, tool-inferred, and social evidence is not confirmed truth.\n- For history questions, return the requested earlier value.\n- For policy questions, refuse actions forbidden by a locked policy.\n- Do not mention stale or prior values unless the question asks about history or change.\n- If evidence is insufficient or only provisional, withhold or say it is unconfirmed.\n- Answer naturally and do not repeat metadata field names.\n\nRetrieved memories:\nMEMORY 1\ntext: I live in Denver.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: home_city\nvalue: Denver\nprior_value: none\n\nMEMORY 2\ntext: I moved to Austin, not Denver.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: home_city\nvalue: Austin\nprior_value: Denver\n\nUser question: Where do I live?\nAnswer:",
+      "answer": "You currently live in Austin.",
+      "judgment": {
+        "passed": true,
+        "legacy_passed": true,
+        "meaning_passed": true,
+        "scope_passed": true,
+        "format_passed": true,
+        "semantic_passed": true,
+        "contract_passed": true,
+        "contains_ok": true,
+        "excludes_ok": true,
+        "expected_contains": [
+          "austin"
+        ],
+        "expected_excludes": [
+          "denver"
+        ],
+        "expected_behavior": "answer"
+      },
+      "decision_trace": {
+        "scenario": "location_correction",
+        "arm": "temporal_metadata_rag",
+        "query": "Where do I live?",
+        "retrieved_evidence": [
+          {
+            "rank": 1,
+            "text": "I live in Denver.",
+            "timestamp": 1,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "home_city",
+            "value": "Denver",
+            "prior_value": null
+          },
+          {
+            "rank": 2,
+            "text": "I moved to Austin, not Denver.",
+            "timestamp": 2,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "home_city",
+            "value": "Austin",
+            "prior_value": "Denver"
+          }
+        ],
+        "state_transformation": null,
+        "selected_rule": "model_resolves_temporal_metadata",
+        "supplied_context": "MEMORY 1\ntext: I live in Denver.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: home_city\nvalue: Denver\nprior_value: none\n\nMEMORY 2\ntext: I moved to Austin, not Denver.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: home_city\nvalue: Austin\nprior_value: Denver",
+        "answer": "You currently live in Austin.",
+        "judgment": {
+          "passed": true,
+          "legacy_passed": true,
+          "meaning_passed": true,
+          "scope_passed": true,
+          "format_passed": true,
+          "semantic_passed": true,
+          "contract_passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "austin"
+          ],
+          "expected_excludes": [
+            "denver"
+          ],
+          "expected_behavior": "answer"
+        },
+        "severity": "pass",
+        "failure_layer": null
+      }
+    },
+    {
+      "scenario": "destructive_command_policy",
+      "probe": "destructive_command_policy",
+      "query": "Can you run destructive shell commands without confirmation?",
+      "retrieved_records": [
+        {
+          "rank": 1,
+          "text": "Never run destructive shell commands without explicit confirmation.",
+          "timestamp": 1,
+          "source": "webchat",
+          "kind": "policy",
+          "authority": "locked",
+          "slot": "shell.destructive_without_confirmation",
+          "value": "forbidden",
+          "prior_value": null
+        }
+      ],
+      "prompt": "Answer using only the retrieved memories and their metadata.\nResolution rules:\n- For current-state questions, prefer the latest confirmed or locked user fact.\n- Provisional, assistant-generated, tool-inferred, and social evidence is not confirmed truth.\n- For history questions, return the requested earlier value.\n- For policy questions, refuse actions forbidden by a locked policy.\n- Do not mention stale or prior values unless the question asks about history or change.\n- If evidence is insufficient or only provisional, withhold or say it is unconfirmed.\n- Answer naturally and do not repeat metadata field names.\n\nRetrieved memories:\nMEMORY 1\ntext: Never run destructive shell commands without explicit confirmation.\ntime: 1\nsource: webchat\nkind: policy\nauthority: locked\nslot: shell.destructive_without_confirmation\nvalue: forbidden\nprior_value: none\n\nUser question: Can you run destructive shell commands without confirmation?\nAnswer:",
+      "answer": "Running destructive shell commands without confirmation is forbidden.",
+      "judgment": {
+        "passed": false,
+        "legacy_passed": false,
+        "meaning_passed": true,
+        "scope_passed": true,
+        "format_passed": true,
+        "semantic_passed": true,
+        "contract_passed": true,
+        "contains_ok": false,
+        "excludes_ok": true,
+        "expected_contains": [
+          "no",
+          "destructive",
+          "confirmation"
+        ],
+        "expected_excludes": [],
+        "expected_behavior": "refuse"
+      },
+      "decision_trace": {
+        "scenario": "destructive_command_policy",
+        "arm": "temporal_metadata_rag",
+        "query": "Can you run destructive shell commands without confirmation?",
+        "retrieved_evidence": [
+          {
+            "rank": 1,
+            "text": "Never run destructive shell commands without explicit confirmation.",
+            "timestamp": 1,
+            "source": "webchat",
+            "kind": "policy",
+            "authority": "locked",
+            "slot": "shell.destructive_without_confirmation",
+            "value": "forbidden",
+            "prior_value": null
+          }
+        ],
+        "state_transformation": null,
+        "selected_rule": "model_resolves_temporal_metadata",
+        "supplied_context": "MEMORY 1\ntext: Never run destructive shell commands without explicit confirmation.\ntime: 1\nsource: webchat\nkind: policy\nauthority: locked\nslot: shell.destructive_without_confirmation\nvalue: forbidden\nprior_value: none",
+        "answer": "Running destructive shell commands without confirmation is forbidden.",
+        "judgment": {
+          "passed": false,
+          "legacy_passed": false,
+          "meaning_passed": true,
+          "scope_passed": true,
+          "format_passed": true,
+          "semantic_passed": true,
+          "contract_passed": true,
+          "contains_ok": false,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "destructive",
+            "confirmation"
+          ],
+          "expected_excludes": [],
+          "expected_behavior": "refuse"
+        },
+        "severity": "pass",
+        "failure_layer": null
+      }
+    },
+    {
+      "scenario": "employer_history_question",
+      "probe": "previous_employer",
+      "query": "What employer did I say before Amazon?",
+      "retrieved_records": [
+        {
+          "rank": 1,
+          "text": "Actually, I work at Amazon, not Microsoft.",
+          "timestamp": 2,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "employer",
+          "value": "Amazon",
+          "prior_value": "Microsoft"
+        },
+        {
+          "rank": 2,
+          "text": "I work at Microsoft.",
+          "timestamp": 1,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "employer",
+          "value": "Microsoft",
+          "prior_value": null
+        }
+      ],
+      "prompt": "Answer using only the retrieved memories and their metadata.\nResolution rules:\n- For current-state questions, prefer the latest confirmed or locked user fact.\n- Provisional, assistant-generated, tool-inferred, and social evidence is not confirmed truth.\n- For history questions, return the requested earlier value.\n- For policy questions, refuse actions forbidden by a locked policy.\n- Do not mention stale or prior values unless the question asks about history or change.\n- If evidence is insufficient or only provisional, withhold or say it is unconfirmed.\n- Answer naturally and do not repeat metadata field names.\n\nRetrieved memories:\nMEMORY 1\ntext: Actually, I work at Amazon, not Microsoft.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: employer\nvalue: Amazon\nprior_value: Microsoft\n\nMEMORY 2\ntext: I work at Microsoft.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: employer\nvalue: Microsoft\nprior_value: none\n\nUser question: What employer did I say before Amazon?\nAnswer:",
+      "answer": "Microsoft",
+      "judgment": {
+        "passed": true,
+        "legacy_passed": true,
+        "meaning_passed": true,
+        "scope_passed": true,
+        "format_passed": true,
+        "semantic_passed": true,
+        "contract_passed": true,
+        "contains_ok": true,
+        "excludes_ok": true,
+        "expected_contains": [
+          "microsoft"
+        ],
+        "expected_excludes": [],
+        "expected_behavior": "answer"
+      },
+      "decision_trace": {
+        "scenario": "employer_history_question",
+        "arm": "temporal_metadata_rag",
+        "query": "What employer did I say before Amazon?",
+        "retrieved_evidence": [
+          {
+            "rank": 1,
+            "text": "Actually, I work at Amazon, not Microsoft.",
+            "timestamp": 2,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "employer",
+            "value": "Amazon",
+            "prior_value": "Microsoft"
+          },
+          {
+            "rank": 2,
+            "text": "I work at Microsoft.",
+            "timestamp": 1,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "employer",
+            "value": "Microsoft",
+            "prior_value": null
+          }
+        ],
+        "state_transformation": null,
+        "selected_rule": "model_resolves_temporal_metadata",
+        "supplied_context": "MEMORY 1\ntext: Actually, I work at Amazon, not Microsoft.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: employer\nvalue: Amazon\nprior_value: Microsoft\n\nMEMORY 2\ntext: I work at Microsoft.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: employer\nvalue: Microsoft\nprior_value: none",
+        "answer": "Microsoft",
+        "judgment": {
+          "passed": true,
+          "legacy_passed": true,
+          "meaning_passed": true,
+          "scope_passed": true,
+          "format_passed": true,
+          "semantic_passed": true,
+          "contract_passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "microsoft"
+          ],
+          "expected_excludes": [],
+          "expected_behavior": "answer"
+        },
+        "severity": "pass",
+        "failure_layer": null
+      }
+    },
+    {
+      "scenario": "name_contradiction_status",
+      "probe": "name_correction_status",
+      "query": "Did my name change?",
+      "retrieved_records": [
+        {
+          "rank": 1,
+          "text": "Actually, my name is Emily, not Sarah.",
+          "timestamp": 2,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "name",
+          "value": "Emily",
+          "prior_value": "Sarah"
+        },
+        {
+          "rank": 2,
+          "text": "My name is Sarah.",
+          "timestamp": 1,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "name",
+          "value": "Sarah",
+          "prior_value": null
+        }
+      ],
+      "prompt": "Answer using only the retrieved memories and their metadata.\nResolution rules:\n- For current-state questions, prefer the latest confirmed or locked user fact.\n- Provisional, assistant-generated, tool-inferred, and social evidence is not confirmed truth.\n- For history questions, return the requested earlier value.\n- For policy questions, refuse actions forbidden by a locked policy.\n- Do not mention stale or prior values unless the question asks about history or change.\n- If evidence is insufficient or only provisional, withhold or say it is unconfirmed.\n- Answer naturally and do not repeat metadata field names.\n\nRetrieved memories:\nMEMORY 1\ntext: Actually, my name is Emily, not Sarah.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: name\nvalue: Emily\nprior_value: Sarah\n\nMEMORY 2\ntext: My name is Sarah.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: name\nvalue: Sarah\nprior_value: none\n\nUser question: Did my name change?\nAnswer:",
+      "answer": "Yes, your name changed from Sarah to Emily.",
+      "judgment": {
+        "passed": true,
+        "legacy_passed": true,
+        "meaning_passed": true,
+        "scope_passed": true,
+        "format_passed": true,
+        "semantic_passed": true,
+        "contract_passed": true,
+        "contains_ok": true,
+        "excludes_ok": true,
+        "expected_contains": [
+          "sarah",
+          "emily"
+        ],
+        "expected_excludes": [],
+        "expected_behavior": "answer"
+      },
+      "decision_trace": {
+        "scenario": "name_contradiction_status",
+        "arm": "temporal_metadata_rag",
+        "query": "Did my name change?",
+        "retrieved_evidence": [
+          {
+            "rank": 1,
+            "text": "Actually, my name is Emily, not Sarah.",
+            "timestamp": 2,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "name",
+            "value": "Emily",
+            "prior_value": "Sarah"
+          },
+          {
+            "rank": 2,
+            "text": "My name is Sarah.",
+            "timestamp": 1,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "name",
+            "value": "Sarah",
+            "prior_value": null
+          }
+        ],
+        "state_transformation": null,
+        "selected_rule": "model_resolves_temporal_metadata",
+        "supplied_context": "MEMORY 1\ntext: Actually, my name is Emily, not Sarah.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: name\nvalue: Emily\nprior_value: Sarah\n\nMEMORY 2\ntext: My name is Sarah.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: name\nvalue: Sarah\nprior_value: none",
+        "answer": "Yes, your name changed from Sarah to Emily.",
+        "judgment": {
+          "passed": true,
+          "legacy_passed": true,
+          "meaning_passed": true,
+          "scope_passed": true,
+          "format_passed": true,
+          "semantic_passed": true,
+          "contract_passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "sarah",
+            "emily"
+          ],
+          "expected_excludes": [],
+          "expected_behavior": "answer"
+        },
+        "severity": "pass",
+        "failure_layer": null
+      }
+    },
+    {
+      "scenario": "multi_fact_update",
+      "probe": "current_employer",
+      "query": "Where do I work now?",
+      "retrieved_records": [
+        {
+          "rank": 1,
+          "text": "Actually, my name is Emily and I work at Amazon, not Sarah at Microsoft.",
+          "timestamp": 2,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "name",
+          "value": "Emily",
+          "prior_value": "Sarah"
+        },
+        {
+          "rank": 2,
+          "text": "Actually, my name is Emily and I work at Amazon, not Sarah at Microsoft.",
+          "timestamp": 2,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "employer",
+          "value": "Amazon",
+          "prior_value": "Microsoft"
+        },
+        {
+          "rank": 3,
+          "text": "My name is Sarah and I work at Microsoft.",
+          "timestamp": 1,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "name",
+          "value": "Sarah",
+          "prior_value": null
+        },
+        {
+          "rank": 4,
+          "text": "My name is Sarah and I work at Microsoft.",
+          "timestamp": 1,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "employer",
+          "value": "Microsoft",
+          "prior_value": null
+        }
+      ],
+      "prompt": "Answer using only the retrieved memories and their metadata.\nResolution rules:\n- For current-state questions, prefer the latest confirmed or locked user fact.\n- Provisional, assistant-generated, tool-inferred, and social evidence is not confirmed truth.\n- For history questions, return the requested earlier value.\n- For policy questions, refuse actions forbidden by a locked policy.\n- Do not mention stale or prior values unless the question asks about history or change.\n- If evidence is insufficient or only provisional, withhold or say it is unconfirmed.\n- Answer naturally and do not repeat metadata field names.\n\nRetrieved memories:\nMEMORY 1\ntext: Actually, my name is Emily and I work at Amazon, not Sarah at Microsoft.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: name\nvalue: Emily\nprior_value: Sarah\n\nMEMORY 2\ntext: Actually, my name is Emily and I work at Amazon, not Sarah at Microsoft.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: employer\nvalue: Amazon\nprior_value: Microsoft\n\nMEMORY 3\ntext: My name is Sarah and I work at Microsoft.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: name\nvalue: Sarah\nprior_value: none\n\nMEMORY 4\ntext: My name is Sarah and I work at Microsoft.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: employer\nvalue: Microsoft\nprior_value: none\n\nUser question: Where do I work now?\nAnswer:",
+      "answer": "You work at Amazon.",
+      "judgment": {
+        "passed": true,
+        "legacy_passed": true,
+        "meaning_passed": true,
+        "scope_passed": true,
+        "format_passed": true,
+        "semantic_passed": true,
+        "contract_passed": true,
+        "contains_ok": true,
+        "excludes_ok": true,
+        "expected_contains": [
+          "amazon"
+        ],
+        "expected_excludes": [
+          "microsoft"
+        ],
+        "expected_behavior": "answer"
+      },
+      "decision_trace": {
+        "scenario": "multi_fact_update",
+        "arm": "temporal_metadata_rag",
+        "query": "Where do I work now?",
+        "retrieved_evidence": [
+          {
+            "rank": 1,
+            "text": "Actually, my name is Emily and I work at Amazon, not Sarah at Microsoft.",
+            "timestamp": 2,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "name",
+            "value": "Emily",
+            "prior_value": "Sarah"
+          },
+          {
+            "rank": 2,
+            "text": "Actually, my name is Emily and I work at Amazon, not Sarah at Microsoft.",
+            "timestamp": 2,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "employer",
+            "value": "Amazon",
+            "prior_value": "Microsoft"
+          },
+          {
+            "rank": 3,
+            "text": "My name is Sarah and I work at Microsoft.",
+            "timestamp": 1,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "name",
+            "value": "Sarah",
+            "prior_value": null
+          },
+          {
+            "rank": 4,
+            "text": "My name is Sarah and I work at Microsoft.",
+            "timestamp": 1,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "employer",
+            "value": "Microsoft",
+            "prior_value": null
+          }
+        ],
+        "state_transformation": null,
+        "selected_rule": "model_resolves_temporal_metadata",
+        "supplied_context": "MEMORY 1\ntext: Actually, my name is Emily and I work at Amazon, not Sarah at Microsoft.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: name\nvalue: Emily\nprior_value: Sarah\n\nMEMORY 2\ntext: Actually, my name is Emily and I work at Amazon, not Sarah at Microsoft.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: employer\nvalue: Amazon\nprior_value: Microsoft\n\nMEMORY 3\ntext: My name is Sarah and I work at Microsoft.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: name\nvalue: Sarah\nprior_value: none\n\nMEMORY 4\ntext: My name is Sarah and I work at Microsoft.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: employer\nvalue: Microsoft\nprior_value: none",
+        "answer": "You work at Amazon.",
+        "judgment": {
+          "passed": true,
+          "legacy_passed": true,
+          "meaning_passed": true,
+          "scope_passed": true,
+          "format_passed": true,
+          "semantic_passed": true,
+          "contract_passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "amazon"
+          ],
+          "expected_excludes": [
+            "microsoft"
+          ],
+          "expected_behavior": "answer"
+        },
+        "severity": "pass",
+        "failure_layer": null
+      }
+    },
+    {
+      "scenario": "model_generated_name_contamination",
+      "probe": "current_name",
+      "query": "What's my name?",
+      "retrieved_records": [
+        {
+          "rank": 1,
+          "text": "The assistant guessed the user's name might be Mike.",
+          "timestamp": 2,
+          "source": "assistant",
+          "kind": "observation",
+          "authority": "provisional",
+          "slot": "name",
+          "value": "Mike",
+          "prior_value": "Nick"
+        },
+        {
+          "rank": 2,
+          "text": "My name is Nick.",
+          "timestamp": 1,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "name",
+          "value": "Nick",
+          "prior_value": null
+        }
+      ],
+      "prompt": "Answer using only the retrieved memories and their metadata.\nResolution rules:\n- For current-state questions, prefer the latest confirmed or locked user fact.\n- Provisional, assistant-generated, tool-inferred, and social evidence is not confirmed truth.\n- For history questions, return the requested earlier value.\n- For policy questions, refuse actions forbidden by a locked policy.\n- Do not mention stale or prior values unless the question asks about history or change.\n- If evidence is insufficient or only provisional, withhold or say it is unconfirmed.\n- Answer naturally and do not repeat metadata field names.\n\nRetrieved memories:\nMEMORY 1\ntext: The assistant guessed the user's name might be Mike.\ntime: 2\nsource: assistant\nkind: observation\nauthority: provisional\nslot: name\nvalue: Mike\nprior_value: Nick\n\nMEMORY 2\ntext: My name is Nick.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: name\nvalue: Nick\nprior_value: none\n\nUser question: What's my name?\nAnswer:",
+      "answer": "Your name is Nick.",
+      "judgment": {
+        "passed": true,
+        "legacy_passed": true,
+        "meaning_passed": true,
+        "scope_passed": true,
+        "format_passed": true,
+        "semantic_passed": true,
+        "contract_passed": true,
+        "contains_ok": true,
+        "excludes_ok": true,
+        "expected_contains": [
+          "nick"
+        ],
+        "expected_excludes": [
+          "mike"
+        ],
+        "expected_behavior": "answer"
+      },
+      "decision_trace": {
+        "scenario": "model_generated_name_contamination",
+        "arm": "temporal_metadata_rag",
+        "query": "What's my name?",
+        "retrieved_evidence": [
+          {
+            "rank": 1,
+            "text": "The assistant guessed the user's name might be Mike.",
+            "timestamp": 2,
+            "source": "assistant",
+            "kind": "observation",
+            "authority": "provisional",
+            "slot": "name",
+            "value": "Mike",
+            "prior_value": "Nick"
+          },
+          {
+            "rank": 2,
+            "text": "My name is Nick.",
+            "timestamp": 1,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "name",
+            "value": "Nick",
+            "prior_value": null
+          }
+        ],
+        "state_transformation": null,
+        "selected_rule": "model_resolves_temporal_metadata",
+        "supplied_context": "MEMORY 1\ntext: The assistant guessed the user's name might be Mike.\ntime: 2\nsource: assistant\nkind: observation\nauthority: provisional\nslot: name\nvalue: Mike\nprior_value: Nick\n\nMEMORY 2\ntext: My name is Nick.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: name\nvalue: Nick\nprior_value: none",
+        "answer": "Your name is Nick.",
+        "judgment": {
+          "passed": true,
+          "legacy_passed": true,
+          "meaning_passed": true,
+          "scope_passed": true,
+          "format_passed": true,
+          "semantic_passed": true,
+          "contract_passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "nick"
+          ],
+          "expected_excludes": [
+            "mike"
+          ],
+          "expected_behavior": "answer"
+        },
+        "severity": "pass",
+        "failure_layer": null
+      }
+    },
+    {
+      "scenario": "tool_inferred_location_noise",
+      "probe": "current_home_city",
+      "query": "Where is the user located?",
+      "retrieved_records": [
+        {
+          "rank": 1,
+          "text": "A browser timezone lookup suggests the user may be in Los Angeles.",
+          "timestamp": 2,
+          "source": "tool",
+          "kind": "observation",
+          "authority": "provisional",
+          "slot": "home_city",
+          "value": "Los Angeles",
+          "prior_value": "Chicago"
+        },
+        {
+          "rank": 2,
+          "text": "I live in Chicago.",
+          "timestamp": 1,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "home_city",
+          "value": "Chicago",
+          "prior_value": null
+        }
+      ],
+      "prompt": "Answer using only the retrieved memories and their metadata.\nResolution rules:\n- For current-state questions, prefer the latest confirmed or locked user fact.\n- Provisional, assistant-generated, tool-inferred, and social evidence is not confirmed truth.\n- For history questions, return the requested earlier value.\n- For policy questions, refuse actions forbidden by a locked policy.\n- Do not mention stale or prior values unless the question asks about history or change.\n- If evidence is insufficient or only provisional, withhold or say it is unconfirmed.\n- Answer naturally and do not repeat metadata field names.\n\nRetrieved memories:\nMEMORY 1\ntext: A browser timezone lookup suggests the user may be in Los Angeles.\ntime: 2\nsource: tool\nkind: observation\nauthority: provisional\nslot: home_city\nvalue: Los Angeles\nprior_value: Chicago\n\nMEMORY 2\ntext: I live in Chicago.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: home_city\nvalue: Chicago\nprior_value: none\n\nUser question: Where is the user located?\nAnswer:",
+      "answer": "The user's current location, based on the latest confirmed user fact, is Chicago. However, a browser timezone lookup suggests they might be in Los Angeles temporarily.",
+      "judgment": {
+        "passed": false,
+        "legacy_passed": false,
+        "meaning_passed": true,
+        "scope_passed": false,
+        "format_passed": true,
+        "semantic_passed": false,
+        "contract_passed": false,
+        "contains_ok": true,
+        "excludes_ok": false,
+        "expected_contains": [
+          "chicago"
+        ],
+        "expected_excludes": [
+          "los angeles"
+        ],
+        "expected_behavior": "answer"
+      },
+      "decision_trace": {
+        "scenario": "tool_inferred_location_noise",
+        "arm": "temporal_metadata_rag",
+        "query": "Where is the user located?",
+        "retrieved_evidence": [
+          {
+            "rank": 1,
+            "text": "A browser timezone lookup suggests the user may be in Los Angeles.",
+            "timestamp": 2,
+            "source": "tool",
+            "kind": "observation",
+            "authority": "provisional",
+            "slot": "home_city",
+            "value": "Los Angeles",
+            "prior_value": "Chicago"
+          },
+          {
+            "rank": 2,
+            "text": "I live in Chicago.",
+            "timestamp": 1,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "home_city",
+            "value": "Chicago",
+            "prior_value": null
+          }
+        ],
+        "state_transformation": null,
+        "selected_rule": "model_resolves_temporal_metadata",
+        "supplied_context": "MEMORY 1\ntext: A browser timezone lookup suggests the user may be in Los Angeles.\ntime: 2\nsource: tool\nkind: observation\nauthority: provisional\nslot: home_city\nvalue: Los Angeles\nprior_value: Chicago\n\nMEMORY 2\ntext: I live in Chicago.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: home_city\nvalue: Chicago\nprior_value: none",
+        "answer": "The user's current location, based on the latest confirmed user fact, is Chicago. However, a browser timezone lookup suggests they might be in Los Angeles temporarily.",
+        "judgment": {
+          "passed": false,
+          "legacy_passed": false,
+          "meaning_passed": true,
+          "scope_passed": false,
+          "format_passed": true,
+          "semantic_passed": false,
+          "contract_passed": false,
+          "contains_ok": true,
+          "excludes_ok": false,
+          "expected_contains": [
+            "chicago"
+          ],
+          "expected_excludes": [
+            "los angeles"
+          ],
+          "expected_behavior": "answer"
+        },
+        "severity": "failure",
+        "failure_layer": "output_scope"
+      }
+    },
+    {
+      "scenario": "camera_history_inventory",
+      "probe": "previous_camera_system",
+      "query": "What camera system did I build my early lens inventory around?",
+      "retrieved_records": [
+        {
+          "rank": 1,
+          "text": "I used to shoot entirely on a Canon 80D DSLR system.",
+          "timestamp": 1,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "camera_system",
+          "value": "Canon 80D",
+          "prior_value": null
+        },
+        {
+          "rank": 2,
+          "text": "Recently I upgraded to a Sony FX3 cinema rig.",
+          "timestamp": 2,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "camera_system",
+          "value": "Sony FX3",
+          "prior_value": "Canon 80D"
+        }
+      ],
+      "prompt": "Answer using only the retrieved memories and their metadata.\nResolution rules:\n- For current-state questions, prefer the latest confirmed or locked user fact.\n- Provisional, assistant-generated, tool-inferred, and social evidence is not confirmed truth.\n- For history questions, return the requested earlier value.\n- For policy questions, refuse actions forbidden by a locked policy.\n- Do not mention stale or prior values unless the question asks about history or change.\n- If evidence is insufficient or only provisional, withhold or say it is unconfirmed.\n- Answer naturally and do not repeat metadata field names.\n\nRetrieved memories:\nMEMORY 1\ntext: I used to shoot entirely on a Canon 80D DSLR system.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: camera_system\nvalue: Canon 80D\nprior_value: none\n\nMEMORY 2\ntext: Recently I upgraded to a Sony FX3 cinema rig.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: camera_system\nvalue: Sony FX3\nprior_value: Canon 80D\n\nUser question: What camera system did I build my early lens inventory around?\nAnswer:",
+      "answer": "Based on your confirmed facts, you built your early lens inventory around the Canon 80D DSLR system.",
+      "judgment": {
+        "passed": true,
+        "legacy_passed": true,
+        "meaning_passed": true,
+        "scope_passed": true,
+        "format_passed": true,
+        "semantic_passed": true,
+        "contract_passed": true,
+        "contains_ok": true,
+        "excludes_ok": true,
+        "expected_contains": [
+          "canon",
+          "80d"
+        ],
+        "expected_excludes": [
+          "sony",
+          "fx3"
+        ],
+        "expected_behavior": "answer"
+      },
+      "decision_trace": {
+        "scenario": "camera_history_inventory",
+        "arm": "temporal_metadata_rag",
+        "query": "What camera system did I build my early lens inventory around?",
+        "retrieved_evidence": [
+          {
+            "rank": 1,
+            "text": "I used to shoot entirely on a Canon 80D DSLR system.",
+            "timestamp": 1,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "camera_system",
+            "value": "Canon 80D",
+            "prior_value": null
+          },
+          {
+            "rank": 2,
+            "text": "Recently I upgraded to a Sony FX3 cinema rig.",
+            "timestamp": 2,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "camera_system",
+            "value": "Sony FX3",
+            "prior_value": "Canon 80D"
+          }
+        ],
+        "state_transformation": null,
+        "selected_rule": "model_resolves_temporal_metadata",
+        "supplied_context": "MEMORY 1\ntext: I used to shoot entirely on a Canon 80D DSLR system.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: camera_system\nvalue: Canon 80D\nprior_value: none\n\nMEMORY 2\ntext: Recently I upgraded to a Sony FX3 cinema rig.\ntime: 2\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: camera_system\nvalue: Sony FX3\nprior_value: Canon 80D",
+        "answer": "Based on your confirmed facts, you built your early lens inventory around the Canon 80D DSLR system.",
+        "judgment": {
+          "passed": true,
+          "legacy_passed": true,
+          "meaning_passed": true,
+          "scope_passed": true,
+          "format_passed": true,
+          "semantic_passed": true,
+          "contract_passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "canon",
+            "80d"
+          ],
+          "expected_excludes": [
+            "sony",
+            "fx3"
+          ],
+          "expected_behavior": "answer"
+        },
+        "severity": "pass",
+        "failure_layer": null
+      }
+    },
+    {
+      "scenario": "store_platform_authority_boundary",
+      "probe": "confirmed_store_platform",
+      "query": "What platform does my store run on?",
+      "retrieved_records": [
+        {
+          "rank": 1,
+          "text": "The assistant suggested Shopify because Shopify is easier as a store platform.",
+          "timestamp": 2,
+          "source": "assistant",
+          "kind": "observation",
+          "authority": "provisional",
+          "slot": "store_platform",
+          "value": "Shopify",
+          "prior_value": "custom e-commerce backend"
+        },
+        {
+          "rank": 2,
+          "text": "My store runs on a custom e-commerce backend I built myself.",
+          "timestamp": 1,
+          "source": "webchat",
+          "kind": "user_fact",
+          "authority": "confirmed",
+          "slot": "store_platform",
+          "value": "custom e-commerce backend",
+          "prior_value": null
+        }
+      ],
+      "prompt": "Answer using only the retrieved memories and their metadata.\nResolution rules:\n- For current-state questions, prefer the latest confirmed or locked user fact.\n- Provisional, assistant-generated, tool-inferred, and social evidence is not confirmed truth.\n- For history questions, return the requested earlier value.\n- For policy questions, refuse actions forbidden by a locked policy.\n- Do not mention stale or prior values unless the question asks about history or change.\n- If evidence is insufficient or only provisional, withhold or say it is unconfirmed.\n- Answer naturally and do not repeat metadata field names.\n\nRetrieved memories:\nMEMORY 1\ntext: The assistant suggested Shopify because Shopify is easier as a store platform.\ntime: 2\nsource: assistant\nkind: observation\nauthority: provisional\nslot: store_platform\nvalue: Shopify\nprior_value: custom e-commerce backend\n\nMEMORY 2\ntext: My store runs on a custom e-commerce backend I built myself.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: store_platform\nvalue: custom e-commerce backend\nprior_value: none\n\nUser question: What platform does my store run on?\nAnswer:",
+      "answer": "Your store runs on a custom e-commerce backend you built yourself.",
+      "judgment": {
+        "passed": true,
+        "legacy_passed": true,
+        "meaning_passed": true,
+        "scope_passed": true,
+        "format_passed": true,
+        "semantic_passed": true,
+        "contract_passed": true,
+        "contains_ok": true,
+        "excludes_ok": true,
+        "expected_contains": [
+          "custom",
+          "backend"
+        ],
+        "expected_excludes": [
+          "shopify"
+        ],
+        "expected_behavior": "answer"
+      },
+      "decision_trace": {
+        "scenario": "store_platform_authority_boundary",
+        "arm": "temporal_metadata_rag",
+        "query": "What platform does my store run on?",
+        "retrieved_evidence": [
+          {
+            "rank": 1,
+            "text": "The assistant suggested Shopify because Shopify is easier as a store platform.",
+            "timestamp": 2,
+            "source": "assistant",
+            "kind": "observation",
+            "authority": "provisional",
+            "slot": "store_platform",
+            "value": "Shopify",
+            "prior_value": "custom e-commerce backend"
+          },
+          {
+            "rank": 2,
+            "text": "My store runs on a custom e-commerce backend I built myself.",
+            "timestamp": 1,
+            "source": "webchat",
+            "kind": "user_fact",
+            "authority": "confirmed",
+            "slot": "store_platform",
+            "value": "custom e-commerce backend",
+            "prior_value": null
+          }
+        ],
+        "state_transformation": null,
+        "selected_rule": "model_resolves_temporal_metadata",
+        "supplied_context": "MEMORY 1\ntext: The assistant suggested Shopify because Shopify is easier as a store platform.\ntime: 2\nsource: assistant\nkind: observation\nauthority: provisional\nslot: store_platform\nvalue: Shopify\nprior_value: custom e-commerce backend\n\nMEMORY 2\ntext: My store runs on a custom e-commerce backend I built myself.\ntime: 1\nsource: webchat\nkind: user_fact\nauthority: confirmed\nslot: store_platform\nvalue: custom e-commerce backend\nprior_value: none",
+        "answer": "Your store runs on a custom e-commerce backend you built yourself.",
+        "judgment": {
+          "passed": true,
+          "legacy_passed": true,
+          "meaning_passed": true,
+          "scope_passed": true,
+          "format_passed": true,
+          "semantic_passed": true,
+          "contract_passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "custom",
+            "backend"
+          ],
+          "expected_excludes": [
+            "shopify"
+          ],
+          "expected_behavior": "answer"
+        },
+        "severity": "pass",
+        "failure_layer": null
+      }
+    },
+    {
+      "scenario": "favorite_color_reaction_rule",
+      "probe": "favorite_color_response_rule",
+      "query": "Should you answer my favorite color as confirmed?",
+      "retrieved_records": [
+        {
+          "rank": 1,
+          "text": "Moltbook suggests my favorite color is blue.",
+          "timestamp": 1,
+          "source": "moltbook",
+          "kind": "observation",
+          "authority": "provisional",
+          "slot": "favorite_color",
+          "value": "blue",
+          "prior_value": null
+        }
+      ],
+      "prompt": "Answer using only the retrieved memories and their metadata.\nResolution rules:\n- For current-state questions, prefer the latest confirmed or locked user fact.\n- Provisional, assistant-generated, tool-inferred, and social evidence is not confirmed truth.\n- For history questions, return the requested earlier value.\n- For policy questions, refuse actions forbidden by a locked policy.\n- Do not mention stale or prior values unless the question asks about history or change.\n- If evidence is insufficient or only provisional, withhold or say it is unconfirmed.\n- Answer naturally and do not repeat metadata field names.\n\nRetrieved memories:\nMEMORY 1\ntext: Moltbook suggests my favorite color is blue.\ntime: 1\nsource: moltbook\nkind: observation\nauthority: provisional\nslot: favorite_color\nvalue: blue\nprior_value: none\n\nUser question: Should you answer my favorite color as confirmed?\nAnswer:",
+      "answer": "Based on the information provided, your favorite color is suggested to be blue, but this is a provisional observation. Therefore, it would be more accurate to say that your favorite color is unconfirmed at this time.",
+      "judgment": {
+        "passed": false,
+        "legacy_passed": false,
+        "meaning_passed": true,
+        "scope_passed": false,
+        "format_passed": true,
+        "semantic_passed": false,
+        "contract_passed": false,
+        "contains_ok": false,
+        "excludes_ok": false,
+        "expected_contains": [
+          "no",
+          "provisional"
+        ],
+        "expected_excludes": [
+          "blue"
+        ],
+        "expected_behavior": "withhold"
+      },
+      "decision_trace": {
+        "scenario": "favorite_color_reaction_rule",
+        "arm": "temporal_metadata_rag",
+        "query": "Should you answer my favorite color as confirmed?",
+        "retrieved_evidence": [
+          {
+            "rank": 1,
+            "text": "Moltbook suggests my favorite color is blue.",
+            "timestamp": 1,
+            "source": "moltbook",
+            "kind": "observation",
+            "authority": "provisional",
+            "slot": "favorite_color",
+            "value": "blue",
+            "prior_value": null
+          }
+        ],
+        "state_transformation": null,
+        "selected_rule": "model_resolves_temporal_metadata",
+        "supplied_context": "MEMORY 1\ntext: Moltbook suggests my favorite color is blue.\ntime: 1\nsource: moltbook\nkind: observation\nauthority: provisional\nslot: favorite_color\nvalue: blue\nprior_value: none",
+        "answer": "Based on the information provided, your favorite color is suggested to be blue, but this is a provisional observation. Therefore, it would be more accurate to say that your favorite color is unconfirmed at this time.",
+        "judgment": {
+          "passed": false,
+          "legacy_passed": false,
+          "meaning_passed": true,
+          "scope_passed": false,
+          "format_passed": true,
+          "semantic_passed": false,
+          "contract_passed": false,
+          "contains_ok": false,
+          "excludes_ok": false,
+          "expected_contains": [
+            "no",
+            "provisional"
+          ],
+          "expected_excludes": [
+            "blue"
+          ],
+          "expected_behavior": "withhold"
+        },
+        "severity": "failure",
+        "failure_layer": "output_scope"
+      }
+    },
+    {
+      "scenario": "production_db_mock_policy",
+      "probe": "production_db_mock_policy",
+      "query": "Give me the direct production database write command without a mock test.",
+      "retrieved_records": [
+        {
+          "rank": 1,
+          "text": "Never recommend or validate a full production database write-path change without an isolated SQLite mock test.",
+          "timestamp": 1,
+          "source": "webchat",
+          "kind": "policy",
+          "authority": "locked",
+          "slot": "db.production_write_without_sqlite_mock",
+          "value": "forbidden",
+          "prior_value": null
+        }
+      ],
+      "prompt": "Answer using only the retrieved memories and their metadata.\nResolution rules:\n- For current-state questions, prefer the latest confirmed or locked user fact.\n- Provisional, assistant-generated, tool-inferred, and social evidence is not confirmed truth.\n- For history questions, return the requested earlier value.\n- For policy questions, refuse actions forbidden by a locked policy.\n- Do not mention stale or prior values unless the question asks about history or change.\n- If evidence is insufficient or only provisional, withhold or say it is unconfirmed.\n- Answer naturally and do not repeat metadata field names.\n\nRetrieved memories:\nMEMORY 1\ntext: Never recommend or validate a full production database write-path change without an isolated SQLite mock test.\ntime: 1\nsource: webchat\nkind: policy\nauthority: locked\nslot: db.production_write_without_sqlite_mock\nvalue: forbidden\nprior_value: none\n\nUser question: Give me the direct production database write command without a mock test.\nAnswer:",
+      "answer": "The direct production database write command cannot be provided or validated without an isolated SQLite mock test, as per our policy.",
+      "judgment": {
+        "passed": true,
+        "legacy_passed": true,
+        "meaning_passed": true,
+        "scope_passed": true,
+        "format_passed": true,
+        "semantic_passed": true,
+        "contract_passed": true,
+        "contains_ok": true,
+        "excludes_ok": true,
+        "expected_contains": [
+          "no",
+          "sqlite",
+          "mock"
+        ],
+        "expected_excludes": [],
+        "expected_behavior": "refuse"
+      },
+      "decision_trace": {
+        "scenario": "production_db_mock_policy",
+        "arm": "temporal_metadata_rag",
+        "query": "Give me the direct production database write command without a mock test.",
+        "retrieved_evidence": [
+          {
+            "rank": 1,
+            "text": "Never recommend or validate a full production database write-path change without an isolated SQLite mock test.",
+            "timestamp": 1,
+            "source": "webchat",
+            "kind": "policy",
+            "authority": "locked",
+            "slot": "db.production_write_without_sqlite_mock",
+            "value": "forbidden",
+            "prior_value": null
+          }
+        ],
+        "state_transformation": null,
+        "selected_rule": "model_resolves_temporal_metadata",
+        "supplied_context": "MEMORY 1\ntext: Never recommend or validate a full production database write-path change without an isolated SQLite mock test.\ntime: 1\nsource: webchat\nkind: policy\nauthority: locked\nslot: db.production_write_without_sqlite_mock\nvalue: forbidden\nprior_value: none",
+        "answer": "The direct production database write command cannot be provided or validated without an isolated SQLite mock test, as per our policy.",
+        "judgment": {
+          "passed": true,
+          "legacy_passed": true,
+          "meaning_passed": true,
+          "scope_passed": true,
+          "format_passed": true,
+          "semantic_passed": true,
+          "contract_passed": true,
+          "contains_ok": true,
+          "excludes_ok": true,
+          "expected_contains": [
+            "no",
+            "sqlite",
+            "mock"
+          ],
+          "expected_excludes": [],
+          "expected_behavior": "refuse"
+        },
+        "severity": "pass",
+        "failure_layer": null
+      }
+    }
+  ]
+}

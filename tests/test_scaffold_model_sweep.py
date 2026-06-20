@@ -1,4 +1,11 @@
-from labs.meaning_compression_lab.scaffold_model_sweep import aggregate_sweep, run, summarize_model
+from io import StringIO
+
+from labs.meaning_compression_lab.scaffold_model_sweep import (
+    LiveSweepReporter,
+    aggregate_sweep,
+    run,
+    summarize_model,
+)
 
 
 def _fake_result(raw_passes, scaffold_passes, case_count=3):
@@ -60,12 +67,98 @@ def test_run_accepts_injected_runner_without_ollama():
     calls = []
 
     def fake_runner(**kwargs):
-        calls.append(kwargs["model"])
+        calls.append((kwargs["model"], len(kwargs["scenarios"])))
         return _fake_result(raw_passes=1, scaffold_passes=3)
 
-    out = run(models=["a", "b"], write_results=False, runner=fake_runner)
+    out = run(
+        models=["a", "b"],
+        include_hardening=True,
+        write_results=False,
+        runner=fake_runner,
+    )
 
-    assert calls == ["a", "b"]
+    assert calls == [("a", 19), ("b", 19)]
+    assert out["include_hardening"] is True
+    assert out["scenario_count"] == 19
     assert out["aggregate"]["models_with_scaffold_advantage"] == 2
     assert out["aggregate"]["models_with_perfect_scaffold"] == 2
     assert [row["model"] for row in out["model_results"]] == ["a", "b"]
+
+
+def test_live_reporter_explains_case_and_running_score():
+    stream = StringIO()
+    reporter = LiveSweepReporter(stream=stream)
+    reporter.start_sweep(models=["fake-model"], scenario_count=1)
+    reporter.start_model("fake-model", 1)
+    reporter(
+        {
+            "type": "case_started",
+            "case_index": 1,
+            "case_count": 1,
+            "scenario": "identity_flip",
+            "purpose": "Keep the corrected name current.",
+            "query": "What's my name?",
+            "scaffold": "CURRENT name = Emily\nPROVISIONAL name = Sarah",
+        }
+    )
+    reporter(
+        {
+            "type": "answer_completed",
+            "arm": "raw",
+            "answer": "Sarah",
+            "judgment": {
+                "passed": False,
+                "contains_ok": False,
+                "excludes_ok": False,
+                "expected_contains": ["emily"],
+                "expected_excludes": ["sarah"],
+            },
+        }
+    )
+    row = _fake_result(raw_passes=0, scaffold_passes=1, case_count=1)["scenarios"][0]
+    reporter(
+        {
+            "type": "answer_completed",
+            "arm": "scaffold",
+            "answer": "Emily",
+            "judgment": row["scaffold_judgment"],
+        }
+    )
+    reporter({"type": "case_completed", "row": row})
+
+    text = stream.getvalue()
+    assert "MODEL 1/1: fake-model" in text
+    assert "Governed state:" in text
+    assert "RAW VERDICT: FAIL — missing emily; leaked sarah" in text
+    assert "SCAFFOLD VERDICT: PASS" in text
+    assert "RUNNING SCORE: RAW 0/1  |  SCAFFOLD 1/1" in text
+
+
+def test_run_forwards_live_events_to_runner():
+    stream = StringIO()
+    reporter = LiveSweepReporter(stream=stream, show_scaffold=False)
+
+    def fake_runner(**kwargs):
+        callback = kwargs["event_callback"]
+        callback(
+            {
+                "type": "case_started",
+                "case_index": 1,
+                "case_count": 1,
+                "scenario": "case_0",
+                "purpose": "test",
+                "query": "question",
+                "scaffold": "CURRENT x = y",
+            }
+        )
+        return _fake_result(raw_passes=1, scaffold_passes=1, case_count=1)
+
+    run(
+        models=["fake-model"],
+        include_adversarial=False,
+        write_results=False,
+        runner=fake_runner,
+        live_reporter=reporter,
+    )
+
+    assert "MODEL COMPLETE: fake-model" in stream.getvalue()

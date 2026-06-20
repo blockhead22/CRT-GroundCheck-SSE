@@ -1,0 +1,58 @@
+{
+  "schema": "holden_governance_profile.v1",
+  "created": "2026-06-19",
+  "source_result": "results/governance_dose_1781852832.json",
+  "selection_rule": "calibration contract score; ties choose lower dose",
+  "profiles": {
+    "qwen2.5:7b-instruct": {
+      "default_dose": 1,
+      "calibration_contract": {
+        "passed": 17,
+        "total": 19
+      },
+      "validation_contract": {
+        "passed": 6,
+        "total": 6
+      }
+    },
+    "phi3:3.8b": {
+      "default_dose": 1,
+      "calibration_contract": {
+        "passed": 18,
+        "total": 19
+      },
+      "validation_contract": {
+        "passed": 6,
+        "total": 6
+      }
+    },
+    "llama3.2:latest": {
+      "default_dose": 5,
+      "calibration_contract": {
+        "passed": 16,
+        "total": 19
+      },
+      "validation_contract": {
+        "passed": 6,
+        "total": 6
+      }
+    },
+    "mistral:latest": {
+      "default_dose": 1,
+      "calibration_contract": {
+        "passed": 17,
+        "total": 19
+      },
+      "validation_contract": {
+        "passed": 6,
+        "total": 6
+      }
+    }
+  },
+  "limitations": [
+    "Calibration and validation packs are small and hand-authored.",
+    "Validation cases were excluded from profile selection but were used in earlier interface labs.",
+    "Profiles are scalar defaults and are not yet conditioned on question contract or consequence level.",
+    "Unknown model fingerprints require calibration rather than nearest-name matching."
+  ]
+}

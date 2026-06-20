@@ -137,3 +137,5 @@ models/phi3-crt-adapter-v2/
 !/data/chatgpt_export/README.md
 /.claude/worktrees/
 /tools/tts_lab_output
+/workbench/node_modules
+/workbench/release

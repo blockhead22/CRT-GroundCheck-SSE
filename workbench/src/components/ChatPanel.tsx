@@ -1,0 +1,210 @@
+import { ArrowUp, BrainCircuit, Database, ExternalLink, LoaderCircle, ShieldCheck, Sparkles } from 'lucide-react'
+import { FormEvent, useEffect, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { api, streamChat } from '../api'
+import type { Trace, Turn } from '../types'
+
+interface ChatPanelProps {
+  model: string
+  conversationId: string | null
+  turns: Turn[]
+  codexAvailable: boolean
+  onConversation: (conversationId: string) => void
+  onTrace: (trace: Trace) => void
+  onTurns: (turns: Turn[]) => void
+}
+
+export function ChatPanel({
+  model,
+  conversationId,
+  turns,
+  codexAvailable,
+  onConversation,
+  onTrace,
+  onTurns,
+}: ChatPanelProps) {
+  const [message, setMessage] = useState('')
+  const [streaming, setStreaming] = useState('')
+  const [pendingTurn, setPendingTurn] = useState<string | null>(null)
+  const [pendingUser, setPendingUser] = useState('')
+  const [needsStronger, setNeedsStronger] = useState(false)
+  const [escalating, setEscalating] = useState(false)
+  const [frontierAnswer, setFrontierAnswer] = useState('')
+  const [error, setError] = useState('')
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const activeConversationRef = useRef(conversationId)
+
+  useEffect(() => {
+    activeConversationRef.current = conversationId
+  }, [conversationId])
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+  }, [turns, streaming, frontierAnswer])
+
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    const text = message.trim()
+    if (!text || pendingTurn) return
+    setMessage('')
+    setPendingUser(text)
+    setStreaming('')
+    setFrontierAnswer('')
+    setNeedsStronger(false)
+    setError('')
+
+    try {
+      await streamChat(
+        { message: text, conversation_id: conversationId || undefined, model },
+        {
+          onTurn: ({ turn_id, conversation_id }) => {
+            setPendingTurn(turn_id)
+            activeConversationRef.current = conversation_id
+            onConversation(conversation_id)
+          },
+          onTrace,
+          onToken: (token) => setStreaming((current) => current + token),
+          onDone: async ({ needs_stronger_model }) => {
+            setNeedsStronger(needs_stronger_model)
+            try {
+              const activeConversation = activeConversationRef.current
+              if (activeConversation) onTurns(await api.turns(activeConversation))
+            } catch (reason) {
+              setError(reason instanceof Error
+                ? `Response saved, but refresh failed: ${reason.message}`
+                : 'Response saved, but the conversation refresh failed.')
+            } finally {
+              setPendingTurn(null)
+              setPendingUser('')
+              setStreaming('')
+            }
+          },
+          onError: async (reason) => {
+            setError(reason)
+            try {
+              const activeConversation = activeConversationRef.current
+              if (activeConversation) onTurns(await api.turns(activeConversation))
+            } finally {
+              setPendingTurn(null)
+              setPendingUser('')
+              setStreaming('')
+            }
+          },
+        },
+      )
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Local response failed.')
+      setPendingTurn(null)
+      setPendingUser('')
+      setStreaming('')
+    }
+  }
+
+  const lastTurn = turns.at(-1)
+  const escalationTurn = pendingTurn || lastTurn?.turn_id
+  const showStronger = needsStronger || lastTurn?.needs_stronger_model
+
+  async function escalate() {
+    if (!escalationTurn) return
+    setEscalating(true)
+    setError('')
+    try {
+      const result = await api.escalate(
+        escalationTurn,
+        'The local answer needs stronger reasoning or unresolved clauses remain.',
+      )
+      setFrontierAnswer(result.answer)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Codex escalation failed.')
+    } finally {
+      setEscalating(false)
+    }
+  }
+
+  return (
+    <main className="chat-panel">
+      <div className="model-strip">
+        <div>
+          <BrainCircuit size={16} />
+          <span>{model}</span>
+        </div>
+        <div className={`strength-indicator ${showStronger ? 'needs' : ''}`}>
+          {showStronger ? 'Needs stronger model' : 'Locally answerable'}
+        </div>
+      </div>
+      <div className="conversation" ref={scrollRef}>
+        {!turns.length && !pendingUser ? (
+          <div className="welcome">
+            <div className="welcome-mark"><Sparkles size={23} /></div>
+            <h1>Talk to your governed memory.</h1>
+            <p>Aether releases only evidence it can defend. Open the trace when you want to see the line it held.</p>
+            <div className="welcome-signals">
+              <span><Database size={14} /> Local substrate</span>
+              <span><ShieldCheck size={14} /> Clause-level release</span>
+            </div>
+          </div>
+        ) : null}
+        {turns.map((turn) => (
+          <div className="turn" key={turn.turn_id}>
+            <div className="user-message">{turn.user_message}</div>
+            <div className="assistant-message">
+              <div className="assistant-label"><span className="tiny-mark">Æ</span> Local answer</div>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{turn.local_answer}</ReactMarkdown>
+              <div className="answer-meta">
+                <span>Local</span><span>Governed</span><span>Checked</span>
+              </div>
+            </div>
+          </div>
+        ))}
+        {pendingUser ? (
+          <div className="turn">
+            <div className="user-message">{pendingUser}</div>
+            <div className="assistant-message streaming">
+              <div className="assistant-label"><LoaderCircle className="spin" size={14} /> Governing response</div>
+              {streaming ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{streaming}</ReactMarkdown> : <span className="thinking-line" />}
+            </div>
+          </div>
+        ) : null}
+        {frontierAnswer ? (
+          <div className="frontier-message">
+            <div className="assistant-label"><ExternalLink size={14} /> Codex escalation</div>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{frontierAnswer}</ReactMarkdown>
+          </div>
+        ) : null}
+        {error ? <div className="chat-error">{error}</div> : null}
+      </div>
+      {showStronger && escalationTurn ? (
+        <button className="escalation-bar" disabled={!codexAvailable || escalating} onClick={escalate}>
+          <span>
+            <strong>Local model reached its boundary</strong>
+            <small>{codexAvailable ? 'Send a bounded packet to Codex' : 'Codex is unavailable'}</small>
+          </span>
+          <span>{escalating ? 'Asking…' : 'Ask Codex'} <ExternalLink size={14} /></span>
+        </button>
+      ) : null}
+      <form className="composer" onSubmit={submit}>
+        <textarea
+          aria-label="Message Aether"
+          placeholder="Ask Aether…"
+          rows={2}
+          value={message}
+          onChange={(event) => setMessage(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault()
+              event.currentTarget.form?.requestSubmit()
+            }
+          }}
+        />
+        <button aria-label="Send message" disabled={!message.trim() || Boolean(pendingTurn)}>
+          <ArrowUp size={17} />
+        </button>
+        <div className="composer-foot">
+          <span><span className="status-dot" /> Aether governs context before inference</span>
+          <span>Enter to send</span>
+        </div>
+      </form>
+    </main>
+  )
+}

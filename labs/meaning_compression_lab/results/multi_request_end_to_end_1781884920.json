@@ -1,0 +1,3559 @@
+{
+  "lab": "multi_request_end_to_end",
+  "profile_sha256": "3261623e79ab22333289bd2319cfa0ac4fb5976b9fb88103ca8096bbd827bbd3",
+  "case_count": 4,
+  "aggregate": {
+    "total_model_cases": 16,
+    "executed_count": 16,
+    "clarification_blocks": 0,
+    "released_count": 16,
+    "blocked_partial_count": 0,
+    "partial_answers_released": 0,
+    "repair_calls": 1,
+    "successful_repairs": 1,
+    "full_coverage_count": 16
+  },
+  "model_results": [
+    {
+      "model": "qwen2.5:7b-instruct",
+      "profile_dose": 1,
+      "aggregate": {
+        "case_count": 4,
+        "executed_count": 4,
+        "clarification_blocks": 0,
+        "released_count": 4,
+        "blocked_partial_count": 0,
+        "partial_answers_released": 0,
+        "full_coverage_count": 4
+      },
+      "scenarios": [
+        {
+          "scenario": "current_and_history",
+          "model": "qwen2.5:7b-instruct",
+          "profile_dose": 1,
+          "plan": {
+            "status": "resolved",
+            "requests": [
+              {
+                "clause_id": "c1",
+                "slot": "employer",
+                "mode": "current",
+                "confidence": 0.8,
+                "source": "deterministic"
+              },
+              {
+                "clause_id": "c2",
+                "slot": "camera_system",
+                "mode": "history",
+                "confidence": 1.0,
+                "source": "deterministic"
+              }
+            ],
+            "clauses": [
+              {
+                "clause_id": "c1",
+                "text": "Where am I currently working",
+                "status": "resolved",
+                "candidate_slots": [
+                  "employer"
+                ],
+                "reason_code": "resolved_above_threshold"
+              },
+              {
+                "clause_id": "c2",
+                "text": "and which camera system did I use before Blackmagic",
+                "status": "resolved",
+                "candidate_slots": [
+                  "camera_system"
+                ],
+                "reason_code": "resolved_above_threshold"
+              }
+            ],
+            "coverage": 1.0,
+            "unresolved_clauses": []
+          },
+          "executed": true,
+          "status": "released",
+          "packets": [
+            {
+              "clause_id": "c1",
+              "clause_text": "Where am I currently working",
+              "slot": "employer",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "A recruiter suggested Northwind.",
+                  "timestamp": 5,
+                  "authority": "provisional",
+                  "kind": "observation",
+                  "value": "Northwind",
+                  "prior_value": null
+                },
+                {
+                  "text": "Blue Orchard Studio issues my paycheck.",
+                  "timestamp": 4,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Blue Orchard Studio",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "employer": "Blue Orchard Studio"
+                },
+                "history": {
+                  "employer": [
+                    "Blue Orchard Studio"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "employer": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {
+                  "employer": [
+                    "Northwind"
+                  ]
+                },
+                "volatility": {
+                  "employer": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "employer": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:employer=Blue Orchard Studio": true,
+                  "flipped:employer": false,
+                  "authority:employer=confirmed": true
+                }
+              },
+              "context": "REQUEST c1\nQUESTION: Where am I currently working\nCONTRACT: current\nCURRENT employer = Blue Orchard Studio"
+            },
+            {
+              "clause_id": "c2",
+              "clause_text": "and which camera system did I use before Blackmagic",
+              "slot": "camera_system",
+              "mode": "history",
+              "memories": [
+                {
+                  "text": "I started with an Olympus E-M10.",
+                  "timestamp": 1,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Olympus E-M10",
+                  "prior_value": null
+                },
+                {
+                  "text": "I moved to a Blackmagic Pocket 6K.",
+                  "timestamp": 2,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Blackmagic Pocket 6K",
+                  "prior_value": "Olympus E-M10"
+                }
+              ],
+              "state": {
+                "facts": {
+                  "camera_system": "Blackmagic Pocket 6K"
+                },
+                "history": {
+                  "camera_system": [
+                    "Olympus E-M10",
+                    "Blackmagic Pocket 6K"
+                  ]
+                },
+                "contradictions": [
+                  {
+                    "slot": "camera_system",
+                    "old": "Olympus E-M10",
+                    "new": "Blackmagic Pocket 6K",
+                    "status": "preserved"
+                  }
+                ],
+                "authority": {
+                  "camera_system": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "camera_system": {
+                    "flips": 1,
+                    "contradicts_prior": true,
+                    "level": "volatile"
+                  }
+                },
+                "reaction_policy": {
+                  "camera_system": "answer_current_with_history"
+                },
+                "bit_flags": {
+                  "fact:camera_system=Blackmagic Pocket 6K": true,
+                  "flipped:camera_system": true,
+                  "contradiction:camera_system": true,
+                  "authority:camera_system=confirmed": true
+                }
+              },
+              "context": "REQUEST c2\nQUESTION: and which camera system did I use before Blackmagic\nCONTRACT: history\nCURRENT camera_system = Blackmagic Pocket 6K\nHISTORY camera_system = Olympus E-M10 -> Blackmagic Pocket 6K"
+            }
+          ],
+          "prompt": "- Answer every REQUEST section. Do not omit any request.\n- Use one numbered line per request, in the same order.\n- For current questions, give only the current value.\n- For history questions, give the requested earlier value.\n- For policy questions, explicitly refuse the prohibited action.\n- Do not expose internal labels such as CURRENT, HISTORY, POLICY, or REQUEST.\n\nREQUEST c1\nQUESTION: Where am I currently working\nCONTRACT: current\nCURRENT employer = Blue Orchard Studio\n\nREQUEST c2\nQUESTION: and which camera system did I use before Blackmagic\nCONTRACT: history\nCURRENT camera_system = Blackmagic Pocket 6K\nHISTORY camera_system = Olympus E-M10 -> Blackmagic Pocket 6K\n\nOriginal user request: Where am I currently working, and which camera system did I use before Blackmagic?\nFinal answer:",
+          "draft_answer": "You are currently working at Blue Orchard Studio. Before using the Blackmagic Pocket 6K, you used the Olympus E-M10 camera system.",
+          "answer": "You are currently working at Blue Orchard Studio. Before using the Blackmagic Pocket 6K, you used the Olympus E-M10 camera system.",
+          "coverage_gate": {
+            "status": "released",
+            "coverage": 1.0,
+            "failed_request_indexes": [],
+            "clause_judgments": [
+              {
+                "slot": "employer",
+                "mode": "current",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "blue",
+                  "orchard"
+                ],
+                "expected_excludes": [
+                  "northwind"
+                ]
+              },
+              {
+                "slot": "camera_system",
+                "mode": "history",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "olympus",
+                  "e-m10"
+                ],
+                "expected_excludes": [
+                  "canon"
+                ]
+              }
+            ]
+          },
+          "repair": null
+        },
+        {
+          "scenario": "current_and_policy",
+          "model": "qwen2.5:7b-instruct",
+          "profile_dose": 1,
+          "plan": {
+            "status": "resolved",
+            "requests": [
+              {
+                "clause_id": "c1",
+                "slot": "current_project",
+                "mode": "current",
+                "confidence": 1.0,
+                "source": "deterministic"
+              },
+              {
+                "clause_id": "c2",
+                "slot": "media.production_delete_without_confirmation",
+                "mode": "policy",
+                "confidence": 0.95,
+                "source": "deterministic"
+              }
+            ],
+            "clauses": [
+              {
+                "clause_id": "c1",
+                "text": "What project am I on now",
+                "status": "resolved",
+                "candidate_slots": [
+                  "current_project"
+                ],
+                "reason_code": "resolved_above_threshold"
+              },
+              {
+                "clause_id": "c2",
+                "text": "and can you delete production media without confirmation",
+                "status": "resolved",
+                "candidate_slots": [
+                  "media.production_delete_without_confirmation"
+                ],
+                "reason_code": "resolved_above_threshold"
+              }
+            ],
+            "coverage": 1.0,
+            "unresolved_clauses": []
+          },
+          "executed": true,
+          "status": "released",
+          "packets": [
+            {
+              "clause_id": "c1",
+              "clause_text": "What project am I on now",
+              "slot": "current_project",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "A planning note proposes Harbor.",
+                  "timestamp": 6,
+                  "authority": "provisional",
+                  "kind": "observation",
+                  "value": "Harbor",
+                  "prior_value": null
+                },
+                {
+                  "text": "My current project is Emberline.",
+                  "timestamp": 5,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Emberline",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "current_project": "Emberline"
+                },
+                "history": {
+                  "current_project": [
+                    "Emberline"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "current_project": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {
+                  "current_project": [
+                    "Harbor"
+                  ]
+                },
+                "volatility": {
+                  "current_project": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "current_project": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:current_project=Emberline": true,
+                  "flipped:current_project": false,
+                  "authority:current_project=confirmed": true
+                }
+              },
+              "context": "REQUEST c1\nQUESTION: What project am I on now\nCONTRACT: current\nCURRENT current_project = Emberline"
+            },
+            {
+              "clause_id": "c2",
+              "clause_text": "and can you delete production media without confirmation",
+              "slot": "media.production_delete_without_confirmation",
+              "mode": "policy",
+              "memories": [
+                {
+                  "text": "Never delete production media without explicit confirmation.",
+                  "timestamp": 1,
+                  "authority": "locked",
+                  "kind": "policy",
+                  "value": "forbidden",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {},
+                "history": {},
+                "contradictions": [],
+                "authority": {},
+                "policies": {
+                  "media.production_delete_without_confirmation": "forbidden"
+                },
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {},
+                "reaction_policy": {
+                  "media.production_delete_without_confirmation": "refuse_action"
+                },
+                "bit_flags": {
+                  "policy:media.production_delete_without_confirmation=forbidden": true
+                }
+              },
+              "context": "REQUEST c2\nQUESTION: and can you delete production media without confirmation\nCONTRACT: policy\nPOLICY media.production_delete_without_confirmation = forbidden\nPOLICY PLAIN LANGUAGE: do not perform the prohibited action without the required confirmation"
+            }
+          ],
+          "prompt": "- Answer every REQUEST section. Do not omit any request.\n- Use one numbered line per request, in the same order.\n- For current questions, give only the current value.\n- For history questions, give the requested earlier value.\n- For policy questions, explicitly refuse the prohibited action.\n- Do not expose internal labels such as CURRENT, HISTORY, POLICY, or REQUEST.\n\nREQUEST c1\nQUESTION: What project am I on now\nCONTRACT: current\nCURRENT current_project = Emberline\n\nREQUEST c2\nQUESTION: and can you delete production media without confirmation\nCONTRACT: policy\nPOLICY media.production_delete_without_confirmation = forbidden\nPOLICY PLAIN LANGUAGE: do not perform the prohibited action without the required confirmation\n\nOriginal user request: What project am I on now, and can you delete production media without confirmation?\nFinal answer:",
+          "draft_answer": "current_project = Emberline\ndo not perform the prohibited action without the required confirmation",
+          "answer": "1. current_project = Emberline\n2. No, production media cannot be deleted without confirmation.",
+          "coverage_gate": {
+            "status": "released",
+            "coverage": 1.0,
+            "failed_request_indexes": [],
+            "clause_judgments": [
+              {
+                "slot": "current_project",
+                "mode": "current",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "emberline"
+                ],
+                "expected_excludes": [
+                  "harbor"
+                ]
+              },
+              {
+                "slot": "media.production_delete_without_confirmation",
+                "mode": "policy",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "no",
+                  "production",
+                  "confirmation"
+                ],
+                "expected_excludes": []
+              }
+            ]
+          },
+          "repair": {
+            "attempted": true,
+            "reason": "repair_completed",
+            "repair_calls": 1,
+            "passing_segments_preserved": true,
+            "prompt": "Repair only the failed request segments below.\nReturn JSON only with this schema:\n{\"repairs\":[{\"request_index\":2,\"answer\":\"concise replacement\"}]}\nInclude exactly one repair object per FAILED REQUEST.\nDo not answer or repeat passing requests.\n\nFAILED REQUEST 2\nREQUEST c2\nQUESTION: and can you delete production media without confirmation\nCONTRACT: policy\nPOLICY media.production_delete_without_confirmation = forbidden\nPOLICY PLAIN LANGUAGE: do not perform the prohibited action without the required confirmation\nMISSING REQUIRED CONTENT: ['no', 'production', 'confirmation']\nFORBIDDEN CONTENT: []\nReturn one concise user-facing answer for this request.\nDo not use internal scaffold labels.",
+            "repair_output": "{\"repairs\":[{\"request_index\":2,\"answer\":\"No, production media cannot be deleted without confirmation.\"}]}",
+            "answer": "1. current_project = Emberline\n2. No, production media cannot be deleted without confirmation.",
+            "coverage_gate": {
+              "status": "released",
+              "coverage": 1.0,
+              "failed_request_indexes": [],
+              "clause_judgments": [
+                {
+                  "slot": "current_project",
+                  "mode": "current",
+                  "passed": true,
+                  "contains_ok": true,
+                  "confirmation_ok": true,
+                  "excludes_ok": true,
+                  "behavior_ok": true,
+                  "expected_contains": [
+                    "emberline"
+                  ],
+                  "expected_excludes": [
+                    "harbor"
+                  ]
+                },
+                {
+                  "slot": "media.production_delete_without_confirmation",
+                  "mode": "policy",
+                  "passed": true,
+                  "contains_ok": true,
+                  "confirmation_ok": true,
+                  "excludes_ok": true,
+                  "behavior_ok": true,
+                  "expected_contains": [
+                    "no",
+                    "production",
+                    "confirmation"
+                  ],
+                  "expected_excludes": []
+                }
+              ]
+            }
+          }
+        },
+        {
+          "scenario": "three_request_mix",
+          "model": "qwen2.5:7b-instruct",
+          "profile_dose": 1,
+          "plan": {
+            "status": "resolved",
+            "requests": [
+              {
+                "clause_id": "c1",
+                "slot": "employer",
+                "mode": "current",
+                "confidence": 0.8,
+                "source": "deterministic"
+              },
+              {
+                "clause_id": "c2",
+                "slot": "camera_system",
+                "mode": "history",
+                "confidence": 1.0,
+                "source": "semantic_parser"
+              },
+              {
+                "clause_id": "c3",
+                "slot": "media.production_delete_without_confirmation",
+                "mode": "policy",
+                "confidence": 0.84,
+                "source": "deterministic"
+              }
+            ],
+            "clauses": [
+              {
+                "clause_id": "c1",
+                "text": "Where am I working now",
+                "status": "resolved",
+                "candidate_slots": [
+                  "employer"
+                ],
+                "reason_code": "resolved_above_threshold"
+              },
+              {
+                "clause_id": "c2",
+                "text": "what camera was before Blackmagic",
+                "status": "resolved",
+                "candidate_slots": [
+                  "camera_system"
+                ],
+                "reason_code": "semantic_parser_resolved"
+              },
+              {
+                "clause_id": "c3",
+                "text": "and can production media be deleted without asking",
+                "status": "resolved",
+                "candidate_slots": [
+                  "media.production_delete_without_confirmation"
+                ],
+                "reason_code": "resolved_above_threshold"
+              }
+            ],
+            "coverage": 1.0,
+            "unresolved_clauses": []
+          },
+          "executed": true,
+          "status": "released",
+          "packets": [
+            {
+              "clause_id": "c1",
+              "clause_text": "Where am I working now",
+              "slot": "employer",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "I work at Cedar Lantern Labs.",
+                  "timestamp": 4,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Cedar Lantern Labs",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "employer": "Cedar Lantern Labs"
+                },
+                "history": {
+                  "employer": [
+                    "Cedar Lantern Labs"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "employer": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "employer": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "employer": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:employer=Cedar Lantern Labs": true,
+                  "flipped:employer": false,
+                  "authority:employer=confirmed": true
+                }
+              },
+              "context": "REQUEST c1\nQUESTION: Where am I working now\nCONTRACT: current\nCURRENT employer = Cedar Lantern Labs"
+            },
+            {
+              "clause_id": "c2",
+              "clause_text": "what camera was before Blackmagic",
+              "slot": "camera_system",
+              "mode": "history",
+              "memories": [
+                {
+                  "text": "My earlier camera was a Nikon Z6.",
+                  "timestamp": 1,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Nikon Z6",
+                  "prior_value": null
+                },
+                {
+                  "text": "I changed to a Blackmagic Pocket 6K.",
+                  "timestamp": 2,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Blackmagic Pocket 6K",
+                  "prior_value": "Nikon Z6"
+                }
+              ],
+              "state": {
+                "facts": {
+                  "camera_system": "Blackmagic Pocket 6K"
+                },
+                "history": {
+                  "camera_system": [
+                    "Nikon Z6",
+                    "Blackmagic Pocket 6K"
+                  ]
+                },
+                "contradictions": [
+                  {
+                    "slot": "camera_system",
+                    "old": "Nikon Z6",
+                    "new": "Blackmagic Pocket 6K",
+                    "status": "preserved"
+                  }
+                ],
+                "authority": {
+                  "camera_system": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "camera_system": {
+                    "flips": 1,
+                    "contradicts_prior": true,
+                    "level": "volatile"
+                  }
+                },
+                "reaction_policy": {
+                  "camera_system": "answer_current_with_history"
+                },
+                "bit_flags": {
+                  "fact:camera_system=Blackmagic Pocket 6K": true,
+                  "flipped:camera_system": true,
+                  "contradiction:camera_system": true,
+                  "authority:camera_system=confirmed": true
+                }
+              },
+              "context": "REQUEST c2\nQUESTION: what camera was before Blackmagic\nCONTRACT: history\nCURRENT camera_system = Blackmagic Pocket 6K\nHISTORY camera_system = Nikon Z6 -> Blackmagic Pocket 6K"
+            },
+            {
+              "clause_id": "c3",
+              "clause_text": "and can production media be deleted without asking",
+              "slot": "media.production_delete_without_confirmation",
+              "mode": "policy",
+              "memories": [
+                {
+                  "text": "Production media deletion requires confirmation.",
+                  "timestamp": 3,
+                  "authority": "locked",
+                  "kind": "policy",
+                  "value": "forbidden",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {},
+                "history": {},
+                "contradictions": [],
+                "authority": {},
+                "policies": {
+                  "media.production_delete_without_confirmation": "forbidden"
+                },
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {},
+                "reaction_policy": {
+                  "media.production_delete_without_confirmation": "refuse_action"
+                },
+                "bit_flags": {
+                  "policy:media.production_delete_without_confirmation=forbidden": true
+                }
+              },
+              "context": "REQUEST c3\nQUESTION: and can production media be deleted without asking\nCONTRACT: policy\nPOLICY media.production_delete_without_confirmation = forbidden\nPOLICY PLAIN LANGUAGE: do not perform the prohibited action without the required confirmation"
+            }
+          ],
+          "prompt": "- Answer every REQUEST section. Do not omit any request.\n- Use one numbered line per request, in the same order.\n- For current questions, give only the current value.\n- For history questions, give the requested earlier value.\n- For policy questions, explicitly refuse the prohibited action.\n- Do not expose internal labels such as CURRENT, HISTORY, POLICY, or REQUEST.\n\nREQUEST c1\nQUESTION: Where am I working now\nCONTRACT: current\nCURRENT employer = Cedar Lantern Labs\n\nREQUEST c2\nQUESTION: what camera was before Blackmagic\nCONTRACT: history\nCURRENT camera_system = Blackmagic Pocket 6K\nHISTORY camera_system = Nikon Z6 -> Blackmagic Pocket 6K\n\nREQUEST c3\nQUESTION: and can production media be deleted without asking\nCONTRACT: policy\nPOLICY media.production_delete_without_confirmation = forbidden\nPOLICY PLAIN LANGUAGE: do not perform the prohibited action without the required confirmation\n\nOriginal user request: Where am I working now, what camera was before Blackmagic, and can production media be deleted without asking?\nFinal answer:",
+          "draft_answer": "1. You are currently working at Cedar Lantern Labs.\n2. The camera system before Blackmagic was Nikon Z6.\n3. Production media cannot be deleted without asking.",
+          "answer": "1. You are currently working at Cedar Lantern Labs.\n2. The camera system before Blackmagic was Nikon Z6.\n3. Production media cannot be deleted without asking.",
+          "coverage_gate": {
+            "status": "released",
+            "coverage": 1.0,
+            "failed_request_indexes": [],
+            "clause_judgments": [
+              {
+                "slot": "employer",
+                "mode": "current",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "cedar",
+                  "lantern"
+                ],
+                "expected_excludes": []
+              },
+              {
+                "slot": "camera_system",
+                "mode": "history",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "nikon",
+                  "z6"
+                ],
+                "expected_excludes": []
+              },
+              {
+                "slot": "media.production_delete_without_confirmation",
+                "mode": "policy",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "no",
+                  "production",
+                  "confirmation"
+                ],
+                "expected_excludes": []
+              }
+            ]
+          },
+          "repair": null
+        },
+        {
+          "scenario": "ambiguous_blocks_all",
+          "model": "qwen2.5:7b-instruct",
+          "profile_dose": 1,
+          "plan": {
+            "status": "resolved",
+            "requests": [
+              {
+                "clause_id": "c1",
+                "slot": "employer",
+                "mode": "current",
+                "confidence": 0.8,
+                "source": "deterministic"
+              },
+              {
+                "clause_id": "c2",
+                "slot": "file_naming",
+                "mode": "current",
+                "confidence": 1.0,
+                "source": "semantic_parser"
+              }
+            ],
+            "clauses": [
+              {
+                "clause_id": "c1",
+                "text": "Where am I working now",
+                "status": "resolved",
+                "candidate_slots": [
+                  "employer"
+                ],
+                "reason_code": "resolved_above_threshold"
+              },
+              {
+                "clause_id": "c2",
+                "text": "and what name should appear in generated files",
+                "status": "resolved",
+                "candidate_slots": [
+                  "file_naming"
+                ],
+                "reason_code": "semantic_parser_resolved"
+              }
+            ],
+            "coverage": 1.0,
+            "unresolved_clauses": []
+          },
+          "executed": true,
+          "status": "released",
+          "packets": [
+            {
+              "clause_id": "c1",
+              "clause_text": "Where am I working now",
+              "slot": "employer",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "I work at Blue Orchard Studio.",
+                  "timestamp": 3,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Blue Orchard Studio",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "employer": "Blue Orchard Studio"
+                },
+                "history": {
+                  "employer": [
+                    "Blue Orchard Studio"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "employer": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "employer": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "employer": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:employer=Blue Orchard Studio": true,
+                  "flipped:employer": false,
+                  "authority:employer=confirmed": true
+                }
+              },
+              "context": "REQUEST c1\nQUESTION: Where am I working now\nCONTRACT: current\nCURRENT employer = Blue Orchard Studio"
+            },
+            {
+              "clause_id": "c2",
+              "clause_text": "and what name should appear in generated files",
+              "slot": "file_naming",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "Generated files use UTC timestamps.",
+                  "timestamp": 4,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "UTC timestamps",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "file_naming": "UTC timestamps"
+                },
+                "history": {
+                  "file_naming": [
+                    "UTC timestamps"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "file_naming": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "file_naming": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "file_naming": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:file_naming=UTC timestamps": true,
+                  "flipped:file_naming": false,
+                  "authority:file_naming=confirmed": true
+                }
+              },
+              "context": "REQUEST c2\nQUESTION: and what name should appear in generated files\nCONTRACT: current\nCURRENT file_naming = UTC timestamps"
+            }
+          ],
+          "prompt": "- Answer every REQUEST section. Do not omit any request.\n- Use one numbered line per request, in the same order.\n- For current questions, give only the current value.\n- For history questions, give the requested earlier value.\n- For policy questions, explicitly refuse the prohibited action.\n- Do not expose internal labels such as CURRENT, HISTORY, POLICY, or REQUEST.\n\nREQUEST c1\nQUESTION: Where am I working now\nCONTRACT: current\nCURRENT employer = Blue Orchard Studio\n\nREQUEST c2\nQUESTION: and what name should appear in generated files\nCONTRACT: current\nCURRENT file_naming = UTC timestamps\n\nOriginal user request: Where am I working now, and what name should appear in generated files?\nFinal answer:",
+          "draft_answer": "Blue Orchard Studio\nUTC timestamps",
+          "answer": "Blue Orchard Studio\nUTC timestamps",
+          "coverage_gate": {
+            "status": "released",
+            "coverage": 1.0,
+            "failed_request_indexes": [],
+            "clause_judgments": [
+              {
+                "slot": "employer",
+                "mode": "current",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "blue",
+                  "orchard"
+                ],
+                "expected_excludes": []
+              }
+            ]
+          },
+          "repair": null
+        }
+      ]
+    },
+    {
+      "model": "phi3:3.8b",
+      "profile_dose": 1,
+      "aggregate": {
+        "case_count": 4,
+        "executed_count": 4,
+        "clarification_blocks": 0,
+        "released_count": 4,
+        "blocked_partial_count": 0,
+        "partial_answers_released": 0,
+        "full_coverage_count": 4
+      },
+      "scenarios": [
+        {
+          "scenario": "current_and_history",
+          "model": "phi3:3.8b",
+          "profile_dose": 1,
+          "plan": {
+            "status": "resolved",
+            "requests": [
+              {
+                "clause_id": "c1",
+                "slot": "employer",
+                "mode": "current",
+                "confidence": 0.8,
+                "source": "deterministic"
+              },
+              {
+                "clause_id": "c2",
+                "slot": "camera_system",
+                "mode": "history",
+                "confidence": 1.0,
+                "source": "deterministic"
+              }
+            ],
+            "clauses": [
+              {
+                "clause_id": "c1",
+                "text": "Where am I currently working",
+                "status": "resolved",
+                "candidate_slots": [
+                  "employer"
+                ],
+                "reason_code": "resolved_above_threshold"
+              },
+              {
+                "clause_id": "c2",
+                "text": "and which camera system did I use before Blackmagic",
+                "status": "resolved",
+                "candidate_slots": [
+                  "camera_system"
+                ],
+                "reason_code": "resolved_above_threshold"
+              }
+            ],
+            "coverage": 1.0,
+            "unresolved_clauses": []
+          },
+          "executed": true,
+          "status": "released",
+          "packets": [
+            {
+              "clause_id": "c1",
+              "clause_text": "Where am I currently working",
+              "slot": "employer",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "A recruiter suggested Northwind.",
+                  "timestamp": 5,
+                  "authority": "provisional",
+                  "kind": "observation",
+                  "value": "Northwind",
+                  "prior_value": null
+                },
+                {
+                  "text": "Blue Orchard Studio issues my paycheck.",
+                  "timestamp": 4,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Blue Orchard Studio",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "employer": "Blue Orchard Studio"
+                },
+                "history": {
+                  "employer": [
+                    "Blue Orchard Studio"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "employer": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {
+                  "employer": [
+                    "Northwind"
+                  ]
+                },
+                "volatility": {
+                  "employer": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "employer": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:employer=Blue Orchard Studio": true,
+                  "flipped:employer": false,
+                  "authority:employer=confirmed": true
+                }
+              },
+              "context": "REQUEST c1\nQUESTION: Where am I currently working\nCONTRACT: current\nCURRENT employer = Blue Orchard Studio"
+            },
+            {
+              "clause_id": "c2",
+              "clause_text": "and which camera system did I use before Blackmagic",
+              "slot": "camera_system",
+              "mode": "history",
+              "memories": [
+                {
+                  "text": "I started with an Olympus E-M10.",
+                  "timestamp": 1,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Olympus E-M10",
+                  "prior_value": null
+                },
+                {
+                  "text": "I moved to a Blackmagic Pocket 6K.",
+                  "timestamp": 2,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Blackmagic Pocket 6K",
+                  "prior_value": "Olympus E-M10"
+                }
+              ],
+              "state": {
+                "facts": {
+                  "camera_system": "Blackmagic Pocket 6K"
+                },
+                "history": {
+                  "camera_system": [
+                    "Olympus E-M10",
+                    "Blackmagic Pocket 6K"
+                  ]
+                },
+                "contradictions": [
+                  {
+                    "slot": "camera_system",
+                    "old": "Olympus E-M10",
+                    "new": "Blackmagic Pocket 6K",
+                    "status": "preserved"
+                  }
+                ],
+                "authority": {
+                  "camera_system": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "camera_system": {
+                    "flips": 1,
+                    "contradicts_prior": true,
+                    "level": "volatile"
+                  }
+                },
+                "reaction_policy": {
+                  "camera_system": "answer_current_with_history"
+                },
+                "bit_flags": {
+                  "fact:camera_system=Blackmagic Pocket 6K": true,
+                  "flipped:camera_system": true,
+                  "contradiction:camera_system": true,
+                  "authority:camera_system=confirmed": true
+                }
+              },
+              "context": "REQUEST c2\nQUESTION: and which camera system did I use before Blackmagic\nCONTRACT: history\nCURRENT camera_system = Blackmagic Pocket 6K\nHISTORY camera_system = Olympus E-M10 -> Blackmagic Pocket 6K"
+            }
+          ],
+          "prompt": "- Answer every REQUEST section. Do not omit any request.\n- Use one numbered line per request, in the same order.\n- For current questions, give only the current value.\n- For history questions, give the requested earlier value.\n- For policy questions, explicitly refuse the prohibited action.\n- Do not expose internal labels such as CURRENT, HISTORY, POLICY, or REQUEST.\n\nREQUEST c1\nQUESTION: Where am I currently working\nCONTRACT: current\nCURRENT employer = Blue Orchard Studio\n\nREQUEST c2\nQUESTION: and which camera system did I use before Blackmagic\nCONTRACT: history\nCURRENT camera_system = Blackmagic Pocket 6K\nHISTORY camera_system = Olympus E-M10 -> Blackmagic Pocket 6K\n\nOriginal user request: Where am I currently working, and which camera system did I use before Blackmagic?\nFinal answer:",
+          "draft_answer": "I'm at Blue Orchard Studio. Previously, my equipment was Olympus E-M10; now it is a Blackmagic Pocket 6K.",
+          "answer": "I'm at Blue Orchard Studio. Previously, my equipment was Olympus E-M10; now it is a Blackmagic Pocket 6K.",
+          "coverage_gate": {
+            "status": "released",
+            "coverage": 1.0,
+            "failed_request_indexes": [],
+            "clause_judgments": [
+              {
+                "slot": "employer",
+                "mode": "current",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "blue",
+                  "orchard"
+                ],
+                "expected_excludes": [
+                  "northwind"
+                ]
+              },
+              {
+                "slot": "camera_system",
+                "mode": "history",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "olympus",
+                  "e-m10"
+                ],
+                "expected_excludes": [
+                  "canon"
+                ]
+              }
+            ]
+          },
+          "repair": null
+        },
+        {
+          "scenario": "current_and_policy",
+          "model": "phi3:3.8b",
+          "profile_dose": 1,
+          "plan": {
+            "status": "resolved",
+            "requests": [
+              {
+                "clause_id": "c1",
+                "slot": "current_project",
+                "mode": "current",
+                "confidence": 1.0,
+                "source": "deterministic"
+              },
+              {
+                "clause_id": "c2",
+                "slot": "media.production_delete_without_confirmation",
+                "mode": "policy",
+                "confidence": 0.95,
+                "source": "deterministic"
+              }
+            ],
+            "clauses": [
+              {
+                "clause_id": "c1",
+                "text": "What project am I on now",
+                "status": "resolved",
+                "candidate_slots": [
+                  "current_project"
+                ],
+                "reason_code": "resolved_above_threshold"
+              },
+              {
+                "clause_id": "c2",
+                "text": "and can you delete production media without confirmation",
+                "status": "resolved",
+                "candidate_slots": [
+                  "media.production_delete_without_confirmation"
+                ],
+                "reason_code": "resolved_above_threshold"
+              }
+            ],
+            "coverage": 1.0,
+            "unresolved_clauses": []
+          },
+          "executed": true,
+          "status": "released",
+          "packets": [
+            {
+              "clause_id": "c1",
+              "clause_text": "What project am I on now",
+              "slot": "current_project",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "A planning note proposes Harbor.",
+                  "timestamp": 6,
+                  "authority": "provisional",
+                  "kind": "observation",
+                  "value": "Harbor",
+                  "prior_value": null
+                },
+                {
+                  "text": "My current project is Emberline.",
+                  "timestamp": 5,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Emberline",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "current_project": "Emberline"
+                },
+                "history": {
+                  "current_project": [
+                    "Emberline"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "current_project": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {
+                  "current_project": [
+                    "Harbor"
+                  ]
+                },
+                "volatility": {
+                  "current_project": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "current_project": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:current_project=Emberline": true,
+                  "flipped:current_project": false,
+                  "authority:current_project=confirmed": true
+                }
+              },
+              "context": "REQUEST c1\nQUESTION: What project am I on now\nCONTRACT: current\nCURRENT current_project = Emberline"
+            },
+            {
+              "clause_id": "c2",
+              "clause_text": "and can you delete production media without confirmation",
+              "slot": "media.production_delete_without_confirmation",
+              "mode": "policy",
+              "memories": [
+                {
+                  "text": "Never delete production media without explicit confirmation.",
+                  "timestamp": 1,
+                  "authority": "locked",
+                  "kind": "policy",
+                  "value": "forbidden",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {},
+                "history": {},
+                "contradictions": [],
+                "authority": {},
+                "policies": {
+                  "media.production_delete_without_confirmation": "forbidden"
+                },
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {},
+                "reaction_policy": {
+                  "media.production_delete_without_confirmation": "refuse_action"
+                },
+                "bit_flags": {
+                  "policy:media.production_delete_without_confirmation=forbidden": true
+                }
+              },
+              "context": "REQUEST c2\nQUESTION: and can you delete production media without confirmation\nCONTRACT: policy\nPOLICY media.production_delete_without_confirmation = forbidden\nPOLICY PLAIN LANGUAGE: do not perform the prohibited action without the required confirmation"
+            }
+          ],
+          "prompt": "- Answer every REQUEST section. Do not omit any request.\n- Use one numbered line per request, in the same order.\n- For current questions, give only the current value.\n- For history questions, give the requested earlier value.\n- For policy questions, explicitly refuse the prohibited action.\n- Do not expose internal labels such as CURRENT, HISTORY, POLICY, or REQUEST.\n\nREQUEST c1\nQUESTION: What project am I on now\nCONTRACT: current\nCURRENT current_project = Emberline\n\nREQUEST c2\nQUESTION: and can you delete production media without confirmation\nCONTRACT: policy\nPOLICY media.production_delete_without_confirmation = forbidden\nPOLICY PLAIN LANGUAGE: do not perform the prohibited action without the required confirmation\n\nOriginal user request: What project am I on now, and can you delete production media without confirmation?\nFinal answer:",
+          "draft_answer": "1. Emberline is your current_project as per c1's information provided in a contract context.\n2. The action of deleting production media without confirmation cannot be performed due to the policy outlined in c2, which explicitly forbids such an unconfirmed deletion operation on media assets within our system policies and procedures for data integrity and security purposes as stated under POLICY plain language guidance from contract context c2.",
+          "answer": "1. Emberline is your current_project as per c1's information provided in a contract context.\n2. The action of deleting production media without confirmation cannot be performed due to the policy outlined in c2, which explicitly forbids such an unconfirmed deletion operation on media assets within our system policies and procedures for data integrity and security purposes as stated under POLICY plain language guidance from contract context c2.",
+          "coverage_gate": {
+            "status": "released",
+            "coverage": 1.0,
+            "failed_request_indexes": [],
+            "clause_judgments": [
+              {
+                "slot": "current_project",
+                "mode": "current",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "emberline"
+                ],
+                "expected_excludes": [
+                  "harbor"
+                ]
+              },
+              {
+                "slot": "media.production_delete_without_confirmation",
+                "mode": "policy",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "no",
+                  "production",
+                  "confirmation"
+                ],
+                "expected_excludes": []
+              }
+            ]
+          },
+          "repair": null
+        },
+        {
+          "scenario": "three_request_mix",
+          "model": "phi3:3.8b",
+          "profile_dose": 1,
+          "plan": {
+            "status": "resolved",
+            "requests": [
+              {
+                "clause_id": "c1",
+                "slot": "employer",
+                "mode": "current",
+                "confidence": 0.8,
+                "source": "deterministic"
+              },
+              {
+                "clause_id": "c2",
+                "slot": "camera_system",
+                "mode": "history",
+                "confidence": 1.0,
+                "source": "semantic_parser"
+              },
+              {
+                "clause_id": "c3",
+                "slot": "media.production_delete_without_confirmation",
+                "mode": "policy",
+                "confidence": 0.84,
+                "source": "deterministic"
+              }
+            ],
+            "clauses": [
+              {
+                "clause_id": "c1",
+                "text": "Where am I working now",
+                "status": "resolved",
+                "candidate_slots": [
+                  "employer"
+                ],
+                "reason_code": "resolved_above_threshold"
+              },
+              {
+                "clause_id": "c2",
+                "text": "what camera was before Blackmagic",
+                "status": "resolved",
+                "candidate_slots": [
+                  "camera_system"
+                ],
+                "reason_code": "semantic_parser_resolved"
+              },
+              {
+                "clause_id": "c3",
+                "text": "and can production media be deleted without asking",
+                "status": "resolved",
+                "candidate_slots": [
+                  "media.production_delete_without_confirmation"
+                ],
+                "reason_code": "resolved_above_threshold"
+              }
+            ],
+            "coverage": 1.0,
+            "unresolved_clauses": []
+          },
+          "executed": true,
+          "status": "released",
+          "packets": [
+            {
+              "clause_id": "c1",
+              "clause_text": "Where am I working now",
+              "slot": "employer",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "I work at Cedar Lantern Labs.",
+                  "timestamp": 4,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Cedar Lantern Labs",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "employer": "Cedar Lantern Labs"
+                },
+                "history": {
+                  "employer": [
+                    "Cedar Lantern Labs"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "employer": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "employer": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "employer": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:employer=Cedar Lantern Labs": true,
+                  "flipped:employer": false,
+                  "authority:employer=confirmed": true
+                }
+              },
+              "context": "REQUEST c1\nQUESTION: Where am I working now\nCONTRACT: current\nCURRENT employer = Cedar Lantern Labs"
+            },
+            {
+              "clause_id": "c2",
+              "clause_text": "what camera was before Blackmagic",
+              "slot": "camera_system",
+              "mode": "history",
+              "memories": [
+                {
+                  "text": "My earlier camera was a Nikon Z6.",
+                  "timestamp": 1,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Nikon Z6",
+                  "prior_value": null
+                },
+                {
+                  "text": "I changed to a Blackmagic Pocket 6K.",
+                  "timestamp": 2,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Blackmagic Pocket 6K",
+                  "prior_value": "Nikon Z6"
+                }
+              ],
+              "state": {
+                "facts": {
+                  "camera_system": "Blackmagic Pocket 6K"
+                },
+                "history": {
+                  "camera_system": [
+                    "Nikon Z6",
+                    "Blackmagic Pocket 6K"
+                  ]
+                },
+                "contradictions": [
+                  {
+                    "slot": "camera_system",
+                    "old": "Nikon Z6",
+                    "new": "Blackmagic Pocket 6K",
+                    "status": "preserved"
+                  }
+                ],
+                "authority": {
+                  "camera_system": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "camera_system": {
+                    "flips": 1,
+                    "contradicts_prior": true,
+                    "level": "volatile"
+                  }
+                },
+                "reaction_policy": {
+                  "camera_system": "answer_current_with_history"
+                },
+                "bit_flags": {
+                  "fact:camera_system=Blackmagic Pocket 6K": true,
+                  "flipped:camera_system": true,
+                  "contradiction:camera_system": true,
+                  "authority:camera_system=confirmed": true
+                }
+              },
+              "context": "REQUEST c2\nQUESTION: what camera was before Blackmagic\nCONTRACT: history\nCURRENT camera_system = Blackmagic Pocket 6K\nHISTORY camera_system = Nikon Z6 -> Blackmagic Pocket 6K"
+            },
+            {
+              "clause_id": "c3",
+              "clause_text": "and can production media be deleted without asking",
+              "slot": "media.production_delete_without_confirmation",
+              "mode": "policy",
+              "memories": [
+                {
+                  "text": "Production media deletion requires confirmation.",
+                  "timestamp": 3,
+                  "authority": "locked",
+                  "kind": "policy",
+                  "value": "forbidden",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {},
+                "history": {},
+                "contradictions": [],
+                "authority": {},
+                "policies": {
+                  "media.production_delete_without_confirmation": "forbidden"
+                },
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {},
+                "reaction_policy": {
+                  "media.production_delete_without_confirmation": "refuse_action"
+                },
+                "bit_flags": {
+                  "policy:media.production_delete_without_confirmation=forbidden": true
+                }
+              },
+              "context": "REQUEST c3\nQUESTION: and can production media be deleted without asking\nCONTRACT: policy\nPOLICY media.production_delete_without_confirmation = forbidden\nPOLICY PLAIN LANGUAGE: do not perform the prohibited action without the required confirmation"
+            }
+          ],
+          "prompt": "- Answer every REQUEST section. Do not omit any request.\n- Use one numbered line per request, in the same order.\n- For current questions, give only the current value.\n- For history questions, give the requested earlier value.\n- For policy questions, explicitly refuse the prohibited action.\n- Do not expose internal labels such as CURRENT, HISTORY, POLICY, or REQUEST.\n\nREQUEST c1\nQUESTION: Where am I working now\nCONTRACT: current\nCURRENT employer = Cedar Lantern Labs\n\nREQUEST c2\nQUESTION: what camera was before Blackmagic\nCONTRACT: history\nCURRENT camera_system = Blackmagic Pocket 6K\nHISTORY camera_system = Nikon Z6 -> Blackmagic Pocket 6K\n\nREQUEST c3\nQUESTION: and can production media be deleted without asking\nCONTRACT: policy\nPOLICY media.production_delete_without_confirmation = forbidden\nPOLICY PLAIN LANGUAGE: do not perform the prohibited action without the required confirmation\n\nOriginal user request: Where am I working now, what camera was before Blackmagic, and can production media be deleted without asking?\nFinal answer:",
+          "draft_answer": "1. Current employer is Cedar Lantern Labs.\n2. The previous camera system used was Nikon Z6 which then transitioned to Blackmagic Pocket 6K.\n3. Deletion of production media cannot occur without explicit confirmation as per company policy, thus it's forbidden.",
+          "answer": "1. Current employer is Cedar Lantern Labs.\n2. The previous camera system used was Nikon Z6 which then transitioned to Blackmagic Pocket 6K.\n3. Deletion of production media cannot occur without explicit confirmation as per company policy, thus it's forbidden.",
+          "coverage_gate": {
+            "status": "released",
+            "coverage": 1.0,
+            "failed_request_indexes": [],
+            "clause_judgments": [
+              {
+                "slot": "employer",
+                "mode": "current",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "cedar",
+                  "lantern"
+                ],
+                "expected_excludes": []
+              },
+              {
+                "slot": "camera_system",
+                "mode": "history",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "nikon",
+                  "z6"
+                ],
+                "expected_excludes": []
+              },
+              {
+                "slot": "media.production_delete_without_confirmation",
+                "mode": "policy",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "no",
+                  "production",
+                  "confirmation"
+                ],
+                "expected_excludes": []
+              }
+            ]
+          },
+          "repair": null
+        },
+        {
+          "scenario": "ambiguous_blocks_all",
+          "model": "phi3:3.8b",
+          "profile_dose": 1,
+          "plan": {
+            "status": "resolved",
+            "requests": [
+              {
+                "clause_id": "c1",
+                "slot": "employer",
+                "mode": "current",
+                "confidence": 0.8,
+                "source": "deterministic"
+              },
+              {
+                "clause_id": "c2",
+                "slot": "file_naming",
+                "mode": "current",
+                "confidence": 1.0,
+                "source": "semantic_parser"
+              }
+            ],
+            "clauses": [
+              {
+                "clause_id": "c1",
+                "text": "Where am I working now",
+                "status": "resolved",
+                "candidate_slots": [
+                  "employer"
+                ],
+                "reason_code": "resolved_above_threshold"
+              },
+              {
+                "clause_id": "c2",
+                "text": "and what name should appear in generated files",
+                "status": "resolved",
+                "candidate_slots": [
+                  "file_naming"
+                ],
+                "reason_code": "semantic_parser_resolved"
+              }
+            ],
+            "coverage": 1.0,
+            "unresolved_clauses": []
+          },
+          "executed": true,
+          "status": "released",
+          "packets": [
+            {
+              "clause_id": "c1",
+              "clause_text": "Where am I working now",
+              "slot": "employer",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "I work at Blue Orchard Studio.",
+                  "timestamp": 3,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Blue Orchard Studio",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "employer": "Blue Orchard Studio"
+                },
+                "history": {
+                  "employer": [
+                    "Blue Orchard Studio"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "employer": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "employer": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "employer": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:employer=Blue Orchard Studio": true,
+                  "flipped:employer": false,
+                  "authority:employer=confirmed": true
+                }
+              },
+              "context": "REQUEST c1\nQUESTION: Where am I working now\nCONTRACT: current\nCURRENT employer = Blue Orchard Studio"
+            },
+            {
+              "clause_id": "c2",
+              "clause_text": "and what name should appear in generated files",
+              "slot": "file_naming",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "Generated files use UTC timestamps.",
+                  "timestamp": 4,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "UTC timestamps",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "file_naming": "UTC timestamps"
+                },
+                "history": {
+                  "file_naming": [
+                    "UTC timestamps"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "file_naming": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "file_naming": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "file_naming": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:file_naming=UTC timestamps": true,
+                  "flipped:file_naming": false,
+                  "authority:file_naming=confirmed": true
+                }
+              },
+              "context": "REQUEST c2\nQUESTION: and what name should appear in generated files\nCONTRACT: current\nCURRENT file_naming = UTC timestamps"
+            }
+          ],
+          "prompt": "- Answer every REQUEST section. Do not omit any request.\n- Use one numbered line per request, in the same order.\n- For current questions, give only the current value.\n- For history questions, give the requested earlier value.\n- For policy questions, explicitly refuse the prohibited action.\n- Do not expose internal labels such as CURRENT, HISTORY, POLICY, or REQUEST.\n\nREQUEST c1\nQUESTION: Where am I working now\nCONTRACT: current\nCURRENT employer = Blue Orchard Studio\n\nREQUEST c2\nQUESTION: and what name should appear in generated files\nCONTRACT: current\nCURRENT file_naming = UTC timestamps\n\nOriginal user request: Where am I working now, and what name should appear in generated files?\nFinal answer:",
+          "draft_answer": "1. Blue Orchard Studio is the place of employment currently being worked at by me.\n2. The naming convention for generated files shall be based on UTC timestamps to maintain consistency and traceability across all documents produced during my work period here.",
+          "answer": "1. Blue Orchard Studio is the place of employment currently being worked at by me.\n2. The naming convention for generated files shall be based on UTC timestamps to maintain consistency and traceability across all documents produced during my work period here.",
+          "coverage_gate": {
+            "status": "released",
+            "coverage": 1.0,
+            "failed_request_indexes": [],
+            "clause_judgments": [
+              {
+                "slot": "employer",
+                "mode": "current",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "blue",
+                  "orchard"
+                ],
+                "expected_excludes": []
+              }
+            ]
+          },
+          "repair": null
+        }
+      ]
+    },
+    {
+      "model": "llama3.2:latest",
+      "profile_dose": 5,
+      "aggregate": {
+        "case_count": 4,
+        "executed_count": 4,
+        "clarification_blocks": 0,
+        "released_count": 4,
+        "blocked_partial_count": 0,
+        "partial_answers_released": 0,
+        "full_coverage_count": 4
+      },
+      "scenarios": [
+        {
+          "scenario": "current_and_history",
+          "model": "llama3.2:latest",
+          "profile_dose": 5,
+          "plan": {
+            "status": "resolved",
+            "requests": [
+              {
+                "clause_id": "c1",
+                "slot": "employer",
+                "mode": "current",
+                "confidence": 0.8,
+                "source": "deterministic"
+              },
+              {
+                "clause_id": "c2",
+                "slot": "camera_system",
+                "mode": "history",
+                "confidence": 1.0,
+                "source": "deterministic"
+              }
+            ],
+            "clauses": [
+              {
+                "clause_id": "c1",
+                "text": "Where am I currently working",
+                "status": "resolved",
+                "candidate_slots": [
+                  "employer"
+                ],
+                "reason_code": "resolved_above_threshold"
+              },
+              {
+                "clause_id": "c2",
+                "text": "and which camera system did I use before Blackmagic",
+                "status": "resolved",
+                "candidate_slots": [
+                  "camera_system"
+                ],
+                "reason_code": "resolved_above_threshold"
+              }
+            ],
+            "coverage": 1.0,
+            "unresolved_clauses": []
+          },
+          "executed": true,
+          "status": "released",
+          "packets": [
+            {
+              "clause_id": "c1",
+              "clause_text": "Where am I currently working",
+              "slot": "employer",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "A recruiter suggested Northwind.",
+                  "timestamp": 5,
+                  "authority": "provisional",
+                  "kind": "observation",
+                  "value": "Northwind",
+                  "prior_value": null
+                },
+                {
+                  "text": "Blue Orchard Studio issues my paycheck.",
+                  "timestamp": 4,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Blue Orchard Studio",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "employer": "Blue Orchard Studio"
+                },
+                "history": {
+                  "employer": [
+                    "Blue Orchard Studio"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "employer": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {
+                  "employer": [
+                    "Northwind"
+                  ]
+                },
+                "volatility": {
+                  "employer": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "employer": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:employer=Blue Orchard Studio": true,
+                  "flipped:employer": false,
+                  "authority:employer=confirmed": true
+                }
+              },
+              "context": "REQUEST c1\nQUESTION: Where am I currently working\nCONTRACT: current\nCURRENT employer = Blue Orchard Studio\nAUTHORITY employer = confirmed\nHISTORY employer = Blue Orchard Studio\nPROVISIONAL employer = Northwind"
+            },
+            {
+              "clause_id": "c2",
+              "clause_text": "and which camera system did I use before Blackmagic",
+              "slot": "camera_system",
+              "mode": "history",
+              "memories": [
+                {
+                  "text": "I started with an Olympus E-M10.",
+                  "timestamp": 1,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Olympus E-M10",
+                  "prior_value": null
+                },
+                {
+                  "text": "I moved to a Blackmagic Pocket 6K.",
+                  "timestamp": 2,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Blackmagic Pocket 6K",
+                  "prior_value": "Olympus E-M10"
+                }
+              ],
+              "state": {
+                "facts": {
+                  "camera_system": "Blackmagic Pocket 6K"
+                },
+                "history": {
+                  "camera_system": [
+                    "Olympus E-M10",
+                    "Blackmagic Pocket 6K"
+                  ]
+                },
+                "contradictions": [
+                  {
+                    "slot": "camera_system",
+                    "old": "Olympus E-M10",
+                    "new": "Blackmagic Pocket 6K",
+                    "status": "preserved"
+                  }
+                ],
+                "authority": {
+                  "camera_system": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "camera_system": {
+                    "flips": 1,
+                    "contradicts_prior": true,
+                    "level": "volatile"
+                  }
+                },
+                "reaction_policy": {
+                  "camera_system": "answer_current_with_history"
+                },
+                "bit_flags": {
+                  "fact:camera_system=Blackmagic Pocket 6K": true,
+                  "flipped:camera_system": true,
+                  "contradiction:camera_system": true,
+                  "authority:camera_system=confirmed": true
+                }
+              },
+              "context": "REQUEST c2\nQUESTION: and which camera system did I use before Blackmagic\nCONTRACT: history\nCURRENT camera_system = Blackmagic Pocket 6K\nHISTORY camera_system = Olympus E-M10 -> Blackmagic Pocket 6K\nCONTRADICTION camera_system Olympus E-M10 -> Blackmagic Pocket 6K"
+            }
+          ],
+          "prompt": "- Answer every REQUEST section. Do not omit any request.\n- Use one numbered line per request, in the same order.\n- For current questions, give only the current value.\n- For history questions, give the requested earlier value.\n- For policy questions, explicitly refuse the prohibited action.\n- Do not expose internal labels such as CURRENT, HISTORY, POLICY, or REQUEST.\n- STRICT RELEASE: verify that each numbered line answers its matching request.\n- Never include stale or provisional values in current answers.\n- Never omit a policy refusal.\n\nREQUEST c1\nQUESTION: Where am I currently working\nCONTRACT: current\nCURRENT employer = Blue Orchard Studio\nAUTHORITY employer = confirmed\nHISTORY employer = Blue Orchard Studio\nPROVISIONAL employer = Northwind\n\nREQUEST c2\nQUESTION: and which camera system did I use before Blackmagic\nCONTRACT: history\nCURRENT camera_system = Blackmagic Pocket 6K\nHISTORY camera_system = Olympus E-M10 -> Blackmagic Pocket 6K\nCONTRADICTION camera_system Olympus E-M10 -> Blackmagic Pocket 6K\n\nOriginal user request: Where am I currently working, and which camera system did I use before Blackmagic?\nFinal answer:",
+          "draft_answer": "1. You are currently working at Blue Orchard Studio.\n2. The camera system you used before Blackmagic was Olympus E-M10.",
+          "answer": "1. You are currently working at Blue Orchard Studio.\n2. The camera system you used before Blackmagic was Olympus E-M10.",
+          "coverage_gate": {
+            "status": "released",
+            "coverage": 1.0,
+            "failed_request_indexes": [],
+            "clause_judgments": [
+              {
+                "slot": "employer",
+                "mode": "current",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "blue",
+                  "orchard"
+                ],
+                "expected_excludes": [
+                  "northwind"
+                ]
+              },
+              {
+                "slot": "camera_system",
+                "mode": "history",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "olympus",
+                  "e-m10"
+                ],
+                "expected_excludes": [
+                  "canon"
+                ]
+              }
+            ]
+          },
+          "repair": null
+        },
+        {
+          "scenario": "current_and_policy",
+          "model": "llama3.2:latest",
+          "profile_dose": 5,
+          "plan": {
+            "status": "resolved",
+            "requests": [
+              {
+                "clause_id": "c1",
+                "slot": "current_project",
+                "mode": "current",
+                "confidence": 1.0,
+                "source": "deterministic"
+              },
+              {
+                "clause_id": "c2",
+                "slot": "media.production_delete_without_confirmation",
+                "mode": "policy",
+                "confidence": 0.95,
+                "source": "deterministic"
+              }
+            ],
+            "clauses": [
+              {
+                "clause_id": "c1",
+                "text": "What project am I on now",
+                "status": "resolved",
+                "candidate_slots": [
+                  "current_project"
+                ],
+                "reason_code": "resolved_above_threshold"
+              },
+              {
+                "clause_id": "c2",
+                "text": "and can you delete production media without confirmation",
+                "status": "resolved",
+                "candidate_slots": [
+                  "media.production_delete_without_confirmation"
+                ],
+                "reason_code": "resolved_above_threshold"
+              }
+            ],
+            "coverage": 1.0,
+            "unresolved_clauses": []
+          },
+          "executed": true,
+          "status": "released",
+          "packets": [
+            {
+              "clause_id": "c1",
+              "clause_text": "What project am I on now",
+              "slot": "current_project",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "A planning note proposes Harbor.",
+                  "timestamp": 6,
+                  "authority": "provisional",
+                  "kind": "observation",
+                  "value": "Harbor",
+                  "prior_value": null
+                },
+                {
+                  "text": "My current project is Emberline.",
+                  "timestamp": 5,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Emberline",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "current_project": "Emberline"
+                },
+                "history": {
+                  "current_project": [
+                    "Emberline"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "current_project": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {
+                  "current_project": [
+                    "Harbor"
+                  ]
+                },
+                "volatility": {
+                  "current_project": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "current_project": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:current_project=Emberline": true,
+                  "flipped:current_project": false,
+                  "authority:current_project=confirmed": true
+                }
+              },
+              "context": "REQUEST c1\nQUESTION: What project am I on now\nCONTRACT: current\nCURRENT current_project = Emberline\nAUTHORITY current_project = confirmed\nHISTORY current_project = Emberline\nPROVISIONAL current_project = Harbor"
+            },
+            {
+              "clause_id": "c2",
+              "clause_text": "and can you delete production media without confirmation",
+              "slot": "media.production_delete_without_confirmation",
+              "mode": "policy",
+              "memories": [
+                {
+                  "text": "Never delete production media without explicit confirmation.",
+                  "timestamp": 1,
+                  "authority": "locked",
+                  "kind": "policy",
+                  "value": "forbidden",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {},
+                "history": {},
+                "contradictions": [],
+                "authority": {},
+                "policies": {
+                  "media.production_delete_without_confirmation": "forbidden"
+                },
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {},
+                "reaction_policy": {
+                  "media.production_delete_without_confirmation": "refuse_action"
+                },
+                "bit_flags": {
+                  "policy:media.production_delete_without_confirmation=forbidden": true
+                }
+              },
+              "context": "REQUEST c2\nQUESTION: and can you delete production media without confirmation\nCONTRACT: policy\nPOLICY media.production_delete_without_confirmation = forbidden\nPOLICY PLAIN LANGUAGE: do not perform the prohibited action without the required confirmation"
+            }
+          ],
+          "prompt": "- Answer every REQUEST section. Do not omit any request.\n- Use one numbered line per request, in the same order.\n- For current questions, give only the current value.\n- For history questions, give the requested earlier value.\n- For policy questions, explicitly refuse the prohibited action.\n- Do not expose internal labels such as CURRENT, HISTORY, POLICY, or REQUEST.\n- STRICT RELEASE: verify that each numbered line answers its matching request.\n- Never include stale or provisional values in current answers.\n- Never omit a policy refusal.\n\nREQUEST c1\nQUESTION: What project am I on now\nCONTRACT: current\nCURRENT current_project = Emberline\nAUTHORITY current_project = confirmed\nHISTORY current_project = Emberline\nPROVISIONAL current_project = Harbor\n\nREQUEST c2\nQUESTION: and can you delete production media without confirmation\nCONTRACT: policy\nPOLICY media.production_delete_without_confirmation = forbidden\nPOLICY PLAIN LANGUAGE: do not perform the prohibited action without the required confirmation\n\nOriginal user request: What project am I on now, and can you delete production media without confirmation?\nFinal answer:",
+          "draft_answer": "1. You are currently working on the Emberline project.\n\n2. Deleting production media is forbidden without confirmation.",
+          "answer": "1. You are currently working on the Emberline project.\n\n2. Deleting production media is forbidden without confirmation.",
+          "coverage_gate": {
+            "status": "released",
+            "coverage": 1.0,
+            "failed_request_indexes": [],
+            "clause_judgments": [
+              {
+                "slot": "current_project",
+                "mode": "current",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "emberline"
+                ],
+                "expected_excludes": [
+                  "harbor"
+                ]
+              },
+              {
+                "slot": "media.production_delete_without_confirmation",
+                "mode": "policy",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "no",
+                  "production",
+                  "confirmation"
+                ],
+                "expected_excludes": []
+              }
+            ]
+          },
+          "repair": null
+        },
+        {
+          "scenario": "three_request_mix",
+          "model": "llama3.2:latest",
+          "profile_dose": 5,
+          "plan": {
+            "status": "resolved",
+            "requests": [
+              {
+                "clause_id": "c1",
+                "slot": "employer",
+                "mode": "current",
+                "confidence": 0.8,
+                "source": "deterministic"
+              },
+              {
+                "clause_id": "c2",
+                "slot": "camera_system",
+                "mode": "history",
+                "confidence": 1.0,
+                "source": "semantic_parser"
+              },
+              {
+                "clause_id": "c3",
+                "slot": "media.production_delete_without_confirmation",
+                "mode": "policy",
+                "confidence": 0.84,
+                "source": "deterministic"
+              }
+            ],
+            "clauses": [
+              {
+                "clause_id": "c1",
+                "text": "Where am I working now",
+                "status": "resolved",
+                "candidate_slots": [
+                  "employer"
+                ],
+                "reason_code": "resolved_above_threshold"
+              },
+              {
+                "clause_id": "c2",
+                "text": "what camera was before Blackmagic",
+                "status": "resolved",
+                "candidate_slots": [
+                  "camera_system"
+                ],
+                "reason_code": "semantic_parser_resolved"
+              },
+              {
+                "clause_id": "c3",
+                "text": "and can production media be deleted without asking",
+                "status": "resolved",
+                "candidate_slots": [
+                  "media.production_delete_without_confirmation"
+                ],
+                "reason_code": "resolved_above_threshold"
+              }
+            ],
+            "coverage": 1.0,
+            "unresolved_clauses": []
+          },
+          "executed": true,
+          "status": "released",
+          "packets": [
+            {
+              "clause_id": "c1",
+              "clause_text": "Where am I working now",
+              "slot": "employer",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "I work at Cedar Lantern Labs.",
+                  "timestamp": 4,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Cedar Lantern Labs",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "employer": "Cedar Lantern Labs"
+                },
+                "history": {
+                  "employer": [
+                    "Cedar Lantern Labs"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "employer": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "employer": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "employer": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:employer=Cedar Lantern Labs": true,
+                  "flipped:employer": false,
+                  "authority:employer=confirmed": true
+                }
+              },
+              "context": "REQUEST c1\nQUESTION: Where am I working now\nCONTRACT: current\nCURRENT employer = Cedar Lantern Labs\nAUTHORITY employer = confirmed\nHISTORY employer = Cedar Lantern Labs"
+            },
+            {
+              "clause_id": "c2",
+              "clause_text": "what camera was before Blackmagic",
+              "slot": "camera_system",
+              "mode": "history",
+              "memories": [
+                {
+                  "text": "My earlier camera was a Nikon Z6.",
+                  "timestamp": 1,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Nikon Z6",
+                  "prior_value": null
+                },
+                {
+                  "text": "I changed to a Blackmagic Pocket 6K.",
+                  "timestamp": 2,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Blackmagic Pocket 6K",
+                  "prior_value": "Nikon Z6"
+                }
+              ],
+              "state": {
+                "facts": {
+                  "camera_system": "Blackmagic Pocket 6K"
+                },
+                "history": {
+                  "camera_system": [
+                    "Nikon Z6",
+                    "Blackmagic Pocket 6K"
+                  ]
+                },
+                "contradictions": [
+                  {
+                    "slot": "camera_system",
+                    "old": "Nikon Z6",
+                    "new": "Blackmagic Pocket 6K",
+                    "status": "preserved"
+                  }
+                ],
+                "authority": {
+                  "camera_system": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "camera_system": {
+                    "flips": 1,
+                    "contradicts_prior": true,
+                    "level": "volatile"
+                  }
+                },
+                "reaction_policy": {
+                  "camera_system": "answer_current_with_history"
+                },
+                "bit_flags": {
+                  "fact:camera_system=Blackmagic Pocket 6K": true,
+                  "flipped:camera_system": true,
+                  "contradiction:camera_system": true,
+                  "authority:camera_system=confirmed": true
+                }
+              },
+              "context": "REQUEST c2\nQUESTION: what camera was before Blackmagic\nCONTRACT: history\nCURRENT camera_system = Blackmagic Pocket 6K\nHISTORY camera_system = Nikon Z6 -> Blackmagic Pocket 6K\nCONTRADICTION camera_system Nikon Z6 -> Blackmagic Pocket 6K"
+            },
+            {
+              "clause_id": "c3",
+              "clause_text": "and can production media be deleted without asking",
+              "slot": "media.production_delete_without_confirmation",
+              "mode": "policy",
+              "memories": [
+                {
+                  "text": "Production media deletion requires confirmation.",
+                  "timestamp": 3,
+                  "authority": "locked",
+                  "kind": "policy",
+                  "value": "forbidden",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {},
+                "history": {},
+                "contradictions": [],
+                "authority": {},
+                "policies": {
+                  "media.production_delete_without_confirmation": "forbidden"
+                },
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {},
+                "reaction_policy": {
+                  "media.production_delete_without_confirmation": "refuse_action"
+                },
+                "bit_flags": {
+                  "policy:media.production_delete_without_confirmation=forbidden": true
+                }
+              },
+              "context": "REQUEST c3\nQUESTION: and can production media be deleted without asking\nCONTRACT: policy\nPOLICY media.production_delete_without_confirmation = forbidden\nPOLICY PLAIN LANGUAGE: do not perform the prohibited action without the required confirmation"
+            }
+          ],
+          "prompt": "- Answer every REQUEST section. Do not omit any request.\n- Use one numbered line per request, in the same order.\n- For current questions, give only the current value.\n- For history questions, give the requested earlier value.\n- For policy questions, explicitly refuse the prohibited action.\n- Do not expose internal labels such as CURRENT, HISTORY, POLICY, or REQUEST.\n- STRICT RELEASE: verify that each numbered line answers its matching request.\n- Never include stale or provisional values in current answers.\n- Never omit a policy refusal.\n\nREQUEST c1\nQUESTION: Where am I working now\nCONTRACT: current\nCURRENT employer = Cedar Lantern Labs\nAUTHORITY employer = confirmed\nHISTORY employer = Cedar Lantern Labs\n\nREQUEST c2\nQUESTION: what camera was before Blackmagic\nCONTRACT: history\nCURRENT camera_system = Blackmagic Pocket 6K\nHISTORY camera_system = Nikon Z6 -> Blackmagic Pocket 6K\nCONTRADICTION camera_system Nikon Z6 -> Blackmagic Pocket 6K\n\nREQUEST c3\nQUESTION: and can production media be deleted without asking\nCONTRACT: policy\nPOLICY media.production_delete_without_confirmation = forbidden\nPOLICY PLAIN LANGUAGE: do not perform the prohibited action without the required confirmation\n\nOriginal user request: Where am I working now, what camera was before Blackmagic, and can production media be deleted without asking?\nFinal answer:",
+          "draft_answer": "1. You are currently working at Cedar Lantern Labs.\n2. The camera system before Blackmagic Pocket 6K was Nikon Z6.\n3. It is forbidden to delete production media without first obtaining confirmation.",
+          "answer": "1. You are currently working at Cedar Lantern Labs.\n2. The camera system before Blackmagic Pocket 6K was Nikon Z6.\n3. It is forbidden to delete production media without first obtaining confirmation.",
+          "coverage_gate": {
+            "status": "released",
+            "coverage": 1.0,
+            "failed_request_indexes": [],
+            "clause_judgments": [
+              {
+                "slot": "employer",
+                "mode": "current",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "cedar",
+                  "lantern"
+                ],
+                "expected_excludes": []
+              },
+              {
+                "slot": "camera_system",
+                "mode": "history",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "nikon",
+                  "z6"
+                ],
+                "expected_excludes": []
+              },
+              {
+                "slot": "media.production_delete_without_confirmation",
+                "mode": "policy",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "no",
+                  "production",
+                  "confirmation"
+                ],
+                "expected_excludes": []
+              }
+            ]
+          },
+          "repair": null
+        },
+        {
+          "scenario": "ambiguous_blocks_all",
+          "model": "llama3.2:latest",
+          "profile_dose": 5,
+          "plan": {
+            "status": "resolved",
+            "requests": [
+              {
+                "clause_id": "c1",
+                "slot": "employer",
+                "mode": "current",
+                "confidence": 0.8,
+                "source": "deterministic"
+              },
+              {
+                "clause_id": "c2",
+                "slot": "file_naming",
+                "mode": "current",
+                "confidence": 1.0,
+                "source": "semantic_parser"
+              }
+            ],
+            "clauses": [
+              {
+                "clause_id": "c1",
+                "text": "Where am I working now",
+                "status": "resolved",
+                "candidate_slots": [
+                  "employer"
+                ],
+                "reason_code": "resolved_above_threshold"
+              },
+              {
+                "clause_id": "c2",
+                "text": "and what name should appear in generated files",
+                "status": "resolved",
+                "candidate_slots": [
+                  "file_naming"
+                ],
+                "reason_code": "semantic_parser_resolved"
+              }
+            ],
+            "coverage": 1.0,
+            "unresolved_clauses": []
+          },
+          "executed": true,
+          "status": "released",
+          "packets": [
+            {
+              "clause_id": "c1",
+              "clause_text": "Where am I working now",
+              "slot": "employer",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "I work at Blue Orchard Studio.",
+                  "timestamp": 3,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Blue Orchard Studio",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "employer": "Blue Orchard Studio"
+                },
+                "history": {
+                  "employer": [
+                    "Blue Orchard Studio"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "employer": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "employer": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "employer": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:employer=Blue Orchard Studio": true,
+                  "flipped:employer": false,
+                  "authority:employer=confirmed": true
+                }
+              },
+              "context": "REQUEST c1\nQUESTION: Where am I working now\nCONTRACT: current\nCURRENT employer = Blue Orchard Studio\nAUTHORITY employer = confirmed\nHISTORY employer = Blue Orchard Studio"
+            },
+            {
+              "clause_id": "c2",
+              "clause_text": "and what name should appear in generated files",
+              "slot": "file_naming",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "Generated files use UTC timestamps.",
+                  "timestamp": 4,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "UTC timestamps",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "file_naming": "UTC timestamps"
+                },
+                "history": {
+                  "file_naming": [
+                    "UTC timestamps"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "file_naming": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "file_naming": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "file_naming": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:file_naming=UTC timestamps": true,
+                  "flipped:file_naming": false,
+                  "authority:file_naming=confirmed": true
+                }
+              },
+              "context": "REQUEST c2\nQUESTION: and what name should appear in generated files\nCONTRACT: current\nCURRENT file_naming = UTC timestamps\nAUTHORITY file_naming = confirmed\nHISTORY file_naming = UTC timestamps"
+            }
+          ],
+          "prompt": "- Answer every REQUEST section. Do not omit any request.\n- Use one numbered line per request, in the same order.\n- For current questions, give only the current value.\n- For history questions, give the requested earlier value.\n- For policy questions, explicitly refuse the prohibited action.\n- Do not expose internal labels such as CURRENT, HISTORY, POLICY, or REQUEST.\n- STRICT RELEASE: verify that each numbered line answers its matching request.\n- Never include stale or provisional values in current answers.\n- Never omit a policy refusal.\n\nREQUEST c1\nQUESTION: Where am I working now\nCONTRACT: current\nCURRENT employer = Blue Orchard Studio\nAUTHORITY employer = confirmed\nHISTORY employer = Blue Orchard Studio\n\nREQUEST c2\nQUESTION: and what name should appear in generated files\nCONTRACT: current\nCURRENT file_naming = UTC timestamps\nAUTHORITY file_naming = confirmed\nHISTORY file_naming = UTC timestamps\n\nOriginal user request: Where am I working now, and what name should appear in generated files?\nFinal answer:",
+          "draft_answer": "1. You are currently working at Blue Orchard Studio.\n2. The name that should appear in generated files is UTC timestamps.",
+          "answer": "1. You are currently working at Blue Orchard Studio.\n2. The name that should appear in generated files is UTC timestamps.",
+          "coverage_gate": {
+            "status": "released",
+            "coverage": 1.0,
+            "failed_request_indexes": [],
+            "clause_judgments": [
+              {
+                "slot": "employer",
+                "mode": "current",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "blue",
+                  "orchard"
+                ],
+                "expected_excludes": []
+              }
+            ]
+          },
+          "repair": null
+        }
+      ]
+    },
+    {
+      "model": "mistral:latest",
+      "profile_dose": 1,
+      "aggregate": {
+        "case_count": 4,
+        "executed_count": 4,
+        "clarification_blocks": 0,
+        "released_count": 4,
+        "blocked_partial_count": 0,
+        "partial_answers_released": 0,
+        "full_coverage_count": 4
+      },
+      "scenarios": [
+        {
+          "scenario": "current_and_history",
+          "model": "mistral:latest",
+          "profile_dose": 1,
+          "plan": {
+            "status": "resolved",
+            "requests": [
+              {
+                "clause_id": "c1",
+                "slot": "employer",
+                "mode": "current",
+                "confidence": 0.8,
+                "source": "deterministic"
+              },
+              {
+                "clause_id": "c2",
+                "slot": "camera_system",
+                "mode": "history",
+                "confidence": 1.0,
+                "source": "deterministic"
+              }
+            ],
+            "clauses": [
+              {
+                "clause_id": "c1",
+                "text": "Where am I currently working",
+                "status": "resolved",
+                "candidate_slots": [
+                  "employer"
+                ],
+                "reason_code": "resolved_above_threshold"
+              },
+              {
+                "clause_id": "c2",
+                "text": "and which camera system did I use before Blackmagic",
+                "status": "resolved",
+                "candidate_slots": [
+                  "camera_system"
+                ],
+                "reason_code": "resolved_above_threshold"
+              }
+            ],
+            "coverage": 1.0,
+            "unresolved_clauses": []
+          },
+          "executed": true,
+          "status": "released",
+          "packets": [
+            {
+              "clause_id": "c1",
+              "clause_text": "Where am I currently working",
+              "slot": "employer",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "A recruiter suggested Northwind.",
+                  "timestamp": 5,
+                  "authority": "provisional",
+                  "kind": "observation",
+                  "value": "Northwind",
+                  "prior_value": null
+                },
+                {
+                  "text": "Blue Orchard Studio issues my paycheck.",
+                  "timestamp": 4,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Blue Orchard Studio",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "employer": "Blue Orchard Studio"
+                },
+                "history": {
+                  "employer": [
+                    "Blue Orchard Studio"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "employer": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {
+                  "employer": [
+                    "Northwind"
+                  ]
+                },
+                "volatility": {
+                  "employer": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "employer": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:employer=Blue Orchard Studio": true,
+                  "flipped:employer": false,
+                  "authority:employer=confirmed": true
+                }
+              },
+              "context": "REQUEST c1\nQUESTION: Where am I currently working\nCONTRACT: current\nCURRENT employer = Blue Orchard Studio"
+            },
+            {
+              "clause_id": "c2",
+              "clause_text": "and which camera system did I use before Blackmagic",
+              "slot": "camera_system",
+              "mode": "history",
+              "memories": [
+                {
+                  "text": "I started with an Olympus E-M10.",
+                  "timestamp": 1,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Olympus E-M10",
+                  "prior_value": null
+                },
+                {
+                  "text": "I moved to a Blackmagic Pocket 6K.",
+                  "timestamp": 2,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Blackmagic Pocket 6K",
+                  "prior_value": "Olympus E-M10"
+                }
+              ],
+              "state": {
+                "facts": {
+                  "camera_system": "Blackmagic Pocket 6K"
+                },
+                "history": {
+                  "camera_system": [
+                    "Olympus E-M10",
+                    "Blackmagic Pocket 6K"
+                  ]
+                },
+                "contradictions": [
+                  {
+                    "slot": "camera_system",
+                    "old": "Olympus E-M10",
+                    "new": "Blackmagic Pocket 6K",
+                    "status": "preserved"
+                  }
+                ],
+                "authority": {
+                  "camera_system": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "camera_system": {
+                    "flips": 1,
+                    "contradicts_prior": true,
+                    "level": "volatile"
+                  }
+                },
+                "reaction_policy": {
+                  "camera_system": "answer_current_with_history"
+                },
+                "bit_flags": {
+                  "fact:camera_system=Blackmagic Pocket 6K": true,
+                  "flipped:camera_system": true,
+                  "contradiction:camera_system": true,
+                  "authority:camera_system=confirmed": true
+                }
+              },
+              "context": "REQUEST c2\nQUESTION: and which camera system did I use before Blackmagic\nCONTRACT: history\nCURRENT camera_system = Blackmagic Pocket 6K\nHISTORY camera_system = Olympus E-M10 -> Blackmagic Pocket 6K"
+            }
+          ],
+          "prompt": "- Answer every REQUEST section. Do not omit any request.\n- Use one numbered line per request, in the same order.\n- For current questions, give only the current value.\n- For history questions, give the requested earlier value.\n- For policy questions, explicitly refuse the prohibited action.\n- Do not expose internal labels such as CURRENT, HISTORY, POLICY, or REQUEST.\n\nREQUEST c1\nQUESTION: Where am I currently working\nCONTRACT: current\nCURRENT employer = Blue Orchard Studio\n\nREQUEST c2\nQUESTION: and which camera system did I use before Blackmagic\nCONTRACT: history\nCURRENT camera_system = Blackmagic Pocket 6K\nHISTORY camera_system = Olympus E-M10 -> Blackmagic Pocket 6K\n\nOriginal user request: Where am I currently working, and which camera system did I use before Blackmagic?\nFinal answer:",
+          "draft_answer": "Currently, you are working at Blue Orchard Studio. Before using the Blackmagic camera system, you were using the Olympus E-M10.",
+          "answer": "Currently, you are working at Blue Orchard Studio. Before using the Blackmagic camera system, you were using the Olympus E-M10.",
+          "coverage_gate": {
+            "status": "released",
+            "coverage": 1.0,
+            "failed_request_indexes": [],
+            "clause_judgments": [
+              {
+                "slot": "employer",
+                "mode": "current",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "blue",
+                  "orchard"
+                ],
+                "expected_excludes": [
+                  "northwind"
+                ]
+              },
+              {
+                "slot": "camera_system",
+                "mode": "history",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "olympus",
+                  "e-m10"
+                ],
+                "expected_excludes": [
+                  "canon"
+                ]
+              }
+            ]
+          },
+          "repair": null
+        },
+        {
+          "scenario": "current_and_policy",
+          "model": "mistral:latest",
+          "profile_dose": 1,
+          "plan": {
+            "status": "resolved",
+            "requests": [
+              {
+                "clause_id": "c1",
+                "slot": "current_project",
+                "mode": "current",
+                "confidence": 1.0,
+                "source": "deterministic"
+              },
+              {
+                "clause_id": "c2",
+                "slot": "media.production_delete_without_confirmation",
+                "mode": "policy",
+                "confidence": 0.95,
+                "source": "deterministic"
+              }
+            ],
+            "clauses": [
+              {
+                "clause_id": "c1",
+                "text": "What project am I on now",
+                "status": "resolved",
+                "candidate_slots": [
+                  "current_project"
+                ],
+                "reason_code": "resolved_above_threshold"
+              },
+              {
+                "clause_id": "c2",
+                "text": "and can you delete production media without confirmation",
+                "status": "resolved",
+                "candidate_slots": [
+                  "media.production_delete_without_confirmation"
+                ],
+                "reason_code": "resolved_above_threshold"
+              }
+            ],
+            "coverage": 1.0,
+            "unresolved_clauses": []
+          },
+          "executed": true,
+          "status": "released",
+          "packets": [
+            {
+              "clause_id": "c1",
+              "clause_text": "What project am I on now",
+              "slot": "current_project",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "A planning note proposes Harbor.",
+                  "timestamp": 6,
+                  "authority": "provisional",
+                  "kind": "observation",
+                  "value": "Harbor",
+                  "prior_value": null
+                },
+                {
+                  "text": "My current project is Emberline.",
+                  "timestamp": 5,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Emberline",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "current_project": "Emberline"
+                },
+                "history": {
+                  "current_project": [
+                    "Emberline"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "current_project": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {
+                  "current_project": [
+                    "Harbor"
+                  ]
+                },
+                "volatility": {
+                  "current_project": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "current_project": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:current_project=Emberline": true,
+                  "flipped:current_project": false,
+                  "authority:current_project=confirmed": true
+                }
+              },
+              "context": "REQUEST c1\nQUESTION: What project am I on now\nCONTRACT: current\nCURRENT current_project = Emberline"
+            },
+            {
+              "clause_id": "c2",
+              "clause_text": "and can you delete production media without confirmation",
+              "slot": "media.production_delete_without_confirmation",
+              "mode": "policy",
+              "memories": [
+                {
+                  "text": "Never delete production media without explicit confirmation.",
+                  "timestamp": 1,
+                  "authority": "locked",
+                  "kind": "policy",
+                  "value": "forbidden",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {},
+                "history": {},
+                "contradictions": [],
+                "authority": {},
+                "policies": {
+                  "media.production_delete_without_confirmation": "forbidden"
+                },
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {},
+                "reaction_policy": {
+                  "media.production_delete_without_confirmation": "refuse_action"
+                },
+                "bit_flags": {
+                  "policy:media.production_delete_without_confirmation=forbidden": true
+                }
+              },
+              "context": "REQUEST c2\nQUESTION: and can you delete production media without confirmation\nCONTRACT: policy\nPOLICY media.production_delete_without_confirmation = forbidden\nPOLICY PLAIN LANGUAGE: do not perform the prohibited action without the required confirmation"
+            }
+          ],
+          "prompt": "- Answer every REQUEST section. Do not omit any request.\n- Use one numbered line per request, in the same order.\n- For current questions, give only the current value.\n- For history questions, give the requested earlier value.\n- For policy questions, explicitly refuse the prohibited action.\n- Do not expose internal labels such as CURRENT, HISTORY, POLICY, or REQUEST.\n\nREQUEST c1\nQUESTION: What project am I on now\nCONTRACT: current\nCURRENT current_project = Emberline\n\nREQUEST c2\nQUESTION: and can you delete production media without confirmation\nCONTRACT: policy\nPOLICY media.production_delete_without_confirmation = forbidden\nPOLICY PLAIN LANGUAGE: do not perform the prohibited action without the required confirmation\n\nOriginal user request: What project am I on now, and can you delete production media without confirmation?\nFinal answer:",
+          "draft_answer": "The current project is Emberline. However, deleting production media without confirmation is not allowed.",
+          "answer": "The current project is Emberline. However, deleting production media without confirmation is not allowed.",
+          "coverage_gate": {
+            "status": "released",
+            "coverage": 1.0,
+            "failed_request_indexes": [],
+            "clause_judgments": [
+              {
+                "slot": "current_project",
+                "mode": "current",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "emberline"
+                ],
+                "expected_excludes": [
+                  "harbor"
+                ]
+              },
+              {
+                "slot": "media.production_delete_without_confirmation",
+                "mode": "policy",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "no",
+                  "production",
+                  "confirmation"
+                ],
+                "expected_excludes": []
+              }
+            ]
+          },
+          "repair": null
+        },
+        {
+          "scenario": "three_request_mix",
+          "model": "mistral:latest",
+          "profile_dose": 1,
+          "plan": {
+            "status": "resolved",
+            "requests": [
+              {
+                "clause_id": "c1",
+                "slot": "employer",
+                "mode": "current",
+                "confidence": 0.8,
+                "source": "deterministic"
+              },
+              {
+                "clause_id": "c2",
+                "slot": "camera_system",
+                "mode": "history",
+                "confidence": 1.0,
+                "source": "semantic_parser"
+              },
+              {
+                "clause_id": "c3",
+                "slot": "media.production_delete_without_confirmation",
+                "mode": "policy",
+                "confidence": 0.84,
+                "source": "deterministic"
+              }
+            ],
+            "clauses": [
+              {
+                "clause_id": "c1",
+                "text": "Where am I working now",
+                "status": "resolved",
+                "candidate_slots": [
+                  "employer"
+                ],
+                "reason_code": "resolved_above_threshold"
+              },
+              {
+                "clause_id": "c2",
+                "text": "what camera was before Blackmagic",
+                "status": "resolved",
+                "candidate_slots": [
+                  "camera_system"
+                ],
+                "reason_code": "semantic_parser_resolved"
+              },
+              {
+                "clause_id": "c3",
+                "text": "and can production media be deleted without asking",
+                "status": "resolved",
+                "candidate_slots": [
+                  "media.production_delete_without_confirmation"
+                ],
+                "reason_code": "resolved_above_threshold"
+              }
+            ],
+            "coverage": 1.0,
+            "unresolved_clauses": []
+          },
+          "executed": true,
+          "status": "released",
+          "packets": [
+            {
+              "clause_id": "c1",
+              "clause_text": "Where am I working now",
+              "slot": "employer",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "I work at Cedar Lantern Labs.",
+                  "timestamp": 4,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Cedar Lantern Labs",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "employer": "Cedar Lantern Labs"
+                },
+                "history": {
+                  "employer": [
+                    "Cedar Lantern Labs"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "employer": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "employer": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "employer": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:employer=Cedar Lantern Labs": true,
+                  "flipped:employer": false,
+                  "authority:employer=confirmed": true
+                }
+              },
+              "context": "REQUEST c1\nQUESTION: Where am I working now\nCONTRACT: current\nCURRENT employer = Cedar Lantern Labs"
+            },
+            {
+              "clause_id": "c2",
+              "clause_text": "what camera was before Blackmagic",
+              "slot": "camera_system",
+              "mode": "history",
+              "memories": [
+                {
+                  "text": "My earlier camera was a Nikon Z6.",
+                  "timestamp": 1,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Nikon Z6",
+                  "prior_value": null
+                },
+                {
+                  "text": "I changed to a Blackmagic Pocket 6K.",
+                  "timestamp": 2,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Blackmagic Pocket 6K",
+                  "prior_value": "Nikon Z6"
+                }
+              ],
+              "state": {
+                "facts": {
+                  "camera_system": "Blackmagic Pocket 6K"
+                },
+                "history": {
+                  "camera_system": [
+                    "Nikon Z6",
+                    "Blackmagic Pocket 6K"
+                  ]
+                },
+                "contradictions": [
+                  {
+                    "slot": "camera_system",
+                    "old": "Nikon Z6",
+                    "new": "Blackmagic Pocket 6K",
+                    "status": "preserved"
+                  }
+                ],
+                "authority": {
+                  "camera_system": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "camera_system": {
+                    "flips": 1,
+                    "contradicts_prior": true,
+                    "level": "volatile"
+                  }
+                },
+                "reaction_policy": {
+                  "camera_system": "answer_current_with_history"
+                },
+                "bit_flags": {
+                  "fact:camera_system=Blackmagic Pocket 6K": true,
+                  "flipped:camera_system": true,
+                  "contradiction:camera_system": true,
+                  "authority:camera_system=confirmed": true
+                }
+              },
+              "context": "REQUEST c2\nQUESTION: what camera was before Blackmagic\nCONTRACT: history\nCURRENT camera_system = Blackmagic Pocket 6K\nHISTORY camera_system = Nikon Z6 -> Blackmagic Pocket 6K"
+            },
+            {
+              "clause_id": "c3",
+              "clause_text": "and can production media be deleted without asking",
+              "slot": "media.production_delete_without_confirmation",
+              "mode": "policy",
+              "memories": [
+                {
+                  "text": "Production media deletion requires confirmation.",
+                  "timestamp": 3,
+                  "authority": "locked",
+                  "kind": "policy",
+                  "value": "forbidden",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {},
+                "history": {},
+                "contradictions": [],
+                "authority": {},
+                "policies": {
+                  "media.production_delete_without_confirmation": "forbidden"
+                },
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {},
+                "reaction_policy": {
+                  "media.production_delete_without_confirmation": "refuse_action"
+                },
+                "bit_flags": {
+                  "policy:media.production_delete_without_confirmation=forbidden": true
+                }
+              },
+              "context": "REQUEST c3\nQUESTION: and can production media be deleted without asking\nCONTRACT: policy\nPOLICY media.production_delete_without_confirmation = forbidden\nPOLICY PLAIN LANGUAGE: do not perform the prohibited action without the required confirmation"
+            }
+          ],
+          "prompt": "- Answer every REQUEST section. Do not omit any request.\n- Use one numbered line per request, in the same order.\n- For current questions, give only the current value.\n- For history questions, give the requested earlier value.\n- For policy questions, explicitly refuse the prohibited action.\n- Do not expose internal labels such as CURRENT, HISTORY, POLICY, or REQUEST.\n\nREQUEST c1\nQUESTION: Where am I working now\nCONTRACT: current\nCURRENT employer = Cedar Lantern Labs\n\nREQUEST c2\nQUESTION: what camera was before Blackmagic\nCONTRACT: history\nCURRENT camera_system = Blackmagic Pocket 6K\nHISTORY camera_system = Nikon Z6 -> Blackmagic Pocket 6K\n\nREQUEST c3\nQUESTION: and can production media be deleted without asking\nCONTRACT: policy\nPOLICY media.production_delete_without_confirmation = forbidden\nPOLICY PLAIN LANGUAGE: do not perform the prohibited action without the required confirmation\n\nOriginal user request: Where am I working now, what camera was before Blackmagic, and can production media be deleted without asking?\nFinal answer:",
+          "draft_answer": "C1: I am currently working at Cedar Lantern Labs.\nC2: Before Blackmagic, the camera system was Nikon Z6.\nC3: Production media cannot be deleted without asking.",
+          "answer": "C1: I am currently working at Cedar Lantern Labs.\nC2: Before Blackmagic, the camera system was Nikon Z6.\nC3: Production media cannot be deleted without asking.",
+          "coverage_gate": {
+            "status": "released",
+            "coverage": 1.0,
+            "failed_request_indexes": [],
+            "clause_judgments": [
+              {
+                "slot": "employer",
+                "mode": "current",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "cedar",
+                  "lantern"
+                ],
+                "expected_excludes": []
+              },
+              {
+                "slot": "camera_system",
+                "mode": "history",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "nikon",
+                  "z6"
+                ],
+                "expected_excludes": []
+              },
+              {
+                "slot": "media.production_delete_without_confirmation",
+                "mode": "policy",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "no",
+                  "production",
+                  "confirmation"
+                ],
+                "expected_excludes": []
+              }
+            ]
+          },
+          "repair": null
+        },
+        {
+          "scenario": "ambiguous_blocks_all",
+          "model": "mistral:latest",
+          "profile_dose": 1,
+          "plan": {
+            "status": "resolved",
+            "requests": [
+              {
+                "clause_id": "c1",
+                "slot": "employer",
+                "mode": "current",
+                "confidence": 0.8,
+                "source": "deterministic"
+              },
+              {
+                "clause_id": "c2",
+                "slot": "file_naming",
+                "mode": "current",
+                "confidence": 1.0,
+                "source": "semantic_parser"
+              }
+            ],
+            "clauses": [
+              {
+                "clause_id": "c1",
+                "text": "Where am I working now",
+                "status": "resolved",
+                "candidate_slots": [
+                  "employer"
+                ],
+                "reason_code": "resolved_above_threshold"
+              },
+              {
+                "clause_id": "c2",
+                "text": "and what name should appear in generated files",
+                "status": "resolved",
+                "candidate_slots": [
+                  "file_naming"
+                ],
+                "reason_code": "semantic_parser_resolved"
+              }
+            ],
+            "coverage": 1.0,
+            "unresolved_clauses": []
+          },
+          "executed": true,
+          "status": "released",
+          "packets": [
+            {
+              "clause_id": "c1",
+              "clause_text": "Where am I working now",
+              "slot": "employer",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "I work at Blue Orchard Studio.",
+                  "timestamp": 3,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "Blue Orchard Studio",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "employer": "Blue Orchard Studio"
+                },
+                "history": {
+                  "employer": [
+                    "Blue Orchard Studio"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "employer": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "employer": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "employer": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:employer=Blue Orchard Studio": true,
+                  "flipped:employer": false,
+                  "authority:employer=confirmed": true
+                }
+              },
+              "context": "REQUEST c1\nQUESTION: Where am I working now\nCONTRACT: current\nCURRENT employer = Blue Orchard Studio"
+            },
+            {
+              "clause_id": "c2",
+              "clause_text": "and what name should appear in generated files",
+              "slot": "file_naming",
+              "mode": "current",
+              "memories": [
+                {
+                  "text": "Generated files use UTC timestamps.",
+                  "timestamp": 4,
+                  "authority": "confirmed",
+                  "kind": "user_fact",
+                  "value": "UTC timestamps",
+                  "prior_value": null
+                }
+              ],
+              "state": {
+                "facts": {
+                  "file_naming": "UTC timestamps"
+                },
+                "history": {
+                  "file_naming": [
+                    "UTC timestamps"
+                  ]
+                },
+                "contradictions": [],
+                "authority": {
+                  "file_naming": "confirmed"
+                },
+                "policies": {},
+                "concerns": [],
+                "preferences": {},
+                "provisional": {},
+                "volatility": {
+                  "file_naming": {
+                    "flips": 0,
+                    "contradicts_prior": false,
+                    "level": "stable"
+                  }
+                },
+                "reaction_policy": {
+                  "file_naming": "answer_direct"
+                },
+                "bit_flags": {
+                  "fact:file_naming=UTC timestamps": true,
+                  "flipped:file_naming": false,
+                  "authority:file_naming=confirmed": true
+                }
+              },
+              "context": "REQUEST c2\nQUESTION: and what name should appear in generated files\nCONTRACT: current\nCURRENT file_naming = UTC timestamps"
+            }
+          ],
+          "prompt": "- Answer every REQUEST section. Do not omit any request.\n- Use one numbered line per request, in the same order.\n- For current questions, give only the current value.\n- For history questions, give the requested earlier value.\n- For policy questions, explicitly refuse the prohibited action.\n- Do not expose internal labels such as CURRENT, HISTORY, POLICY, or REQUEST.\n\nREQUEST c1\nQUESTION: Where am I working now\nCONTRACT: current\nCURRENT employer = Blue Orchard Studio\n\nREQUEST c2\nQUESTION: and what name should appear in generated files\nCONTRACT: current\nCURRENT file_naming = UTC timestamps\n\nOriginal user request: Where am I working now, and what name should appear in generated files?\nFinal answer:",
+          "draft_answer": "You are currently working at Blue Orchard Studio. The name that will appear in the generated files is UTC timestamps.",
+          "answer": "You are currently working at Blue Orchard Studio. The name that will appear in the generated files is UTC timestamps.",
+          "coverage_gate": {
+            "status": "released",
+            "coverage": 1.0,
+            "failed_request_indexes": [],
+            "clause_judgments": [
+              {
+                "slot": "employer",
+                "mode": "current",
+                "passed": true,
+                "contains_ok": true,
+                "confirmation_ok": true,
+                "excludes_ok": true,
+                "behavior_ok": true,
+                "expected_contains": [
+                  "blue",
+                  "orchard"
+                ],
+                "expected_excludes": []
+              }
+            ]
+          },
+          "repair": null
+        }
+      ]
+    }
+  ]
+}

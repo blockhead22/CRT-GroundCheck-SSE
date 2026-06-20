@@ -1,0 +1,67 @@
+{
+  "lab": "temporal_metadata_rag_vs_hybrid_crt",
+  "case_count": 76,
+  "models": [
+    {
+      "model": "qwen2.5:7b-instruct",
+      "case_count": 19,
+      "temporal_semantic": 15,
+      "hybrid_semantic": 18,
+      "semantic_delta_count": 3,
+      "semantic_delta_points": 15.8,
+      "temporal_contract": 15,
+      "hybrid_contract": 18,
+      "temporal_severe": 1,
+      "hybrid_severe": 0
+    },
+    {
+      "model": "phi3:3.8b",
+      "case_count": 19,
+      "temporal_semantic": 12,
+      "hybrid_semantic": 18,
+      "semantic_delta_count": 6,
+      "semantic_delta_points": 31.6,
+      "temporal_contract": 12,
+      "hybrid_contract": 18,
+      "temporal_severe": 2,
+      "hybrid_severe": 0
+    },
+    {
+      "model": "llama3.2:latest",
+      "case_count": 19,
+      "temporal_semantic": 13,
+      "hybrid_semantic": 15,
+      "semantic_delta_count": 2,
+      "semantic_delta_points": 10.5,
+      "temporal_contract": 13,
+      "hybrid_contract": 14,
+      "temporal_severe": 3,
+      "hybrid_severe": 1
+    },
+    {
+      "model": "mistral:latest",
+      "case_count": 19,
+      "temporal_semantic": 17,
+      "hybrid_semantic": 13,
+      "semantic_delta_count": -4,
+      "semantic_delta_points": -21.1,
+      "temporal_contract": 17,
+      "hybrid_contract": 9,
+      "temporal_severe": 1,
+      "hybrid_severe": 0
+    }
+  ],
+  "aggregate": {
+    "temporal_semantic": 57,
+    "hybrid_semantic": 64,
+    "semantic_delta_count": 7,
+    "semantic_delta_points": 9.2,
+    "temporal_contract": 57,
+    "hybrid_contract": 59,
+    "temporal_severe": 7,
+    "hybrid_severe": 1,
+    "models_where_hybrid_wins": 3,
+    "models_where_temporal_wins": 1,
+    "models_tied": 0
+  }
+}

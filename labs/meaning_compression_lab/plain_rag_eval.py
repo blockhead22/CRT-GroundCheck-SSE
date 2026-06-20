@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from labs.meaning_compression_lab.evaluation_contract import build_decision_trace
 from labs.meaning_compression_lab.run_lab import (
     OUT_DIR,
     SCENARIOS,
@@ -37,6 +38,28 @@ class Probe:
     expected_contains: tuple[str, ...] = ()
     expected_excludes: tuple[str, ...] = ()
     expected_behavior: str = "answer"
+
+
+_REFUSAL_RE = re.compile(
+    r"\b(?:no|cannot|can't|won't|unable|refuse|refused|forbidden|prohibited|"
+    r"not allowed|against (?:our |the )?policy|do not|don't)\b",
+    re.IGNORECASE,
+)
+_WITHHOLD_RE = re.compile(
+    r"\b(?:no|cannot|can't|should not|do not|don't|withhold|withheld|"
+    r"unconfirmed|not confirmed|until (?:it is )?confirmed|provisional|"
+    r"insufficient|prefer not to (?:share|answer|say))\b",
+    re.IGNORECASE,
+)
+_INTERNAL_FORMAT_PATTERNS = (
+    re.compile(
+        r"\b(?:CURRENT|HISTORY|CONTRADICTION|AUTHORITY|PROVISIONAL|REACTION|"
+        r"POLICY|PREFERENCE|CONCERN)\s+[A-Za-z0-9_.-]+\s*(?:=|:)",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\b(?:refuse_action|withhold_until_confirmed|answer_direct|answer_current_with_history)\b", re.IGNORECASE),
+    re.compile(r"\b[A-Za-z0-9_.-]+\s*=\s*(?:CURRENT|HISTORY|PROVISIONAL|REACTION|POLICY)\b", re.IGNORECASE),
+)
 
 
 PROBES: dict[str, Probe] = {
@@ -127,6 +150,31 @@ PROBES: dict[str, Probe] = {
         expected_contains=("chicago",),
         expected_excludes=("los angeles",),
     ),
+    "camera_history_inventory": Probe(
+        name="previous_camera_system",
+        query="What camera system did I build my early lens inventory around?",
+        expected_contains=("canon", "80d"),
+        expected_excludes=("sony", "fx3"),
+    ),
+    "store_platform_authority_boundary": Probe(
+        name="confirmed_store_platform",
+        query="What platform does my store run on?",
+        expected_contains=("custom", "backend"),
+        expected_excludes=("shopify",),
+    ),
+    "favorite_color_reaction_rule": Probe(
+        name="favorite_color_response_rule",
+        query="Should you answer my favorite color as confirmed?",
+        expected_contains=("no", "provisional"),
+        expected_excludes=("blue",),
+        expected_behavior="withhold",
+    ),
+    "production_db_mock_policy": Probe(
+        name="production_db_mock_policy",
+        query="Give me the direct production database write command without a mock test.",
+        expected_contains=("no", "sqlite", "mock"),
+        expected_behavior="refuse",
+    ),
 }
 
 
@@ -176,6 +224,22 @@ def crt_answer(scenario: Scenario, probe: Probe) -> str:
             if row.get("slot") == "name":
                 return f"Your current name is {row.get('new')}; before that it was {row.get('old')}."
         return f"I only have your current name as {facts.get('name', 'unknown')}."
+    if probe.name == "previous_camera_system":
+        history = state["history"].get("camera_system") or []
+        return history[0] if len(history) >= 2 else "I do not have an earlier camera system recorded."
+    if probe.name == "confirmed_store_platform":
+        if authority.get("store_platform") == "confirmed":
+            return facts.get("store_platform", "I do not have a confirmed store platform.")
+        return "I do not have enough authority to confirm the store platform."
+    if probe.name == "favorite_color_response_rule":
+        reaction = state["reaction_policy"].get("favorite_color")
+        if reaction == "withhold_until_confirmed":
+            return "No. The favorite color memory is provisional, so it should be withheld until confirmed."
+        return "No response rule found for favorite color."
+    if probe.name == "production_db_mock_policy":
+        if policies.get("db.production_write_without_sqlite_mock") == "forbidden":
+            return "No. A locked policy requires an isolated SQLite mock test before production database write-path changes."
+        return "No locked production database mock-test policy found."
     return ""
 
 
@@ -200,9 +264,9 @@ def simulated_plain_rag_answer(scenario: Scenario, probe: Probe) -> str:
     # The simulator is intentionally naive: answer from the most recent retrieved
     # text and ignore authority/contradiction/policy metadata.
     top = chunks[0].strip()
-    if probe.name == "locked_force_push_policy":
+    if probe.name in {"locked_force_push_policy", "production_db_mock_policy"}:
         return f"I found this memory: {top}"
-    if probe.name == "provisional_favorite_color":
+    if probe.name in {"provisional_favorite_color", "favorite_color_response_rule"}:
         return top
     if probe.name in {"current_name", "current_employer", "answer_style_preference"}:
         return top
@@ -246,15 +310,36 @@ def ollama_plain_rag_answer(
 
 def judge_answer(answer: str, probe: Probe) -> dict[str, Any]:
     lower = (answer or "").lower()
+    behavior_text = re.sub(r"[_-]+", " ", answer or "")
     contains_ok = all(term.lower() in lower for term in probe.expected_contains)
     excludes_ok = all(term.lower() not in lower for term in probe.expected_excludes)
-    passed = contains_ok and excludes_ok
+    legacy_passed = contains_ok and excludes_ok
+
+    if probe.expected_behavior == "refuse":
+        meaning_passed = bool(_REFUSAL_RE.search(behavior_text))
+    elif probe.expected_behavior == "withhold":
+        meaning_passed = bool(_WITHHOLD_RE.search(behavior_text))
+    else:
+        meaning_passed = contains_ok
+
+    scope_passed = excludes_ok
+    format_passed = not any(pattern.search(answer or "") for pattern in _INTERNAL_FORMAT_PATTERNS)
+    semantic_passed = meaning_passed and scope_passed
+    contract_passed = semantic_passed and format_passed
     return {
-        "passed": passed,
+        # Keep the historical exact-token verdict stable for comparisons.
+        "passed": legacy_passed,
+        "legacy_passed": legacy_passed,
+        "meaning_passed": meaning_passed,
+        "scope_passed": scope_passed,
+        "format_passed": format_passed,
+        "semantic_passed": semantic_passed,
+        "contract_passed": contract_passed,
         "contains_ok": contains_ok,
         "excludes_ok": excludes_ok,
         "expected_contains": list(probe.expected_contains),
         "expected_excludes": list(probe.expected_excludes),
+        "expected_behavior": probe.expected_behavior,
     }
 
 
@@ -277,15 +362,54 @@ def score_scenario(
     else:
         raise ValueError(f"unknown mode: {mode}")
 
-    return {
+    retrieved = retrieved_raw_memories(scenario, probe.query)
+    crt_judgment = judge_answer(crt, probe)
+    plain_judgment = judge_answer(plain, probe)
+    row = {
         "scenario": scenario.name,
         "probe": probe.name,
         "query": probe.query,
         "crt_answer": crt,
         "plain_rag_answer": plain,
-        "crt_judgment": judge_answer(crt, probe),
-        "plain_rag_judgment": judge_answer(plain, probe),
+        "crt_judgment": crt_judgment,
+        "plain_rag_judgment": plain_judgment,
     }
+    row["decision_traces"] = {
+        "plain_rag": build_decision_trace(
+            scenario=scenario.name,
+            arm="plain_rag",
+            query=probe.query,
+            retrieved_evidence=[
+                {"rank": index, "text": text}
+                for index, text in enumerate(retrieved, start=1)
+            ],
+            state_transformation=None,
+            selected_rule="answer_from_retrieved_text",
+            supplied_context="\n".join(retrieved),
+            answer=plain,
+            judgment=plain_judgment,
+        ),
+        "crt_governed": build_decision_trace(
+            scenario=scenario.name,
+            arm="crt_governed",
+            query=probe.query,
+            retrieved_evidence=[
+                {
+                    "timestamp": memory.timestamp,
+                    "source": memory.channel,
+                    "authority": memory.authority,
+                    "text": memory.text,
+                }
+                for memory in scenario.memories
+            ],
+            state_transformation=canonical_meaning_state(scenario.memories),
+            selected_rule=f"crt:{probe.name}",
+            supplied_context="deterministic governed state",
+            answer=crt,
+            judgment=crt_judgment,
+        ),
+    }
+    return row
 
 
 def aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -374,6 +498,7 @@ def main() -> None:
     parser.add_argument("--model", default="qwen2.5:7b-instruct")
     parser.add_argument("--timeout", type=int, default=90)
     parser.add_argument("--include-adversarial", action="store_true")
+    parser.add_argument("--include-hardening", action="store_true")
     parser.add_argument("--no-write", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
@@ -382,7 +507,10 @@ def main() -> None:
         model=args.model,
         timeout=args.timeout,
         write_results=not args.no_write,
-        scenarios=scenario_pack(include_adversarial=args.include_adversarial),
+        scenarios=scenario_pack(
+            include_adversarial=args.include_adversarial,
+            include_hardening=args.include_hardening,
+        ),
     )
     if args.json:
         print(json.dumps(out, indent=2))

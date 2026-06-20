@@ -2,6 +2,7 @@ from labs.meaning_compression_lab.baseline_eval import run as run_baseline
 from labs.meaning_compression_lab.plain_rag_eval import run as run_plain_rag
 from labs.meaning_compression_lab.run_lab import (
     ADVERSARIAL_SCENARIOS,
+    HARDENING_SCENARIOS,
     canonical_meaning_state,
     run as run_meaning_lab,
     scenario_pack,
@@ -41,6 +42,21 @@ def test_adversarial_pack_adds_harder_memory_histories():
     }.issubset(names)
 
 
+def test_hardening_pack_adds_layer_specific_ablation_probes():
+    scenarios = scenario_pack(include_adversarial=True, include_hardening=True)
+
+    assert len(HARDENING_SCENARIOS) == 4
+    assert len(scenarios) == 19
+
+    names = {scenario.name for scenario in scenarios}
+    assert {
+        "camera_history_inventory",
+        "store_platform_authority_boundary",
+        "favorite_color_reaction_rule",
+        "production_db_mock_policy",
+    }.issubset(names)
+
+
 def test_adversarial_pack_preserves_current_value_and_history():
     by_name = {scenario.name: scenario for scenario in ADVERSARIAL_SCENARIOS}
 
@@ -62,13 +78,38 @@ def test_adversarial_pack_preserves_current_value_and_history():
     contamination = canonical_meaning_state(by_name["model_generated_name_contamination"].memories)
     assert contamination["facts"]["name"] == "Nick"
     assert contamination["authority"]["name"] == "confirmed"
-    assert contamination["history"]["name"] == ["Nick", "Mike"]
-    assert contamination["reaction_policy"]["name"] == "answer_current_with_history"
+    assert contamination["history"]["name"] == ["Nick"]
+    assert contamination["provisional"]["name"] == ["Mike"]
+    assert contamination["reaction_policy"]["name"] == "answer_direct"
 
     tool_noise = canonical_meaning_state(by_name["tool_inferred_location_noise"].memories)
     assert tool_noise["facts"]["home_city"] == "Chicago"
     assert tool_noise["authority"]["home_city"] == "confirmed"
-    assert tool_noise["history"]["home_city"] == ["Chicago", "Los Angeles"]
+    assert tool_noise["history"]["home_city"] == ["Chicago"]
+    assert tool_noise["provisional"]["home_city"] == ["Los Angeles"]
+
+
+def test_hardening_pack_preserves_expected_meaning_layers():
+    by_name = {scenario.name: scenario for scenario in HARDENING_SCENARIOS}
+
+    camera = canonical_meaning_state(by_name["camera_history_inventory"].memories)
+    assert camera["facts"]["camera_system"] == "Sony FX3"
+    assert camera["history"]["camera_system"] == ["Canon 80D", "Sony FX3"]
+    assert camera["reaction_policy"]["camera_system"] == "answer_current_with_history"
+
+    store = canonical_meaning_state(by_name["store_platform_authority_boundary"].memories)
+    assert store["facts"]["store_platform"] == "custom e-commerce backend"
+    assert store["authority"]["store_platform"] == "confirmed"
+    assert store["history"]["store_platform"] == ["custom e-commerce backend"]
+    assert store["provisional"]["store_platform"] == ["Shopify"]
+
+    reaction = canonical_meaning_state(by_name["favorite_color_reaction_rule"].memories)
+    assert reaction["authority"]["favorite_color"] == "provisional_social"
+    assert reaction["reaction_policy"]["favorite_color"] == "withhold_until_confirmed"
+
+    policy = canonical_meaning_state(by_name["production_db_mock_policy"].memories)
+    assert policy["policies"]["db.production_write_without_sqlite_mock"] == "forbidden"
+    assert policy["reaction_policy"]["db.production_write_without_sqlite_mock"] == "refuse_action"
 
 
 def test_meaning_lab_crt_passes_adversarial_pack():

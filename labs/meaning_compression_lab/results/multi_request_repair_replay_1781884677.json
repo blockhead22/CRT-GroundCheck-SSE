@@ -1,0 +1,51 @@
+{
+  "source_artifact": "labs/meaning_compression_lab/results/multi_request_end_to_end_1781880797.json",
+  "source_scenario": "current_and_policy",
+  "source_draft": "current_project = Emberline\ndo not perform the prohibited action without the required confirmation",
+  "repair": {
+    "attempted": true,
+    "reason": "repair_completed",
+    "repair_calls": 1,
+    "passing_segments_preserved": true,
+    "prompt": "Repair only the failed request segments below.\nReturn exactly one numbered line per FAILED REQUEST, using its original number.\nDo not answer or repeat passing requests.\n\nFAILED REQUEST 2\nREQUEST c2\nQUESTION: and can you delete production media without confirmation\nCONTRACT: policy\nPOLICY media.production_delete_without_confirmation = forbidden\nPOLICY PLAIN LANGUAGE: do not perform the prohibited action without the required confirmation\nMISSING REQUIRED CONTENT: ['no', 'production', 'confirmation']\nFORBIDDEN CONTENT: []\nReturn one concise user-facing answer for this request.\nDo not use internal scaffold labels.",
+    "repair_output": "No, production media cannot be deleted without confirmation.",
+    "answer": "1. current_project = Emberline\n2. No, production media cannot be deleted without confirmation.",
+    "coverage_gate": {
+      "status": "released",
+      "coverage": 1.0,
+      "failed_request_indexes": [],
+      "clause_judgments": [
+        {
+          "slot": "current_project",
+          "mode": "current",
+          "passed": true,
+          "contains_ok": true,
+          "confirmation_ok": true,
+          "excludes_ok": true,
+          "behavior_ok": true,
+          "expected_contains": [
+            "emberline"
+          ],
+          "expected_excludes": [
+            "harbor"
+          ]
+        },
+        {
+          "slot": "media.production_delete_without_confirmation",
+          "mode": "policy",
+          "passed": true,
+          "contains_ok": true,
+          "confirmation_ok": true,
+          "excludes_ok": true,
+          "behavior_ok": true,
+          "expected_contains": [
+            "no",
+            "production",
+            "confirmation"
+          ],
+          "expected_excludes": []
+        }
+      ]
+    }
+  }
+}

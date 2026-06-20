@@ -456,36 +456,52 @@
     <tbody>
       <tr>
         <td><strong>Meaning compression structural lab</strong></td>
-        <td><span class="pass">CRT 5/5</span></td>
-        <td>CRT-style compressed state preserves current facts, history, contradictions, authority, policy, volatility, and response rules on the current fixtures.</td>
+        <td><span class="pass">CRT 15/15</span></td>
+        <td>CRT-style compressed state preserves current facts, history, contradictions, authority, policy, volatility, and response rules across the current adversarial fixture pack.</td>
       </tr>
       <tr>
         <td><strong>Structural baseline eval</strong></td>
-        <td><span class="pass">CRT 5/5</span><br><span class="fail">simpler baselines 0/5</span></td>
+        <td><span class="pass">CRT 15/15</span><br><span class="fail">simpler baselines 0/15</span></td>
         <td>Latest-only slots, naive summary, and plain projection lose important meaning layers.</td>
       </tr>
       <tr>
         <td><strong>Plain-RAG simulated eval</strong></td>
-        <td><span class="pass">CRT 5/5</span><br><span class="partial">plain RAG 2/5</span></td>
+        <td><span class="pass">CRT 15/15</span><br><span class="partial">plain RAG 4/15</span></td>
         <td>Raw retrieval can pass easy cases but fails correction semantics, authority boundaries, and locked policy.</td>
       </tr>
       <tr>
-        <td><strong>Plain-RAG Ollama eval</strong></td>
-        <td><span class="pass">CRT 5/5</span><br><span class="fail">qwen2.5 raw RAG 0/5</span></td>
-        <td>The local model answered from raw retrieved text without the governed state and failed the current judged probes.</td>
+        <td><strong>Meaning scaffold deterministic eval</strong></td>
+        <td><span class="pass">scaffold 15/15</span><br><span class="partial">raw text 4/15</span></td>
+        <td>Compressed scaffold fragments carry answer behavior without replaying the full transcript. Average scaffold size: 44.2% of the full transcript representation.</td>
+      </tr>
+      <tr>
+        <td><strong>Meaning scaffold Ollama eval</strong></td>
+        <td><span class="pass">qwen scaffold 15/15</span><br><span class="partial">qwen raw RAG 7/15</span></td>
+        <td>A real local model answered better from compressed scaffold fragments than from raw retrieved memory text. Average scaffold size: 46.8%.</td>
+      </tr>
+      <tr>
+        <td><strong>Cross-model scaffold sweep</strong></td>
+        <td><span class="pass">advantage 4/4 models</span><br><span class="partial">avg scaffold 0.833</span></td>
+        <td>Scaffold improved qwen2.5, phi3, llama3.2, and mistral over raw retrieval. Mistral remained weak, showing scaffold-executor compatibility still matters.</td>
+      </tr>
+      <tr>
+        <td><strong>Scaffold ablation</strong></td>
+        <td><span class="partial">load-bearing layers found</span></td>
+        <td>Current facts, policies, preferences, and the query contract are load-bearing under current probes. History, reaction, and some authority layers need stronger probes because other fragments can compensate.</td>
       </tr>
       <tr>
         <td><strong>Focused pytest set</strong></td>
-        <td><span class="pass">22 passed</span></td>
+        <td><span class="pass">33 passed</span></td>
         <td>The current proof track is executable and repeatable in the repo.</td>
       </tr>
     </tbody>
   </table>
 
   <div class="mini-bars">
-    <div class="bar-row"><span>CRT governed</span><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><span>5/5</span></div>
-    <div class="bar-row"><span>plain simulated</span><div class="bar-track"><div class="bar-fill" style="width:40%"></div></div><span>2/5</span></div>
-    <div class="bar-row"><span>plain Ollama</span><div class="bar-track"><div class="bar-fill" style="width:0%"></div></div><span>0/5</span></div>
+    <div class="bar-row"><span>CRT governed</span><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><span>15/15</span></div>
+    <div class="bar-row"><span>qwen scaffold</span><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><span>15/15</span></div>
+    <div class="bar-row"><span>qwen raw RAG</span><div class="bar-track"><div class="bar-fill" style="width:47%"></div></div><span>7/15</span></div>
+    <div class="bar-row"><span>model avg scaffold</span><div class="bar-track"><div class="bar-fill" style="width:83%"></div></div><span>0.833</span></div>
   </div>
 </section>
 

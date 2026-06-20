@@ -1,0 +1,125 @@
+{
+  "lab": "multi_request_semantic_probe",
+  "model": "qwen2.5:7b-instruct",
+  "passed": 1,
+  "case_count": 2,
+  "rows": [
+    {
+      "name": "indirect_two_slot",
+      "query": "Remind me who signs my paychecks these days, and what photography setup came before the Blackmagic.",
+      "plan": {
+        "status": "partial",
+        "requests": [
+          {
+            "clause_id": "c2",
+            "slot": "camera_system",
+            "mode": "history",
+            "confidence": 1.0,
+            "source": "semantic_parser"
+          }
+        ],
+        "clauses": [
+          {
+            "clause_id": "c1",
+            "text": "Remind me who signs my paychecks these days",
+            "status": "unknown",
+            "candidate_slots": [],
+            "reason_code": "no_candidate_above_threshold"
+          },
+          {
+            "clause_id": "c2",
+            "text": "and what photography setup came before the Blackmagic",
+            "status": "resolved",
+            "candidate_slots": [
+              "camera_system"
+            ],
+            "reason_code": "semantic_parser_resolved"
+          }
+        ],
+        "coverage": 0.5,
+        "unresolved_clauses": [
+          "c1"
+        ]
+      },
+      "actual": [
+        [
+          "camera_system",
+          "history"
+        ]
+      ],
+      "expected": [
+        [
+          "camera_system",
+          "history"
+        ],
+        [
+          "employer",
+          "current"
+        ]
+      ],
+      "passed": false
+    },
+    {
+      "name": "resolved_plus_ambiguous",
+      "query": "What project am I on now, and use the right name when you make the export.",
+      "plan": {
+        "status": "resolved",
+        "requests": [
+          {
+            "clause_id": "c1",
+            "slot": "current_project",
+            "mode": "current",
+            "confidence": 1.0,
+            "source": "deterministic"
+          },
+          {
+            "clause_id": "c2",
+            "slot": "file_naming",
+            "mode": "general",
+            "confidence": 1.0,
+            "source": "semantic_parser"
+          }
+        ],
+        "clauses": [
+          {
+            "clause_id": "c1",
+            "text": "What project am I on now",
+            "status": "resolved",
+            "candidate_slots": [
+              "current_project"
+            ],
+            "reason_code": "resolved_above_threshold"
+          },
+          {
+            "clause_id": "c2",
+            "text": "and use the right name when you make the export",
+            "status": "resolved",
+            "candidate_slots": [
+              "file_naming"
+            ],
+            "reason_code": "semantic_parser_resolved"
+          }
+        ],
+        "coverage": 1.0,
+        "unresolved_clauses": []
+      },
+      "actual": [
+        [
+          "current_project",
+          "current"
+        ],
+        [
+          "file_naming",
+          "general"
+        ]
+      ],
+      "expected": [
+        [
+          "current_project",
+          "current"
+        ]
+      ],
+      "passed": true
+    }
+  ]
+}

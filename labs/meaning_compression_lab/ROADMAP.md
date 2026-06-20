@@ -12,23 +12,54 @@ claims are harder to dispute.
 
 ## Current Evidence
 
+The next-phase comparison and grading contract is frozen in:
+
+```text
+labs/meaning_compression_lab/EVALUATION_CONTRACT.md
+```
+
+The strong temporal/metadata RAG arm now exists in:
+
+```text
+labs/meaning_compression_lab/temporal_rag_eval.py
+```
+
+Four-model result on the existing 19 cases:
+
+```text
+Temporal metadata RAG semantic 57/76 (75.0%)
+Hybrid CRT semantic 64/76 (84.2%)
+Delta +9.2 percentage points
+Hybrid wins three model families; temporal RAG wins Mistral.
+```
+
+The scaffold, probes, judge, scenarios, and evaluation contract are frozen in
+`FROZEN_SNAPSHOT_20260619.md`. The temporal baseline now has real MiniLM
+embedding plus lexical hybrid retrieval. Next: add distractor-rich held-out
+cases before changing the scaffold contract again.
+
 Working validation commands:
 
 ```bash
 python labs/meaning_compression_lab/run_lab.py
+python labs/meaning_compression_lab/run_lab.py --include-adversarial --include-hardening
 python labs/meaning_compression_lab/baseline_eval.py
 python labs/meaning_compression_lab/plain_rag_eval.py --mode simulated
+python labs/meaning_compression_lab/plain_rag_eval.py --mode simulated --include-adversarial --include-hardening
 python labs/meaning_compression_lab/scaffold_eval.py --include-adversarial
+python labs/meaning_compression_lab/scaffold_eval.py --include-adversarial --include-hardening
 python labs/meaning_compression_lab/scaffold_eval.py --mode ollama --model qwen2.5:7b-instruct --include-adversarial
 python labs/meaning_compression_lab/scaffold_model_sweep.py --models qwen2.5:7b-instruct phi3:3.8b llama3.2:latest mistral:latest
+python labs/meaning_compression_lab/scaffold_ablation.py
+python labs/meaning_compression_lab/scaffold_ablation.py --mode ollama --model qwen2.5:7b-instruct
 python labs/meaning_compression_lab/plain_rag_eval.py --mode ollama --model qwen2.5:7b-instruct
 python -m pytest tests/test_meaning_scaffold_eval.py tests/test_meaning_compression_lab.py tests/test_meaning_baseline_eval.py tests/test_plain_rag_eval.py tests/test_crt_compact_meaning_loop.py tests/test_crt_rag_behavior_bridge.py -q
 ```
 
-Last focused result:
+Last hardening-focused result:
 
 ```text
-29 passed, 1 warning
+21 passed
 ```
 
 Current lab signal:
@@ -40,6 +71,8 @@ Plain-RAG simulated answer eval: CRT 15/15, plain RAG 4/15 with --include-advers
 Meaning scaffold eval: scaffold 15/15, raw transcript fragments 4/15, avg scaffold ratio 0.442 with --include-adversarial.
 Meaning scaffold Ollama eval: qwen2.5 scaffold 15/15, qwen2.5 raw RAG 7/15, avg scaffold ratio 0.468 with --include-adversarial.
 Meaning scaffold model sweep: scaffold advantage 4/4 models, avg raw rate 0.417, avg scaffold rate 0.833.
+Meaning scaffold ablation: deterministic full 15/15, qwen2.5 full 15/15, qwen2.5 without query contract 11/15.
+Hardening pack: structural CRT 19/19, scaffold 19/19, simulated plain RAG 5/19, deterministic ablation now drops when history/authority/reaction/policy are removed.
 Plain-RAG Ollama answer eval: CRT 5/5, qwen2.5 raw RAG 0/5.
 ```
 
@@ -49,6 +82,7 @@ Plain-RAG Ollama answer eval: CRT 5/5, qwen2.5 raw RAG 0/5.
 - Tested contradictions are preserved as meaning-bearing structure.
 - Tested provisional/social memories do not become confirmed user facts.
 - Tested locked force-push policy can constrain user-visible answers.
+- Tested layer-specific hardening probes make history, authority, reaction, and policy visible to scaffold ablation.
 - Tested CRT governed state outperforms naive structural baselines on the current fixtures.
 - Tested raw retrieved text can fail on correction semantics, authority, and policy.
 
@@ -73,6 +107,7 @@ Current status:
 
 - Started with `ADVERSARIAL_SCENARIOS` in `run_lab.py`.
 - Added ten optional fixture cases behind `--include-adversarial`.
+- Added four optional layer-specific hardening cases behind `--include-hardening`.
 - Added regression coverage in `tests/test_crt_adversarial_memory_pack.py`.
 
 Add 20 to 30 cases covering:
@@ -165,6 +200,7 @@ Current status:
 ```text
 deterministic scaffold eval added
 15-case adversarial result: scaffold 15/15, raw 4/15
+19-case adversarial+hardening result: scaffold 19/19, raw 5/19
 average scaffold size: 44.2% of full transcript representation
 Ollama scaffold eval added
 15-case qwen2.5 result: scaffold 15/15, raw 7/15
@@ -172,6 +208,9 @@ average scaffold size with policy plain text: 46.8% of full transcript represent
 Cross-model sweep added
 4-model result: scaffold beats raw for qwen2.5, phi3, llama3.2, and mistral
 Mistral failure count shows scaffold/executor coupling remains a real variable
+Scaffold ablation added
+Current facts, policies, preferences, and query contract are load-bearing under current probes
+Hardening probes now make history, authority, reaction, and policies fail predictably when removed
 ```
 
 Pass condition:
@@ -359,14 +398,15 @@ Existing validation packs still pass after the pipeline is simplified.
 
 ## Recommended Immediate Order
 
-1. Analyze scaffold failures by model and tighten the scaffold contract without overfitting.
-2. Expand adversarial memory pack to 20+ cases.
-3. Harden `plain_rag_eval.py` into a fairer raw-RAG baseline.
-4. Make policy memory first-class instead of narrow force-push handling.
-5. Add claim matrix report.
-6. Build local substrate advantage lab.
-7. Only then invest deeply in dynamic slot identification.
-8. Rework the CRT pipeline around `MeaningState` after the proof surface is stable.
+1. Run the hardening probes through Ollama and the cross-model scaffold sweep.
+2. Analyze scaffold failures by model and tighten the scaffold contract without overfitting.
+3. Expand adversarial and hardening memory packs to 25-30 total cases.
+4. Harden `plain_rag_eval.py` into a fairer raw-RAG baseline.
+5. Make policy memory first-class instead of narrow force-push handling.
+6. Add claim matrix report.
+7. Build local substrate advantage lab.
+8. Only then invest deeply in dynamic slot identification.
+9. Rework the CRT pipeline around `MeaningState` after the proof surface is stable.
 
 ## Decision Rule
 
