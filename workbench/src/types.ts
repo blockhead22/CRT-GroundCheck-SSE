@@ -1,4 +1,4 @@
-export type ReleaseDecision = 'answerable' | 'withhold' | 'conflict' | 'no_evidence'
+﻿export type ReleaseDecision = 'answerable' | 'withhold' | 'conflict' | 'no_evidence'
 
 export interface Health {
   ok: boolean
@@ -86,6 +86,16 @@ export interface Trace {
   }>
 }
 
+export interface PatchApplyReceipt {
+  receipt_id: string
+  tool_run_id: string
+  path: string
+  before_sha256: string
+  after_sha256: string
+  patch: string
+  idempotent_replay: boolean
+}
+
 export interface Turn {
   turn_id: string
   user_message: string
@@ -94,6 +104,13 @@ export interface Turn {
   needs_stronger_model: boolean
   created_at: number
   completed_at?: number
+}
+
+export interface Conversation {
+  conversation_id: string
+  title: string
+  created_at: number
+  updated_at: number
 }
 
 export interface SlotSummary {
@@ -127,6 +144,40 @@ export interface SlotDetail {
   review: unknown
 }
 
+
+export interface ReflectionEvidence {
+  evidence_id: string
+  evidence_type: string
+  reference_id: string
+  summary: string
+  observed_at?: number
+  created_at: number
+}
+
+export interface Reflection {
+  reflection_id: string
+  subject: 'agent' | 'user' | 'workflow' | 'project'
+  observation: string
+  interpretation: string
+  alternatives: string[]
+  confidence: number
+  time_window: string
+  suggested_experiment: string
+  status: 'proposed' | 'accepted' | 'rejected' | 'deferred' | 'expired' | 'superseded'
+  supersedes_id?: string
+  superseded_by?: string
+  created_at: number
+  updated_at: number
+  evidence: ReflectionEvidence[]
+  reviews: Array<{
+    review_id: string
+    action: string
+    note: string
+    result_reflection_id?: string
+    created_at: number
+  }>
+  revision_hash: string
+}
 export interface ChatEvents {
   onTurn: (data: { turn_id: string; conversation_id: string }) => void
   onTrace: (trace: Trace) => void

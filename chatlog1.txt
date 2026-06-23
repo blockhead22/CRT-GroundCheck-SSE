@@ -1,0 +1,100 @@
+qwen2.5:7b-instruct
+Locally answerable
+
+What model are you using right now? What evidence are you allowed to tre
+
+
+What model are you using right now? What evidence are you allowed to treat as confirmed about me? What evidence exists but is withheld by governance? Should this answer locally or pass to a stronger model?
+Æ
+Local answer
+I am using the local model qwen2.5:7b-instruct for normal generative answers. This meta/governance question should be answered locally by Aether's deterministic governance layer. Aether should decide routing deterministically from the trace, governance state, tool needs, and answer quality. The local model can request escalation, but it should not be the final authority. For questions about uncertain, restricted, or withheld evidence, Aether should answer from governance metadata directly instead of asking the local model to infer the policy. Confirmed governed profile facts I can use: employer: self-employed (small creative practice); favorite color: Orange; name: Nick Block. I do not see withheld evidence categories released for this question.
+
+Local
+Governed
+Checked
+If the local model gives a thin or generic answer, what should Aether do next?
+Æ
+Local answer
+If a local answer is thin, generic, contradicts the trace, leaks prompt scaffolding, or invents unsupported unknowns, Aether should mark it for retry or stronger-model escalation. For governance questions, Aether should prefer deterministic trace-based answers.
+
+Local
+Governed
+Checked
+What are we building, and what do you remember about my work style?
+Æ
+Local answer
+We are building Aether Workbench, which is a local desktop proof loop for Aether. It includes features like governed memory, local chat, visible release traces, memory correction, durable document context, bounded local tools, and the option for manual Codex escalation.
+
+Regarding your work style, I remember that you prefer practical, grounded progress: build useful local behavior first, keep changes focused, avoid endless theory, and defer repository breakout until the newer product lane is clearer.
+
+Local
+Governed
+Checked
+What do you know about me? How do you know me?
+Æ
+Local answer
+I know the following about you:
+
+Your name is Nick Block.
+You are self-employed in a small creative practice.
+You prefer a practical and grounded approach to work, focusing on building useful local behavior first and avoiding endless theory.
+I know these things because they have been confirmed governed facts. The specifics of your work style were mentioned in the context provided for Aether Workbench development.
+
+Local
+Governed
+Checked
+What do you know about me? How do you know me?
+Æ
+Local answer
+I know the following about you:
+
+Your name is Nick Block.
+You are self-employed in a small creative practice.
+You prefer practical, grounded progress, focusing on building useful local behavior first and avoiding endless theory.
+This information comes from confirmed governed facts. The specifics of your work style were mentioned in the context provided for Aether Workbench development.
+
+Local
+Governed
+Checked
+Who am I to you?
+Æ
+Local answer
+You are Nick Block to me. You are self-employed in a small creative practice and prefer practical, grounded progress, focusing on building useful local behavior first and avoiding endless theory.
+
+Local
+Governed
+Checked
+What am I to this system?
+Æ
+Local answer
+You are Nick Block to this system. You are self-employed in a small creative practice and prefer practical, grounded progress, focusing on building useful local behavior first and avoiding endless theory.
+
+Local
+Governed
+Checked
+What are we, conceptually?
+Æ
+Local answer
+Conceptually, you are Nick Block, self-employed in a small creative practice, focusing on practical and grounded progress. We know this from the context provided for Aether Workbench development. Our understanding of your role and approach is based on the information given within that context.
+
+Local
+Governed
+Checked
+Why does this project matter?
+Æ
+Local answer
+The project matters because it focuses on practical, grounded progress in your small creative practice. By developing useful local behavior first and avoiding endless theory, the project aims to build effective tools and methods directly relevant to your work style and needs. This approach ensures that the outcomes are immediately beneficial and aligned with your priorities.
+
+Local
+Governed
+Checked
+Should Aether develop its own stable local character over time? If so, what should that character be based on?
+Æ
+Local answer
+Based on the current direction of developing Aether Workbench to focus on practical, grounded progress and building useful local behavior first, it seems less likely that Aether would develop a stable local character over time. The emphasis is on direct utility and relevance to Nick's creative practice rather than creating a distinct personality or character.
+
+However, if such a character were to emerge, it should be grounded in the context of being a helpful companion that assists with memory management, context retrieval, and performing useful local tasks. This character would support Nick’s approach by being reliable, focused on practical solutions, and avoiding unnecessary theoretical explorations.
+
+Local
+Governed
+Checked

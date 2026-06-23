@@ -1,16 +1,19 @@
-import { ArrowUp, BrainCircuit, Database, ExternalLink, LoaderCircle, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowUp, BrainCircuit, Database, ExternalLink, LoaderCircle, Plus, ShieldCheck, Sparkles, Trash2 } from 'lucide-react'
 import { FormEvent, useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { api, streamChat } from '../api'
-import type { Trace, Turn } from '../types'
+import type { Conversation, Trace, Turn } from '../types'
 
 interface ChatPanelProps {
   model: string
   conversationId: string | null
+  conversations: Conversation[]
   turns: Turn[]
   codexAvailable: boolean
   onConversation: (conversationId: string) => void
+  onNewConversation: () => void
+  onDeleteConversation: () => void
   onTrace: (trace: Trace) => void
   onTurns: (turns: Turn[]) => void
 }
@@ -18,9 +21,12 @@ interface ChatPanelProps {
 export function ChatPanel({
   model,
   conversationId,
+  conversations,
   turns,
   codexAvailable,
   onConversation,
+  onNewConversation,
+  onDeleteConversation,
   onTrace,
   onTurns,
 }: ChatPanelProps) {
@@ -132,6 +138,32 @@ export function ChatPanel({
         <div className={`strength-indicator ${showStronger ? 'needs' : ''}`}>
           {showStronger ? 'Needs stronger model' : 'Locally answerable'}
         </div>
+      </div>
+      <div className="conversation-toolbar">
+        <select
+          aria-label="Conversation"
+          value={conversationId || ''}
+          onChange={(event) => {
+            if (event.target.value) onConversation(event.target.value)
+          }}
+        >
+          <option value="">New chat</option>
+          {conversations.map((conversation) => (
+            <option value={conversation.conversation_id} key={conversation.conversation_id}>
+              {conversation.title}
+            </option>
+          ))}
+        </select>
+        <button aria-label="New chat" onClick={onNewConversation}>
+          <Plus size={15} />
+        </button>
+        <button
+          aria-label="Delete current chat"
+          disabled={!conversationId}
+          onClick={onDeleteConversation}
+        >
+          <Trash2 size={14} />
+        </button>
       </div>
       <div className="conversation" ref={scrollRef}>
         {!turns.length && !pendingUser ? (

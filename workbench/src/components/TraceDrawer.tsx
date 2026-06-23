@@ -1,5 +1,6 @@
 import { AlertTriangle, CheckCircle2, CircleSlash2, ShieldQuestion } from 'lucide-react'
-import type { ReleaseDecision, Trace } from '../types'
+import { useState } from 'react'
+import type { PatchApplyReceipt, ReleaseDecision, Trace } from '../types'
 
 const releaseMeta: Record<ReleaseDecision, { label: string; icon: typeof CheckCircle2 }> = {
   answerable: { label: 'Released', icon: CheckCircle2 },
@@ -8,7 +9,15 @@ const releaseMeta: Record<ReleaseDecision, { label: string; icon: typeof CheckCi
   no_evidence: { label: 'No evidence', icon: CircleSlash2 },
 }
 
-export function TraceDrawer({ trace }: { trace: Trace | null }) {
+export function TraceDrawer({
+  trace,
+  onApplyPatch,
+}: {
+  trace: Trace | null
+  onApplyPatch?: (toolRunId: string) => Promise<PatchApplyReceipt>
+}) {
+  const [applying, setApplying] = useState<string | null>(null)
+  const [patchError, setPatchError] = useState('')
   if (!trace) {
     return (
       <div className="drawer-empty">
@@ -56,8 +65,43 @@ export function TraceDrawer({ trace }: { trace: Trace | null }) {
                 <code>{run.status}</code>
               </div>
               <p className="tool-output">{summarizeToolOutput(run.output)}</p>
+              {run.tool === 'workspace_patch_propose' && typeof run.output.patch === 'string' ? (
+                <>
+                  {typeof run.output.rationale === 'string' ? (
+                    <p className="patch-rationale"><strong>Why:</strong> {run.output.rationale}</p>
+                  ) : null}
+                  {typeof run.output.verification === 'string' ? (
+                    <p className="patch-rationale"><strong>Verify:</strong> {run.output.verification}</p>
+                  ) : null}
+                  <pre className="patch-preview">{run.output.patch}</pre>
+                  {run.output.ready === true && run.output.applied !== true ? (
+                    <button
+                      className="approve-patch"
+                      disabled={!onApplyPatch || applying === run.tool_run_id}
+                      onClick={async () => {
+                        if (!onApplyPatch) return
+                        setApplying(run.tool_run_id)
+                        setPatchError('')
+                        try {
+                          await onApplyPatch(run.tool_run_id)
+                        } catch (reason) {
+                          setPatchError(reason instanceof Error ? reason.message : 'Patch application failed.')
+                        } finally {
+                          setApplying(null)
+                        }
+                      }}
+                    >
+                      {applying === run.tool_run_id ? 'Applying…' : 'Approve exact patch'}
+                    </button>
+                  ) : null}
+                  {run.output.applied === true ? (
+                    <div className="patch-applied">Applied · receipt {String(run.output.receipt_id || '')}</div>
+                  ) : null}
+                </>
+              ) : null}
             </article>
           ))}
+          {patchError ? <div className="inline-notice">{patchError}</div> : null}
         </section>
       ) : null}
       <div className="packet-list">
@@ -109,8 +153,21 @@ export function TraceDrawer({ trace }: { trace: Trace | null }) {
 }
 
 function summarizeToolOutput(output: Record<string, unknown>) {
+  if (output.applied === false && typeof output.path === 'string') {
+    if (output.ready === true) return `Patch preview ready · not applied · ${output.path}`
+    if (typeof output.error === 'string') return `Patch not ready · ${output.error}`
+    return `Patch needs exact replacement text · ${output.path}`
+  }
   if (Array.isArray(output.results)) return `${output.results.length} result(s) returned`
-  if (typeof output.path === 'string') return output.path
+  if (Array.isArray(output.entries) && typeof output.path === 'string') {
+    return `${output.path} · ${output.entries.length} entries`
+  }
+  if (typeof output.path === 'string') {
+    if (typeof output.start_line === 'number' && typeof output.end_line === 'number') {
+      return `${output.path} · lines ${output.start_line}-${output.end_line}`
+    }
+    return output.path
+  }
   if (typeof output.purpose === 'string') return output.purpose
   if (typeof output.model === 'string') return `Model: ${output.model}`
   return Object.keys(output).slice(0, 4).join(' · ') || 'No result'

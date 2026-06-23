@@ -139,3 +139,7 @@ models/phi3-crt-adapter-v2/
 /tools/tts_lab_output
 /workbench/node_modules
 /workbench/release
+/workbench/release-coder
+/workbench/release-fixed
+/workbench/release-reflect
+/workbench/release-conversations

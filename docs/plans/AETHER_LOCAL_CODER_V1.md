@@ -94,11 +94,12 @@ The loop must have hard limits:
 
 ## Graduation order
 
-1. Improve the current read-only search/read tools using bounded line ranges and
-   content search.
-2. Add patch proposal with no write capability.
-3. Add approval-gated patch application and stale-file rejection.
+1. ~~Improve the current read-only search/read tools using bounded line ranges
+   and content search.~~ Completed June 20, 2026.
+2. ~~Add patch proposal with no write capability.~~ Completed June 20, 2026.
+3. ~~Add approval-gated patch application and stale-file rejection.~~ Completed
+   June 20, 2026, including natural-language single-file patch planning through
+   the selected local Ollama model.
 4. Add configured test recipes.
 5. Evaluate small-model task completion on a tiny repository fixture.
 6. Only after those pass, consider longer-running background coding tasks.
-

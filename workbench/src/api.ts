@@ -1,11 +1,14 @@
-import type {
+﻿import type {
   ChatEvents,
   Health,
   ModelInfo,
+  Conversation,
   SlotDetail,
   SlotSummary,
   Trace,
   Turn,
+  PatchApplyReceipt,
+  Reflection,
 } from './types'
 
 const API_BASE = import.meta.env.VITE_AETHER_API_BASE || 'http://127.0.0.1:8765'
@@ -28,7 +31,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   health: () => request<Health>('/health'),
   models: async () => (await request<{ models: ModelInfo[] }>('/v1/models')).models,
-  conversations: () => request<{ conversations: Array<{ conversation_id: string; title: string }> }>('/v1/conversations'),
+  conversations: async () =>
+    (await request<{ conversations: Conversation[] }>('/v1/conversations')).conversations,
+  deleteConversation: (conversationId: string) =>
+    request<{
+      conversation_id: string
+      deleted: boolean
+      durable_knowledge_preserved: boolean
+    }>(`/v1/conversations/${encodeURIComponent(conversationId)}`, {
+      method: 'DELETE',
+    }),
   turns: async (conversationId: string) =>
     (await request<{ turns: Turn[] }>(`/v1/conversations/${encodeURIComponent(conversationId)}/turns`)).turns,
   slots: async (query = '') =>
@@ -56,6 +68,24 @@ export const api = {
     request<{ answer: string; escalation_id: string }>('/v1/escalations', {
       method: 'POST',
       body: JSON.stringify({ turn_id: turnId, reason }),
+    }),
+  applyPatch: (toolRunId: string, idempotencyKey: string) =>
+    request<PatchApplyReceipt>(`/v1/tools/${encodeURIComponent(toolRunId)}/apply`, {
+      method: 'POST',
+      body: JSON.stringify({ approved: true, idempotency_key: idempotencyKey }),
+    }),
+  reflections: async (status = '', subject = '') => {
+    const params = new URLSearchParams()
+    if (status) params.set('status', status)
+    if (subject) params.set('subject', subject)
+    const suffix = params.toString() ? `?${params}` : ''
+    return (await request<{ reflections: Reflection[] }>(`/v1/reflections${suffix}`)).reflections
+  },
+  reflection: (reflectionId: string) => request<Reflection>(`/v1/reflections/${encodeURIComponent(reflectionId)}`),
+  reviewReflection: (reflectionId: string, body: Record<string, unknown>) =>
+    request(`/v1/reflections/${encodeURIComponent(reflectionId)}/review`, {
+      method: 'POST',
+      body: JSON.stringify(body),
     }),
   documents: () => request<{ documents: Array<{
     document_id: string

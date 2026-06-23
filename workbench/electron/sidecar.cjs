@@ -2,6 +2,7 @@ const { EventEmitter } = require('node:events')
 const { spawn } = require('node:child_process')
 const http = require('node:http')
 const fs = require('node:fs')
+const os = require('node:os')
 const path = require('node:path')
 
 class SidecarManager extends EventEmitter {
@@ -23,6 +24,12 @@ class SidecarManager extends EventEmitter {
     const pythonPath = fs.existsSync(sourceCore)
       ? [sourceCore, process.env.PYTHONPATH].filter(Boolean).join(path.delimiter)
       : process.env.PYTHONPATH
+    const configuredRoots = process.env.AETHER_WORKSPACE_ROOTS
+    const defaultRoots = [
+      path.resolve(sourceCore, '..'),
+      path.join(os.homedir(), 'Downloads', 'src', 'src'),
+    ].filter((candidate) => fs.existsSync(candidate))
+    const workspaceRoots = configuredRoots || defaultRoots.join(path.delimiter)
     this.process = this.spawnImpl(
       this.python,
       ['-m', 'aether.sidecar'],
@@ -32,6 +39,7 @@ class SidecarManager extends EventEmitter {
           AETHER_SIDECAR_HOST: this.host,
           AETHER_SIDECAR_PORT: String(this.port),
           ...(pythonPath ? { PYTHONPATH: pythonPath } : {}),
+          ...(workspaceRoots ? { AETHER_WORKSPACE_ROOTS: workspaceRoots } : {}),
         },
         windowsHide: true,
         stdio: ['ignore', 'pipe', 'pipe'],
