@@ -71,12 +71,12 @@ Do not bring forward:
 | Filecompression text/image bottlenecks | Representation compression replay bench | Research lane | 384D->4D text embedding, 2048D->16D image feature experiments | Old baselines weak; downstream behavior untested | 1.9 | raw vs summary vs PCA/SVD vs quantization vs autoencoder vs scaffold | `labs/meaning_compression_lab`, new replay runner | Build benchmark, not product dependency |
 | CogniForge autoencoder | Learned semantic codec | Research lane | 384D->128D autoencoder, PCA-initialized, self-training loop | Needs fair baselines and behavior metrics | 1.9 | representation + answer-fidelity replay | meaning compression lab | Test only after simple baselines |
 | CogniForge GFN router | Governed routing/task graph | Exists but weak | current route metadata, code tool selection, escalation packets | Route graph not explicit; repair/escalation policy thin | 1.6/1.8 | route-choice evals | sidecar routing, trace drawer | Keep pattern, not old implementation |
-| Neural Narrative Weave | Depth expansion/non-repetition scaffold | Exists but weak | depth classifier, continuation loop, repetition trimming | Tone/personality anchors still variance-prone | 1.5/1.7 | deep/spiral/tone regression cases | depth controller, repair pass | Use conceptually |
+| Neural Narrative Weave | Depth expansion/non-repetition scaffold | Exists but weak | depth classifier, continuation loop, repetition trimming, Phase 1.7 tone repair/fallback, fresh split full-lane `25/25` verification | Continue watching continuation quality and repetition over broader prompts | 1.5/1.7 | deep/spiral/tone regression cases | depth controller, repair pass | Use conceptually |
 | Emotion engine | Tone/support state | Exists but weak | character guidance and real-use eval prompts | Must avoid fake intimacy or mood theater | 1.7 | motivation/support/personality evals | answer guidance, style-anchor repair | Build as support-mode cues, not emotion claims |
 | Blockhead fallback | Low-confidence humanistic fallback | Missing and worth building | uncertainty/scaffold boundaries exist | fallback phrasing can be generic or over-governed | 1.7/1.8 | low-confidence support responses | prompt templates, route fallbacks | Build bounded fallback language |
 | Soft config toggles | Feature flags/dev controls | Already exists | eval flags, env roots, model selection, dev scripts | Need clearer operator docs over time | 1.6+ | config regression smoke | docs/dev shortcuts, app settings later | Keep current approach |
 | Claude Code source patterns | Code Context Tools v1 architecture | Already integrated conceptually | `AETHER_LOCAL_CODER_V1.md`, reference-root eval, trace code metadata | Need more programming robustness and diagnostics | 1.6 | programming eval expansion | code tools, trace drawer, escalation packet | Continue Phase 1.6 path |
-| ChatGPT archive | Longitudinal support-pattern archive | Exists but weak | dry-run scanner, title buckets, no message-body ingestion | Candidate support-pattern review not implemented | 1.7/2 | archive-derived candidate review eval | archive scanner, review queue, memory candidate UI | Build reviewed extraction only |
+| ChatGPT archive | Longitudinal support-pattern archive | Exists but weak | dry-run scanner, title buckets, no message-body ingestion, review-required support-pattern candidates from title-category counts | No persisted review queue/API/UI for accepting or rejecting candidates yet | 1.7/2 | archive-derived candidate review eval | archive scanner, review queue, memory candidate UI | Build reviewed extraction only |
 | Belief variance labs | Variance measurement and repair | Exists but weak | variance probes, density/splats docs, Phase 1.7 model sweeps | Repair mechanisms lag measurement | 1.7/1.8 | repeated model/case variance evals | eval runner, repair controller, route metadata | Convert measurement into repair |
 | Fidelity bench | Belief/speech gap measurement | Exists but weak | Fisher-Rao/cosine A/B, belief/speech rows | Workbench does not yet expose gap clearly | 1.8/1.9 | belief/speech trace eval | trace drawer, fidelity scoring hooks | Surface as diagnostic |
 
@@ -87,7 +87,7 @@ Before continuing feature work, use this audit to lock the next roadmap sequence
 1. Phase 1.7 stabilization:
 
    - stabilize tone/personality regression with a small repair pass for missing required style anchors;
-   - add reviewed support-pattern candidate workflow for ChatGPT archive-derived patterns;
+   - wire reviewed support-pattern candidates for ChatGPT archive-derived patterns into an explicit review surface;
    - keep archive material out of confirmed memory until reviewed.
 
 2. Phase 1.8 contradiction disposition governance:
@@ -121,17 +121,20 @@ Use old code only as evidence or inspiration unless an eval proves a current gap
 
 ## Current Best Next Implementation Task
 
-The next concrete code task after this audit is still Phase 1.7:
+The Phase 1.7 repair pass now has fresh split full-lane verification:
 
 ```text
-Stabilize the tone/personality regression case with a bounded repair pass for
-missing required style anchors, then rerun the focused Phase 1.7 eval lane.
+core 9/9 + depth 4/4 + programming 6/6 + real-use 6/6 = 25/25
 ```
+
+The next concrete code task is the review surface/API for ChatGPT
+archive-derived support-pattern candidates.
 
 Why this first:
 
 - It directly improves Nick's real use style.
-- It exercises depth continuation, personality guidance, and variance repair.
+- It lets Nick accept, reject, or revise archive-derived support-pattern
+  candidates before they influence Aether behavior.
 - It is smaller than contradiction dispositions or compression replay.
 - It gives the automation a clean continuation target.
 

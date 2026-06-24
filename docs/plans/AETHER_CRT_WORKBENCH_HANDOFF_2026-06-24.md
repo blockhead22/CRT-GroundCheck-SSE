@@ -929,12 +929,9 @@ Next tasks:
 
 0. Use the recovered concept integration audit as the on-ramp back to the main
    roadmap; avoid more broad artifact diving unless a specific gap requires it.
-1. Stabilize the Phase 1.7 tone/personality regression case, likely with a
-   small repair pass for missing required style anchors rather than more prompt
-   wording.
-2. Add a review workflow for archive-derived support-pattern candidates without
-   treating them as confirmed facts.
-3. Then continue reviewed-reflection governance.
+1. Wire archive-derived support-pattern candidates into a review surface/API
+   without treating them as confirmed facts.
+2. Then continue reviewed-reflection governance.
 
 Success standard:
 
@@ -1000,6 +997,17 @@ Evidence that shaped this phase:
     - safety flags show dry-run only, no memory ingestion, no document
       ingestion, no message-body extraction, and the real run used
       `--max-examples 0`.
+  - first support-pattern candidate layer:
+    - candidates are derived from title-category counts only;
+    - candidates are marked `status=proposed_review`,
+      `review_required=true`, `memory_write_allowed=false`, and
+      `confirmed_fact=false`;
+    - focused scanner tests: `5 passed`;
+    - latest real-export dry-run artifact:
+      `D:\AI_round2\aether-core\.eval-runs\chatgpt_archive_scan_20260624_support_candidates.json`;
+    - real-export candidates: spiral depth, motivation/support,
+      creative voice, coding/project workflow, business/admin workflow,
+      Aether/AI project continuity, and personal-history review warning.
 - Phase 1.7 opt-in real-use reliability eval lane:
   - cases added behind `--include-real-use-eval` in
     `D:\AI_round2\aether-core\scripts\workbench_eval.py`;
@@ -1031,16 +1039,58 @@ Evidence that shaped this phase:
       (`4/4`).
 - Phase 1.7 expanded qwen lane:
   - added identity/continuity boundary and tone/personality regression cases;
-  - current saved six-case report:
+  - pre-repair saved six-case report:
     `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_173249.json`;
   - result: `5/6` passing;
   - identity/continuity passes after explicit clean-boundary and uncertainty
     scaffolding;
-  - tone/personality can pass focused but remains variance-prone in the full
-    lane, where qwen sometimes drifts into generic/code-flavored motivation and
-    misses requested dork/courtroom wording. Next fix should probably be a
-    small repair pass for missing required style anchors, not more prompt
-    wording.
+  - tone/personality exposed variance-prone generic/code-flavored motivation
+    and missed requested dork/courtroom wording. The next fix was a narrow
+    repair/fallback path rather than more prompt wording, and it now passes
+    focused plus split full-lane verification.
+- Recovered concept integration audit:
+  - added:
+    `D:\AI_round2\docs\plans\AETHER_RECOVERED_CONCEPT_INTEGRATION_AUDIT_2026-06-24.md`;
+  - broad artifact diving is paused unless a specific roadmap gap requires a
+    specific source file;
+  - the main roadmap can resume from Phase 1.7 stabilization.
+- Phase 1.7 tone/personality repair pass:
+  - implemented a narrow real-use repair path for dork/courtroom motivation
+    prompts;
+  - the sidecar buffers that repairable path before emitting tokens, checks the
+    full final answer for required anchors and unrequested code/coding drift,
+    asks the local model for one repair, then falls back to a deterministic
+    governed answer if the model still violates hard anchors;
+  - tightened `real_use_tone_personality_regression` to forbid unrequested
+    coding/codebase/programmer drift.
+- Fresh focused verification after restarting the live sidecar:
+  - `python -m pytest tests/test_sidecar_app.py -k "real_use_tone_personality" -q`
+    -> `3 passed`;
+  - `python -m pytest tests/test_sidecar_app.py -q` -> `21 passed`;
+  - `python scripts\workbench_eval.py --include-real-use-eval --case-id real_use_tone_personality_regression`
+    -> `1/1` passing,
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_183328.json`;
+  - `python scripts\workbench_eval.py --include-real-use-eval --case-id memory_boundary --case-id real_use_identity_continuity_boundary`
+    -> `2/2` passing,
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_183421.json`.
+  - Note: a full live run before restarting the stale sidecar reported `22/25`.
+    The observed focused failures passed after restart.
+- Fresh split full-lane verification on the restarted sidecar:
+  - core/governance/model-switch slice:
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_184401.json`
+    (`9/9`);
+  - depth/continuation slice:
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_184439.json`
+    (`4/4`);
+  - programming/code-tool slice:
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_184530.json`
+    (`6/6`);
+  - Phase 1.7 real-use slice:
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_184657.json`
+    (`6/6`).
+  - Total fresh split lane: `25/25` passing. The single monolithic
+    `--include-real-use-eval` command timed out before writing a report, so use
+    split slices or a longer timeout for full-lane live verification.
 
 Archive boundary:
 
@@ -1059,8 +1109,9 @@ Current read:
 - First live Phase 1.7 four-case evals pass across qwen2.5, phi3, and gemma3
   after adding explicit scaffolding for permission boundaries, topic switches,
   medical-adjacent caution, walking/scale support, and a bounded real-use depth
-  floor. The expanded six-case qwen lane is now `5/6`; tone/personality
-  regression is the active variance gap.
+  floor. The expanded six-case qwen lane was `5/6` before tone/personality
+  repair; tone/personality now has a focused repair/fallback path and the fresh
+  split full lane passes `25/25` on the restarted sidecar.
 - Current real-use answers are often too generic, too passive, or
   over-governed.
 - The target GPT-like behavior is not unbounded intimacy. It is grounded,
@@ -1117,8 +1168,9 @@ Seed eval cases:
      messages;
    - likely spiral/motivation/project/history thread labels now exist at a
      first-pass title-keyword level;
-   - next step is candidate support-pattern extraction separately from
-     candidate facts;
+   - support-pattern candidates now exist separately from candidate facts and
+     are review-required/non-memory by default;
+   - next step is persisted review/API/UI for those candidates;
    - require review before durable memory writes.
 
 Success standard:
@@ -1211,9 +1263,9 @@ Continue Aether Workbench in the current aether-core/workbench lane. Do not
 revive the legacy frontend/API and do not do repo breakout cleanup yet.
 
 Immediate next task:
-1. Stabilize the Phase 1.7 tone/personality regression case, likely with a small repair pass for missing required style anchors rather than more prompt wording.
-2. Add a review workflow for archive-derived support-pattern candidates without treating them as confirmed facts.
-3. Then continue reviewed-reflection governance.
+1. Wire archive-derived support-pattern candidates into a review surface/API without treating them as confirmed facts.
+2. Then continue reviewed-reflection governance.
+3. Then move into contradiction disposition governance.
 
 Preserve dirty worktree context. Do not reset or delete untracked folders.
 ```
@@ -1226,8 +1278,10 @@ guardrails, stable-slot quarantine, and a repeatable conversation eval baseline.
 Depth/continuation and the Phase 1.6 programming robustness first pass are in
 place, the Phase 1.7 dry-run ChatGPT archive scanner inventories the personal
 archive without memory ingestion or message-body extraction, the original
-four-case real-use lane passes across qwen2.5, phi3, and gemma3, and the
-expanded six-case qwen lane is `5/6`. The active gap is tone/personality
-variance; after stabilizing that, move to archive-derived support-pattern review
-and reviewed-reflection governance. The goal is a coherent local harness that
-reduces frontier-model dependence, not a new architecture detour.
+four-case real-use lane passes across qwen2.5, phi3, and gemma3, and the fresh
+split full lane now passes `25/25` after tone/personality repair. The archive
+scanner now emits review-required support-pattern candidates without body
+extraction or memory writes. The next implementation step is a review surface/API
+for those candidates, then reviewed-reflection governance. The goal is a
+coherent local harness that reduces frontier-model dependence, not a new
+architecture detour.

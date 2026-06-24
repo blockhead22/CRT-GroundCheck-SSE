@@ -78,9 +78,14 @@ The original v1 proof loop is now implemented far enough to dogfood:
   not as Aether voice or confirmed memory.
 - Phase 1.7 dry-run archive scanner implemented at
   `D:\AI_round2\aether-core\scripts\chatgpt_archive_scan.py`, with focused
-  tests proving private message body strings are not included in reports.
+  tests proving private message body strings are not included in reports. The
+  scanner now emits review-required support-pattern candidates from title
+  category counts only, marked `memory_write_allowed=false` and
+  `confirmed_fact=false`.
   Safe real-export scan output:
   `D:\AI_round2\aether-core\.eval-runs\chatgpt_archive_scan_20260624_phase17.json`.
+  Latest support-candidate dry run:
+  `D:\AI_round2\aether-core\.eval-runs\chatgpt_archive_scan_20260624_support_candidates.json`.
 - Phase 1.7 opt-in real-use reliability eval cases added to
   `D:\AI_round2\aether-core\scripts\workbench_eval.py` behind
   `--include-real-use-eval`. Targeted real-use prompt scaffolding now covers
@@ -101,13 +106,50 @@ The original v1 proof loop is now implemented far enough to dogfood:
   - gemma3:latest:
     `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_170953.json`
     (`4/4`).
-- Phase 1.7 expanded qwen lane now includes identity/continuity and
-  tone/personality regression cases. Current saved six-case report:
+- Phase 1.7 expanded qwen lane includes identity/continuity and
+  tone/personality regression cases. The pre-repair saved six-case report:
   `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_173249.json`
-  (`5/6`). Identity/continuity passes; tone/personality remains variance-prone
-  in the full lane even though it can pass focused, because qwen sometimes
-  drifts into generic/code-flavored motivation and misses the requested
-  dork/courtroom wording.
+  (`5/6`). Identity/continuity passed; tone/personality exposed a
+  variance-prone drift into generic/code-flavored motivation and missed the
+  requested dork/courtroom wording. The later repair/fallback path now passes
+  focused verification and the fresh split full-lane verification below.
+- Recovered concept integration audit added:
+  `D:\AI_round2\docs\plans\AETHER_RECOVERED_CONCEPT_INTEGRATION_AUDIT_2026-06-24.md`.
+  Broad artifact diving is paused; the main roadmap can resume from the audit.
+- Phase 1.7 tone/personality repair pass implemented for real-use dork/courtroom
+  motivation prompts. Aether now buffers that narrow repairable path, checks the
+  full final answer for required style anchors and unrequested code/coding
+  drift, asks for one repair when needed, and falls back to a deterministic
+  governed answer if the local model keeps violating the hard anchors.
+- Fresh focused verification after restarting the live sidecar:
+  - `python -m pytest tests/test_sidecar_app.py -k "real_use_tone_personality" -q`
+    -> `3 passed`;
+  - `python -m pytest tests/test_sidecar_app.py -q` -> `21 passed`;
+  - `python scripts\workbench_eval.py --include-real-use-eval --case-id real_use_tone_personality_regression`
+    -> `1/1` passing,
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_183328.json`;
+  - `python scripts\workbench_eval.py --include-real-use-eval --case-id memory_boundary --case-id real_use_identity_continuity_boundary`
+    -> `2/2` passing,
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_183421.json`.
+  A full live run before restarting the stale sidecar reported `22/25`, but the
+  focused failures passed after restart.
+- Fresh split full-lane verification on the restarted sidecar passed `25/25`
+  across core, depth, programming, and real-use cases:
+  - core/governance/model-switch slice:
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_184401.json`
+    (`9/9`);
+  - depth/continuation slice:
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_184439.json`
+    (`4/4`);
+  - programming/code-tool slice:
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_184530.json`
+    (`6/6`);
+  - Phase 1.7 real-use slice:
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_184657.json`
+    (`6/6`).
+  The single monolithic `--include-real-use-eval` command timed out before
+  writing a report, so use split slices or a longer timeout for full-lane live
+  verification.
 
 North star:
 
@@ -124,13 +166,11 @@ Next work should stabilize this lane rather than revive legacy code. The
 integration audit is complete enough to resume implementation work:
 
 0. consult the integration audit before pulling recovered concepts forward;
-1. stabilize the Phase 1.7 tone/personality regression case, likely with a
-   small repair pass for missing required style anchors rather than more prompt
-   wording;
-2. add a review workflow for archive-derived support-pattern candidates without
-   treating them as confirmed facts;
-3. make reviewed reflections stronger but still governed behavior input.
-4. fold recovered-principles work into evals: contradiction dispositions,
+1. wire archive-derived support-pattern candidates into a review surface/API
+   without treating them as confirmed facts;
+2. make accepted reviewed support patterns/reflections stronger but still
+   governed behavior input.
+3. fold recovered-principles work into evals: contradiction dispositions,
    memory-state/context compression, belief/speech separation, and trace-as-
    training-signal review.
 
@@ -189,9 +229,10 @@ The ChatGPT export now has a dry-run personal archive scanner before any
 ingestion. It parses metadata/titles, labels likely
 spiral/support/project/history threads, counts structure, and writes explicit
 `memory_ingestion_performed=false` / `message_bodies_extracted=false` safety
-metadata. Next, use reviewed title buckets to seed reliability evals and send
-candidate durable facts or support preferences through review. Do not inject the
-GPT voice into Aether.
+metadata. It now also emits review-required support-pattern candidates from
+title-category counts only. Next, wire those candidates into an explicit review
+surface/API and only then let accepted patterns influence behavior. Do not
+inject the GPT voice into Aether.
 
 ## Developer shortcuts
 
