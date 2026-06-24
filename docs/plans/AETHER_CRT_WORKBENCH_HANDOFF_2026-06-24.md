@@ -8,6 +8,18 @@ The current product lane is still:
 aether-core sidecar + Workbench UI
 ```
 
+Recovered old-work extraction for current roadmap language:
+
+```text
+D:\AI_round2\docs\plans\AETHER_RECOVERED_CORE_PRINCIPLES_2026-06-24.md
+```
+
+Recovered concept integration audit and main-roadmap on-ramp:
+
+```text
+D:\AI_round2\docs\plans\AETHER_RECOVERED_CONCEPT_INTEGRATION_AUDIT_2026-06-24.md
+```
+
 Do not revive the legacy frontend/API. Do not pause active development for a repo
 breakout yet. The newer Aether lane is still buried inside `AI_round2` on
 purpose for now; breakout and old-code removal come later.
@@ -24,6 +36,26 @@ The architecture is promising, but only in the narrowed form:
 
 The older all-in-one assistant/orchestrator/shell direction was too sprawling.
 Keep mining it for ideas, but do not revive it as the product path.
+
+The old Lumi/CRT/CogniForge lineage is useful as recovered signal, not as naming
+or product mythology. Current Aether language should prefer:
+
+- intake-belief layer over Mirus;
+- reconstruction-speech layer over Holden;
+- meaning trace graph over CogniMap;
+- memory-state/context compression over file compression;
+- reviewed reflection/background consolidation over subconscious loop.
+
+Be skeptical of arbitrary lossless file-compression claims unless byte-exact
+benchmarks prove them. The credible current lane is semantic context
+compression, contradiction-aware memory, traceable reconstruction, and governed
+continuity.
+
+The recovered concept integration audit is now the guardrail between old
+artifact diving and current roadmap execution. Broad archaeology is paused. Pull
+old concepts forward only when they map to an existing Aether surface, a new
+eval, a trace/debugging feature, a governed memory/reflection mechanism, or a
+bounded research lane.
 
 ## North Star
 
@@ -739,6 +771,16 @@ The old known issue was fixed:
 
 Goal: make the current proof loop reliable enough for daily dogfooding.
 
+Roadmap gate added on 2026-06-24:
+
+```text
+Read D:\AI_round2\docs\plans\AETHER_RECOVERED_CONCEPT_INTEGRATION_AUDIT_2026-06-24.md
+before pulling recovered concepts forward. Once read, resume the main roadmap.
+```
+
+Nick explicitly gave permission for the current prompt or the final automated
+continuation to proceed from the audit back into the main roadmap.
+
 Completed in this stabilization pass:
 
 1. Wrapped the eval runner through `npm run eval:workbench`.
@@ -885,6 +927,8 @@ Current read:
 
 Next tasks:
 
+0. Use the recovered concept integration audit as the on-ramp back to the main
+   roadmap; avoid more broad artifact diving unless a specific gap requires it.
 1. Stabilize the Phase 1.7 tone/personality regression case, likely with a
    small repair pass for missing required style anchors rather than more prompt
    wording.

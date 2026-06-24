@@ -8,6 +8,26 @@ Latest continuity packet:
 D:\AI_round2\docs\plans\AETHER_CRT_WORKBENCH_HANDOFF_2026-06-24.md
 ```
 
+Recovered lineage/principles checkpoint:
+
+```text
+D:\AI_round2\docs\plans\AETHER_RECOVERED_CORE_PRINCIPLES_2026-06-24.md
+```
+
+Recovered concept integration audit:
+
+```text
+D:\AI_round2\docs\plans\AETHER_RECOVERED_CONCEPT_INTEGRATION_AUDIT_2026-06-24.md
+```
+
+Use the recovered-principles checkpoint as the current-language extraction from
+Lumi, CRT, CogniForge, and the original white paper. Do not carry old project
+names forward as product surface unless they map cleanly to current Aether
+architecture, evals, or trace UI.
+
+Use the integration audit as the on-ramp back to the main roadmap. Broad artifact
+dives are paused unless a specific gap requires a specific source file.
+
 The original v1 proof loop is now implemented far enough to dogfood:
 
 - governed broad Context Bridge;
@@ -100,14 +120,19 @@ This is not a competition with frontier systems. Aether's value is the harness:
 governed memory, traces, retrieval, continuation, correction, local tools, and
 clean escalation when frontier help is truly needed.
 
-Next work should stabilize this lane rather than revive legacy code:
+Next work should stabilize this lane rather than revive legacy code. The
+integration audit is complete enough to resume implementation work:
 
+0. consult the integration audit before pulling recovered concepts forward;
 1. stabilize the Phase 1.7 tone/personality regression case, likely with a
    small repair pass for missing required style anchors rather than more prompt
    wording;
 2. add a review workflow for archive-derived support-pattern candidates without
    treating them as confirmed facts;
 3. make reviewed reflections stronger but still governed behavior input.
+4. fold recovered-principles work into evals: contradiction dispositions,
+   memory-state/context compression, belief/speech separation, and trace-as-
+   training-signal review.
 
 Depth mode should be implemented as a governed multi-pass answer-quality loop:
 detect requested depth, optionally make a short user-facing approach plan,
