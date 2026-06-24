@@ -15,6 +15,7 @@ interface ChatPanelProps {
   onNewConversation: () => void
   onDeleteConversation: () => void
   onTrace: (trace: Trace) => void
+  onOpenTrace: (turnId: string) => void
   onTurns: (turns: Turn[]) => void
 }
 
@@ -28,6 +29,7 @@ export function ChatPanel({
   onNewConversation,
   onDeleteConversation,
   onTrace,
+  onOpenTrace,
   onTurns,
 }: ChatPanelProps) {
   const [message, setMessage] = useState('')
@@ -40,6 +42,7 @@ export function ChatPanel({
   const [error, setError] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
   const activeConversationRef = useRef(conversationId)
+  const activeTraceRef = useRef<Trace | null>(null)
 
   useEffect(() => {
     activeConversationRef.current = conversationId
@@ -69,10 +72,29 @@ export function ChatPanel({
             activeConversationRef.current = conversation_id
             onConversation(conversation_id)
           },
-          onTrace,
+          onTrace: (trace) => {
+            activeTraceRef.current = trace
+            onTrace(trace)
+          },
           onToken: (token) => setStreaming((current) => current + token),
-          onDone: async ({ needs_stronger_model }) => {
+          onDone: async (done) => {
+            const { needs_stronger_model } = done
             setNeedsStronger(needs_stronger_model)
+            if (activeTraceRef.current) {
+              const completedTrace: Trace = {
+                ...activeTraceRef.current,
+                completion: {
+                  source: done.source || done.guidance_source || inferTraceSource(activeTraceRef.current),
+                  needs_stronger_model,
+                  generation_model: done.generation_model || activeTraceRef.current.generation_model,
+                  guidance_kind: done.guidance_kind || activeTraceRef.current.character_answer?.kind,
+                  guidance_repaired: done.guidance_repaired,
+                  guidance_repair_failed: done.guidance_repair_failed,
+                },
+              }
+              activeTraceRef.current = completedTrace
+              onTrace(completedTrace)
+            }
             try {
               const activeConversation = activeConversationRef.current
               if (activeConversation) onTurns(await api.turns(activeConversation))
@@ -181,7 +203,17 @@ export function ChatPanel({
           <div className="turn" key={turn.turn_id}>
             <div className="user-message">{turn.user_message}</div>
             <div className="assistant-message">
-              <div className="assistant-label"><span className="tiny-mark">Æ</span> Local answer</div>
+              <div className="assistant-head">
+                <div className="assistant-label"><span className="tiny-mark">Æ</span> Local answer</div>
+                <button
+                  className="turn-trace-button"
+                  aria-label={`Open trace for turn ${turn.turn_id}`}
+                  title="Open trace"
+                  onClick={() => onOpenTrace(turn.turn_id)}
+                >
+                  <ShieldCheck size={13} />
+                </button>
+              </div>
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{turn.local_answer}</ReactMarkdown>
               <div className="answer-meta">
                 <span>Local</span><span>Governed</span><span>Checked</span>
@@ -239,4 +271,12 @@ export function ChatPanel({
       </form>
     </main>
   )
+}
+
+function inferTraceSource(trace: Trace) {
+  return trace.meta_answer?.source
+    || trace.direct_answer?.source
+    || trace.self_description_answer?.source
+    || trace.character_answer?.source
+    || ''
 }

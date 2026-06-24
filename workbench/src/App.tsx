@@ -22,6 +22,7 @@ export default function App() {
   const [trace, setTrace] = useState<Trace | null>(null)
   const [drawer, setDrawer] = useState<Drawer>(null)
   const [settings, setSettings] = useState(false)
+  const [traceError, setTraceError] = useState('')
   const [pinned, setPinned] = useState(true)
   const [floating, setFloating] = useState(false)
   const [memoryRefresh, setMemoryRefresh] = useState(0)
@@ -89,6 +90,20 @@ export default function App() {
     return receipt
   }
 
+  async function openTurnTrace(turnId: string) {
+    setTraceError('')
+    setSettings(false)
+    setDrawer('trace')
+    void window.aetherDesktop?.setExpanded(true)
+    try {
+      const result = await api.trace(turnId)
+      setTrace(result.trace)
+    } catch (reason) {
+      setTrace(null)
+      setTraceError(reason instanceof Error ? reason.message : 'Trace is unavailable for this turn.')
+    }
+  }
+
   function startNewConversation() {
     setConversationId(null)
     setTurns([])
@@ -149,6 +164,7 @@ export default function App() {
           onNewConversation={startNewConversation}
           onDeleteConversation={() => void deleteCurrentConversation()}
           onTrace={setTrace}
+          onOpenTrace={(turnId) => void openTurnTrace(turnId)}
           onTurns={setTurns}
         />
         <nav className="bottom-nav" aria-label="Workbench panels">
@@ -182,7 +198,7 @@ export default function App() {
             }}><X size={17} /></button>
           </div>
           {drawer === 'trace'
-            ? <TraceDrawer trace={trace} onApplyPatch={applyPatch} />
+            ? <TraceDrawer trace={trace} error={traceError} onApplyPatch={applyPatch} />
             : drawer === 'memory'
               ? <MemoryDrawer refreshKey={memoryRefresh} onMutated={() => setMemoryRefresh((value) => value + 1)} />
               : <ReflectionDrawer />}

@@ -51,6 +51,26 @@ export interface Trace {
   turn_id: string
   conversation_id: string
   model: string
+  generation_model?: string
+  meta_answer?: { source?: string; intents?: Record<string, boolean> }
+  direct_answer?: { source?: string; slot?: string }
+  self_description_answer?: { source?: string }
+  character_answer?: {
+    source?: string
+    kind?: string
+    mode?: string
+    needs_stronger_model?: boolean
+  }
+  completion?: {
+    source?: string
+    needs_stronger_model: boolean
+    generation_model?: string
+    guidance_kind?: string
+    guidance_repaired?: boolean | null
+    guidance_repair_failed?: boolean | null
+    depth?: DepthCompletion
+  }
+  depth_policy?: DepthPolicy
   plan: {
     status: string
     coverage: number
@@ -84,6 +104,29 @@ export interface Trace {
     output: Record<string, unknown>
     status: string
   }>
+}
+
+export interface DepthPolicy {
+  mode: string
+  requested: boolean
+  reason: string
+  max_continuations: number
+  include_approach: boolean
+  guidance?: string
+}
+
+export interface DepthCompletion extends DepthPolicy {
+  continuation_count: number
+  depth_satisfied: boolean
+  continued_reason: string
+  assessment?: {
+    mode: string
+    requested: boolean
+    word_count: number
+    min_words: number
+    satisfied: boolean
+    reason: string
+  }
 }
 
 export interface PatchApplyReceipt {
@@ -185,6 +228,13 @@ export interface ChatEvents {
   onDone: (data: {
     answer: string
     needs_stronger_model: boolean
+    source?: string
+    generation_model?: string
+    guidance_source?: string
+    guidance_kind?: string
+    guidance_repaired?: boolean | null
+    guidance_repair_failed?: boolean | null
+    depth?: DepthCompletion
     memory_writes?: Array<{ slot_id: string; value: string }>
     document_write?: { document_id: string; title: string; chunk_count: number } | null
     tool_runs?: Array<{ tool: string; status: string }>

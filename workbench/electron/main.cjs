@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, Menu, screen, Tray } = require('electron')
 const path = require('node:path')
 const { SidecarManager } = require('./sidecar.cjs')
+const { configureDevUserData } = require('./dev-config.cjs')
 const { dockBounds } = require('./window.cjs')
 
 let window
@@ -9,6 +10,8 @@ let sidecar
 let floating = false
 let expanded = false
 let alwaysOnTop = true
+
+configureDevUserData(app)
 
 function applyDockBounds() {
   if (!window || floating) return

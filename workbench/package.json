@@ -6,9 +6,10 @@
   "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k \"vite --port 5175\" \"wait-on http://127.0.0.1:5175 && cross-env NODE_ENV=development electron .\"",
+    "dev": "concurrently -k --success command-electron -n vite,electron \"vite --host 127.0.0.1 --port 5175 --strictPort\" \"wait-on http://127.0.0.1:5175 && cross-env NODE_ENV=development electron .\"",
     "build": "tsc -b && vite build",
     "start": "electron .",
+    "eval:workbench": "cd ../aether-core && python scripts/workbench_eval.py",
     "test": "vitest run && node --test electron/*.test.cjs",
     "test:ui": "vitest run",
     "test:electron": "node --test electron/*.test.cjs",

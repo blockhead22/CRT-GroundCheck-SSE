@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { TraceDrawer } from './TraceDrawer'
 import type { Trace } from '../types'
 
@@ -8,6 +8,39 @@ const trace: Trace = {
   turn_id: 'turn_1',
   conversation_id: 'conv_1',
   model: 'qwen2.5:7b-instruct',
+  generation_model: 'qwen3:14b',
+  character_answer: {
+    source: 'aether_character',
+    kind: 'self_assessment',
+    mode: 'generative_guidance',
+    needs_stronger_model: false,
+  },
+  completion: {
+    source: 'aether_character',
+    needs_stronger_model: false,
+    generation_model: 'qwen3:14b',
+    guidance_kind: 'self_assessment',
+    guidance_repaired: false,
+    guidance_repair_failed: false,
+    depth: {
+      mode: 'deep',
+      requested: true,
+      reason: 'user_requested_depth',
+      max_continuations: 1,
+      include_approach: true,
+      continuation_count: 1,
+      depth_satisfied: true,
+      continued_reason: 'answer_too_short_for_requested_depth',
+      assessment: {
+        mode: 'deep',
+        requested: true,
+        word_count: 242,
+        min_words: 180,
+        satisfied: true,
+        reason: 'depth_minimum_met',
+      },
+    },
+  },
   plan: {
     status: 'resolved',
     coverage: 1,
@@ -53,6 +86,19 @@ test('renders clause-level governance decisions', () => {
   expect(screen.getByText('Context saved')).toBeInTheDocument()
   expect(screen.getByText('aether self')).toBeInTheDocument()
   expect(screen.getByText('A local governed companion.')).toBeInTheDocument()
+  const route = screen.getByLabelText('Response route')
+  expect(within(route).getByText('aether character')).toBeInTheDocument()
+  expect(within(route).getByText('qwen2.5:7b-instruct')).toBeInTheDocument()
+  expect(within(route).getByText('qwen3:14b')).toBeInTheDocument()
+  expect(within(route).getByText('self assessment')).toBeInTheDocument()
+  expect(within(route).getByText('clean')).toBeInTheDocument()
+  expect(within(route).getByText('local ok')).toBeInTheDocument()
+  const depth = screen.getByLabelText('Response depth')
+  expect(within(depth).getByText('deep')).toBeInTheDocument()
+  expect(within(depth).getAllByText('yes')).toHaveLength(2)
+  expect(within(depth).getByText('1')).toBeInTheDocument()
+  expect(within(depth).getByText('242')).toBeInTheDocument()
+  expect(within(depth).getByText('answer too short for requested depth')).toBeInTheDocument()
 })
 
 test('makes patch previews visibly non-applied', () => {
@@ -108,4 +154,173 @@ test('requires a visible approval click before applying a patch', async () => {
   expect(onApplyPatch).not.toHaveBeenCalled()
   fireEvent.click(screen.getByRole('button', { name: 'Approve exact patch' }))
   await waitFor(() => expect(onApplyPatch).toHaveBeenCalledWith('tool_patch'))
+})
+
+test('surfaces read-only test recommendation metadata', () => {
+  render(<TraceDrawer trace={{
+    ...trace,
+    tool_runs: [{
+      tool_run_id: 'tool_test',
+      tool: 'workspace_test_recommend',
+      input: { path: 'depth.py' },
+      output: {
+        path: 'D:\\AI_round2\\aether-core\\aether\\sidecar\\depth.py',
+        command: 'python -m pytest tests/test_sidecar_depth.py',
+        test_file: 'D:\\AI_round2\\aether-core\\tests\\test_sidecar_depth.py',
+        executed: false,
+        write_performed: false,
+        sha256: 'abc123',
+      },
+      status: 'completed',
+    }],
+  }} />)
+
+  const tool = screen.getByLabelText('workspace test recommend metadata')
+  expect(screen.getByText('Suggested command: python -m pytest tests/test_sidecar_depth.py')).toBeInTheDocument()
+  expect(within(tool).getByText('Command')).toBeInTheDocument()
+  expect(within(tool).getByText('python -m pytest tests/test_sidecar_depth.py')).toBeInTheDocument()
+  expect(within(tool).getByText('Test file')).toBeInTheDocument()
+  expect(within(tool).getByText('D:\\AI_round2\\aether-core\\tests\\test_sidecar_depth.py')).toBeInTheDocument()
+  expect(within(tool).getByText('Executed')).toBeInTheDocument()
+  expect(within(tool).getByText('no')).toBeInTheDocument()
+  expect(within(tool).getByText('Write')).toBeInTheDocument()
+  expect(within(tool).getByText('not performed')).toBeInTheDocument()
+  expect(within(tool).getByText('Stale hash')).toBeInTheDocument()
+  expect(within(tool).getByText('captured')).toBeInTheDocument()
+})
+
+test('surfaces governed test result metadata', () => {
+  render(<TraceDrawer trace={{
+    ...trace,
+    tool_runs: [{
+      tool_run_id: 'tool_test_run',
+      tool: 'workspace_test_run',
+      input: { path: 'depth.py' },
+      output: {
+        path: 'D:\\AI_round2\\aether-core\\aether\\sidecar\\depth.py',
+        command: 'python -m pytest tests/test_sidecar_depth.py',
+        test_file: 'D:\\AI_round2\\aether-core\\tests\\test_sidecar_depth.py',
+        executed: true,
+        exit_code: 0,
+        passed: true,
+        timed_out: false,
+        duration_ms: 1234,
+        stdout: '============================= test session starts =============================\n1 passed in 0.42s',
+        stderr: 'pytest warning sample',
+      },
+      status: 'completed',
+    }],
+  }} />)
+
+  const tool = screen.getByLabelText('workspace test run metadata')
+  expect(screen.getByText('Suggested command: python -m pytest tests/test_sidecar_depth.py')).toBeInTheDocument()
+  expect(within(tool).getByText('Executed')).toBeInTheDocument()
+  expect(within(tool).getAllByText('yes')).toHaveLength(2)
+  expect(within(tool).getByText('Exit code')).toBeInTheDocument()
+  expect(within(tool).getByText('0')).toBeInTheDocument()
+  expect(within(tool).getByText('Timed out')).toBeInTheDocument()
+  expect(within(tool).getByText('no')).toBeInTheDocument()
+  expect(within(tool).getByText('Duration')).toBeInTheDocument()
+  expect(within(tool).getByText('1234 ms')).toBeInTheDocument()
+  const output = screen.getByLabelText('workspace test run captured output')
+  expect(within(output).getByText('stdout')).toBeInTheDocument()
+  expect(within(output).getByText(/1 passed in 0\.42s/)).toBeInTheDocument()
+  expect(within(output).getByText('stderr')).toBeInTheDocument()
+  expect(within(output).getByText('pytest warning sample')).toBeInTheDocument()
+})
+
+test('surfaces workspace search excerpts as retrieved snippets', () => {
+  render(<TraceDrawer trace={{
+    ...trace,
+    tool_runs: [{
+      tool_run_id: 'tool_search',
+      tool: 'workspace_search',
+      input: { query: 'TraceDrawer response depth' },
+      output: {
+        results: [{
+          path: 'D:\\AI_round2\\workbench\\src\\components\\TraceDrawer.tsx',
+          relative_path: 'workbench/src/components/TraceDrawer.tsx',
+          score: 42,
+          excerpts: [
+            { line: 70, text: '<article className="trace-route" aria-label="Response depth">' },
+            { line: 92, text: '<section className="tool-run-list" aria-label="Tool activity">' },
+          ],
+        }],
+      },
+      status: 'completed',
+    }],
+  }} />)
+
+  const snippets = screen.getByLabelText('workspace search retrieved snippets')
+  expect(within(snippets).getByText('D:\\AI_round2\\workbench\\src\\components\\TraceDrawer.tsx')).toBeInTheDocument()
+  expect(within(snippets).getByText(/70: <article className="trace-route"/)).toBeInTheDocument()
+  expect(within(snippets).getByText(/92: <section className="tool-run-list"/)).toBeInTheDocument()
+})
+
+test('surfaces workspace read content as a retrieved snippet', () => {
+  render(<TraceDrawer trace={{
+    ...trace,
+    tool_runs: [{
+      tool_run_id: 'tool_read',
+      tool: 'workspace_read',
+      input: { path: 'depth.py' },
+      output: {
+        path: 'D:\\AI_round2\\aether-core\\aether\\sidecar\\depth.py',
+        start_line: 1,
+        end_line: 3,
+        content: '     1\tdef classify_depth_request(question: str):\n     2\t    text = question.lower()\n     3\t    return DepthPolicy(mode="normal")',
+      },
+      status: 'completed',
+    }],
+  }} />)
+
+  const snippets = screen.getByLabelText('workspace read retrieved snippets')
+  expect(within(snippets).getByText('read content')).toBeInTheDocument()
+  expect(within(snippets).getByText(/def classify_depth_request/)).toBeInTheDocument()
+  expect(within(snippets).getByText(/return DepthPolicy/)).toBeInTheDocument()
+})
+
+test('surfaces failed tool errors as visible notices', () => {
+  render(<TraceDrawer trace={{
+    ...trace,
+    tool_runs: [{
+      tool_run_id: 'tool_failed',
+      tool: 'workspace_read',
+      input: { path: '..\\outside.txt' },
+      output: { error: 'file is outside configured workspaces or does not exist' },
+      status: 'failed',
+    }],
+  }} />)
+
+  expect(screen.getByText('workspace read')).toBeInTheDocument()
+  expect(screen.getByText('failed')).toBeInTheDocument()
+  expect(screen.getByRole('status')).toHaveTextContent('file is outside configured workspaces or does not exist')
+})
+
+test('surfaces non-ready patch reasons as visible notices', () => {
+  render(<TraceDrawer trace={{
+    ...trace,
+    tool_runs: [{
+      tool_run_id: 'tool_patch_not_ready',
+      tool: 'workspace_patch_propose',
+      input: { path: 'app.py' },
+      output: {
+        path: 'D:\\repo\\app.py',
+        ready: false,
+        applied: false,
+        occurrences: 0,
+        error: 'old text must match exactly once',
+      },
+      status: 'completed',
+    }],
+  }} />)
+
+  expect(screen.getByText('Patch not ready · old text must match exactly once')).toBeInTheDocument()
+  expect(screen.getByRole('status')).toHaveTextContent('old text must match exactly once')
+})
+
+test('renders a trace retrieval error', () => {
+  render(<TraceDrawer trace={null} error="Trace row was not found." />)
+  expect(screen.getByText('Trace unavailable')).toBeInTheDocument()
+  expect(screen.getByText('Trace row was not found.')).toBeInTheDocument()
 })

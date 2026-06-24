@@ -2,6 +2,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const { dockBounds } = require('./window.cjs')
 const { SidecarManager } = require('./sidecar.cjs')
+const { configureDevUserData, devUserDataPath } = require('./dev-config.cjs')
 
 test('dock snaps to the full left work area', () => {
   assert.deepEqual(
@@ -26,4 +27,37 @@ test('sidecar stop terminates its child process', () => {
   manager.start()
   manager.stop()
   assert.equal(killed, true)
+})
+
+test('development userData uses an isolated temp directory', () => {
+  const calls = []
+  const app = {
+    getPath(name) {
+      assert.equal(name, 'temp')
+      return 'C:\\Temp'
+    },
+    setPath(name, value) {
+      calls.push([name, value])
+    },
+  }
+
+  const userDataPath = configureDevUserData(app, { NODE_ENV: 'development' })
+
+  assert.equal(userDataPath, devUserDataPath(app))
+  assert.deepEqual(calls, [['userData', 'C:\\Temp\\aether-workbench-dev']])
+})
+
+test('production userData is left unchanged', () => {
+  const calls = []
+  const app = {
+    getPath() {
+      throw new Error('getPath should not be called outside development')
+    },
+    setPath(name, value) {
+      calls.push([name, value])
+    },
+  }
+
+  assert.equal(configureDevUserData(app, { NODE_ENV: 'production' }), null)
+  assert.deepEqual(calls, [])
 })
