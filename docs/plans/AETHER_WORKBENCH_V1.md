@@ -56,6 +56,31 @@ The original v1 proof loop is now implemented far enough to dogfood:
   contains a full ChatGPT export with 1,275 conversations, `chat.html`, 13
   conversation JSON shards, and attachments. Treat it as a reviewable archive,
   not as Aether voice or confirmed memory.
+- Phase 1.7 dry-run archive scanner implemented at
+  `D:\AI_round2\aether-core\scripts\chatgpt_archive_scan.py`, with focused
+  tests proving private message body strings are not included in reports.
+  Safe real-export scan output:
+  `D:\AI_round2\aether-core\.eval-runs\chatgpt_archive_scan_20260624_phase17.json`.
+- Phase 1.7 opt-in real-use reliability eval cases added to
+  `D:\AI_round2\aether-core\scripts\workbench_eval.py` behind
+  `--include-real-use-eval`. Targeted real-use prompt scaffolding now covers
+  practical permission boundaries, abrupt topic switches, medical-adjacent
+  caution, and walking/scale support. Current focused live run:
+  `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_165625.json`,
+  with `4/4` passing on a fresh sidecar.
+- Phase 1.7 variance hardening now includes a real-use depth floor: when
+  targeted real-use guidance is present and the first answer is thin, the
+  continuation controller can run one bounded additive pass even if the user did
+  not explicitly say "deep." Saved focused results:
+  - qwen2.5:7b-instruct:
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_165625.json`
+    (`4/4`);
+  - phi3:3.8b:
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_170435.json`
+    (`4/4`);
+  - gemma3:latest:
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_170953.json`
+    (`4/4`).
 
 North star:
 
@@ -70,9 +95,10 @@ clean escalation when frontier help is truly needed.
 
 Next work should stabilize this lane rather than revive legacy code:
 
-1. build a dry-run ChatGPT archive scanner for metadata/title/category indexing
-   without memory ingestion;
-2. add real-use conversational reliability evals from actual GPT/Aether usage;
+1. add one or two more reviewed Phase 1.7 usage cases, especially tone/personality
+   regression and identity/continuity boundaries;
+2. add a review workflow for archive-derived support-pattern candidates without
+   treating them as confirmed facts;
 3. make reviewed reflections stronger but still governed behavior input.
 
 Depth mode should be implemented as a governed multi-pass answer-quality loop:
@@ -126,9 +152,11 @@ should cover walking/weight-scale support, persistent AI/longevity synthesis,
 WordPress/client setup permission boundaries, abrupt task switching, and
 over-governance regression checks.
 
-The ChatGPT export should become a dry-run personal archive scanner before any
-ingestion: parse metadata/titles, label likely spiral/support/project/history
-threads, keep source conversations as searchable archive documents, and send
+The ChatGPT export now has a dry-run personal archive scanner before any
+ingestion. It parses metadata/titles, labels likely
+spiral/support/project/history threads, counts structure, and writes explicit
+`memory_ingestion_performed=false` / `message_bodies_extracted=false` safety
+metadata. Next, use reviewed title buckets to seed reliability evals and send
 candidate durable facts or support preferences through review. Do not inject the
 GPT voice into Aether.
 
@@ -139,6 +167,21 @@ Run the focused conversation eval against the live sidecar from either location:
 ```powershell
 cd D:\AI_round2\aether-core
 python scripts\workbench_eval.py
+```
+
+Run the opt-in Phase 1.7 real-use reliability eval lane:
+
+```powershell
+cd D:\AI_round2\aether-core
+python scripts\workbench_eval.py --include-real-use-eval --case-id real_use_persistent_ai_longevity_spiral --case-id real_use_walking_scale_medical_caution --case-id real_use_wordpress_handoff_permissions --case-id real_use_abrupt_switch_business_plan
+```
+
+Run the Phase 1.7 dry-run ChatGPT archive scanner without printing title
+examples:
+
+```powershell
+cd D:\AI_round2\aether-core
+python scripts\chatgpt_archive_scan.py "C:\Users\block\Downloads\fbf5a239c1af822f50241d4b5999b53954689723b9d4deb7ceb1e41a31847485-2026-03-27-22-39-55-cf0803cbc48c446cb8c3b317ea5f11ea" --max-examples 0
 ```
 
 or:

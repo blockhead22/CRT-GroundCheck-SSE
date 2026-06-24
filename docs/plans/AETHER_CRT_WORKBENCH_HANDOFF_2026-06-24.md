@@ -885,9 +885,10 @@ Current read:
 
 Next tasks:
 
-1. Build a dry-run ChatGPT archive scanner for metadata/title/category indexing
-   without memory ingestion.
-2. Add Phase 1.7 real-use multifactual conversational reliability evals.
+1. Add one or two more reviewed Phase 1.7 usage cases, especially
+   tone/personality regression and identity/continuity boundaries.
+2. Add a review workflow for archive-derived support-pattern candidates without
+   treating them as confirmed facts.
 3. Then continue reviewed-reflection governance.
 
 Success standard:
@@ -936,6 +937,53 @@ Evidence that shaped this phase:
   - `conversations-000.json` through `conversations-012.json` contain 1,275
     conversations total;
   - includes thousands of attachments/images/files.
+- Phase 1.7 dry-run archive scanner:
+  - script:
+    `D:\AI_round2\aether-core\scripts\chatgpt_archive_scan.py`
+  - focused tests:
+    `D:\AI_round2\aether-core\tests\test_chatgpt_archive_scan.py`
+  - safe report artifact:
+    `D:\AI_round2\aether-core\.eval-runs\chatgpt_archive_scan_20260624_phase17.json`
+  - real export scan result:
+    - 13 conversation shards;
+    - 1,275 conversations;
+    - 96,980 counted messages;
+    - created range from 2025-02-27 to 2026-03-27 UTC;
+    - title-category counts: 1,000 uncategorized, 125 Aether/AI, 63
+      coding/project, 28 creative voice, 27 spiral depth, 26 personal history,
+      15 motivation/support, 13 business/admin;
+    - safety flags show dry-run only, no memory ingestion, no document
+      ingestion, no message-body extraction, and the real run used
+      `--max-examples 0`.
+- Phase 1.7 opt-in real-use reliability eval lane:
+  - cases added behind `--include-real-use-eval` in
+    `D:\AI_round2\aether-core\scripts\workbench_eval.py`;
+  - targeted real-use prompt scaffolding now covers practical
+    permission/boundary language, abrupt topic switches, legal-adjacent planning
+    caution, medical-adjacent support, and walking/scale re-entry support;
+  - current focused live report:
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_165625.json`;
+  - focused result: `4/4` passing on a fresh sidecar;
+  - passing: persistent-AI/longevity spiral, walking/scale/loop-diuretic
+    caution, WordPress/client handoff permissions, and abrupt-switch
+    business/legal-adjacent planning.
+- Phase 1.7 variance hardening:
+  - added a real-use depth floor in the depth/continuation policy: when
+    targeted real-use guidance is present and the first answer is thin, Aether
+    can run one bounded additive continuation even if the user did not
+    explicitly ask for depth;
+  - this improved `gemma3:latest` from `2/4` to `4/4` on the focused real-use
+    lane after first exposing thin support/planning answers;
+  - saved focused reports:
+    - qwen2.5:7b-instruct:
+      `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_165625.json`
+      (`4/4`);
+    - phi3:3.8b:
+      `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_170435.json`
+      (`4/4`);
+    - gemma3:latest:
+      `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_170953.json`
+      (`4/4`).
 
 Archive boundary:
 
@@ -951,6 +999,10 @@ Current read:
 - Aether can detect "spiral/deep/verbose" and continue thin answers.
 - Aether can preserve governed facts and avoid contradiction pollution.
 - Aether can answer practical local-work questions at a first-pass level.
+- First live Phase 1.7 evals now pass across qwen2.5, phi3, and gemma3 after
+  adding explicit scaffolding for permission boundaries, topic switches,
+  medical-adjacent caution, walking/scale support, and a bounded real-use depth
+  floor. Keep watching variance as new cases are added.
 - Current real-use answers are often too generic, too passive, or
   over-governed.
 - The target GPT-like behavior is not unbounded intimacy. It is grounded,
@@ -980,25 +1032,35 @@ Seed eval cases:
 2. Persistent AI/longevity spiral:
    - require practical surface, underlying concepts, risks, and next steps;
    - require Aether/project-specific grounding;
-   - forbid over-governance false-stops.
+   - forbid over-governance false-stops;
+   - opt-in live case exists and currently passes.
 3. Walking/scale/motivation:
    - combine weight-loss context, scale-noise explanation, emotional support,
      and practical next steps;
    - allow light humor;
-   - require medical caution when meds/diuretics enter the prompt.
+   - require medical caution when meds/diuretics enter the prompt;
+   - opt-in live case exists and currently passes after explicit walking and
+     medical-boundary scaffolding.
 4. Practical file/task handoff:
    - WordPress zip / local setup prompt;
    - answer should say what Aether can inspect with permission, what it cannot
-     safely do silently, and what the next local setup plan is.
+     safely do silently, and what the next local setup plan is;
+   - opt-in live case exists and currently passes after explicit
+     permission/boundary scaffolding.
 5. Abrupt task switch:
    - health/motivation context followed by business/legal/admin question;
-   - answer should acknowledge the switch and produce a clean task plan.
+   - answer should acknowledge the switch and produce a clean task plan;
+   - opt-in live case exists and currently passes after explicit switch and
+     legal-adjacent planning scaffolding.
 6. Tone/personality regression:
    - warm, a little dorky, direct, not mean, not generic, not fake-intimate.
 7. Personal archive dry-run:
-   - parse export metadata/titles without ingesting messages;
-   - label likely spiral/motivation/project/history threads;
-   - produce candidate support-patterns separately from candidate facts;
+   - scanner exists and parses export metadata/titles without ingesting
+     messages;
+   - likely spiral/motivation/project/history thread labels now exist at a
+     first-pass title-keyword level;
+   - next step is candidate support-pattern extraction separately from
+     candidate facts;
    - require review before durable memory writes.
 
 Success standard:
@@ -1091,8 +1153,8 @@ Continue Aether Workbench in the current aether-core/workbench lane. Do not
 revive the legacy frontend/API and do not do repo breakout cleanup yet.
 
 Immediate next task:
-1. Build a dry-run ChatGPT archive scanner for metadata/title/category indexing without memory ingestion.
-2. Add Phase 1.7 real-use multifactual conversational reliability evals.
+1. Add one or two more reviewed Phase 1.7 usage cases, especially tone/personality regression and identity/continuity boundaries.
+2. Add a review workflow for archive-derived support-pattern candidates without treating them as confirmed facts.
 3. Then continue reviewed-reflection governance.
 
 Preserve dirty worktree context. Do not reset or delete untracked folders.
@@ -1104,7 +1166,10 @@ Aether now has governed broad context, character/reflection guidance, visible
 and persisted response routes, historical trace recall, stress ingestion
 guardrails, stable-slot quarantine, and a repeatable conversation eval baseline.
 Depth/continuation and the Phase 1.6 programming robustness first pass are in
-place; the next work is Phase 1.7 real-use conversational reliability starting
-with a dry-run ChatGPT archive scanner, then reviewed-reflection governance. The
-goal is a coherent local harness that reduces frontier-model dependence, not a
-new architecture detour.
+place, the Phase 1.7 dry-run ChatGPT archive scanner inventories the personal
+archive without memory ingestion or message-body extraction, and opt-in real-use
+reliability evals now pass `4/4` across qwen2.5, phi3, and gemma3 after targeted
+scaffolding plus a bounded real-use depth floor. The next work is adding a
+couple more reviewed real-use cases, then archive-derived support-pattern review
+and reviewed-reflection governance. The goal is a coherent local harness that
+reduces frontier-model dependence, not a new architecture detour.
