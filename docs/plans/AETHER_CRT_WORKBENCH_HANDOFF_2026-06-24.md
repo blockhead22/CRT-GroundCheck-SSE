@@ -885,8 +885,9 @@ Current read:
 
 Next tasks:
 
-1. Add one or two more reviewed Phase 1.7 usage cases, especially
-   tone/personality regression and identity/continuity boundaries.
+1. Stabilize the Phase 1.7 tone/personality regression case, likely with a
+   small repair pass for missing required style anchors rather than more prompt
+   wording.
 2. Add a review workflow for archive-derived support-pattern candidates without
    treating them as confirmed facts.
 3. Then continue reviewed-reflection governance.
@@ -984,6 +985,18 @@ Evidence that shaped this phase:
     - gemma3:latest:
       `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_170953.json`
       (`4/4`).
+- Phase 1.7 expanded qwen lane:
+  - added identity/continuity boundary and tone/personality regression cases;
+  - current saved six-case report:
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_173249.json`;
+  - result: `5/6` passing;
+  - identity/continuity passes after explicit clean-boundary and uncertainty
+    scaffolding;
+  - tone/personality can pass focused but remains variance-prone in the full
+    lane, where qwen sometimes drifts into generic/code-flavored motivation and
+    misses requested dork/courtroom wording. Next fix should probably be a
+    small repair pass for missing required style anchors, not more prompt
+    wording.
 
 Archive boundary:
 
@@ -999,10 +1012,11 @@ Current read:
 - Aether can detect "spiral/deep/verbose" and continue thin answers.
 - Aether can preserve governed facts and avoid contradiction pollution.
 - Aether can answer practical local-work questions at a first-pass level.
-- First live Phase 1.7 evals now pass across qwen2.5, phi3, and gemma3 after
-  adding explicit scaffolding for permission boundaries, topic switches,
+- First live Phase 1.7 four-case evals pass across qwen2.5, phi3, and gemma3
+  after adding explicit scaffolding for permission boundaries, topic switches,
   medical-adjacent caution, walking/scale support, and a bounded real-use depth
-  floor. Keep watching variance as new cases are added.
+  floor. The expanded six-case qwen lane is now `5/6`; tone/personality
+  regression is the active variance gap.
 - Current real-use answers are often too generic, too passive, or
   over-governed.
 - The target GPT-like behavior is not unbounded intimacy. It is grounded,
@@ -1153,7 +1167,7 @@ Continue Aether Workbench in the current aether-core/workbench lane. Do not
 revive the legacy frontend/API and do not do repo breakout cleanup yet.
 
 Immediate next task:
-1. Add one or two more reviewed Phase 1.7 usage cases, especially tone/personality regression and identity/continuity boundaries.
+1. Stabilize the Phase 1.7 tone/personality regression case, likely with a small repair pass for missing required style anchors rather than more prompt wording.
 2. Add a review workflow for archive-derived support-pattern candidates without treating them as confirmed facts.
 3. Then continue reviewed-reflection governance.
 
@@ -1167,9 +1181,9 @@ and persisted response routes, historical trace recall, stress ingestion
 guardrails, stable-slot quarantine, and a repeatable conversation eval baseline.
 Depth/continuation and the Phase 1.6 programming robustness first pass are in
 place, the Phase 1.7 dry-run ChatGPT archive scanner inventories the personal
-archive without memory ingestion or message-body extraction, and opt-in real-use
-reliability evals now pass `4/4` across qwen2.5, phi3, and gemma3 after targeted
-scaffolding plus a bounded real-use depth floor. The next work is adding a
-couple more reviewed real-use cases, then archive-derived support-pattern review
+archive without memory ingestion or message-body extraction, the original
+four-case real-use lane passes across qwen2.5, phi3, and gemma3, and the
+expanded six-case qwen lane is `5/6`. The active gap is tone/personality
+variance; after stabilizing that, move to archive-derived support-pattern review
 and reviewed-reflection governance. The goal is a coherent local harness that
 reduces frontier-model dependence, not a new architecture detour.

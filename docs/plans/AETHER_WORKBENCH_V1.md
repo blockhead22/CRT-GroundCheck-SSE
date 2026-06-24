@@ -81,6 +81,13 @@ The original v1 proof loop is now implemented far enough to dogfood:
   - gemma3:latest:
     `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_170953.json`
     (`4/4`).
+- Phase 1.7 expanded qwen lane now includes identity/continuity and
+  tone/personality regression cases. Current saved six-case report:
+  `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_173249.json`
+  (`5/6`). Identity/continuity passes; tone/personality remains variance-prone
+  in the full lane even though it can pass focused, because qwen sometimes
+  drifts into generic/code-flavored motivation and misses the requested
+  dork/courtroom wording.
 
 North star:
 
@@ -95,8 +102,9 @@ clean escalation when frontier help is truly needed.
 
 Next work should stabilize this lane rather than revive legacy code:
 
-1. add one or two more reviewed Phase 1.7 usage cases, especially tone/personality
-   regression and identity/continuity boundaries;
+1. stabilize the Phase 1.7 tone/personality regression case, likely with a
+   small repair pass for missing required style anchors rather than more prompt
+   wording;
 2. add a review workflow for archive-derived support-pattern candidates without
    treating them as confirmed facts;
 3. make reviewed reflections stronger but still governed behavior input.
