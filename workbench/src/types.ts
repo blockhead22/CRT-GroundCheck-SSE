@@ -33,6 +33,13 @@ export interface Evidence {
   quality_flags: string[]
 }
 
+export interface ContradictionDisposition {
+  label: string
+  confidence: number
+  reason: string
+  evidence_state_ids: string[]
+}
+
 export interface TracePacket {
   request_id: string
   clause_id: string
@@ -42,6 +49,7 @@ export interface TracePacket {
   mode: string
   release: ReleaseDecision
   reason: string
+  contradiction_disposition?: ContradictionDisposition | null
   evidence: Evidence[]
 }
 
@@ -183,6 +191,7 @@ export interface SlotDetail {
   slot_id: string
   conflict: boolean
   quarantined: boolean
+  contradiction_disposition?: ContradictionDisposition | null
   history: SlotHistory[]
   review: unknown
 }
@@ -217,6 +226,37 @@ export interface Reflection {
     action: string
     note: string
     result_reflection_id?: string
+    created_at: number
+  }>
+  revision_hash: string
+}
+
+export interface SupportPattern {
+  candidate_id: string
+  candidate_type: 'archive_support_pattern'
+  category: string
+  candidate_kind: string
+  summary: string
+  suggested_response_rule: string
+  risk: string
+  source_signal: string
+  title_category_count: number
+  status: 'proposed_review' | 'accepted' | 'rejected' | 'deferred'
+  review_required: boolean
+  memory_write_allowed: boolean
+  confirmed_fact: boolean
+  created_at: number
+  updated_at: number
+  evidence: Array<{
+    evidence_type: string
+    conversation_id: string
+    title: string
+    created_at?: string
+  }>
+  reviews: Array<{
+    review_id: string
+    action: string
+    note: string
     created_at: number
   }>
   revision_hash: string

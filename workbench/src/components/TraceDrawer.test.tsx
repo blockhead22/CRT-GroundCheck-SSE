@@ -54,6 +54,12 @@ const trace: Trace = {
     {
       request_id: 'r1', clause_id: 'c1', clause_text: 'Where do I work', planner_slot: 'employer',
       slot_id: 'user:employer', mode: 'current', release: 'conflict', reason: 'distinct_current_values',
+      contradiction_disposition: {
+        label: 'held',
+        confidence: 0.85,
+        reason: 'multiple_authoritative_current_values_require_review',
+        evidence_state_ids: ['st_1', 'st_2'],
+      },
       evidence: [],
     },
     {
@@ -82,6 +88,12 @@ test('renders clause-level governance decisions', () => {
   expect(screen.getByText('Conflict')).toBeInTheDocument()
   expect(screen.getByText('Withheld')).toBeInTheDocument()
   expect(screen.getByText('user:employer')).toBeInTheDocument()
+  expect(screen.getByLabelText('Contradiction disposition')).toHaveTextContent(
+    'held'
+  )
+  expect(screen.getByLabelText('Contradiction disposition')).toHaveTextContent(
+    'multiple authoritative current values require review'
+  )
   expect(screen.getByText('100%')).toBeInTheDocument()
   expect(screen.getByText('Context saved')).toBeInTheDocument()
   expect(screen.getByText('aether self')).toBeInTheDocument()

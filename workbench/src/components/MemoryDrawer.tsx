@@ -69,6 +69,17 @@ export function MemoryDrawer({ refreshKey, onMutated }: MemoryDrawerProps) {
           </span>
         </div>
         {notice ? <div className="inline-notice">{notice}</div> : null}
+        {selected.contradiction_disposition ? (
+          <div className="memory-disposition" aria-label="Memory contradiction disposition">
+            <span>Contradiction disposition</span>
+            <strong>{selected.contradiction_disposition.label.replaceAll('_', ' ')}</strong>
+            <p>
+              {selected.contradiction_disposition.reason.replaceAll('_', ' ')}
+              {' '}
+              ({Math.round(selected.contradiction_disposition.confidence * 100)}%)
+            </p>
+          </div>
+        ) : null}
         <div className="correction-box">
           <label htmlFor="correction">Confirmed correction</label>
           <textarea

@@ -929,8 +929,11 @@ Next tasks:
 
 0. Use the recovered concept integration audit as the on-ramp back to the main
    roadmap; avoid more broad artifact diving unless a specific gap requires it.
-1. Add Workbench UI affordances for support-pattern candidate review.
-2. Then move into contradiction disposition governance.
+1. Continue Phase 1.8 contradiction disposition governance by broadening review
+   surfacing only if needed; the isolated fixture eval helper now exists.
+2. Continue the Phase 2 background consolidation heartbeat lane by adding
+   Workbench UI affordances for previewed consolidation candidates using their
+   `review_route` metadata.
 3. Then continue memory-state/representation compression evals.
 
 Success standard:
@@ -1028,6 +1031,17 @@ Evidence that shaped this phase:
       guidance plus their boundary/risk text;
     - rejected/deferred support patterns stay out of prompts;
     - traces expose which accepted support patterns were released.
+  - Workbench support-pattern review UI:
+    - bottom navigation now includes a Support review drawer;
+    - candidates can be filtered by review status;
+    - title-only evidence, risk boundaries, and "not confirmed memory" guardrails
+      are visible before review;
+    - proposed/deferred candidates can be accepted, deferred, or rejected through
+      the revision-guarded review API;
+    - focused UI tests and production build passed:
+      `npm run test:ui -- --run src/App.test.tsx src/components/SupportPatternDrawer.test.tsx src/components/ReflectionDrawer.test.tsx`
+      -> `12 passed`;
+      `npm run build` -> passed.
 - Phase 1.7 opt-in real-use reliability eval lane:
   - cases added behind `--include-real-use-eval` in
     `D:\AI_round2\aether-core\scripts\workbench_eval.py`;
@@ -1040,6 +1054,135 @@ Evidence that shaped this phase:
   - passing: persistent-AI/longevity spiral, walking/scale/loop-diuretic
     caution, WordPress/client handoff permissions, and abrupt-switch
     business/legal-adjacent planning.
+- Phase 1.8 contradiction disposition first slice:
+  - `GovernedQueryService` now attaches structured
+    `contradiction_disposition` metadata to conflicted trace packets;
+  - first-pass labels are `resolvable`, `held`, `evolving`, `contextual`,
+    `stale`, and `policy_bound`;
+  - the labels do not resolve or release conflicted values; they describe the
+    conflict shape for traces and later review/prompt policy;
+  - Workbench Trace drawer now shows disposition label, reason, and confidence
+    for conflicted packets;
+  - focused and smoke verification:
+    `python -m pytest tests/test_runtime_query.py -q` -> `9 passed`;
+    `python -m pytest tests/test_runtime_query.py tests/test_sidecar_context_bridge.py tests/test_sidecar_app.py -q`
+    -> `39 passed`;
+    `npm run test:ui -- --run src/components/TraceDrawer.test.tsx src/App.test.tsx src/components/SupportPatternDrawer.test.tsx`
+    -> `20 passed`;
+    `npm run build` -> passed.
+- Phase 1.8 disposition prompt/review slice:
+  - prompt memory restrictions now include disposition label/reason/confidence
+    without leaking restricted evidence values;
+  - prompt instructions map each disposition to safer answer behavior:
+    ask for confirmation/correction, name held authoritative conflict, frame
+    evolving conflicts as possible time changes, ask for context on contextual
+    conflicts, avoid treating stale values as current, and preserve
+    policy-bound boundaries;
+  - `/v1/slots/{slot_id}` exposes `contradiction_disposition` for conflicted
+    slots;
+  - Workbench Memory drawer shows disposition label, reason, and confidence
+    before confirm/correct/quarantine actions;
+  - verification:
+    `python -m pytest tests/test_runtime_query.py tests/test_sidecar_app.py -q`
+    -> `30 passed`;
+    `python -m pytest tests/test_runtime_query.py tests/test_sidecar_context_bridge.py tests/test_sidecar_app.py tests/test_sidecar_ingest.py -q`
+    -> `49 passed`;
+    `npm run test:ui -- --run src/App.test.tsx src/components/MemoryDrawer.test.tsx src/components/TraceDrawer.test.tsx src/components/SupportPatternDrawer.test.tsx`
+    -> `21 passed`;
+    `npm run build` -> passed.
+- Phase 1.8 disposition-shaped answer/eval slice:
+  - exact direct profile lookups against conflicted packets now return a
+    deterministic `aether_direct` review-style answer instead of guessing or
+    leaking restricted values;
+  - the answer names conflicting governed evidence, names the disposition, and
+    asks for the appropriate review action;
+  - `scripts/workbench_eval.py` now supports `--include-disposition-eval`;
+  - opt-in cases now cover all first-pass dispositions:
+    `disposition_resolvable_direct_employer`,
+    `disposition_held_direct_favorite_color`,
+    `disposition_evolving_direct_camera_system`,
+    `disposition_contextual_direct_workspace`,
+    `disposition_stale_direct_old_employer`, and
+    `disposition_policy_bound_direct_deployment_rule`;
+  - each case checks answer shape, trace-packet disposition metadata, and
+    `/v1/slots/{slot_id}` review surfacing;
+  - the eval runner does not seed or mutate live memory; disposition eval cases
+    require a controlled conflicted-slot fixture;
+  - decision: do not add a live-memory seeding endpoint. If live fixture
+    automation becomes necessary, use an isolated temporary Aether data dir and
+    sidecar rather than Nick's live substrate;
+  - `D:\AI_round2\aether-core\scripts\run_disposition_fixture_eval.py` now
+    provides that isolated live fixture path: it creates a temporary Aether dir,
+    seeds synthetic conflicts for all six dispositions, starts a temporary
+    sidecar, runs only the disposition eval cases, and tears the sidecar down;
+  - Workbench shortcut added:
+    `npm run eval:dispositions`;
+  - the isolated eval exposed and repaired a planner ambiguity where
+    `old_employer` could tie with generic `employer`; the planner now prefers
+    longer exact slot phrases in close exact-phrase ties and penalizes generic
+    `employer` when the query says old/previous/former/past employer;
+  - verification:
+    `python -m pytest tests/test_sidecar_app.py -k "direct_conflicted or chat_stream_only_sends" -q`
+    -> `2 passed`;
+    `python -m pytest tests/test_sidecar_direct_answer.py tests/test_workbench_eval.py -q`
+    -> `5 passed`;
+    `python -m pytest tests/test_runtime_query.py tests/test_sidecar_context_bridge.py tests/test_sidecar_app.py tests/test_sidecar_ingest.py tests/test_sidecar_direct_answer.py tests/test_workbench_eval.py -q`
+    -> `55 passed`;
+    `python -m py_compile scripts\workbench_eval.py` -> passed;
+    `python scripts\run_disposition_fixture_eval.py --no-write` -> `6/6 passed`;
+    `npm run eval:dispositions -- --no-write` -> `6/6 passed`;
+    `python -m pytest tests/test_runtime_query.py tests/test_sidecar_context_bridge.py tests/test_sidecar_app.py tests/test_sidecar_ingest.py tests/test_sidecar_direct_answer.py tests/test_workbench_eval.py tests/test_disposition_fixture_eval.py -q`
+    -> `56 passed`;
+    `npm run test:ui -- --run src/App.test.tsx src/components/MemoryDrawer.test.tsx src/components/TraceDrawer.test.tsx src/components/SupportPatternDrawer.test.tsx`
+    -> `21 passed`;
+    `npm run build` -> passed.
+- Phase 1.7 support-pattern fixture eval lane:
+  - `D:\AI_round2\aether-core\scripts\workbench_eval.py` now supports
+    `--include-support-pattern-eval`;
+  - `D:\AI_round2\aether-core\scripts\run_support_pattern_fixture_eval.py`
+    creates an isolated temporary Aether dir, seeds accepted and rejected
+    support-pattern candidates into a temporary Workbench DB, starts a temporary
+    sidecar, runs only the support-pattern eval cases, and tears the sidecar
+    down;
+  - Workbench shortcut added:
+    `npm run eval:support-patterns`;
+  - the fixture verifies accepted support guidance is released through
+    `context_bridge.reviewed_support_patterns`, rejected guidance is excluded,
+    and generated answers follow the reviewed re-entry/boundary guidance;
+  - verification:
+    `python scripts\run_support_pattern_fixture_eval.py --no-write` -> `2/2 passed`;
+    `npm run eval:support-patterns -- --no-write` -> `2/2 passed`;
+    `python -m pytest tests/test_workbench_eval.py tests/test_support_pattern_fixture_eval.py tests/test_sidecar_support_patterns.py -q`
+    -> `10 passed`;
+    `python -m pytest tests/test_runtime_query.py tests/test_sidecar_context_bridge.py tests/test_sidecar_app.py tests/test_sidecar_ingest.py tests/test_sidecar_direct_answer.py tests/test_workbench_eval.py tests/test_disposition_fixture_eval.py tests/test_sidecar_support_patterns.py tests/test_support_pattern_fixture_eval.py -q`
+    -> `64 passed`;
+    `npm run build` -> passed.
+- Phase 2 governed background consolidation / Mirus learner first slice:
+  - design doc added:
+    `D:\AI_round2\docs\plans\AETHER_BACKGROUND_CONSOLIDATION_MIRUS_LOOP_2026-06-24.md`;
+  - pure review-only candidate planner added:
+    `D:\AI_round2\aether-core\aether\sidecar\consolidation.py`;
+  - planner proposes review items from supplied recent turns/traces for
+    contradiction review, support-style review, project-context review, and
+    Aether self-improvement reflections;
+  - planner does not persist anything and every candidate is
+    `review_required=true`, `memory_write_allowed=false`, and
+    `confirmed_fact=false`;
+  - verification:
+    `python -m pytest tests/test_sidecar_consolidation.py -q` -> `3 passed`;
+    `python -m py_compile aether\sidecar\consolidation.py` -> passed;
+  - preview-only API added at `GET /v1/consolidation/candidates?limit=...`;
+  - endpoint reads recent Workbench turns/traces and returns candidates with
+    explicit no-write metadata:
+    `writes_performed=false`, `memory_ingestion_performed=false`,
+    `support_pattern_import_performed=false`, and
+    `reflection_create_performed=false`;
+  - preview candidates now include `review_route` metadata pointing toward the
+    existing review surface: Memory slot review for contradictions, Support
+    draft for support-style candidates, and Reflection drafts for project
+    context/Aether self-improvement candidates;
+  - focused endpoint tests verify preview metadata and read-only behavior:
+    `python -m pytest tests/test_sidecar_consolidation.py -q` -> `5 passed`.
 - Phase 1.7 variance hardening:
   - added a real-use depth floor in the depth/continuation policy: when
     targeted real-use guidance is present and the first answer is thin, Aether
@@ -1210,12 +1353,39 @@ next practical step.
 Goal: accepted reflections should shape behavior more reliably without becoming
 confirmed profile facts.
 
+Phase 2 should also introduce a background consolidation heartbeat: the current
+Aether-language version of OG Mirus. It should periodically review recent
+conversations, traces, failed routes, repair attempts, contradictions, and review
+decisions. Its output is reviewable candidates, not direct memory mutation.
+
+Candidate types:
+
+1. User/project/work context candidates.
+2. Speaking cadence, depth preference, support style, and motivation pattern
+   candidates.
+3. Contradiction review candidates for resolvable, evolving, contextual, stale,
+   held, or policy-bound conflicts.
+4. Aether self-improvement reflections when traces show thin answers,
+   over-governance, missed tone, wrong route, weak tool use, or repair fallback.
+
+Guardrail:
+
+```text
+observe -> summarize -> classify -> propose -> review -> apply
+```
+
+The heartbeat should learn patterns without becoming an unreviewed memory
+crawler. Its job is to make the system more coherent over time while preserving
+traceability and human review.
+
 Next tasks:
 
 1. Make accepted agent reflections stronger input to character guidance.
-2. Keep proposed reflections review-gated.
-3. Add eval cases for accepted/refused reflections.
-4. Add visible trace markers showing when reviewed reflections shaped an answer.
+2. Design the background consolidation heartbeat candidate schema.
+3. Keep all proposed facts, style patterns, and self-improvement reflections
+   review-gated.
+4. Add eval cases for accepted/refused reflections and learner candidates.
+5. Add visible trace markers showing when reviewed reflections shaped an answer.
 
 Guardrail:
 
@@ -1286,8 +1456,10 @@ Continue Aether Workbench in the current aether-core/workbench lane. Do not
 revive the legacy frontend/API and do not do repo breakout cleanup yet.
 
 Immediate next task:
-1. Add Workbench UI affordances for support-pattern candidate review.
-2. Then move into contradiction disposition governance.
+1. Continue Phase 1.8 contradiction disposition governance by broadening review
+   surfacing only if needed; the isolated fixture eval helper now exists.
+2. Continue the Phase 2 background consolidation heartbeat / governed Mirus
+   learner by adding Workbench UI affordances for previewed candidates.
 3. Then continue memory-state/representation compression evals.
 
 Preserve dirty worktree context. Do not reset or delete untracked folders.
@@ -1307,6 +1479,24 @@ scanner now emits review-required support-pattern candidates without body
 extraction or memory writes, and the sidecar now has a revision-guarded,
 idempotent API to import/list/detail/review those candidates. Accepted support
 patterns now feed governed Context Bridge/prompt behavior without becoming
-confirmed facts. The next implementation step is Workbench review UI, then
-contradiction disposition governance. The goal is a coherent local harness that
-reduces frontier-model dependence, not a new architecture detour.
+confirmed facts, and Workbench now has a Support review drawer for accepting,
+deferring, or rejecting those candidates. Phase 1.8 has started: conflicted
+trace packets now carry first-pass contradiction disposition labels and
+Workbench shows them. Prompt contracts and the Memory drawer now use those
+dispositions without resolving or leaking conflicted values. Direct conflicted
+profile lookups now produce deterministic review-style answers, and the eval
+runner has opt-in disposition cases for resolvable, held, evolving, contextual,
+stale, and policy-bound conflicts. Those cases verify answer shape, trace
+metadata, and slot-detail review surfacing against controlled fixtures without
+seeding or mutating Nick's live substrate. An isolated fixture helper now starts
+a temporary sidecar and runs the six disposition cases without touching live
+memory; that helper caught and fixed an `old_employer` versus generic
+`employer` planner ambiguity. The reviewed support-pattern fixture lane is also
+implemented and passing, proving accepted guidance is released while rejected
+guidance stays out. The first safe governed background consolidation / Mirus
+learner slice is now implemented as a pure review-only candidate planner. The
+preview-only endpoint over recent traces is also implemented, and preview
+candidates now include review-route metadata. Next add Workbench UI affordances
+for those previewed candidates, then move into memory-state/context-compression
+evals. The goal is a coherent local harness that reduces
+frontier-model dependence, not a new architecture detour.

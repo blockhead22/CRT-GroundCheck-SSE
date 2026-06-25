@@ -1,4 +1,5 @@
 ﻿import { Brain, Database, MessagesSquare, ShieldCheck, X } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api'
 import { ChatPanel } from './components/ChatPanel'
@@ -6,11 +7,12 @@ import { Header } from './components/Header'
 import { MemoryDrawer } from './components/MemoryDrawer'
 import { ReflectionDrawer } from './components/ReflectionDrawer'
 import { SettingsPopover } from './components/SettingsPopover'
+import { SupportPatternDrawer } from './components/SupportPatternDrawer'
 import { TraceDrawer } from './components/TraceDrawer'
 import type { Conversation, Health, ModelInfo, PatchApplyReceipt, Trace, Turn } from './types'
 import './styles.css'
 
-type Drawer = 'trace' | 'memory' | 'reflect' | null
+type Drawer = 'trace' | 'memory' | 'reflect' | 'support' | null
 
 export default function App() {
   const [health, setHealth] = useState<Health | null>(null)
@@ -183,14 +185,17 @@ export default function App() {
           <button className={drawer === 'reflect' ? 'active' : ''} onClick={() => toggleDrawer('reflect')}>
             <Brain size={17} /><span>Reflect</span>
           </button>
+          <button className={drawer === 'support' ? 'active' : ''} onClick={() => toggleDrawer('support')}>
+            <Sparkles size={17} /><span>Support</span>
+          </button>
         </nav>
       </section>
       {drawer ? (
         <aside className="drawer" aria-label={`${drawer} drawer`}>
           <div className="drawer-header">
             <div>
-              {drawer === 'trace' ? <ShieldCheck size={18} /> : drawer === 'memory' ? <Database size={18} /> : <Brain size={18} />}
-              <span>{drawer === 'trace' ? 'Release trace' : drawer === 'memory' ? 'Governed memory' : 'Reflection review'}</span>
+              {drawer === 'trace' ? <ShieldCheck size={18} /> : drawer === 'memory' ? <Database size={18} /> : drawer === 'reflect' ? <Brain size={18} /> : <Sparkles size={18} />}
+              <span>{drawer === 'trace' ? 'Release trace' : drawer === 'memory' ? 'Governed memory' : drawer === 'reflect' ? 'Reflection review' : 'Support review'}</span>
             </div>
             <button aria-label="Close drawer" onClick={() => {
               setDrawer(null)
@@ -201,7 +206,9 @@ export default function App() {
             ? <TraceDrawer trace={trace} error={traceError} onApplyPatch={applyPatch} />
             : drawer === 'memory'
               ? <MemoryDrawer refreshKey={memoryRefresh} onMutated={() => setMemoryRefresh((value) => value + 1)} />
-              : <ReflectionDrawer />}
+              : drawer === 'reflect'
+                ? <ReflectionDrawer />
+                : <SupportPatternDrawer />}
         </aside>
       ) : null}
     </div>

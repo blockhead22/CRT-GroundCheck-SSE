@@ -9,6 +9,7 @@
   Turn,
   PatchApplyReceipt,
   Reflection,
+  SupportPattern,
 } from './types'
 
 const API_BASE = import.meta.env.VITE_AETHER_API_BASE || 'http://127.0.0.1:8765'
@@ -84,6 +85,18 @@ export const api = {
   reflection: (reflectionId: string) => request<Reflection>(`/v1/reflections/${encodeURIComponent(reflectionId)}`),
   reviewReflection: (reflectionId: string, body: Record<string, unknown>) =>
     request(`/v1/reflections/${encodeURIComponent(reflectionId)}/review`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  supportPatterns: async (status = '', category = '') => {
+    const params = new URLSearchParams()
+    if (status) params.set('status', status)
+    if (category) params.set('category', category)
+    const suffix = params.toString() ? `?${params}` : ''
+    return (await request<{ candidates: SupportPattern[] }>(`/v1/support-patterns${suffix}`)).candidates
+  },
+  reviewSupportPattern: (candidateId: string, body: Record<string, unknown>) =>
+    request(`/v1/support-patterns/${encodeURIComponent(candidateId)}/review`, {
       method: 'POST',
       body: JSON.stringify(body),
     }),

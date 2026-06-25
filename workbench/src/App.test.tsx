@@ -70,6 +70,7 @@ beforeEach(() => {
     if (url.endsWith('/v1/conversations/conv-1/turns')) return new Response(JSON.stringify({ turns }), { status: 200 })
     if (url.endsWith('/v1/traces/turn-old')) return new Response(JSON.stringify({ trace }), { status: 200 })
     if (url.includes('/v1/slots')) return new Response(JSON.stringify({ revision_hash: 'rev', slots: [] }), { status: 200 })
+    if (url.includes('/v1/support-patterns')) return new Response(JSON.stringify({ candidates: [] }), { status: 200 })
     return new Response(JSON.stringify({ turns: [] }), { status: 200 })
   }))
 })
@@ -95,6 +96,15 @@ test('opens the reflect drawer from bottom navigation', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Reflect' }))
   expect(screen.getByLabelText('reflect drawer')).toBeInTheDocument()
   expect(screen.getByText('Reflection review')).toBeInTheDocument()
+  expect(window.aetherDesktop?.setExpanded).toHaveBeenCalledWith(true)
+})
+
+test('opens the support-pattern review drawer from bottom navigation', async () => {
+  render(<App />)
+  await screen.findByText('Local')
+  fireEvent.click(screen.getByRole('button', { name: 'Support' }))
+  expect(screen.getByLabelText('support drawer')).toBeInTheDocument()
+  expect(screen.getByText('Support review')).toBeInTheDocument()
   expect(window.aetherDesktop?.setExpanded).toHaveBeenCalledWith(true)
 })
 

@@ -311,6 +311,16 @@ export function TraceDrawer({
                   <span>{packet.mode}</span>
                   <span>{packet.reason.replaceAll('_', ' ')}</span>
                 </div>
+                {packet.contradiction_disposition ? (
+                  <div className="disposition-row" aria-label="Contradiction disposition">
+                    <strong>{packet.contradiction_disposition.label.replaceAll('_', ' ')}</strong>
+                    <span>
+                      {packet.contradiction_disposition.reason.replaceAll('_', ' ')}
+                      {' '}
+                      ({Math.round(packet.contradiction_disposition.confidence * 100)}%)
+                    </span>
+                  </div>
+                ) : null}
                 {packet.evidence.map((item) => (
                   <div className="evidence-row" key={item.state_id}>
                     <div>
