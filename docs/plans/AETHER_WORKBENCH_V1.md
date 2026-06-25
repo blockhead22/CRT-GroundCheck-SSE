@@ -20,6 +20,12 @@ Recovered concept integration audit:
 D:\AI_round2\docs\plans\AETHER_RECOVERED_CONCEPT_INTEGRATION_AUDIT_2026-06-24.md
 ```
 
+Isolated fixture eval runbook:
+
+```text
+D:\AI_round2\docs\plans\AETHER_ISOLATED_FIXTURE_EVAL_RUNBOOK_2026-06-25.md
+```
+
 Use the recovered-principles checkpoint as the current-language extraction from
 Lumi, CRT, CogniForge, and the original white paper. Do not carry old project
 names forward as product surface unless they map cleanly to current Aether
@@ -275,6 +281,70 @@ The original v1 proof loop is now implemented far enough to dogfood:
   full final answer for required style anchors and unrequested code/coding
   drift, asks for one repair when needed, and falls back to a deterministic
   governed answer if the local model keeps violating the hard anchors.
+- Phase 1.7 project-business continuity repair added after live testing exposed
+  a generic answer to the prompt about refiling an LLC and possibly registering
+  Aeteros as an AI company. Context Bridge now treats Aeteros/LLC/AI-company
+  prompts as project context, preserves the exact Aeteros spelling, connects the
+  answer to the Aeteros/Aether/CORE-CRT/Aether Workbench lineage, avoids generic
+  startup checklists, applies the real-use depth floor, and adds
+  `real_use_aeteros_llc_ai_company` to the opt-in real-use eval lane. Focused
+  verification:
+  `python -m pytest tests/test_sidecar_context_bridge.py tests/test_sidecar_app.py::test_real_use_aeteros_business_guidance_is_prompted_and_traced tests/test_sidecar_app.py::test_real_use_aeteros_business_repairs_generic_startup_checklist tests/test_sidecar_depth.py tests/test_workbench_eval.py -q`
+  -> `33 passed`; broader sidecar smoke:
+  `python -m pytest tests/test_sidecar_context_bridge.py tests/test_sidecar_app.py tests/test_sidecar_depth.py tests/test_workbench_eval.py tests/test_sidecar_ingest.py tests/test_runtime_query.py tests/test_sidecar_direct_answer.py tests/test_sidecar_consolidation.py tests/test_support_pattern_fixture_eval.py tests/test_disposition_fixture_eval.py tests/test_sidecar_support_patterns.py -q`
+  -> `89 passed`.
+- Phase 1.7 Nick-style real-use proxy expansion added for autonomous testing:
+  - new opt-in eval cases:
+    `real_use_project_doubt_viability`,
+    `real_use_autonomous_checkin_status`,
+    `real_use_archive_style_boundary`;
+  - prompt scaffolding now covers project doubt/viability questions, autonomous
+    status/check-in questions, and GPT archive/style-mining boundary questions;
+  - these lanes are repairable/buffered before streaming and receive the
+    real-use depth floor when triggered;
+  - body-safe ChatGPT archive scan rerun with no title examples:
+    `D:\AI_round2\aether-core\.eval-runs\chatgpt_archive_scan_20260624_220305_style_proxy.json`;
+  - scan result: 1,275 conversations, 96,980 messages counted,
+    `message_bodies_extracted=false`, `memory_ingestion_performed=false`;
+    review-required support-pattern candidates remain title/category-derived
+    only: Aether/AI, coding/project, creative voice, spiral depth, motivation
+    support, business/admin, and personal-history warning;
+  - verification:
+    `python -m pytest tests/test_sidecar_app.py tests/test_sidecar_depth.py tests/test_workbench_eval.py tests/test_sidecar_context_bridge.py tests/test_sidecar_ingest.py tests/test_runtime_query.py tests/test_sidecar_direct_answer.py tests/test_sidecar_consolidation.py tests/test_support_pattern_fixture_eval.py tests/test_disposition_fixture_eval.py tests/test_sidecar_support_patterns.py -q`
+    -> `93 passed`;
+    `python -m py_compile aether\sidecar\prompt.py aether\sidecar\app.py aether\sidecar\depth.py scripts\workbench_eval.py`
+    -> passed.
+- Isolated fixture eval runbook added:
+  `D:\AI_round2\docs\plans\AETHER_ISOLATED_FIXTURE_EVAL_RUNBOOK_2026-06-25.md`.
+  Workbench npm aliases now include:
+  - `npm run eval:dispositions:no-write`;
+  - `npm run eval:dispositions:keep`;
+  - `npm run eval:support-patterns:no-write`;
+  - `npm run eval:support-patterns:keep`.
+  The runbook documents why direct `--include-disposition-eval` requires a
+  controlled fixture sidecar and should not be run against Nick's live substrate
+  expecting seeded synthetic conflicts.
+- Workbench learner preview UI added for the Phase 2 governed consolidation /
+  Mirus lane:
+  - bottom navigation now includes a read-only `Learn` drawer;
+  - the drawer calls `GET /v1/consolidation/candidates?limit=20`;
+  - it shows preview-only safety flags, inspected-turn count, review-route
+    surfaces, proposed actions, risk boundaries, and evidence summaries;
+  - each mapped route can open the existing Memory, Support, or Reflection
+    review drawer without approving or applying the candidate;
+  - contradiction-review routes pass their `slot_id` into Memory, preselect the
+    exact slot detail, and show a learner-origin review banner without mutating
+    memory;
+  - support/reflection candidates with adapter drafts now show a bounded draft
+    payload preview so the review step is concrete without submitting anything;
+  - it does not write memory, import support patterns, or create reflections;
+  - candidates still have to route through Memory, Support, or Reflection review
+    surfaces before becoming durable;
+  - verification:
+    `npm run test:ui -- --run src/components/ConsolidationDrawer.test.tsx src/components/MemoryDrawer.test.tsx src/App.test.tsx`
+    -> `15 passed`;
+    `npm run build` -> passed;
+    `python -m pytest tests/test_sidecar_consolidation.py -q` -> `5 passed`.
 - Fresh focused verification after restarting the live sidecar:
   - `python -m pytest tests/test_sidecar_app.py -k "real_use_tone_personality" -q`
     -> `3 passed`;

@@ -1,8 +1,10 @@
 ﻿import { Brain, Database, MessagesSquare, ShieldCheck, X } from 'lucide-react'
 import { Sparkles } from 'lucide-react'
+import { GitBranch } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api'
 import { ChatPanel } from './components/ChatPanel'
+import { ConsolidationDrawer } from './components/ConsolidationDrawer'
 import { Header } from './components/Header'
 import { MemoryDrawer } from './components/MemoryDrawer'
 import { ReflectionDrawer } from './components/ReflectionDrawer'
@@ -12,7 +14,7 @@ import { TraceDrawer } from './components/TraceDrawer'
 import type { Conversation, Health, ModelInfo, PatchApplyReceipt, Trace, Turn } from './types'
 import './styles.css'
 
-type Drawer = 'trace' | 'memory' | 'reflect' | 'support' | null
+type Drawer = 'trace' | 'memory' | 'reflect' | 'support' | 'learn' | null
 
 export default function App() {
   const [health, setHealth] = useState<Health | null>(null)
@@ -28,6 +30,7 @@ export default function App() {
   const [pinned, setPinned] = useState(true)
   const [floating, setFloating] = useState(false)
   const [memoryRefresh, setMemoryRefresh] = useState(0)
+  const [memoryPreselectSlot, setMemoryPreselectSlot] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.allSettled([api.health(), api.models(), api.conversations()]).then(([healthResult, modelsResult, conversationsResult]) => {
@@ -63,12 +66,20 @@ export default function App() {
   }, [conversationId])
 
   const toggleDrawer = useCallback((next: Exclude<Drawer, null>) => {
+    setMemoryPreselectSlot(null)
     setDrawer((current) => {
       const value = current === next ? null : next
       void window.aetherDesktop?.setExpanded(Boolean(value))
       return value
     })
     setSettings(false)
+  }, [])
+
+  const openReviewSurface = useCallback((next: 'memory' | 'support' | 'reflect', options?: { slotId?: string }) => {
+    setMemoryPreselectSlot(next === 'memory' ? options?.slotId || null : null)
+    setDrawer(next)
+    setSettings(false)
+    void window.aetherDesktop?.setExpanded(true)
   }, [])
 
   async function togglePinned() {
@@ -172,6 +183,7 @@ export default function App() {
         <nav className="bottom-nav" aria-label="Workbench panels">
           <button className={!drawer ? 'active' : ''} onClick={() => {
             setDrawer(null)
+            setMemoryPreselectSlot(null)
             void window.aetherDesktop?.setExpanded(false)
           }}>
             <MessagesSquare size={17} /><span>Chat</span>
@@ -188,27 +200,33 @@ export default function App() {
           <button className={drawer === 'support' ? 'active' : ''} onClick={() => toggleDrawer('support')}>
             <Sparkles size={17} /><span>Support</span>
           </button>
+          <button className={drawer === 'learn' ? 'active' : ''} onClick={() => toggleDrawer('learn')}>
+            <GitBranch size={17} /><span>Learn</span>
+          </button>
         </nav>
       </section>
       {drawer ? (
         <aside className="drawer" aria-label={`${drawer} drawer`}>
           <div className="drawer-header">
             <div>
-              {drawer === 'trace' ? <ShieldCheck size={18} /> : drawer === 'memory' ? <Database size={18} /> : drawer === 'reflect' ? <Brain size={18} /> : <Sparkles size={18} />}
-              <span>{drawer === 'trace' ? 'Release trace' : drawer === 'memory' ? 'Governed memory' : drawer === 'reflect' ? 'Reflection review' : 'Support review'}</span>
+              {drawer === 'trace' ? <ShieldCheck size={18} /> : drawer === 'memory' ? <Database size={18} /> : drawer === 'reflect' ? <Brain size={18} /> : drawer === 'support' ? <Sparkles size={18} /> : <GitBranch size={18} />}
+              <span>{drawer === 'trace' ? 'Release trace' : drawer === 'memory' ? 'Governed memory' : drawer === 'reflect' ? 'Reflection review' : drawer === 'support' ? 'Support review' : 'Learner preview'}</span>
             </div>
             <button aria-label="Close drawer" onClick={() => {
               setDrawer(null)
+              setMemoryPreselectSlot(null)
               void window.aetherDesktop?.setExpanded(false)
             }}><X size={17} /></button>
           </div>
           {drawer === 'trace'
             ? <TraceDrawer trace={trace} error={traceError} onApplyPatch={applyPatch} />
             : drawer === 'memory'
-              ? <MemoryDrawer refreshKey={memoryRefresh} onMutated={() => setMemoryRefresh((value) => value + 1)} />
+              ? <MemoryDrawer refreshKey={memoryRefresh} preselectedSlotId={memoryPreselectSlot} onMutated={() => setMemoryRefresh((value) => value + 1)} />
               : drawer === 'reflect'
                 ? <ReflectionDrawer />
-                : <SupportPatternDrawer />}
+                : drawer === 'support'
+                  ? <SupportPatternDrawer />
+                  : <ConsolidationDrawer onOpenReviewSurface={openReviewSurface} />}
         </aside>
       ) : null}
     </div>

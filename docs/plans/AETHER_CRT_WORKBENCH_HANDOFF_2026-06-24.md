@@ -20,6 +20,12 @@ Recovered concept integration audit and main-roadmap on-ramp:
 D:\AI_round2\docs\plans\AETHER_RECOVERED_CONCEPT_INTEGRATION_AUDIT_2026-06-24.md
 ```
 
+Isolated fixture eval runbook:
+
+```text
+D:\AI_round2\docs\plans\AETHER_ISOLATED_FIXTURE_EVAL_RUNBOOK_2026-06-25.md
+```
+
 Do not revive the legacy frontend/API. Do not pause active development for a repo
 breakout yet. The newer Aether lane is still buried inside `AI_round2` on
 purpose for now; breakout and old-code removal come later.
@@ -1048,6 +1054,63 @@ Evidence that shaped this phase:
   - targeted real-use prompt scaffolding now covers practical
     permission/boundary language, abrupt topic switches, legal-adjacent planning
     caution, medical-adjacent support, and walking/scale re-entry support;
+  - project-business continuity hardening now covers the live Aeteros/LLC/AI
+    company prompt: Context Bridge releases Aeteros/Aether/CORE-CRT/Workbench
+    project context, preserves exact Aeteros spelling, avoids generic startup
+    checklist framing, applies the real-use depth floor, buffers/repairs the
+    lane before streaming, and adds `real_use_aeteros_llc_ai_company` to the
+    opt-in real-use eval set;
+  - Nick-style autonomous testing proxy expanded with three more opt-in
+    real-use cases:
+    `real_use_project_doubt_viability`,
+    `real_use_autonomous_checkin_status`,
+    `real_use_archive_style_boundary`;
+  - prompt scaffolding now covers project doubt/viability, status/check-in
+    synthesis, and GPT archive/style-mining boundaries; these lanes are
+    repairable/buffered before streaming and receive the real-use depth floor;
+  - body-safe GPT archive scan rerun with no title examples:
+    `D:\AI_round2\aether-core\.eval-runs\chatgpt_archive_scan_20260624_220305_style_proxy.json`;
+    result: 1,275 conversations, 96,980 messages counted,
+    `message_bodies_extracted=false`, `memory_ingestion_performed=false`;
+    support candidates remain review-required and title/category-derived only;
+  - focused verification for the Aeteros lane:
+    `python -m pytest tests/test_sidecar_context_bridge.py tests/test_sidecar_app.py::test_real_use_aeteros_business_guidance_is_prompted_and_traced tests/test_sidecar_app.py::test_real_use_aeteros_business_repairs_generic_startup_checklist tests/test_sidecar_depth.py tests/test_workbench_eval.py -q`
+    -> `33 passed`;
+  - broader sidecar smoke after the patch:
+    `python -m pytest tests/test_sidecar_context_bridge.py tests/test_sidecar_app.py tests/test_sidecar_depth.py tests/test_workbench_eval.py tests/test_sidecar_ingest.py tests/test_runtime_query.py tests/test_sidecar_direct_answer.py tests/test_sidecar_consolidation.py tests/test_support_pattern_fixture_eval.py tests/test_disposition_fixture_eval.py tests/test_sidecar_support_patterns.py -q`
+    -> `89 passed`;
+  - broader sidecar smoke after the Nick-style proxy expansion:
+    `python -m pytest tests/test_sidecar_app.py tests/test_sidecar_depth.py tests/test_workbench_eval.py tests/test_sidecar_context_bridge.py tests/test_sidecar_ingest.py tests/test_runtime_query.py tests/test_sidecar_direct_answer.py tests/test_sidecar_consolidation.py tests/test_support_pattern_fixture_eval.py tests/test_disposition_fixture_eval.py tests/test_sidecar_support_patterns.py -q`
+    -> `93 passed`;
+  - isolated fixture eval runbook added at
+    `D:\AI_round2\docs\plans\AETHER_ISOLATED_FIXTURE_EVAL_RUNBOOK_2026-06-25.md`;
+    Workbench npm aliases now include `eval:dispositions:no-write`,
+    `eval:dispositions:keep`, `eval:support-patterns:no-write`, and
+    `eval:support-patterns:keep`;
+    the runbook documents that direct `--include-disposition-eval` requires a
+    controlled temporary sidecar fixture and should not be expected to pass
+    against Nick's live substrate without seeded synthetic conflicts;
+  - Workbench learner preview UI added for the Phase 2 governed consolidation /
+    Mirus lane: bottom navigation now includes a read-only `Learn` drawer that
+    calls `GET /v1/consolidation/candidates?limit=20`, shows preview-only
+    safety flags, inspected-turn count, review-route surfaces, proposed actions,
+    risk boundaries, and evidence summaries, and can open mapped Memory,
+    Support, or Reflection review drawers without approving or applying the
+    candidate;
+  - contradiction-review routes pass their `slot_id` into Memory, preselect the
+    exact slot detail, and show a learner-origin review banner without mutating
+    memory;
+  - support/reflection candidates with adapter drafts now show a bounded draft
+    payload preview so the review step is concrete without submitting anything;
+  - the learner drawer does not write memory, import support patterns, or create
+    reflections;
+  - learner candidates remain suggestions only until they route through Memory,
+    Support, or Reflection review surfaces before becoming durable;
+  - learner preview verification:
+    `npm run test:ui -- --run src/components/ConsolidationDrawer.test.tsx src/components/MemoryDrawer.test.tsx src/App.test.tsx`
+    -> `15 passed`;
+    `npm run build` -> passed;
+    `python -m pytest tests/test_sidecar_consolidation.py -q` -> `5 passed`;
   - current focused live report:
     `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_165625.json`;
   - focused result: `4/4` passing on a fresh sidecar;

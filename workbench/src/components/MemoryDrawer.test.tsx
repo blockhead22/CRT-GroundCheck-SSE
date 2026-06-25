@@ -61,6 +61,7 @@ const detail = {
 }
 
 beforeEach(() => {
+  vi.clearAllMocks()
   vi.mocked(api.slots).mockResolvedValue({ revision_hash: 'revision-1', slots: [summary] })
   vi.mocked(api.slot).mockResolvedValue(detail)
   vi.mocked(api.correct).mockResolvedValue({})
@@ -89,4 +90,14 @@ test('opens a slot and writes an explicit correction', async () => {
     }),
   ))
   expect(onMutated).toHaveBeenCalled()
+})
+
+test('loads a learner-preselected slot without mutating memory', async () => {
+  render(<MemoryDrawer refreshKey={0} preselectedSlotId="user:hobby" onMutated={vi.fn()} />)
+
+  expect(await screen.findByText('Opened from learner candidate. Review before confirming, correcting, or quarantining.')).toBeInTheDocument()
+  expect(api.slot).toHaveBeenCalledWith('user:hobby')
+  expect(api.correct).not.toHaveBeenCalled()
+  expect(api.confirm).not.toHaveBeenCalled()
+  expect(api.quarantine).not.toHaveBeenCalled()
 })

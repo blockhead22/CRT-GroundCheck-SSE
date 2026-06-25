@@ -10,6 +10,7 @@
   PatchApplyReceipt,
   Reflection,
   SupportPattern,
+  ConsolidationPreview,
 } from './types'
 
 const API_BASE = import.meta.env.VITE_AETHER_API_BASE || 'http://127.0.0.1:8765'
@@ -100,6 +101,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  consolidationCandidates: (limit = 20) =>
+    request<ConsolidationPreview>(`/v1/consolidation/candidates?limit=${encodeURIComponent(String(limit))}`),
   documents: () => request<{ documents: Array<{
     document_id: string
     title: string

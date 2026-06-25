@@ -261,6 +261,43 @@ export interface SupportPattern {
   }>
   revision_hash: string
 }
+
+export interface ConsolidationCandidate {
+  candidate_id: string
+  candidate_type: 'background_consolidation_candidate'
+  category: string
+  candidate_kind: string
+  summary: string
+  proposed_action: string
+  risk: string
+  review_required: boolean
+  memory_write_allowed: boolean
+  confirmed_fact: boolean
+  review_route: {
+    surface: 'memory' | 'support_patterns' | 'reflections' | string
+    action: string
+    endpoint?: string
+    slot_id?: string
+    disposition_label?: string
+    requires_adapter?: boolean
+    draft?: Record<string, unknown>
+  }
+  evidence: Array<{
+    evidence_type: string
+    reference_id: string
+    summary: string
+  }>
+}
+
+export interface ConsolidationPreview {
+  mode: 'preview_only'
+  writes_performed: boolean
+  memory_ingestion_performed: boolean
+  support_pattern_import_performed: boolean
+  reflection_create_performed: boolean
+  inspected_turn_count: number
+  candidates: ConsolidationCandidate[]
+}
 export interface ChatEvents {
   onTurn: (data: { turn_id: string; conversation_id: string }) => void
   onTrace: (trace: Trace) => void

@@ -6,9 +6,10 @@ import type { SlotDetail, SlotSummary } from '../types'
 interface MemoryDrawerProps {
   refreshKey: number
   onMutated: () => void
+  preselectedSlotId?: string | null
 }
 
-export function MemoryDrawer({ refreshKey, onMutated }: MemoryDrawerProps) {
+export function MemoryDrawer({ refreshKey, onMutated, preselectedSlotId = null }: MemoryDrawerProps) {
   const [query, setQuery] = useState('')
   const [slots, setSlots] = useState<SlotSummary[]>([])
   const [selected, setSelected] = useState<SlotDetail | null>(null)
@@ -29,8 +30,13 @@ export function MemoryDrawer({ refreshKey, onMutated }: MemoryDrawerProps) {
     }
   }, [query, refreshKey])
 
+  useEffect(() => {
+    if (preselectedSlotId) void loadSlot(preselectedSlotId)
+  }, [preselectedSlotId])
+
   async function loadSlot(slotId: string) {
     setNotice('')
+    setCorrection('')
     try {
       setSelected(await api.slot(slotId))
     } catch (error) {
@@ -69,6 +75,11 @@ export function MemoryDrawer({ refreshKey, onMutated }: MemoryDrawerProps) {
           </span>
         </div>
         {notice ? <div className="inline-notice">{notice}</div> : null}
+        {preselectedSlotId === selected.slot_id ? (
+          <div className="memory-preselected" aria-label="Learner candidate memory target">
+            Opened from learner candidate. Review before confirming, correcting, or quarantining.
+          </div>
+        ) : null}
         {selected.contradiction_disposition ? (
           <div className="memory-disposition" aria-label="Memory contradiction disposition">
             <span>Contradiction disposition</span>
