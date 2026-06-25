@@ -76,7 +76,7 @@ Do not bring forward:
 | Blockhead fallback | Low-confidence humanistic fallback | Missing and worth building | uncertainty/scaffold boundaries exist | fallback phrasing can be generic or over-governed | 1.7/1.8 | low-confidence support responses | prompt templates, route fallbacks | Build bounded fallback language |
 | Soft config toggles | Feature flags/dev controls | Already exists | eval flags, env roots, model selection, dev scripts | Need clearer operator docs over time | 1.6+ | config regression smoke | docs/dev shortcuts, app settings later | Keep current approach |
 | Claude Code source patterns | Code Context Tools v1 architecture | Already integrated conceptually | `AETHER_LOCAL_CODER_V1.md`, reference-root eval, trace code metadata | Need more programming robustness and diagnostics | 1.6 | programming eval expansion | code tools, trace drawer, escalation packet | Continue Phase 1.6 path |
-| ChatGPT archive | Longitudinal support-pattern archive | Exists but weak | dry-run scanner, title buckets, no message-body ingestion, review-required support-pattern candidates from title-category counts | No persisted review queue/API/UI for accepting or rejecting candidates yet | 1.7/2 | archive-derived candidate review eval | archive scanner, review queue, memory candidate UI | Build reviewed extraction only |
+| ChatGPT archive | Longitudinal support-pattern archive | Exists but weak | dry-run scanner, title buckets, no message-body ingestion, review-required support-pattern candidates from title-category counts, revision-guarded import/list/detail/review API, accepted patterns released through Context Bridge/prompt guidance | No Workbench UI yet; accepted-pattern behavior needs broader live eval coverage | 1.7/2 | archive-derived candidate review eval | archive scanner, review queue, memory candidate UI | Build reviewed extraction only |
 | Belief variance labs | Variance measurement and repair | Exists but weak | variance probes, density/splats docs, Phase 1.7 model sweeps | Repair mechanisms lag measurement | 1.7/1.8 | repeated model/case variance evals | eval runner, repair controller, route metadata | Convert measurement into repair |
 | Fidelity bench | Belief/speech gap measurement | Exists but weak | Fisher-Rao/cosine A/B, belief/speech rows | Workbench does not yet expose gap clearly | 1.8/1.9 | belief/speech trace eval | trace drawer, fidelity scoring hooks | Surface as diagnostic |
 
@@ -87,7 +87,7 @@ Before continuing feature work, use this audit to lock the next roadmap sequence
 1. Phase 1.7 stabilization:
 
    - stabilize tone/personality regression with a small repair pass for missing required style anchors;
-   - wire reviewed support-pattern candidates for ChatGPT archive-derived patterns into an explicit review surface;
+   - add Workbench review UI for support-pattern candidates;
    - keep archive material out of confirmed memory until reviewed.
 
 2. Phase 1.8 contradiction disposition governance:
@@ -127,14 +127,16 @@ The Phase 1.7 repair pass now has fresh split full-lane verification:
 core 9/9 + depth 4/4 + programming 6/6 + real-use 6/6 = 25/25
 ```
 
-The next concrete code task is the review surface/API for ChatGPT
-archive-derived support-pattern candidates.
+The support-pattern import/list/detail/review API exists, and accepted support
+patterns now feed governed Context Bridge/prompt behavior. The next concrete
+task is Workbench review UI or the first Phase 1.8 contradiction disposition
+slice.
 
 Why this first:
 
 - It directly improves Nick's real use style.
-- It lets Nick accept, reject, or revise archive-derived support-pattern
-  candidates before they influence Aether behavior.
+- It gives Nick a visible way to accept/reject support-pattern guidance and then
+  moves the roadmap toward contradiction dispositions.
 - It is smaller than contradiction dispositions or compression replay.
 - It gives the automation a clean continuation target.
 

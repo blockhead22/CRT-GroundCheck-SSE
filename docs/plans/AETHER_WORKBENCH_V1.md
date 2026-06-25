@@ -86,6 +86,23 @@ The original v1 proof loop is now implemented far enough to dogfood:
   `D:\AI_round2\aether-core\.eval-runs\chatgpt_archive_scan_20260624_phase17.json`.
   Latest support-candidate dry run:
   `D:\AI_round2\aether-core\.eval-runs\chatgpt_archive_scan_20260624_support_candidates.json`.
+- Phase 1.7 support-pattern review API implemented:
+  - DB tables for support-pattern candidates and review receipts;
+  - `GET /v1/support-patterns`;
+  - `POST /v1/support-patterns/import`;
+  - `GET /v1/support-patterns/{candidate_id}`;
+  - `POST /v1/support-patterns/{candidate_id}/review`;
+  - review actions are revision-guarded and idempotent;
+  - accepted/rejected candidates cannot be overwritten by a later archive scan;
+  - candidates remain separate from confirmed memory and still do not write
+    substrate facts.
+- Phase 1.7 accepted support-pattern behavior input implemented:
+  - Context Bridge now includes accepted support-pattern candidates as
+    `reviewed_support_patterns`;
+  - local prompt formatting releases accepted support patterns as behavioral
+    guidance with their boundary/risk text;
+  - rejected/deferred support patterns stay out of prompts;
+  - trace payloads expose which accepted support patterns were released.
 - Phase 1.7 opt-in real-use reliability eval cases added to
   `D:\AI_round2\aether-core\scripts\workbench_eval.py` behind
   `--include-real-use-eval`. Targeted real-use prompt scaffolding now covers
@@ -166,13 +183,11 @@ Next work should stabilize this lane rather than revive legacy code. The
 integration audit is complete enough to resume implementation work:
 
 0. consult the integration audit before pulling recovered concepts forward;
-1. wire archive-derived support-pattern candidates into a review surface/API
-   without treating them as confirmed facts;
-2. make accepted reviewed support patterns/reflections stronger but still
-   governed behavior input.
-3. fold recovered-principles work into evals: contradiction dispositions,
+1. add Workbench UI affordances for support-pattern candidate review.
+2. fold recovered-principles work into evals: contradiction dispositions,
    memory-state/context compression, belief/speech separation, and trace-as-
    training-signal review.
+3. start Phase 1.8 contradiction disposition governance.
 
 Depth mode should be implemented as a governed multi-pass answer-quality loop:
 detect requested depth, optionally make a short user-facing approach plan,
@@ -230,9 +245,12 @@ ingestion. It parses metadata/titles, labels likely
 spiral/support/project/history threads, counts structure, and writes explicit
 `memory_ingestion_performed=false` / `message_bodies_extracted=false` safety
 metadata. It now also emits review-required support-pattern candidates from
-title-category counts only. Next, wire those candidates into an explicit review
-surface/API and only then let accepted patterns influence behavior. Do not
-inject the GPT voice into Aether.
+title-category counts only, and the sidecar now has a revision-guarded,
+idempotent review API for importing/listing/detailing/reviewing those
+candidates. Accepted support patterns now influence behavior through governed
+Context Bridge/prompt inputs without becoming confirmed facts. Next, add
+Workbench UI review affordances and continue into contradiction disposition
+governance. Do not inject the GPT voice into Aether.
 
 ## Developer shortcuts
 

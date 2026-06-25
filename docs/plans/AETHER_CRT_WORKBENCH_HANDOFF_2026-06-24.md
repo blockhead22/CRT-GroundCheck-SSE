@@ -929,9 +929,9 @@ Next tasks:
 
 0. Use the recovered concept integration audit as the on-ramp back to the main
    roadmap; avoid more broad artifact diving unless a specific gap requires it.
-1. Wire archive-derived support-pattern candidates into a review surface/API
-   without treating them as confirmed facts.
-2. Then continue reviewed-reflection governance.
+1. Add Workbench UI affordances for support-pattern candidate review.
+2. Then move into contradiction disposition governance.
+3. Then continue memory-state/representation compression evals.
 
 Success standard:
 
@@ -1008,6 +1008,26 @@ Evidence that shaped this phase:
     - real-export candidates: spiral depth, motivation/support,
       creative voice, coding/project workflow, business/admin workflow,
       Aether/AI project continuity, and personal-history review warning.
+  - support-pattern review API:
+    - new sidecar store:
+      `D:\AI_round2\aether-core\aether\sidecar\support_patterns.py`;
+    - DB tables for support-pattern candidates and reviews;
+    - endpoints:
+      `GET /v1/support-patterns`,
+      `POST /v1/support-patterns/import`,
+      `GET /v1/support-patterns/{candidate_id}`,
+      `POST /v1/support-patterns/{candidate_id}/review`;
+    - imports require `review_required=true`, `memory_write_allowed=false`,
+      and `confirmed_fact=false`;
+    - reviews are revision-guarded and idempotent;
+    - accepted/rejected candidates cannot be overwritten by a later scan.
+  - accepted support-pattern behavior input:
+    - Context Bridge now includes accepted support-pattern candidates as
+      `reviewed_support_patterns`;
+    - prompt formatting releases accepted support patterns as behavioral
+      guidance plus their boundary/risk text;
+    - rejected/deferred support patterns stay out of prompts;
+    - traces expose which accepted support patterns were released.
 - Phase 1.7 opt-in real-use reliability eval lane:
   - cases added behind `--include-real-use-eval` in
     `D:\AI_round2\aether-core\scripts\workbench_eval.py`;
@@ -1170,7 +1190,10 @@ Seed eval cases:
      first-pass title-keyword level;
    - support-pattern candidates now exist separately from candidate facts and
      are review-required/non-memory by default;
-   - next step is persisted review/API/UI for those candidates;
+   - persisted review/API now exists for those candidates;
+   - accepted patterns now feed governed behavior through Context Bridge/prompt
+     guidance;
+   - next step is Workbench review UI and broader behavior eval coverage;
    - require review before durable memory writes.
 
 Success standard:
@@ -1263,9 +1286,9 @@ Continue Aether Workbench in the current aether-core/workbench lane. Do not
 revive the legacy frontend/API and do not do repo breakout cleanup yet.
 
 Immediate next task:
-1. Wire archive-derived support-pattern candidates into a review surface/API without treating them as confirmed facts.
-2. Then continue reviewed-reflection governance.
-3. Then move into contradiction disposition governance.
+1. Add Workbench UI affordances for support-pattern candidate review.
+2. Then move into contradiction disposition governance.
+3. Then continue memory-state/representation compression evals.
 
 Preserve dirty worktree context. Do not reset or delete untracked folders.
 ```
@@ -1281,7 +1304,9 @@ archive without memory ingestion or message-body extraction, the original
 four-case real-use lane passes across qwen2.5, phi3, and gemma3, and the fresh
 split full lane now passes `25/25` after tone/personality repair. The archive
 scanner now emits review-required support-pattern candidates without body
-extraction or memory writes. The next implementation step is a review surface/API
-for those candidates, then reviewed-reflection governance. The goal is a
-coherent local harness that reduces frontier-model dependence, not a new
-architecture detour.
+extraction or memory writes, and the sidecar now has a revision-guarded,
+idempotent API to import/list/detail/review those candidates. Accepted support
+patterns now feed governed Context Bridge/prompt behavior without becoming
+confirmed facts. The next implementation step is Workbench review UI, then
+contradiction disposition governance. The goal is a coherent local harness that
+reduces frontier-model dependence, not a new architecture detour.
