@@ -11,7 +11,7 @@ import { ReflectionDrawer } from './components/ReflectionDrawer'
 import { SettingsPopover } from './components/SettingsPopover'
 import { SupportPatternDrawer } from './components/SupportPatternDrawer'
 import { TraceDrawer } from './components/TraceDrawer'
-import type { Conversation, Health, ModelInfo, PatchApplyReceipt, Trace, Turn } from './types'
+import type { Conversation, Health, ModelInfo, PatchApplyReceipt, ReviewDraftHandoff, Trace, Turn } from './types'
 import './styles.css'
 
 type Drawer = 'trace' | 'memory' | 'reflect' | 'support' | 'learn' | null
@@ -31,6 +31,8 @@ export default function App() {
   const [floating, setFloating] = useState(false)
   const [memoryRefresh, setMemoryRefresh] = useState(0)
   const [memoryPreselectSlot, setMemoryPreselectSlot] = useState<string | null>(null)
+  const [supportDraftHandoff, setSupportDraftHandoff] = useState<ReviewDraftHandoff | null>(null)
+  const [reflectionDraftHandoff, setReflectionDraftHandoff] = useState<ReviewDraftHandoff | null>(null)
 
   useEffect(() => {
     Promise.allSettled([api.health(), api.models(), api.conversations()]).then(([healthResult, modelsResult, conversationsResult]) => {
@@ -67,6 +69,8 @@ export default function App() {
 
   const toggleDrawer = useCallback((next: Exclude<Drawer, null>) => {
     setMemoryPreselectSlot(null)
+    setSupportDraftHandoff(null)
+    setReflectionDraftHandoff(null)
     setDrawer((current) => {
       const value = current === next ? null : next
       void window.aetherDesktop?.setExpanded(Boolean(value))
@@ -75,8 +79,10 @@ export default function App() {
     setSettings(false)
   }, [])
 
-  const openReviewSurface = useCallback((next: 'memory' | 'support' | 'reflect', options?: { slotId?: string }) => {
+  const openReviewSurface = useCallback((next: 'memory' | 'support' | 'reflect', options?: { slotId?: string; draftHandoff?: ReviewDraftHandoff }) => {
     setMemoryPreselectSlot(next === 'memory' ? options?.slotId || null : null)
+    setSupportDraftHandoff(next === 'support' ? options?.draftHandoff || null : null)
+    setReflectionDraftHandoff(next === 'reflect' ? options?.draftHandoff || null : null)
     setDrawer(next)
     setSettings(false)
     void window.aetherDesktop?.setExpanded(true)
@@ -184,6 +190,8 @@ export default function App() {
           <button className={!drawer ? 'active' : ''} onClick={() => {
             setDrawer(null)
             setMemoryPreselectSlot(null)
+            setSupportDraftHandoff(null)
+            setReflectionDraftHandoff(null)
             void window.aetherDesktop?.setExpanded(false)
           }}>
             <MessagesSquare size={17} /><span>Chat</span>
@@ -215,6 +223,8 @@ export default function App() {
             <button aria-label="Close drawer" onClick={() => {
               setDrawer(null)
               setMemoryPreselectSlot(null)
+              setSupportDraftHandoff(null)
+              setReflectionDraftHandoff(null)
               void window.aetherDesktop?.setExpanded(false)
             }}><X size={17} /></button>
           </div>
@@ -223,9 +233,9 @@ export default function App() {
             : drawer === 'memory'
               ? <MemoryDrawer refreshKey={memoryRefresh} preselectedSlotId={memoryPreselectSlot} onMutated={() => setMemoryRefresh((value) => value + 1)} />
               : drawer === 'reflect'
-                ? <ReflectionDrawer />
+                ? <ReflectionDrawer draftHandoff={reflectionDraftHandoff} />
                 : drawer === 'support'
-                  ? <SupportPatternDrawer />
+                  ? <SupportPatternDrawer draftHandoff={supportDraftHandoff} />
                   : <ConsolidationDrawer onOpenReviewSurface={openReviewSurface} />}
         </aside>
       ) : null}

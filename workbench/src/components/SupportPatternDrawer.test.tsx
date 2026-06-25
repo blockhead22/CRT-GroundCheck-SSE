@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { api } from '../api'
+import { buildSupportDraftCandidate } from '../learnDraftPromotion'
 import { SupportPatternDrawer } from './SupportPatternDrawer'
 
 vi.mock('../api', async () => {
@@ -9,6 +10,7 @@ vi.mock('../api', async () => {
     api: {
       supportPatterns: vi.fn(),
       reviewSupportPattern: vi.fn(),
+      importSupportPatterns: vi.fn(),
     },
   }
 })
@@ -40,8 +42,10 @@ const candidate = {
 }
 
 beforeEach(() => {
+  vi.clearAllMocks()
   vi.mocked(api.supportPatterns).mockResolvedValue([candidate])
   vi.mocked(api.reviewSupportPattern).mockResolvedValue({})
+  vi.mocked(api.importSupportPatterns).mockResolvedValue({ imported_count: 1, candidates: [candidate] })
 })
 
 test('renders support-pattern candidates with review boundaries', async () => {
@@ -76,4 +80,76 @@ test('filters support patterns by status', async () => {
   fireEvent.click(await screen.findByRole('button', { name: /Accepted/i }))
 
   await waitFor(() => expect(api.supportPatterns).toHaveBeenLastCalledWith('accepted'))
+})
+
+test('shows learner draft as manual support form state without importing it', async () => {
+  render(<SupportPatternDrawer draftHandoff={{
+    source_candidate_id: 'consolidation_candidate_support',
+    source_category: 'support_style_candidate',
+    candidate_kind: 'reviewed_support_pattern_candidate',
+    summary: 'This turn may contain a reusable support-style preference.',
+    proposed_action: 'Route through support-pattern review.',
+    risk: 'Do not copy another model voice.',
+    draft: {
+      category: 'support_style',
+      candidate_kind: 'reviewed_support_pattern_candidate',
+      suggested_response_rule: 'Use practical re-entry language.',
+    },
+    evidence: [],
+  }} />)
+
+  expect(await screen.findByText(/Nothing has been imported/)).toBeTruthy()
+  expect(screen.getByLabelText('Draft support category')).toHaveValue('support_style')
+  expect(screen.getByLabelText('Draft support response rule')).toHaveValue('Use practical re-entry language.')
+  expect(screen.getByLabelText('Draft support boundary')).toHaveValue('Do not copy another model voice.')
+  expect(api.reviewSupportPattern).not.toHaveBeenCalled()
+  expect(api.importSupportPatterns).not.toHaveBeenCalled()
+})
+
+test('builds a proposed support candidate payload from learner draft without accepting it', () => {
+  const draftHandoff = {
+    source_candidate_id: 'consolidation_candidate_support',
+    source_category: 'support_style_candidate',
+    candidate_kind: 'reviewed_support_pattern_candidate',
+    summary: 'This turn may contain a reusable support-style preference.',
+    proposed_action: 'Route through support-pattern review.',
+    risk: 'Do not copy another model voice.',
+    draft: {
+      category: 'support_style',
+      candidate_kind: 'reviewed_support_pattern_candidate',
+      suggested_response_rule: 'Use practical re-entry language.',
+    },
+    evidence: [{
+      evidence_type: 'user_turn_excerpt',
+      reference_id: 'turn-1',
+      summary: 'Nick asked for a warm dork spiral.',
+    }],
+  }
+
+  expect(buildSupportDraftCandidate(draftHandoff, {
+    category: 'support_style',
+    candidateKind: 'reviewed_support_pattern_candidate',
+    summary: 'This turn may contain a reusable support-style preference.',
+    suggestedResponseRule: 'Use practical re-entry language.',
+    risk: 'Do not copy another model voice.',
+  })).toEqual(expect.objectContaining({
+    candidate_id: 'learn_consolidation_candidate_support',
+    candidate_type: 'archive_support_pattern',
+    category: 'support_style',
+    candidate_kind: 'reviewed_support_pattern_candidate',
+    summary: 'This turn may contain a reusable support-style preference.',
+    suggested_response_rule: 'Use practical re-entry language.',
+    risk: 'Do not copy another model voice.',
+    source_signal: 'learner_consolidation_candidate',
+    title_category_count: 1,
+    evidence: [{
+      evidence_type: 'user_turn_excerpt',
+      conversation_id: 'turn-1',
+      title: 'Nick asked for a warm dork spiral.',
+    }],
+    status: 'proposed_review',
+    review_required: true,
+    memory_write_allowed: false,
+    confirmed_fact: false,
+  }))
 })

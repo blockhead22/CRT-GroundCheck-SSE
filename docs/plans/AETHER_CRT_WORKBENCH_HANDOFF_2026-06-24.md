@@ -2,6 +2,12 @@
 
 This is the restart packet for the next clean Codex thread in `D:\AI_round2`.
 
+Superseded by the newer nightly handoff:
+
+```text
+D:\AI_round2\docs\plans\AETHER_CRT_WORKBENCH_HANDOFF_2026-06-25.md
+```
+
 The current product lane is still:
 
 ```text
@@ -24,6 +30,12 @@ Isolated fixture eval runbook:
 
 ```text
 D:\AI_round2\docs\plans\AETHER_ISOLATED_FIXTURE_EVAL_RUNBOOK_2026-06-25.md
+```
+
+Phase 1.10 route capability table:
+
+```text
+D:\AI_round2\docs\plans\AETHER_ROUTE_CAPABILITY_TABLE_2026-06-25.md
 ```
 
 Do not revive the legacy frontend/API. Do not pause active development for a repo
@@ -921,6 +933,23 @@ Current read:
 - broader tiny-fixture programming tests now cover failing pytest capture,
   TypeScript package test recommendation, exact-symbol search ranking in noisy
   small repos, and prompt path-highlight persistence;
+- a focused live programming/code-context repair now covers endpoint
+  orientation for `GET /v1/consolidation/candidates`:
+  - "search the repository" now triggers `workspace_search`;
+  - generic search words such as route/source/eval/tests/fixtures no longer
+    dominate code search terms;
+  - workspace search excerpts now prefer the strongest matching lines, so the
+    exact route line is shown before generic `app.get` lines;
+  - `programming_code_context_consolidation_endpoint` requires the local model
+    to report `D:\AI_round2\aether-core\aether\sidecar\app.py` as the route
+    source, avoid patch proposal, and not confuse tests/evals with route
+    definitions;
+  - verification:
+    `python -m pytest tests\test_sidecar_documents_tools.py tests\test_workbench_eval.py -q`
+    -> `25 passed`;
+    `python scripts\workbench_eval.py --case-id programming_code_context_consolidation_endpoint`
+    -> `1/1 passed`,
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260625_001418.json`;
 - Code Context Tools v1 is now defined in
   `D:\AI_round2\docs\plans\AETHER_LOCAL_CODER_V1.md`, covering implemented
   tool contracts, selection rules, safety boundaries, trace requirements, eval
@@ -935,12 +964,32 @@ Next tasks:
 
 0. Use the recovered concept integration audit as the on-ramp back to the main
    roadmap; avoid more broad artifact diving unless a specific gap requires it.
-1. Continue Phase 1.8 contradiction disposition governance by broadening review
+1. Continue live/model real-use eval coverage in sliced groups when the sidecar
+   is available, especially support-pattern behavior against accepted live
+   candidates and identity/tone/depth regression prompts.
+2. Continue Phase 1.8 contradiction disposition governance by broadening review
    surfacing only if needed; the isolated fixture eval helper now exists.
-2. Continue the Phase 2 background consolidation heartbeat lane by adding
-   Workbench UI affordances for previewed consolidation candidates using their
-   `review_route` metadata.
-3. Then continue memory-state/representation compression evals.
+3. Continue the Phase 2 background consolidation heartbeat lane by broadening
+   live/operator coverage for Learn draft promotion now that adapter-safe manual
+   creation exists. Preserve the runbook contract: no silent writes, source
+   candidate/evidence retained, and existing review APIs still own durable
+   acceptance.
+4. Continue Phase 1.9 memory-state/representation compression evals. The first
+   deterministic representation replay bench exists and now supports read-only
+   CRT SQLite DB replay by deriving supported per-slot probe cases; next expand
+   it from the initial broad Context Bridge profile comparison toward narrower
+   Context Bridge candidate comparisons.
+5. Continue Phase 1.10 governed model/route selection. The route capability
+   table now summarizes enough evidence from Phase 1.6/1.7/1.8/1.9, and the
+   first small side-effect-free route policy slice exists. Route decisions now
+   persist in sidecar trace/completion metadata without changing generation
+   behavior. Workbench now exposes route decisions compactly in the Trace
+   drawer when route metadata exists. A fresh live route-decision smoke now
+   passes `5/5`, and the Workbench browser shows the Route Decision card live
+   on a fresh trace. The first steering-adjacent prompt annotation gate is now
+   implemented and live-smoked without changing model selection, tools, writes,
+   or escalation. Next design an eval-only comparison before allowing stronger
+   route-policy steering.
 
 Success standard:
 
@@ -948,6 +997,187 @@ Success standard:
 Aether can help future Nick return to a codebase, understand where he left off,
 make or propose a small safe change, and know when frontier help is warranted.
 ```
+
+### Phase 1.10: Governed Model/Route Selection Router
+
+Recovered source material from the old CRT/personal-agent stack:
+
+- `D:\AI_round2\personal_agent\model_router.py`
+  - selected `fast`, `reasoning`, `research`, `code`, and `creative` routes
+    from prompt cues, preferences, and product mode;
+  - useful idea: model choice is policy output, not the local model's opinion.
+- `D:\AI_round2\personal_agent\semantic_intent_router.py`
+  and `D:\AI_round2\docs\SEMANTIC_INTENT_ROUTER.md`
+  - embedding-prototype intent classification;
+  - confidence bands for execute/clarify/fallback;
+  - multi-intent detection and correction learning;
+  - useful idea: regex is a fast path, semantic routing covers typos,
+    paraphrases, and ambiguous phrasing.
+- `D:\AI_round2\personal_agent\escalation_policy.py`
+  - circuit breaker state, token thresholds, deep-reasoning cues,
+    blindspot boosts, and conversation momentum;
+  - useful idea: escalation is governed by evidence and recent failures, not
+    user vibes or local-model self-rating.
+- `D:\AI_round2\docs\CLOUD_ROUTING.md`
+  - local control layer, optional scrubbed generation escalation, budgets, and
+    fallback ordering;
+  - useful idea: memory, verification, policy, and trace stay local.
+- `D:\AI_round2\docs\LOCAL_CAPABILITY_LAB.md`
+  and `D:\AI_round2\tools\local_capability_lab.py`
+  - measured whether local models stay useful when the system supplies memory,
+    tools, task structure, and continuity;
+  - useful idea: "the model is the mouth; the system carries memory and
+    structure" is the right north star.
+
+Do not port the old stack wholesale. Current Aether should implement the small
+contract:
+
+```text
+message -> intent/risk/depth/tool classifier
+        -> Context Bridge + contradiction/support/depth signals
+        -> model/capability policy
+        -> selected route/model/tools
+        -> answer + repair/self-check
+        -> trace-visible routing reason
+```
+
+Initial route categories:
+
+- `deterministic_meta`
+- `memory_review`
+- `support_pattern`
+- `code_tool`
+- `depth_synthesis`
+- `real_use_support`
+- `contradiction_review`
+- `general_local`
+- `escalation_candidate`
+
+Initial eval requirements:
+
+- meta/governance questions stay deterministic;
+- code/file questions choose local tool-first routing;
+- spiral/deep requests trigger depth/continuation policy;
+- conflicted memory chooses review/disposition routing;
+- high-stakes medical/legal/financial prompts get cautious bounded answers and
+  possible escalation recommendation;
+- weak local answers may mark `needs_stronger_model` but must not silently
+  escalate or invent confidence.
+
+Trace additions to plan:
+
+- `route_decision`;
+- `candidate_routes`;
+- `selected_model`;
+- `route_reason`;
+- `route_confidence`;
+- `risk_level`;
+- `tool_policy`;
+- `escalation_allowed`;
+- `escalation_reason`.
+
+Placement: after Phase 1.7/1.8 and the first Phase 1.9 compression evals have
+enough results to populate a capability table. This prevents the router from
+becoming a decorative switch statement.
+
+Current on-ramp:
+
+```text
+D:\AI_round2\docs\plans\AETHER_ROUTE_CAPABILITY_TABLE_2026-06-25.md
+```
+
+The table turns the current eval evidence into route capabilities and defines
+the first implementation slice: a deterministic, side-effect-free route policy.
+It should shape traces and answer policy only; it must not write memory, import
+support patterns, create reflections, or silently escalate.
+
+First implementation slice:
+
+- route policy module:
+  `D:\AI_round2\aether-core\aether\sidecar\route_policy.py`;
+- focused tests:
+  `D:\AI_round2\aether-core\tests\test_sidecar_route_policy.py`;
+- currently classifies meta/governance, conflicted memory, code-tool,
+  deep/spiral, Aeteros/business caution, real-use support, representation
+  replay, and escalation-candidate prompts;
+- returns trace-shaped selected route, candidate routes, model policy, tool
+  policy, repair policy, risk level, route reason, and escalation eligibility;
+- does not call models, tools, memory writers, support imports, reflection
+  creation, or escalation;
+- verification:
+  `python -m pytest tests/test_sidecar_route_policy.py -q` -> `9 passed`;
+  `python -m pytest tests/test_sidecar_meta_answer.py tests/test_sidecar_depth.py tests/test_sidecar_direct_answer.py tests/test_sidecar_route_policy.py -q`
+  -> `34 passed`.
+
+Trace metadata slice:
+
+- sidecar now saves `trace.route_decision` and `completion.route_decision`;
+- generation behavior is unchanged;
+- focused coverage proves route metadata for meta/governance, conflicted direct
+  memory lookup, code-tool search, explicit depth, Aeteros/LLC context+caution,
+  and project-doubt support prompts;
+- verification:
+  `python -m pytest tests/test_sidecar_meta_answer.py tests/test_sidecar_app.py::test_direct_conflicted_profile_lookup_uses_disposition_without_leaking_values tests/test_sidecar_app.py::test_real_use_aeteros_business_guidance_is_prompted_and_traced tests/test_sidecar_app.py::test_real_use_project_doubt_guidance_is_prompted_and_traced tests/test_sidecar_app.py::test_deep_request_records_depth_policy_and_prompt_guidance tests/test_sidecar_app.py::test_code_tool_route_decision_is_traced_without_changing_tool_behavior tests/test_sidecar_route_policy.py -q`
+  -> `19 passed`;
+  `python -m pytest tests/test_sidecar_meta_answer.py tests/test_sidecar_depth.py tests/test_sidecar_direct_answer.py tests/test_sidecar_route_policy.py tests/test_sidecar_app.py -q`
+  -> `64 passed`.
+
+Workbench Trace UI slice:
+
+- `Route decision` card added between Response Route and Response Depth when
+  `trace.route_decision` or `completion.route_decision` exists;
+- fields shown: selected route, model policy, tool policy, repair policy, risk
+  level, and escalation eligibility;
+- historical traces without route metadata continue rendering normally;
+- verification:
+  `npm run test:ui -- --run src/components/TraceDrawer.test.tsx`
+  -> `11 passed`;
+  `npm run test:ui -- --run src/App.test.tsx src/components/TraceDrawer.test.tsx`
+  -> `22 passed`;
+  `npm run build` -> passed;
+- browser smoke on `http://127.0.0.1:5175/`: app rendered nonblank, console
+  warning/error count was `0`, Trace drawer opened, and an older saved trace
+  still showed Response Route/Depth. That visible trace predates route metadata,
+  so a fresh trace from a current sidecar is required to see Route Decision live.
+
+Live route-decision smoke:
+
+- initial sidecar was healthy but stale, so a meta trace had no
+  `route_decision`;
+- listener on `8765` was verified as `python.exe -m aether.sidecar`, restarted
+  from `D:\AI_round2\aether-core`, and health returned cleanly;
+- fresh sliced live smoke passed `5/5`:
+  `deterministic_meta`, `code_tool`, `depth_synthesis`,
+  `context_bridge_broad` with `high_stakes_caution` candidate, and
+  `real_use_support`;
+- every case had both initial trace and saved completion route metadata, with
+  no memory writes;
+- Workbench browser verification selected the fresh `real_use_support`
+  conversation, opened its trace, and rendered the Route Decision card live:
+  selected route `real use support`, model policy `local with support anchors`,
+  tool policy `tools optional`, repair policy
+  `real use anchor repair then fallback`, risk `low`, escalation `no`;
+- browser console warnings/errors remained `0`.
+
+Prompt annotation gate:
+
+- `build_local_prompt` now includes a bounded `Route policy` section when route
+  metadata exists;
+- annotation names selected route, model policy, tool policy, repair policy,
+  risk, escalation eligibility, and route reason;
+- annotation tells the local model the governed system selected the route and it
+  must not override it or claim it selected the route;
+- annotation explicitly does not grant permission to write memory, import
+  support patterns, create reflections, call tools, or escalate silently;
+- model selection, deterministic routing, tools, depth controller, and repair
+  behavior are unchanged;
+- focused verification:
+  `python -m pytest tests/test_sidecar_ingest.py tests/test_sidecar_meta_answer.py tests/test_sidecar_app.py::test_real_use_aeteros_business_guidance_is_prompted_and_traced tests/test_sidecar_app.py::test_real_use_project_doubt_guidance_is_prompted_and_traced tests/test_sidecar_app.py::test_deep_request_records_depth_policy_and_prompt_guidance tests/test_sidecar_app.py::test_code_tool_route_decision_is_traced_without_changing_tool_behavior tests/test_sidecar_route_policy.py -q`
+  -> `29 passed`;
+  `python -m pytest tests/test_sidecar_ingest.py tests/test_sidecar_meta_answer.py tests/test_sidecar_depth.py tests/test_sidecar_direct_answer.py tests/test_sidecar_route_policy.py tests/test_sidecar_app.py -q`
+  -> `75 passed`;
+- live smoke after sidecar restart passed `4/4` for meta/governance, code-tool,
+  depth, and real-use support, with no memory writes.
 
 ### Phase 1.7: Real-Use Multifactual Conversational Reliability
 
@@ -1102,15 +1332,111 @@ Evidence that shaped this phase:
     memory;
   - support/reflection candidates with adapter drafts now show a bounded draft
     payload preview so the review step is concrete without submitting anything;
+  - support/reflection draft routes now open manual form-state panels in the
+    Support or Reflection drawer, prefilled from the learner candidate, without
+    calling import/create/review endpoints;
   - the learner drawer does not write memory, import support patterns, or create
     reflections;
   - learner candidates remain suggestions only until they route through Memory,
     Support, or Reflection review surfaces before becoming durable;
+  - operator runbook added:
+    `D:\AI_round2\docs\plans\AETHER_LEARN_DRAFT_PROMOTION_RUNBOOK_2026-06-25.md`;
+    it documents the safety contract, Learn-to-review flow, current limits, and
+    the tests that protect preview-only behavior;
   - learner preview verification:
-    `npm run test:ui -- --run src/components/ConsolidationDrawer.test.tsx src/components/MemoryDrawer.test.tsx src/App.test.tsx`
-    -> `15 passed`;
+    `npm run test:ui -- --run src/components/ConsolidationDrawer.test.tsx src/components/SupportPatternDrawer.test.tsx src/components/ReflectionDrawer.test.tsx src/components/MemoryDrawer.test.tsx src/App.test.tsx`
+    -> `23 passed`;
     `npm run build` -> passed;
     `python -m pytest tests/test_sidecar_consolidation.py -q` -> `5 passed`;
+  - live sidecar reboot + Nick-style real-use repair pass completed:
+    heartbeat health check found `127.0.0.1:8765` unavailable, restarted the
+    sidecar with `cd D:\AI_round2\aether-core; python -m aether.sidecar`,
+    found an initial `0/4` live failure across the four Nick-style/project
+    prompts, then tightened prompt repair anchors so generic Aeteros startup
+    checklist headings, missing unproven/not-proven project-viability signal,
+    short status/check-in answers, and archive/style answers without an
+    explicit confirmed-memory boundary force repair/fallback;
+  - deterministic project/archive fallbacks were lengthened to satisfy eval
+    floors without relying on local-model padding;
+  - support-pattern live checks against Nick's live substrate correctly failed
+    for missing fixture candidate ids; the isolated support-pattern fixture
+    remained the right check and passed `2/2`;
+  - live repair verification:
+    `python -m pytest tests/test_sidecar_app.py -k "real_use_aeteros or project_doubt or autonomous or archive_style" tests/test_workbench_eval.py -q`
+    -> `4 passed`;
+    `python scripts\run_support_pattern_fixture_eval.py --no-write` -> `2/2`;
+    `python scripts\workbench_eval.py --include-real-use-eval --case-id real_use_aeteros_llc_ai_company --case-id real_use_project_doubt_viability --case-id real_use_autonomous_checkin_status --case-id real_use_archive_style_boundary`
+    -> `4/4`,
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_233221.json`;
+  - broader live real-use/depth coverage on the healthy sidecar:
+    `python scripts\workbench_eval.py --include-real-use-eval --case-id real_use_identity_continuity_boundary --case-id real_use_tone_personality_regression --case-id depth_deep_roadmap --case-id depth_verbose_forced_continuation --case-id depth_spiral_phi3_forced_continuation`
+    -> `5/5`,
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_233631.json`;
+  - older real-use coverage slice:
+    `python scripts\workbench_eval.py --include-real-use-eval --case-id real_use_persistent_ai_longevity_spiral --case-id real_use_walking_scale_medical_caution --case-id real_use_wordpress_handoff_permissions --case-id real_use_abrupt_switch_business_plan`
+    -> `4/4`,
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_234448.json`;
+  - note: a single all-in-one `--include-real-use-eval` run timed out at the
+    command limit, so use sliced live eval groups for operator reliability;
+  - fresh 2026-06-25 identity/tone live slice:
+    - live support-pattern candidates were empty, so support-pattern behavior
+      remains fixture-proven until Nick reviews/accepts live candidates;
+    - the Phase 2 learner endpoint returned preview-only candidates and
+      explicitly reported no memory ingestion, support-pattern import, or
+      reflection writes;
+    - `real_use_identity_continuity_boundary` briefly failed because the
+      identity/continuity guidance was prompted but not repair-gated; repaired
+      by adding identity/continuity to the real-use anchor repair path and
+      requiring Nick, governed evidence, local Aether context, uncertainty, and
+      clean boundary anchors;
+    - focused tests:
+      `python -m pytest tests\test_sidecar_app.py tests\test_workbench_eval.py -q`
+      -> `35 passed`;
+    - after restarting the sidecar, sequential live evals passed:
+      `python scripts\workbench_eval.py --include-real-use-eval --case-id real_use_identity_continuity_boundary --no-write`
+      -> `1/1`,
+      `python scripts\workbench_eval.py --include-real-use-eval --case-id real_use_tone_personality_regression --no-write`
+      -> `1/1`;
+    - live generation request isolation repaired: sidecar local model calls are
+      now serialized through a narrow generation lock, including structured
+      patch planning, so simultaneous HTTP requests cannot interleave Ollama
+      streams;
+    - focused request-isolation regression:
+      `python -m pytest tests\test_sidecar_app.py::test_generation_calls_are_serialized_across_concurrent_requests -q`
+      -> `1 passed`;
+    - deliberate parallel live identity/tone probe now passes `2/2` against one
+      sidecar. Still prefer sliced eval commands for operator reliability
+      because large all-in-one live eval runs can hit command timeouts;
+  - harsh lived-quality eval pack added behind
+    `--include-harsh-real-use-eval`;
+  - harsh cases are:
+    `harsh_project_doubt_not_generic`,
+    `harsh_local_model_scaffold_spiral_depth`,
+    `harsh_tired_topic_switch_triage`, and
+    `harsh_memory_review_boundary`;
+  - this pack was created from Nick's manual Workbench results, where ordinary
+    evals looked green but lived answers still became generic, too short, or
+    too eager about memory ingestion;
+  - first harsh live run was `1/4`, then `3/4`, then `4/4` after targeted
+    repairs;
+  - repairs:
+    - project doubt now treats feasibility-study/user-survey/market-research
+      filler as generic drift and requires a direct worth-pursuing stance;
+    - local-model scaffolding questions require layered depth about practical
+      surface, architecture, trace repair, frontier limits, failure modes, and
+      next eval loop;
+    - tired-night triage now recommends low-risk testing, no architecture
+      surgery, saving results, patching at most one repeated failure, and
+      stopping/resting;
+    - a new `memory_review_boundary` character route handles "what should go
+      into memory vs temporary context?" and repairs unsafe "we should ingest"
+      language before emission;
+  - verification:
+    `python -m pytest tests\test_workbench_eval.py tests\test_sidecar_character_answer.py tests\test_sidecar_app.py -q`
+    -> `54 passed`;
+    `python scripts\workbench_eval.py --include-harsh-real-use-eval --case-id harsh_project_doubt_not_generic --case-id harsh_local_model_scaffold_spiral_depth --case-id harsh_tired_topic_switch_triage --case-id harsh_memory_review_boundary`
+    -> `4/4`,
+    `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260625_005025.json`;
   - current focused live report:
     `D:\AI_round2\aether-core\.eval-runs\workbench_eval_20260624_165625.json`;
   - focused result: `4/4` passing on a fresh sidecar;
@@ -1244,8 +1570,30 @@ Evidence that shaped this phase:
     existing review surface: Memory slot review for contradictions, Support
     draft for support-style candidates, and Reflection drafts for project
     context/Aether self-improvement candidates;
+  - Workbench Learn navigation opens Memory/Support/Reflection review surfaces
+    without applying candidates on open;
+  - adapter-safe manual creation now exists for Support and Reflection learner
+    drafts: explicit drawer buttons can create proposed support-pattern
+    candidates or proposed reflections while preserving source candidate id,
+    evidence, risk boundary, review-required status, and non-memory flags;
+  - isolated operator smoke added at
+    `D:\AI_round2\aether-core\scripts\run_learn_promotion_fixture_smoke.py`
+    plus Workbench shortcut `npm run smoke:learn-promotion`; it starts a
+    temporary sidecar fixture, reads real learner candidates, manually creates
+    one proposed support-pattern candidate and one proposed reflection, and
+    verifies preview remains no-write;
+  - Learn remains preview-only; manual creation is not durable acceptance and
+    existing review APIs still own whether behavior is accepted/deferred/rejected;
   - focused endpoint tests verify preview metadata and read-only behavior:
-    `python -m pytest tests/test_sidecar_consolidation.py -q` -> `5 passed`.
+    `python -m pytest tests/test_sidecar_consolidation.py -q` -> `5 passed`;
+  - Workbench route/promotion tests and backend support/reflection tests passed:
+    `npm run test:ui -- --run src/api.test.ts src/components/ConsolidationDrawer.test.tsx src/components/MemoryDrawer.test.tsx src/components/SupportPatternDrawer.test.tsx src/components/ReflectionDrawer.test.tsx src/App.test.tsx`
+    -> `27 passed`;
+    `python -m pytest tests\test_sidecar_support_patterns.py tests\test_sidecar_reflections.py tests\test_sidecar_consolidation.py -q`
+    -> `14 passed`;
+    `python scripts\run_learn_promotion_fixture_smoke.py --json` -> passed;
+    `npm run smoke:learn-promotion -- --json` -> passed;
+    `npm run build` -> passed.
 - Phase 1.7 variance hardening:
   - added a real-use depth floor in the depth/continuation policy: when
     targeted real-use guidance is present and the first answer is thin, Aether
@@ -1522,8 +1870,11 @@ Immediate next task:
 1. Continue Phase 1.8 contradiction disposition governance by broadening review
    surfacing only if needed; the isolated fixture eval helper now exists.
 2. Continue the Phase 2 background consolidation heartbeat / governed Mirus
-   learner by adding Workbench UI affordances for previewed candidates.
-3. Then continue memory-state/representation compression evals.
+   learner by broadening live/operator coverage for adapter-safe Learn draft
+   promotion and keeping every promotion review-gated.
+3. Then continue Phase 1.9 memory-state/representation compression evals:
+   expand the deterministic representation replay bench from read-only CRT DB
+   replay into Context Bridge candidate comparisons.
 
 Preserve dirty worktree context. Do not reset or delete untracked folders.
 ```
@@ -1559,7 +1910,30 @@ implemented and passing, proving accepted guidance is released while rejected
 guidance stays out. The first safe governed background consolidation / Mirus
 learner slice is now implemented as a pure review-only candidate planner. The
 preview-only endpoint over recent traces is also implemented, and preview
-candidates now include review-route metadata. Next add Workbench UI affordances
-for those previewed candidates, then move into memory-state/context-compression
-evals. The goal is a coherent local harness that reduces
-frontier-model dependence, not a new architecture detour.
+candidates now include review-route metadata. Workbench Learn can route
+previewed candidates into Memory, Support, or Reflection review surfaces without
+applying them on open, and Support/Reflection drafts now have adapter-safe
+manual buttons for creating proposed review artifacts while preserving evidence,
+risk boundaries, and non-memory flags. Phase 1.9 has started with a
+deterministic representation replay eval: governed scaffold and CRT compressed
+state replay the full 19-case contradiction/authority/history/policy fixture
+pack, while naive summaries, raw retrieval, slot-only state, and deliberately
+quantized scaffolds fail in predictable layer-specific ways. The replay runner
+now also supports read-only CRT SQLite DB replay by deriving supported per-slot
+probes from actual persisted memory facts; it ignores unsupported slots instead
+of inventing fake cases. The first broad Context Bridge profile comparison now
+scores `10/19` with an average ratio around `3.166`, which usefully proves the
+bridge is broad governed context rather than the compact contradiction/history/
+policy replay substrate. The narrower `context_bridge_profile_candidates`
+packet keeps the same `10/19` behavior while dropping average ratio to about
+`0.869`, showing the bridge's profile candidates are the useful memory payload
+and the extra broad project/character bridge bulk is for other answer classes,
+not replay. A follow-up bridge-candidate packet eval now compares project,
+support, and reflection candidate-only packets against the full bridge: full
+bridge passes `3/3`, while each narrow packet passes its intended probe at lower
+payload ratio (`project` about `0.370`, `support` about `0.121`, `reflection`
+about `0.123`) and fails unrelated candidate probes as expected. Next broaden
+support-pattern live coverage after accepted candidates exist or summarize
+capability evidence for Phase 1.10 route/model selection. The goal is a
+coherent local harness that reduces frontier-model dependence, not a new
+architecture detour.

@@ -1,7 +1,7 @@
 import { ArrowRight, GitBranch, RefreshCcw, Route, ShieldCheck } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
-import type { ConsolidationCandidate, ConsolidationPreview } from '../types'
+import type { ConsolidationCandidate, ConsolidationPreview, ReviewDraftHandoff } from '../types'
 
 function surfaceLabel(surface: string) {
   return surface.replace('_', ' ')
@@ -17,7 +17,7 @@ function candidateTone(item: ConsolidationCandidate) {
 type ReviewSurface = 'memory' | 'support' | 'reflect'
 
 interface ConsolidationDrawerProps {
-  onOpenReviewSurface?: (surface: ReviewSurface, options?: { slotId?: string }) => void
+  onOpenReviewSurface?: (surface: ReviewSurface, options?: { slotId?: string; draftHandoff?: ReviewDraftHandoff }) => void
 }
 
 function routeSurface(surface?: string): ReviewSurface | null {
@@ -40,6 +40,20 @@ function draftPreview(item: ConsolidationCandidate) {
     adapter_required: Boolean(item.review_route.requires_adapter),
     payload: item.review_route.draft,
   }, null, 2)
+}
+
+function draftHandoff(item: ConsolidationCandidate): ReviewDraftHandoff | undefined {
+  if (!item.review_route?.draft) return undefined
+  return {
+    source_candidate_id: item.candidate_id,
+    source_category: item.category,
+    candidate_kind: item.candidate_kind,
+    summary: item.summary,
+    proposed_action: item.proposed_action,
+    risk: item.risk,
+    draft: item.review_route.draft,
+    evidence: item.evidence,
+  }
 }
 
 export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawerProps) {
@@ -148,7 +162,10 @@ export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawer
                     className="consolidation-open-review"
                     onClick={() => onOpenReviewSurface?.(
                       routeSurface(item.review_route?.surface)!,
-                      { slotId: item.review_route?.slot_id },
+                      {
+                        slotId: item.review_route?.slot_id,
+                        draftHandoff: draftHandoff(item),
+                      },
                     )}
                   >
                     <ArrowRight size={12} />

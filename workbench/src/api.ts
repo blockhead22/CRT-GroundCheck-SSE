@@ -89,6 +89,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  createReflection: (body: Record<string, unknown>) =>
+    request<Reflection>('/v1/reflections', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   supportPatterns: async (status = '', category = '') => {
     const params = new URLSearchParams()
     if (status) params.set('status', status)
@@ -100,6 +105,11 @@ export const api = {
     request(`/v1/support-patterns/${encodeURIComponent(candidateId)}/review`, {
       method: 'POST',
       body: JSON.stringify(body),
+    }),
+  importSupportPatterns: (candidates: Record<string, unknown>[]) =>
+    request<{ imported_count: number; candidates: SupportPattern[] }>('/v1/support-patterns/import', {
+      method: 'POST',
+      body: JSON.stringify({ candidates }),
     }),
   consolidationCandidates: (limit = 20) =>
     request<ConsolidationPreview>(`/v1/consolidation/candidates?limit=${encodeURIComponent(String(limit))}`),

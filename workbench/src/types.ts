@@ -69,10 +69,12 @@ export interface Trace {
     mode?: string
     needs_stronger_model?: boolean
   }
+  route_decision?: RouteDecision
   completion?: {
     source?: string
     needs_stronger_model: boolean
     generation_model?: string
+    route_decision?: RouteDecision
     guidance_kind?: string
     guidance_repaired?: boolean | null
     guidance_repair_failed?: boolean | null
@@ -112,6 +114,27 @@ export interface Trace {
     output: Record<string, unknown>
     status: string
   }>
+}
+
+export interface RouteCandidate {
+  route: string
+  confidence: number
+  reason: string
+}
+
+export interface RouteDecision {
+  selected_route: string
+  candidate_routes: RouteCandidate[]
+  selected_model_policy: string
+  tool_policy: string
+  repair_policy: string
+  escalation_allowed: boolean
+  escalation_reason?: string | null
+  route_reason: string
+  route_confidence: number
+  risk_level: string
+  memory_write_allowed: boolean
+  silent_escalation_allowed: boolean
 }
 
 export interface DepthPolicy {
@@ -282,6 +305,21 @@ export interface ConsolidationCandidate {
     requires_adapter?: boolean
     draft?: Record<string, unknown>
   }
+  evidence: Array<{
+    evidence_type: string
+    reference_id: string
+    summary: string
+  }>
+}
+
+export interface ReviewDraftHandoff {
+  source_candidate_id: string
+  source_category: string
+  candidate_kind: string
+  summary: string
+  proposed_action: string
+  risk: string
+  draft: Record<string, unknown>
   evidence: Array<{
     evidence_type: string
     reference_id: string

@@ -1,10 +1,16 @@
 import { Check, Clock3, ShieldAlert, XCircle } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { api, idempotencyKey } from '../api'
-import type { SupportPattern } from '../types'
+import { buildSupportDraftCandidate } from '../learnDraftPromotion'
+import type { SupportDraftForm } from '../learnDraftPromotion'
+import type { ReviewDraftHandoff, SupportPattern } from '../types'
 
 type ReviewAction = 'accept' | 'reject' | 'defer'
 type StatusFilter = 'all' | SupportPattern['status']
+
+interface SupportPatternDrawerProps {
+  draftHandoff?: ReviewDraftHandoff | null
+}
 
 const FILTERS: Array<{ label: string; value: StatusFilter }> = [
   { label: 'All', value: 'all' },
@@ -18,12 +24,14 @@ function statusLabel(status: string) {
   return status.replace('_', ' ')
 }
 
-export function SupportPatternDrawer() {
+export function SupportPatternDrawer({ draftHandoff = null }: SupportPatternDrawerProps) {
   const [items, setItems] = useState<SupportPattern[]>([])
   const [status, setStatus] = useState<StatusFilter>('all')
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [notes, setNotes] = useState<Record<string, string>>({})
+  const [draft, setDraft] = useState<SupportDraftForm | null>(null)
 
   async function load(nextStatus = status) {
     setError('')
@@ -36,6 +44,20 @@ export function SupportPatternDrawer() {
   }
 
   useEffect(() => { void load() }, [])
+
+  useEffect(() => {
+    if (!draftHandoff) {
+      setDraft(null)
+      return
+    }
+    setDraft({
+      category: String(draftHandoff.draft.category || draftHandoff.source_category || ''),
+      candidateKind: String(draftHandoff.draft.candidate_kind || draftHandoff.candidate_kind || ''),
+      summary: String(draftHandoff.draft.summary || draftHandoff.summary || ''),
+      suggestedResponseRule: String(draftHandoff.draft.suggested_response_rule || draftHandoff.proposed_action || ''),
+      risk: String(draftHandoff.draft.risk || draftHandoff.risk || ''),
+    })
+  }, [draftHandoff])
 
   async function review(item: SupportPattern, action: ReviewAction) {
     setBusy(item.candidate_id)
@@ -55,11 +77,69 @@ export function SupportPatternDrawer() {
     }
   }
 
+  async function createDraftCandidate() {
+    if (!draftHandoff || !draft) return
+    setBusy(draftHandoff.source_candidate_id)
+    setError('')
+    setNotice('')
+    try {
+      await api.importSupportPatterns([buildSupportDraftCandidate(draftHandoff, draft)])
+      setNotice('Created a proposed support-pattern candidate. It still needs review before it can shape behavior.')
+      await load('proposed_review')
+      setStatus('proposed_review')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not create support-pattern candidate.')
+    } finally {
+      setBusy('')
+    }
+  }
+
   const counts = useMemo(() => {
     const result = new Map<string, number>()
     for (const item of items) result.set(item.status, (result.get(item.status) || 0) + 1)
     return result
   }, [items])
+
+  const draftPanel = draftHandoff && draft ? (
+    <div className="draft-handoff" aria-label="Learner support draft handoff">
+      <label>Learner support draft</label>
+      <p>Manual form state only. Nothing has been imported, accepted, or written to memory.</p>
+      <input
+        aria-label="Draft support category"
+        value={draft.category}
+        onChange={(event) => setDraft((current) => current ? { ...current, category: event.target.value } : current)}
+      />
+      <input
+        aria-label="Draft support kind"
+        value={draft.candidateKind}
+        onChange={(event) => setDraft((current) => current ? { ...current, candidateKind: event.target.value } : current)}
+      />
+      <textarea
+        aria-label="Draft support summary"
+        value={draft.summary}
+        onChange={(event) => setDraft((current) => current ? { ...current, summary: event.target.value } : current)}
+      />
+      <textarea
+        aria-label="Draft support response rule"
+        value={draft.suggestedResponseRule}
+        onChange={(event) => setDraft((current) => current ? { ...current, suggestedResponseRule: event.target.value } : current)}
+      />
+      <textarea
+        aria-label="Draft support boundary"
+        value={draft.risk}
+        onChange={(event) => setDraft((current) => current ? { ...current, risk: event.target.value } : current)}
+      />
+      <small>Source learner candidate: {draftHandoff.source_candidate_id}</small>
+      <button
+        type="button"
+        className="draft-handoff-action"
+        disabled={busy === draftHandoff.source_candidate_id}
+        onClick={() => { void createDraftCandidate() }}
+      >
+        <Check size={13} />Create Proposed Candidate
+      </button>
+    </div>
+  ) : null
 
   if (!items.length && !error) {
     return (
@@ -67,6 +147,7 @@ export function SupportPatternDrawer() {
         <ShieldAlert size={26} />
         <h3>No support patterns</h3>
         <p>Import archive-derived candidates through the sidecar first. Nothing here becomes memory without review.</p>
+        {draftPanel}
       </div>
     )
   }
@@ -76,6 +157,8 @@ export function SupportPatternDrawer() {
       <div className="reflection-intro">
         Support patterns are reviewed behavior guidance. They are not confirmed facts and do not write memory.
       </div>
+      {draftPanel}
+      {notice ? <div className="inline-notice success">{notice}</div> : null}
       <div className="support-filter" aria-label="Support pattern status filter">
         {FILTERS.map((filter) => (
           <button

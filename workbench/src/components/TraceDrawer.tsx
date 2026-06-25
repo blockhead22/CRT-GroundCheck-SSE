@@ -175,6 +175,19 @@ export function TraceDrawer({
           ))}
         </div>
       </article>
+      {routeDecision(trace).length ? (
+        <article className="trace-route" aria-label="Route decision">
+          <div className="tool-run-heading">Route decision</div>
+          <div className="route-grid">
+            {routeDecision(trace).map((item) => (
+              <div className="route-cell" key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+              </div>
+            ))}
+          </div>
+        </article>
+      ) : null}
       {responseDepth(trace).length ? (
         <article className="trace-route" aria-label="Response depth">
           <div className="tool-run-heading">Response depth</div>
@@ -352,6 +365,23 @@ function responseDepth(trace: Trace) {
     assessment?.word_count != null ? { label: 'Words', value: String(assessment.word_count) } : null,
     depth?.continued_reason ? { label: 'Reason', value: depth.continued_reason.replaceAll('_', ' ') } : null,
   ].filter((item): item is { label: string; value: string } => Boolean(item))
+}
+
+function routeDecision(trace: Trace) {
+  const decision = trace.completion?.route_decision || trace.route_decision
+  if (!decision) return []
+  return [
+    { label: 'Selected route', value: formatRouteValue(decision.selected_route) },
+    { label: 'Model policy', value: formatRouteValue(decision.selected_model_policy) },
+    { label: 'Tool policy', value: formatRouteValue(decision.tool_policy) },
+    { label: 'Repair', value: formatRouteValue(decision.repair_policy) },
+    { label: 'Risk', value: formatRouteValue(decision.risk_level) },
+    { label: 'Escalation', value: decision.escalation_allowed ? 'allowed' : 'no' },
+  ]
+}
+
+function formatRouteValue(value: string) {
+  return value.replaceAll('_', ' ')
 }
 
 function responseRoute(trace: Trace) {

@@ -108,6 +108,7 @@ beforeEach(() => {
     if (url.includes('/v1/slots/user%3Aworkspace')) return new Response(JSON.stringify(slotDetail), { status: 200 })
     if (url.includes('/v1/slots')) return new Response(JSON.stringify({ revision_hash: 'rev', slots: [] }), { status: 200 })
     if (url.includes('/v1/support-patterns')) return new Response(JSON.stringify({ candidates: [] }), { status: 200 })
+    if (url.includes('/v1/reflections')) return new Response(JSON.stringify({ reflections: [] }), { status: 200 })
     if (url.includes('/v1/consolidation/candidates')) return new Response(JSON.stringify(consolidationPreview), { status: 200 })
     return new Response(JSON.stringify({ turns: [] }), { status: 200 })
   }))
@@ -180,6 +181,11 @@ test('opens a learner candidate review surface without applying it', async () =>
         action: 'draft_support_pattern_candidate',
         endpoint: '/v1/support-patterns/import',
         requires_adapter: true,
+        draft: {
+          category: 'support_style',
+          candidate_kind: 'reviewed_support_pattern_candidate',
+          suggested_response_rule: 'Use practical re-entry language.',
+        },
       },
       evidence: [],
     }],
@@ -191,7 +197,53 @@ test('opens a learner candidate review surface without applying it', async () =>
 
   expect(screen.getByLabelText('support drawer')).toBeInTheDocument()
   expect(screen.getByText('Support review')).toBeInTheDocument()
+  expect(await screen.findByText(/Manual form state only. Nothing has been imported/)).toBeInTheDocument()
+  expect(screen.getByLabelText('Draft support response rule')).toHaveValue('Use practical re-entry language.')
   expect(window.aetherDesktop?.setExpanded).toHaveBeenCalledWith(true)
+})
+
+test('opens a learner reflection candidate as manual draft form state', async () => {
+  consolidationPreview = {
+    mode: 'preview_only',
+    writes_performed: false,
+    memory_ingestion_performed: false,
+    support_pattern_import_performed: false,
+    reflection_create_performed: false,
+    inspected_turn_count: 1,
+    candidates: [{
+      candidate_id: 'consolidation_candidate_reflection',
+      candidate_type: 'background_consolidation_candidate',
+      category: 'aether_self_improvement',
+      candidate_kind: 'reflection_candidate',
+      summary: 'A recent answer may reveal an Aether behavior improvement worth reviewing.',
+      proposed_action: 'Create a reviewed reflection only if it repeats.',
+      risk: 'Do not convert one thin answer into a permanent behavior rule.',
+      review_required: true,
+      memory_write_allowed: false,
+      confirmed_fact: false,
+      review_route: {
+        surface: 'reflections',
+        action: 'draft_create_reflection',
+        endpoint: '/v1/reflections',
+        draft: {
+          subject: 'agent',
+          observation: 'A recent answer may reveal a behavior improvement.',
+          confidence: 0.45,
+          time_window: 'recent turns',
+          suggested_experiment: 'Review similar traces before accepting.',
+        },
+      },
+      evidence: [],
+    }],
+  }
+  render(<App />)
+  await screen.findByText('Local')
+  fireEvent.click(screen.getByRole('button', { name: 'Learn' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Open Reflect' }))
+
+  expect(screen.getByLabelText('reflect drawer')).toBeInTheDocument()
+  expect(await screen.findByText(/Manual form state only. Nothing has been created/)).toBeInTheDocument()
+  expect(screen.getByLabelText('Draft reflection observation')).toHaveValue('A recent answer may reveal a behavior improvement.')
 })
 
 test('opens a learner contradiction candidate directly on its memory slot', async () => {

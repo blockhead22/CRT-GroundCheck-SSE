@@ -105,6 +105,12 @@ test('opens the mapped review surface without applying the candidate', async () 
   fireEvent.click(await screen.findByRole('button', { name: 'Open Memory' }))
   fireEvent.click(screen.getByRole('button', { name: 'Open Support' }))
 
-  expect(onOpenReviewSurface).toHaveBeenCalledWith('memory', { slotId: 'user:workspace' })
-  expect(onOpenReviewSurface).toHaveBeenCalledWith('support', { slotId: undefined })
+  expect(onOpenReviewSurface).toHaveBeenCalledWith('memory', expect.objectContaining({ slotId: 'user:workspace' }))
+  expect(onOpenReviewSurface).toHaveBeenCalledWith('support', expect.objectContaining({
+    slotId: undefined,
+    draftHandoff: expect.objectContaining({
+      source_candidate_id: 'consolidation_candidate_2',
+      source_category: 'support_style_candidate',
+    }),
+  }))
 })

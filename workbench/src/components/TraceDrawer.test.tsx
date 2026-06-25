@@ -19,6 +19,26 @@ const trace: Trace = {
     source: 'aether_character',
     needs_stronger_model: false,
     generation_model: 'qwen3:14b',
+    route_decision: {
+      selected_route: 'real_use_support',
+      candidate_routes: [
+        {
+          route: 'real_use_support',
+          confidence: 0.84,
+          reason: 'personal_project_support_or_reentry_prompt',
+        },
+      ],
+      selected_model_policy: 'local_with_support_anchors',
+      tool_policy: 'tools_optional',
+      repair_policy: 'real_use_anchor_repair_then_fallback',
+      escalation_allowed: false,
+      escalation_reason: null,
+      route_reason: 'personal_project_support_or_reentry_prompt',
+      route_confidence: 0.84,
+      risk_level: 'low',
+      memory_write_allowed: false,
+      silent_escalation_allowed: false,
+    },
     guidance_kind: 'self_assessment',
     guidance_repaired: false,
     guidance_repair_failed: false,
@@ -105,12 +125,60 @@ test('renders clause-level governance decisions', () => {
   expect(within(route).getByText('self assessment')).toBeInTheDocument()
   expect(within(route).getByText('clean')).toBeInTheDocument()
   expect(within(route).getByText('local ok')).toBeInTheDocument()
+  const decision = screen.getByLabelText('Route decision')
+  expect(within(decision).getByText('Selected route')).toBeInTheDocument()
+  expect(within(decision).getByText('real use support')).toBeInTheDocument()
+  expect(within(decision).getByText('Model policy')).toBeInTheDocument()
+  expect(within(decision).getByText('local with support anchors')).toBeInTheDocument()
+  expect(within(decision).getByText('Tool policy')).toBeInTheDocument()
+  expect(within(decision).getByText('tools optional')).toBeInTheDocument()
+  expect(within(decision).getByText('Repair')).toBeInTheDocument()
+  expect(within(decision).getByText('real use anchor repair then fallback')).toBeInTheDocument()
+  expect(within(decision).getByText('Risk')).toBeInTheDocument()
+  expect(within(decision).getByText('low')).toBeInTheDocument()
+  expect(within(decision).getByText('Escalation')).toBeInTheDocument()
+  expect(within(decision).getByText('no')).toBeInTheDocument()
   const depth = screen.getByLabelText('Response depth')
   expect(within(depth).getByText('deep')).toBeInTheDocument()
   expect(within(depth).getAllByText('yes')).toHaveLength(2)
   expect(within(depth).getByText('1')).toBeInTheDocument()
   expect(within(depth).getByText('242')).toBeInTheDocument()
   expect(within(depth).getByText('answer too short for requested depth')).toBeInTheDocument()
+})
+
+test('renders route decisions from initial trace metadata for historical traces without completion', () => {
+  render(<TraceDrawer trace={{
+    ...trace,
+    completion: undefined,
+    route_decision: {
+      selected_route: 'code_tool',
+      candidate_routes: [
+        {
+          route: 'code_tool',
+          confidence: 0.9,
+          reason: 'repository_code_or_test_question',
+        },
+      ],
+      selected_model_policy: 'tool_first_local_synthesis',
+      tool_policy: 'workspace_tools_required_before_synthesis',
+      repair_policy: 'repair_with_retrieved_paths_or_escalation_packet',
+      escalation_allowed: true,
+      escalation_reason: 'focused_tool_evidence_missing',
+      route_reason: 'repository_code_or_test_question',
+      route_confidence: 0.9,
+      risk_level: 'medium',
+      memory_write_allowed: false,
+      silent_escalation_allowed: false,
+    },
+  }} />)
+
+  const decision = screen.getByLabelText('Route decision')
+  expect(within(decision).getByText('code tool')).toBeInTheDocument()
+  expect(within(decision).getByText('tool first local synthesis')).toBeInTheDocument()
+  expect(within(decision).getByText('workspace tools required before synthesis')).toBeInTheDocument()
+  expect(within(decision).getByText('repair with retrieved paths or escalation packet')).toBeInTheDocument()
+  expect(within(decision).getByText('medium')).toBeInTheDocument()
+  expect(within(decision).getByText('allowed')).toBeInTheDocument()
 })
 
 test('makes patch previews visibly non-applied', () => {
