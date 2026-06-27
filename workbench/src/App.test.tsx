@@ -30,6 +30,35 @@ const trace = {
     source: 'aether_meta',
     needs_stronger_model: false,
     generation_model: 'deterministic',
+    route_decision: {
+      selected_route: 'context_bridge_broad',
+      candidate_routes: [{
+        route: 'context_bridge_broad',
+        confidence: 0.8,
+        reason: 'broad_identity_project_or_relationship_context',
+      }],
+      selected_model_policy: 'local_with_context_bridge',
+      tool_policy: 'tools_optional',
+      repair_policy: 'context_anchor_repair_then_fallback',
+      escalation_allowed: false,
+      escalation_reason: null,
+      route_reason: 'broad_identity_project_or_relationship_context',
+      route_confidence: 0.8,
+      risk_level: 'low',
+      memory_write_allowed: false,
+      silent_escalation_allowed: false,
+      model_recommendation: {
+        current_selected_model: 'qwen2.5:7b-instruct',
+        recommended_model_policy: 'qwen2.5_default_with_context_bridge',
+        recommended_model: 'qwen2.5:7b-instruct',
+        fallback_model: 'qwen3:14b',
+        confidence: 'medium',
+        latency_caveat: 'qwen3 is promising for broad support/reflection but slow',
+        evidence_path: '.eval-runs\\workbench_eval_20260626_022453.json',
+        observational_only: true,
+        model_selection_changed: false,
+      },
+    },
   },
   plan: {
     status: 'unknown',
@@ -122,11 +151,23 @@ test('opens the trace drawer and expands the desktop window', async () => {
   expect(window.aetherDesktop?.setExpanded).toHaveBeenCalledWith(true)
 })
 
+test('keeps the empty-chat composer in its grid row when no policy summary is active', async () => {
+  const { container } = render(<App />)
+  await screen.findByText('Local')
+
+  expect(container.querySelector('.model-policy-summary-placeholder')).toBeInTheDocument()
+  expect(screen.queryByLabelText('Model policy recommendation')).not.toBeInTheDocument()
+  expect(screen.getByLabelText('Message Aether')).toBeInTheDocument()
+  expect(screen.getByText('Talk to your governed memory.')).toBeInTheDocument()
+})
+
 test('shows Codex availability in settings', async () => {
   render(<App />)
   await screen.findByText('Local')
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
   await waitFor(() => expect(screen.getByText('unavailable')).toBeInTheDocument())
+  expect(screen.getByLabelText('Route model policy')).toHaveTextContent('read only')
+  expect(screen.getByText('No route recommendation for the active turn.')).toBeInTheDocument()
 })
 
 test('opens the reflect drawer from bottom navigation', async () => {
@@ -325,4 +366,39 @@ test('opens a historical turn trace from the assistant answer', async () => {
   const route = screen.getByLabelText('Response route')
   expect(route).toHaveTextContent('aether meta')
   expect(route).toHaveTextContent('deterministic')
+})
+
+test('shows model recommendation summary after opening a trace', async () => {
+  localStorage.setItem('aether.currentConversation', 'conv-1')
+  render(<App />)
+  await screen.findByText('old answer')
+
+  fireEvent.click(screen.getByRole('button', { name: 'Open trace for turn turn-old' }))
+
+  const summary = await screen.findByLabelText('Model policy recommendation')
+  expect(summary).toHaveTextContent('context bridge broad')
+  expect(summary).toHaveTextContent('no auto switch')
+  expect(summary).toHaveTextContent('qwen2.5:7b-instruct')
+  expect(summary).toHaveTextContent('qwen2.5 default with context bridge')
+  expect(summary).toHaveTextContent('qwen3:14b')
+  expect(summary).toHaveTextContent('medium')
+  expect(summary).toHaveTextContent('workbench_eval_20260626_022453.json')
+})
+
+test('shows read-only route model policy in settings after opening a trace', async () => {
+  localStorage.setItem('aether.currentConversation', 'conv-1')
+  render(<App />)
+  await screen.findByText('old answer')
+
+  fireEvent.click(screen.getByRole('button', { name: 'Open trace for turn turn-old' }))
+  await screen.findByLabelText('Model policy recommendation')
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+
+  const policy = await screen.findByLabelText('Route model policy')
+  expect(policy).toHaveTextContent('read only')
+  expect(policy).toHaveTextContent('context bridge broad')
+  expect(policy).toHaveTextContent('qwen2.5:7b-instruct')
+  expect(policy).toHaveTextContent('qwen2.5 default with context bridge')
+  expect(policy).toHaveTextContent('qwen3:14b')
+  expect(policy).toHaveTextContent('no automatic switch')
 })

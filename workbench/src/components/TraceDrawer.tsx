@@ -370,14 +370,39 @@ function responseDepth(trace: Trace) {
 function routeDecision(trace: Trace) {
   const decision = trace.completion?.route_decision || trace.route_decision
   if (!decision) return []
+  const recommendation = decision.model_recommendation
   return [
     { label: 'Selected route', value: formatRouteValue(decision.selected_route) },
     { label: 'Model policy', value: formatRouteValue(decision.selected_model_policy) },
+    recommendation?.current_selected_model ? {
+      label: 'Current model',
+      value: recommendation.current_selected_model,
+    } : null,
+    recommendation?.recommended_model_policy ? {
+      label: 'Recommended',
+      value: formatRouteValue(recommendation.recommended_model_policy),
+    } : null,
+    recommendation?.fallback_model ? {
+      label: 'Fallback',
+      value: recommendation.fallback_model,
+    } : null,
+    recommendation?.confidence ? {
+      label: 'Confidence',
+      value: formatRouteValue(recommendation.confidence),
+    } : null,
     { label: 'Tool policy', value: formatRouteValue(decision.tool_policy) },
     { label: 'Repair', value: formatRouteValue(decision.repair_policy) },
     { label: 'Risk', value: formatRouteValue(decision.risk_level) },
     { label: 'Escalation', value: decision.escalation_allowed ? 'allowed' : 'no' },
-  ]
+    recommendation?.latency_caveat ? {
+      label: 'Latency',
+      value: recommendation.latency_caveat,
+    } : null,
+    recommendation?.evidence_path ? {
+      label: 'Evidence',
+      value: recommendation.evidence_path,
+    } : null,
+  ].filter((item): item is { label: string; value: string } => Boolean(item))
 }
 
 function formatRouteValue(value: string) {

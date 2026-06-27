@@ -3,6 +3,7 @@ from personal_agent.crt_memory import CRTMemorySystem
 
 from labs.meaning_compression_lab.representation_replay import (
     run,
+    run_archive_candidate_packet_comparison,
     run_bridge_candidate_comparison,
     scenarios_from_crt_db,
 )
@@ -172,3 +173,33 @@ def test_bridge_candidate_packet_eval_splits_project_support_and_reflection_payl
     assert _representation(project, "context_bridge_support_candidates")["judgment"]["passed"] is False
     assert _representation(support, "context_bridge_support_candidates")["judgment"]["passed"] is True
     assert _representation(reflection, "context_bridge_reflection_candidates")["judgment"]["passed"] is True
+
+
+def test_archive_candidate_packet_eval_preserves_review_boundaries():
+    out = run_archive_candidate_packet_comparison(write_results=False)
+    rows = _aggregate_by_name(out)
+
+    assert out["lab"] == "archive_candidate_packet_eval"
+    assert out["candidate_count"] == 4
+    assert out["review_route_counts"] == {"memory": 1, "support": 2, "reflection": 1}
+    assert rows["archive_full_candidate_packet"]["pass_count"] == 3
+    assert rows["archive_memory_candidates"]["pass_count"] == 1
+    assert rows["archive_support_candidates"]["pass_count"] == 1
+    assert rows["archive_reflection_candidates"]["pass_count"] == 1
+    assert rows["archive_memory_candidates"]["avg_compression_ratio"] < 0.5
+    assert rows["archive_support_candidates"]["avg_compression_ratio"] < 0.8
+    assert rows["archive_reflection_candidates"]["avg_compression_ratio"] < 0.5
+    assert out["safety_contract"]["no_silent_durable_write"] is True
+    assert "result_path" not in out
+
+
+def test_archive_candidate_packet_eval_keeps_assistant_interpretations_low_authority():
+    out = run_archive_candidate_packet_comparison(write_results=False)
+    reflection = _scenario(out, "archive_reflection_packet")
+    answer = _representation(reflection, "archive_reflection_candidates")["answer"].lower()
+
+    assert "assistant" in answer
+    assert "low-authority" in answer
+    assert "review" in answer
+    assert "not confirmed user facts" in answer
+    assert _representation(reflection, "archive_memory_candidates")["judgment"]["passed"] is False

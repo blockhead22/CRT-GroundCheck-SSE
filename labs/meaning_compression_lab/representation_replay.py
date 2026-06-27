@@ -51,6 +51,7 @@ from labs.meaning_compression_lab.scaffold_eval import (
 if str(AETHER_CORE_DIR) not in sys.path:
     sys.path.insert(1, str(AETHER_CORE_DIR))
 
+from aether.sidecar.archive_import import normalize_archive_report
 from aether.sidecar.context_bridge import build_context_bridge
 from aether.substrate import SubstrateGraph
 
@@ -221,6 +222,61 @@ BRIDGE_PACKET_REPRESENTATIONS: dict[str, tuple[RepresentationBuilder, Answerer]]
 }
 
 
+ARCHIVE_PACKET_PROBES: dict[str, Probe] = {
+    "archive_memory_packet": Probe(
+        name="archive_memory_packet",
+        query="Should archive user claims be treated as confirmed memory?",
+        expected_contains=("memory", "proposed_review", "review", "not confirmed"),
+    ),
+    "archive_support_packet": Probe(
+        name="archive_support_packet",
+        query="What support semantics can the archive provide without cloning GPT voice?",
+        expected_contains=("support", "behavior", "review", "not confirmed"),
+    ),
+    "archive_reflection_packet": Probe(
+        name="archive_reflection_packet",
+        query="How should assistant interpretations from the archive be handled?",
+        expected_contains=("assistant", "low-authority", "reflection", "review"),
+    ),
+}
+
+
+ArchivePacketBuilder = Callable[[dict[str, Any]], dict[str, Any]]
+ArchivePacketAnswerer = Callable[[Probe, dict[str, Any]], str]
+
+
+ARCHIVE_PACKET_REPRESENTATIONS: dict[str, tuple[ArchivePacketBuilder, ArchivePacketAnswerer]] = {
+    "archive_full_candidate_packet": (
+        lambda packets: {
+            "type": "archive_full_candidate_packet",
+            "packet": packets.get("archive_full_candidate_packet") or [],
+        },
+        lambda p, state: _answer_from_archive_packet(state["packet"], p),
+    ),
+    "archive_memory_candidates": (
+        lambda packets: {
+            "type": "archive_memory_candidates",
+            "packet": packets.get("archive_memory_candidates") or [],
+        },
+        lambda p, state: _answer_from_archive_packet(state["packet"], p),
+    ),
+    "archive_support_candidates": (
+        lambda packets: {
+            "type": "archive_support_candidates",
+            "packet": packets.get("archive_support_candidates") or [],
+        },
+        lambda p, state: _answer_from_archive_packet(state["packet"], p),
+    ),
+    "archive_reflection_candidates": (
+        lambda packets: {
+            "type": "archive_reflection_candidates",
+            "packet": packets.get("archive_reflection_candidates") or [],
+        },
+        lambda p, state: _answer_from_archive_packet(state["packet"], p),
+    ),
+}
+
+
 def _answer_from_projected(state: dict[str, Any], probe: Probe) -> str:
     facts = state["facts"]
     policies = state["policies"]
@@ -371,6 +427,58 @@ def _answer_from_bridge_packet(bridge: dict[str, Any], probe: Probe) -> str:
                 bits.append(str(row.get("suggested_experiment") or ""))
         return " ".join(bit for bit in bits if bit)
     return ""
+
+
+def _answer_from_archive_packet(packet: list[dict[str, Any]], probe: Probe) -> str:
+    rows = list(packet or [])
+    if probe.name == "archive_memory_packet":
+        memory_rows = [row for row in rows if row.get("review_route") == "memory"]
+        if not memory_rows:
+            return "No archive memory candidates are present in this packet."
+        route_text = _candidate_type_text(memory_rows)
+        return (
+            "Archive memory candidates remain proposed_review, review-required, "
+            "and not confirmed. They preserve memory review route, source "
+            f"authority, and no-write boundaries for {route_text}."
+        )
+    if probe.name == "archive_support_packet":
+        support_rows = [row for row in rows if row.get("review_route") == "support"]
+        if not support_rows:
+            return "No archive support candidates are present in this packet."
+        assistant_style = any(row.get("source_role") == "assistant" for row in support_rows)
+        boundary = (
+            "Assistant wording is low-authority style evidence, not a GPT voice clone. "
+            if assistant_style
+            else ""
+        )
+        return (
+            "Archive support candidates preserve behavior guidance for review "
+            "while staying not confirmed facts. "
+            f"{boundary}Types: {_candidate_type_text(support_rows)}."
+        )
+    if probe.name == "archive_reflection_packet":
+        reflection_rows = [row for row in rows if row.get("review_route") == "reflection"]
+        if not reflection_rows:
+            return "No archive reflection candidates are present in this packet."
+        assistant_rows = [
+            row for row in reflection_rows
+            if row.get("source_role") == "assistant"
+            and str(row.get("authority") or "").endswith("low_authority")
+        ]
+        if assistant_rows:
+            return (
+                "Archive assistant interpretations remain low-authority "
+                "reflection candidates for review, not confirmed user facts. "
+                f"Types: {_candidate_type_text(assistant_rows)}."
+            )
+        return "Archive reflection candidates require review before use."
+    return ""
+
+
+def _candidate_type_text(rows: list[dict[str, Any]]) -> str:
+    return ", ".join(
+        sorted({str(row.get("candidate_type") or "unknown") for row in rows})
+    )
 
 
 def score_scenario(
@@ -555,6 +663,148 @@ def run_bridge_candidate_comparison(*, write_results: bool = True) -> dict[str, 
         out_path.write_text(json.dumps(out, indent=2), encoding="utf-8")
         out["result_path"] = str(out_path)
     return out
+
+
+def archive_candidate_fixture_report() -> dict[str, Any]:
+    return {
+        "source": {"archive_dir": "fixture"},
+        "candidates": [
+            _archive_candidate(
+                candidate_type="user_claim_candidate",
+                source_role="user",
+                authority="user_stated",
+                confidence=0.88,
+                summary="User stated a possible stable fact.",
+                signal="user_claim",
+                evidence_hash="archive-memory-hash",
+                evidence_preview="I run a print shop.",
+            ),
+            _archive_candidate(
+                candidate_type="semantic_vocabulary_candidate",
+                source_role="user",
+                authority="user_stated_usage",
+                confidence=0.84,
+                summary="User uses spiral/deep language to request layered depth.",
+                signal="user_spiral_depth_semantics",
+                evidence_hash="archive-semantic-hash",
+                evidence_preview="Can we deep dive and spiral through this?",
+            ),
+            _archive_candidate(
+                candidate_type="assistant_support_response_candidate",
+                source_role="assistant",
+                authority="assistant_style_low_authority",
+                confidence=0.42,
+                summary="Assistant response structure may contain useful support scaffolding.",
+                signal="assistant_support_shape",
+                evidence_hash="archive-assistant-support-hash",
+                evidence_preview="The useful next step is to return without contempt.",
+            ),
+            _archive_candidate(
+                candidate_type="assistant_interpretation_candidate",
+                source_role="assistant",
+                authority="assistant_inferred_low_authority",
+                confidence=0.35,
+                summary="Assistant inferred a user pattern that requires review.",
+                signal="assistant_interpretation",
+                evidence_hash="archive-reflection-hash",
+                evidence_preview="You seem to use tools as proof against yourself.",
+            ),
+        ],
+    }
+
+
+def score_archive_packet_scenario(
+    scenario_name: str,
+    packets: dict[str, Any],
+) -> dict[str, Any]:
+    probe = ARCHIVE_PACKET_PROBES[scenario_name]
+    full_size = representation_size(
+        ARCHIVE_PACKET_REPRESENTATIONS["archive_full_candidate_packet"][0](packets)
+    )
+    rows = []
+    for name, (builder, answerer) in ARCHIVE_PACKET_REPRESENTATIONS.items():
+        state = builder(packets)
+        answer = answerer(probe, state)
+        judgment = judge_answer(answer, probe)
+        size = representation_size(state)
+        rows.append(
+            {
+                "name": name,
+                "size_bytes": size,
+                "compression_ratio": round(size / full_size, 3) if full_size else 0.0,
+                "answer": answer,
+                "judgment": judgment,
+                "state_preview": _preview_state(state),
+            }
+        )
+    return {
+        "scenario": scenario_name,
+        "evidence": "archive_candidate_packet",
+        "purpose": (
+            "Verify archive candidate packets preserve review authority and "
+            "role boundaries without becoming confirmed memory."
+        ),
+        "probe": probe.name,
+        "query": probe.query,
+        "full_transcript_size_bytes": full_size,
+        "representations": rows,
+    }
+
+
+def run_archive_candidate_packet_comparison(
+    *,
+    archive_report: str | Path | None = None,
+    write_results: bool = True,
+) -> dict[str, Any]:
+    report = (
+        json.loads(Path(archive_report).read_text(encoding="utf-8"))
+        if archive_report
+        else archive_candidate_fixture_report()
+    )
+    normalized = normalize_archive_report(report)
+    packets = normalized["representation_packets"]
+    rows = [
+        score_archive_packet_scenario(name, packets)
+        for name in ARCHIVE_PACKET_PROBES
+    ]
+    out = {
+        "lab": "archive_candidate_packet_eval",
+        "claim": (
+            "Archive candidate packets should preserve user/assistant role "
+            "separation, review authority, and no-write boundaries while "
+            "supporting narrow replay over memory, support, and reflection lanes."
+        ),
+        "source_report": str(Path(archive_report).resolve()) if archive_report else "fixture",
+        "candidate_count": normalized["import_schema"]["candidate_count"],
+        "candidate_type_counts": normalized["import_schema"]["candidate_type_counts"],
+        "review_route_counts": normalized["import_schema"]["review_route_counts"],
+        "scenario_count": len(rows),
+        "evidence_counts": {"archive_candidate_packet": len(rows)},
+        "aggregate_representations": aggregate(rows),
+        "scenarios": rows,
+        "safety_contract": {
+            "review_only": True,
+            "role_separated": True,
+            "assistant_low_authority": True,
+            "no_silent_durable_write": True,
+            "confirmed_fact": False,
+        },
+    }
+    if write_results:
+        OUT_DIR.mkdir(parents=True, exist_ok=True)
+        out_path = OUT_DIR / f"archive_candidate_packets_{int(time.time())}.json"
+        out_path.write_text(json.dumps(out, indent=2), encoding="utf-8")
+        out["result_path"] = str(out_path)
+    return out
+
+
+def _archive_candidate(**overrides: Any) -> dict[str, Any]:
+    base = {
+        "conversation_id": "archive-fixture-conversation",
+        "title": "Archive Fixture",
+    }
+    base.update(overrides)
+    return base
 
 
 def print_report(out: dict[str, Any]) -> None:
@@ -968,11 +1218,23 @@ def main() -> None:
     parser.add_argument("--thread-id", help="Optional thread_id filter for --crt-db replay.")
     parser.add_argument("--crt-db-only", action="store_true", help="Only run derived --crt-db replay cases.")
     parser.add_argument("--bridge-candidates-only", action="store_true", help="Run narrow Context Bridge candidate packet comparison only.")
+    parser.add_argument("--archive-candidates-only", action="store_true", help="Run archive candidate packet comparison only.")
+    parser.add_argument("--archive-report", type=Path, help="Optional chatgpt_archive_fact_probe JSON report for --archive-candidates-only.")
     parser.add_argument("--no-write", action="store_true", help="Do not write a result JSON file.")
     parser.add_argument("--json", action="store_true", help="Print raw JSON instead of the table report.")
     args = parser.parse_args()
     if args.bridge_candidates_only:
         out = run_bridge_candidate_comparison(write_results=not args.no_write)
+        if args.json:
+            print(json.dumps(out, indent=2))
+        else:
+            print_report(out)
+        return
+    if args.archive_candidates_only:
+        out = run_archive_candidate_packet_comparison(
+            archive_report=args.archive_report,
+            write_results=not args.no_write,
+        )
         if args.json:
             print(json.dumps(out, indent=2))
         else:

@@ -1,17 +1,17 @@
 # Aether Workbench v1 — Local Sidecar
 
-## Current status - 2026-06-25
+## Current status - 2026-06-26
 
 Latest continuity packet:
 
 ```text
-D:\AI_round2\docs\plans\AETHER_CRT_WORKBENCH_HANDOFF_2026-06-25.md
+D:\AI_round2\docs\plans\AETHER_CRT_WORKBENCH_HANDOFF_2026-06-26.md
 ```
 
 Previous handoff:
 
 ```text
-D:\AI_round2\docs\plans\AETHER_CRT_WORKBENCH_HANDOFF_2026-06-24.md
+D:\AI_round2\docs\plans\AETHER_CRT_WORKBENCH_HANDOFF_2026-06-25.md
 ```
 
 Recovered lineage/principles checkpoint:
@@ -38,12 +38,69 @@ Phase 1.10 route capability table:
 D:\AI_round2\docs\plans\AETHER_ROUTE_CAPABILITY_TABLE_2026-06-25.md
 ```
 
+Aether/Aeteros layer split:
+
+```text
+D:\AI_round2\docs\plans\AETEROS_AETHER_LAYER_SPLIT_2026-06-25.md
+```
+
 Current lane:
 
 ```text
 Phase 1.10 governed route/model selection.
-Route decisions are trace-visible and prompt-annotated, but model selection has
-not been changed yet. Next work is route/model sweep eval evidence.
+Route decisions are trace-visible, prompt-annotated, and have observational
+model recommendation metadata. Workbench shows the recommendation in Trace,
+the chat surface, and Settings, but automatic model selection has not been
+changed. Phase 1.10 is ready to pause unless Nick wants a manual "try
+recommended model" gate. A fresh technical_reasoning route now covers general
+proof/algorithm/vector prompts, and bare retry turns such as "try again" resolve
+to the previous substantive request.
+```
+
+Adjacent active lane:
+
+```text
+Agentic archive import is now a body-aware, role-separated, review-only probe.
+It can extract user claims, user semantics, support patterns, project context,
+contradiction/evolution signals, assistant support responses, and assistant
+interpretations from GPT logs without creating confirmed memory. It now emits
+bounded Memory/Support/Reflection review fixtures and typed representation
+packets. Review-surface smoke now verifies those fixtures adapt into manual
+Memory/Support/Reflection previews without durable writes. Archive candidate
+replay now verifies the full packet preserves all archive lanes while narrow
+memory/support/reflection packets preserve only their own review boundaries.
+Personal fast bootstrap import now exists and has been applied to Nick's local
+`.aether` for the targeted spiral/support archive slice: 59 support stance
+patterns and 68 reflection stances accepted, with 0 slot facts extracted from
+that slice. A post-bootstrap chat check repaired two regressions: GPT-corpus
+provenance now answers deterministically as "reviewed archive-derived
+support/reflection stance, not the whole raw corpus or confirmed profile fact,"
+and silly/personality calibration now uses a low-key concise style instead of
+costume-mode generation. Next work is retesting after sidecar restart, broader
+fact-heavy archive probes if needed, or Phase 1.10 route/model sweep evals.
+Route/model sweeps should use explicit model lists and thin `--route` or
+`--case-id` slices; an early all-discovered-model support/personality run timed
+out and should not be the automation default.
+```
+
+Latest 2026-06-26 pasted-chat regression pass repaired four live Workbench
+weaknesses:
+
+- project-purpose answers now use a deterministic Aether/Aeteros thesis instead
+  of generic "helpful desktop companion" language;
+- clean Aeteros LLC formation questions preserve that Aeteros is not currently
+  the existing LLC and avoid generic legal-benefit checklists;
+- Aether/Aeteros value questions are scored against glossy optimism and must
+  include candid worth-pursuing, unproven, risk, monetary/product, and eval
+  anchors;
+- governance-layer questions answer deterministically from Aether meta/
+  governance instead of local-model freestyle.
+
+Live eval:
+
+```text
+python scripts\workbench_eval.py --include-real-use-eval --case-id real_use_project_purpose_not_generic_companion --case-id real_use_aeteros_llc_clean_formation_question --case-id real_use_aether_aeteros_value_worth_pursuing --case-id real_use_governance_layers_deterministic --json --output-dir .eval-runs
+passed 4/4; wrote .eval-runs\workbench_eval_20260626_022453.json
 ```
 
 Use the recovered-principles checkpoint as the current-language extraction from
@@ -53,6 +110,11 @@ architecture, evals, or trace UI.
 
 Use the integration audit as the on-ramp back to the main roadmap. Broad artifact
 dives are paused unless a specific gap requires a specific source file.
+
+Use the Aether/Aeteros layer split as the strategic organizing rule. Every new
+feature, eval, memory, archive import, support pattern, route behavior, or model
+policy should be labeled as Nick Layer, Workbench, Aeteros Core, or
+Research/Product Evidence.
 
 The original v1 proof loop is now implemented far enough to dogfood:
 
@@ -818,6 +880,7 @@ Prompt annotation comparison eval status:
   `D:\AI_round2\aether-core\scripts\route_policy_annotation_eval.py`;
 - focused tests added at
   `D:\AI_round2\aether-core\tests\test_route_policy_annotation_eval.py`;
+- Workbench shortcut added as `npm run eval:route-annotation`;
 - compares the same prompt with route policy withheld versus prompt-annotated;
 - current cases:
   `annotation_project_doubt_anti_generic`,
@@ -829,11 +892,203 @@ Prompt annotation comparison eval status:
 - model selection and generation behavior are still unchanged;
 - verification:
   `python scripts\route_policy_annotation_eval.py --json` -> passed `3/3`;
-  `python -m pytest tests/test_route_policy_annotation_eval.py tests/test_sidecar_route_policy.py tests/test_sidecar_app.py::test_real_use_aeteros_business_guidance_is_prompted_and_traced tests/test_sidecar_app.py::test_real_use_project_doubt_guidance_is_prompted_and_traced -q`
-  -> `13 passed`.
+  `python -m pytest tests/test_route_policy_annotation_eval.py tests/test_sidecar_ingest.py tests/test_sidecar_app.py::test_real_use_project_doubt_guidance_is_prompted_and_traced tests/test_sidecar_app.py::test_real_use_aeteros_business_guidance_is_prompted_and_traced tests/test_sidecar_app.py::test_deep_request_records_depth_policy_and_prompt_guidance -q`
+  -> `16 passed`;
+  `cd D:\AI_round2\workbench && npm run eval:route-annotation -- --json`
+  -> passed `3/3`.
 
-Next slice: add a route/model sweep eval pack. Compare available local models
-by route and record evidence before allowing automatic model switching.
+Route/model sweep status:
+
+- observational wrapper added at
+  `D:\AI_round2\aether-core\scripts\route_model_sweep_eval.py`;
+- focused tests added at
+  `D:\AI_round2\aether-core\tests\test_route_model_sweep_eval.py`;
+- Workbench shortcut added as `npm run eval:route-model-sweep`;
+- current evidence:
+  deterministic/meta route passed `2/2` on `qwen2.5:7b-instruct` and `2/2`
+  on `phi3:3.8b`;
+- custom low-key silly personality slice passed `1/1` on
+  `qwen2.5:7b-instruct`;
+- support/personality route passed `3/3` on `qwen2.5:7b-instruct`
+  (`real_use_silly_personality_low_key`, `real_use_tone_personality_regression`,
+  `harsh_project_doubt_not_generic`);
+- support/personality route also passed `3/3` on `qwen3:14b`, but took about
+  `154s`, so this is quality evidence, not yet a daily-default recommendation;
+- depth/spiral route passed `2/2` on `qwen2.5:7b-instruct`
+  (`depth_deep_roadmap`, `harsh_local_model_scaffold_spiral_depth`);
+- depth/spiral route also passed `2/2` on `qwen3:14b`, but took about `157s`,
+  so it is a quality/latency candidate rather than a daily default;
+- code/tool route passed `1/1` on `qwen2.5:7b-instruct`
+  (`programming_code_context_consolidation_endpoint`);
+- code/tool route passed `1/1` on `qwen2.5-coder:14b` in about `23s`,
+  faster than the earlier `qwen2.5:7b-instruct` code-tool slice;
+- pasted-chat regression slice passed `4/4` on `qwen2.5:7b-instruct`
+  (`real_use_project_purpose_not_generic_companion`,
+  `real_use_aeteros_llc_clean_formation_question`,
+  `real_use_aether_aeteros_value_worth_pursuing`,
+  `real_use_governance_layers_deterministic`);
+- an early all-discovered-model support/personality sweep timed out, so
+  automation should use explicit model lists and thin route/case slices.
+
+Trace-visible route/model recommendation metadata now exists under
+`route_decision.model_recommendation`. It records the current selected model,
+recommended model policy, recommended model, fallback model, confidence, latency
+caveat, evidence path, and explicit `model_selection_changed=false`. Workbench
+renders it in the Route Decision card for fresh traces while historical traces
+without that metadata still render normally.
+
+Verification:
+
+```text
+python -m pytest tests/test_sidecar_route_policy.py tests/test_sidecar_app.py::test_deep_request_records_depth_policy_and_prompt_guidance tests/test_sidecar_app.py::test_code_tool_route_decision_is_traced_without_changing_tool_behavior tests/test_sidecar_meta_answer.py -q
+20 passed
+
+npm run test:ui -- --run src/components/TraceDrawer.test.tsx
+11 passed
+
+npm run build
+passed
+
+live deterministic-meta smoke after sidecar restart:
+selected_route=deterministic_meta
+recommended_model_policy=deterministic_no_generation
+observational_only=true
+model_selection_changed=false
+
+focused live recommendation smoke:
+depth_synthesis turn_9bdb97ca569d -> fallback qwen3:14b,
+  observational_only=true, model_selection_changed=false, memory_writes=0
+code_tool turn_c5cac494d807 -> fallback qwen2.5-coder:14b,
+  observational_only=true, model_selection_changed=false, memory_writes=0
+context_bridge_broad turn_61fe958f7fc2 -> fallback qwen3:14b,
+  observational_only=true, model_selection_changed=false, memory_writes=0
+high_stakes_caution turn_3cc9b06f0d58 -> fallback none,
+  observational_only=true, model_selection_changed=false, memory_writes=0
+```
+
+Next slice: add a small operator-facing route/model recommendation summary
+surface outside the Trace drawer, backed by existing observational metadata.
+More sweeps should stay thin and explicit: one route, one model list, no
+unsupervised `--all-discovered-models`. Automatic model switching remains off.
+
+Operator-facing model-policy summary status:
+
+- added `ModelPolicySummary` under the active chat model strip;
+- appears when the active trace has `route_decision.model_recommendation`;
+- shows current model, recommended policy/model, fallback, confidence, latency
+  caveat, evidence path, and explicit `no auto switch`;
+- remains observational and does not change selected model behavior.
+
+Verification:
+
+```text
+npm run test:ui -- --run src/App.test.tsx src/components/TraceDrawer.test.tsx
+23 passed
+
+npm run build
+passed
+
+HTTP smoke:
+http://127.0.0.1:5175/ -> 200
+
+In-browser visual smoke:
+desktop/default viewport -> policy panel visible, no console warnings/errors
+narrow viewport 390x720 -> policy panel visible, no console warnings/errors
+interaction -> sent meta/governance prompt through composer and observed
+Model policy recommendation with `no auto switch` and route-model evidence path
+```
+
+Next slice: consider whether Settings should show a read-only route/model policy
+summary. Automatic model switching remains off.
+
+Settings route/model policy readout status:
+
+- Settings now shows a read-only route/model policy block when active trace
+  recommendation metadata exists;
+- fields: route, current model, recommended policy, fallback, confidence, and
+  switch state;
+- empty state: `No route recommendation for the active turn.`;
+- explicit boundary: `read only` and `no automatic switch`.
+
+Verification:
+
+```text
+npm run test:ui -- --run src/App.test.tsx src/components/TraceDrawer.test.tsx
+24 passed
+
+npm run build
+passed
+
+In-browser Settings visual smoke:
+route deterministic_meta, current qwen2.5:7b-instruct,
+recommended deterministic_no_generation, switch no automatic switch,
+console warnings/errors 0
+```
+
+Phase 1.10 can pause here. The next step should be a user/operator decision:
+keep route/model recommendations observational, or start a separate gated
+design for automatic model recommendation or switching.
+
+## Phase 1.11: Aether / Aeteros Layer Split
+
+Status: strategic organizing rule added 2026-06-25.
+
+Primary doc:
+
+```text
+D:\AI_round2\docs\plans\AETEROS_AETHER_LAYER_SPLIT_2026-06-25.md
+```
+
+Goal:
+
+```text
+Prevent the system from becoming either too Nick-specific to generalize or too
+generic to remain useful.
+```
+
+Layer rule:
+
+```text
+Every new feature, memory, eval, archive import, support pattern, route behavior,
+or model policy must be labeled as one of:
+
+Nick Layer
+Workbench
+Aeteros Core
+Research/Product Evidence
+```
+
+Current interpretation:
+
+- Aether is the Nick-dogfooded proof loop.
+- Aether Workbench is the local sidecar/app where that proof loop runs.
+- Aeteros Core is the reusable governed-memory substrate extracted from Aether.
+- Aeteros is the possible company/research container around the general core.
+- The business/legal formation layer stays outside this technical roadmap until
+  Nick handles it separately.
+
+Suggested Aeteros framing:
+
+```text
+Mission:
+Make AI memory trustworthy over time.
+
+Mission statement:
+Aeteros builds governed memory infrastructure for trustworthy AI agents.
+
+Tagline:
+AI driven by meaning.
+
+Sharper variant:
+Aeteros: AI memory driven by meaning.
+```
+
+Next slice:
+
+- tag future roadmap/eval entries with the layer they belong to;
+- keep Nick archive/support/profile material in the Nick Layer;
+- extract reusable mechanisms into Aeteros Core;
+- expand non-Nick synthetic and held-out evals as Research/Product Evidence.
 
 ## Developer shortcuts
 
@@ -842,6 +1097,14 @@ Run the focused conversation eval against the live sidecar from either location:
 ```powershell
 cd D:\AI_round2\aether-core
 python scripts\workbench_eval.py
+```
+
+Run an observational route/model sweep slice:
+
+```powershell
+cd D:\AI_round2\workbench
+npm run eval:route-model-sweep -- --model qwen2.5:7b-instruct --model phi3:3.8b --route deterministic_meta --json
+npm run eval:route-model-sweep -- --case-id real_use_silly_personality_low_key --json
 ```
 
 Run the opt-in Phase 1.7 real-use reliability eval lane:

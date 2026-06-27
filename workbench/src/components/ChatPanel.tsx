@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { api, streamChat } from '../api'
 import type { Conversation, Trace, Turn } from '../types'
+import { ModelPolicySummary } from './ModelPolicySummary'
 
 interface ChatPanelProps {
   model: string
@@ -11,6 +12,7 @@ interface ChatPanelProps {
   conversations: Conversation[]
   turns: Turn[]
   codexAvailable: boolean
+  trace: Trace | null
   onConversation: (conversationId: string) => void
   onNewConversation: () => void
   onDeleteConversation: () => void
@@ -25,6 +27,7 @@ export function ChatPanel({
   conversations,
   turns,
   codexAvailable,
+  trace,
   onConversation,
   onNewConversation,
   onDeleteConversation,
@@ -161,6 +164,7 @@ export function ChatPanel({
           {showStronger ? 'Needs stronger model' : 'Locally answerable'}
         </div>
       </div>
+      <ModelPolicySummary trace={trace} />
       <div className="conversation-toolbar">
         <select
           aria-label="Conversation"

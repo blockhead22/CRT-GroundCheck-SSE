@@ -159,6 +159,7 @@ export default function App() {
             model={model}
             pinned={pinned}
             floating={floating}
+            trace={trace}
             onModel={setModel}
             onPinned={(value) => {
               setPinned(value)
@@ -176,6 +177,7 @@ export default function App() {
           conversations={conversations}
           turns={turns}
           codexAvailable={Boolean(health?.codex_available)}
+          trace={trace}
           onConversation={(nextConversationId) => {
             setConversationId(nextConversationId)
             api.conversations().then(setConversations).catch(() => {})

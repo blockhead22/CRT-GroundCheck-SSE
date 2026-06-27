@@ -135,6 +135,17 @@ export interface RouteDecision {
   risk_level: string
   memory_write_allowed: boolean
   silent_escalation_allowed: boolean
+  model_recommendation?: {
+    current_selected_model: string
+    recommended_model_policy: string
+    recommended_model: string
+    fallback_model: string
+    confidence: string
+    latency_caveat: string
+    evidence_path: string
+    observational_only: boolean
+    model_selection_changed: boolean
+  }
 }
 
 export interface DepthPolicy {

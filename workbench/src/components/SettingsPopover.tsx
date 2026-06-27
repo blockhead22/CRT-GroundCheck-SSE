@@ -1,5 +1,5 @@
 import { Check, MonitorUp } from 'lucide-react'
-import type { Health, ModelInfo } from '../types'
+import type { Health, ModelInfo, Trace } from '../types'
 
 interface SettingsProps {
   health: Health | null
@@ -7,6 +7,7 @@ interface SettingsProps {
   model: string
   pinned: boolean
   floating: boolean
+  trace: Trace | null
   onModel: (model: string) => void
   onPinned: (value: boolean) => void
   onFloating: (value: boolean) => void
@@ -18,10 +19,13 @@ export function SettingsPopover({
   model,
   pinned,
   floating,
+  trace,
   onModel,
   onPinned,
   onFloating,
 }: SettingsProps) {
+  const decision = trace?.completion?.route_decision || trace?.route_decision
+  const recommendation = decision?.model_recommendation
   return (
     <aside className="settings-popover" aria-label="Settings panel">
       <div className="popover-title">
@@ -42,6 +46,24 @@ export function SettingsPopover({
         <span>Floating window</span>
         <span className={`switch ${floating ? 'on' : ''}`}><Check size={12} /></span>
       </button>
+      <section className="settings-policy" aria-label="Route model policy">
+        <div className="settings-policy-head">
+          <span>Route model policy</span>
+          <strong>{recommendation?.model_selection_changed ? 'switching' : 'read only'}</strong>
+        </div>
+        {decision && recommendation ? (
+          <div className="settings-policy-grid">
+            <span>Route</span><strong>{formatValue(decision.selected_route)}</strong>
+            <span>Current</span><strong>{recommendation.current_selected_model}</strong>
+            <span>Recommended</span><strong>{formatValue(recommendation.recommended_model_policy)}</strong>
+            <span>Fallback</span><strong>{recommendation.fallback_model}</strong>
+            <span>Confidence</span><strong>{formatValue(recommendation.confidence)}</strong>
+            <span>Switch</span><strong>{recommendation.model_selection_changed ? 'changed' : 'no automatic switch'}</strong>
+          </div>
+        ) : (
+          <p>No route recommendation for the active turn.</p>
+        )}
+      </section>
       <div className="service-grid">
         <span>Aether</span><strong>{health?.aether || 'checking'}</strong>
         <span>Ollama</span><strong>{health?.ollama || 'checking'}</strong>
@@ -49,4 +71,8 @@ export function SettingsPopover({
       </div>
     </aside>
   )
+}
+
+function formatValue(value: string) {
+  return value.replaceAll('_', ' ')
 }

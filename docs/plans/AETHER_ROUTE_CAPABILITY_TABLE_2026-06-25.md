@@ -35,6 +35,7 @@ The governed system decides route, model policy, tools, repair, and escalation.
 | `real_use_support` | Nick-style project doubt, return/re-entry, tired-night triage, motivation, "be honest but not generic." | Harsh real-use pack reached 4/4 after targeted repairs; archive-derived support-pattern fixture passes 2/2. | Local generation with character/support anchors, accepted support patterns, and lived-quality repair. | Do not invent therapeutic certainty; if generic after repair, provide a deterministic grounded fallback or mark escalation candidate. | `character_route`, `support_patterns`, `real_use_anchors`, `repair` |
 | `depth_synthesis` | User asks for deep, spiral, verbose, dig deep, or a long multifactual synthesis. | Phase 1.5 depth classifier, continuation loop, depth trace card, forced continuation checks. | Local generation with depth budget, self-check, bounded continuation, and prefix trimming. | Continue only within bounded policy; if still missing requested coverage, mark `needs_stronger_model`. | `response_depth`, `continuation_count`, `coverage`, `needs_continuation` |
 | `code_tool` | Repository/file/search/test/programming question. | Phase 1.6 code-context evals, endpoint orientation repair for `GET /v1/consolidation/candidates`, tool trace UI. | Tool-first workspace search/read/test recommendation; local model synthesizes from retrieved evidence. | If tool evidence is insufficient, ask for a specific file/path or create an escalation packet. | `tool_policy`, `workspace_search`, `workspace_read`, `test_result`, `programming_context` |
+| `technical_reasoning` | General proof, algorithm, embedding, vector-space, theorem, or technical reasoning question that does not require repository tools. | First regression covers a 10-dimensional meaning-compression proof prompt plus bare "try again" retry. | Local technical reasoning from ordinary math/programming knowledge; tools optional. | Do not cite memory restrictions as a reason to avoid a general proof; if the claim is impossible or overstrong, state limits and give the nearest defensible result. | `route_decision`, `technical_reasoning_repaired`, `retry_resolution` |
 | `bridge_candidate_packet` | Review-only learner candidates for project/support/reflection behavior. | Phase 1.9 bridge candidate packet eval: full packet 3/3, typed packets preserve their own candidate behavior at lower size. | Use narrow typed packets when only project, support, or reflection candidates are needed. | Route to review surfaces; no automatic acceptance. | `candidate_packet_type`, `candidate_ids`, `review_route`, `memory_write_allowed` |
 | `compression_replay_eval` | Questions about memory-state compression, representation replay, or eval commands/results. | Phase 1.9 representation replay: governed scaffold and CRT compressed state both 19/19; Context Bridge candidates 10/19. | Deterministic eval summary from current run outputs and docs. | Do not ask local model to infer eval meaning without results. | `eval_name`, `representations`, `scores`, `ratio`, `interpretation` |
 | `high_stakes_caution` | Medical, legal, financial, business registration, health, safety, or regulated advice. | Real-use medical-adjacent and Aeteros/business prompts repaired toward grounded caution. | Bounded local answer with clear uncertainty and practical next step. | Recommend qualified review where appropriate; stronger model can research but not decide. | `risk_level`, `caution_reason`, `professional_review_recommended` |
@@ -110,6 +111,7 @@ It classifies:
 - meta/governance -> `deterministic_meta`;
 - conflicted memory signals -> `contradiction_review`;
 - repository/code/test questions -> `code_tool`;
+- general proof/algorithm/embedding questions -> `technical_reasoning`;
 - deep/spiral/verbose requests -> `depth_synthesis`;
 - Aeteros/LLC business prompts -> `context_bridge_broad` with
   `high_stakes_caution` as a candidate;
@@ -121,7 +123,7 @@ Verification:
 
 ```text
 python -m pytest tests/test_sidecar_route_policy.py -q
-9 passed
+11 passed
 
 python -m pytest tests/test_sidecar_meta_answer.py tests/test_sidecar_depth.py tests/test_sidecar_direct_answer.py tests/test_sidecar_route_policy.py -q
 34 passed
@@ -323,6 +325,13 @@ D:\AI_round2\aether-core\scripts\route_policy_annotation_eval.py
 D:\AI_round2\aether-core\tests\test_route_policy_annotation_eval.py
 ```
 
+Workbench shortcut:
+
+```powershell
+cd D:\AI_round2\workbench
+npm run eval:route-annotation -- --json
+```
+
 It compares the same prompt in two forms:
 
 ```text
@@ -353,8 +362,8 @@ Verification:
 python scripts\route_policy_annotation_eval.py --json
 passed: true, 3/3 cases
 
-python -m pytest tests/test_route_policy_annotation_eval.py tests/test_sidecar_route_policy.py tests/test_sidecar_app.py::test_real_use_aeteros_business_guidance_is_prompted_and_traced tests/test_sidecar_app.py::test_real_use_project_doubt_guidance_is_prompted_and_traced -q
-13 passed
+python -m pytest tests/test_route_policy_annotation_eval.py tests/test_sidecar_ingest.py tests/test_sidecar_app.py::test_real_use_project_doubt_guidance_is_prompted_and_traced tests/test_sidecar_app.py::test_real_use_aeteros_business_guidance_is_prompted_and_traced tests/test_sidecar_app.py::test_deep_request_records_depth_policy_and_prompt_guidance -q
+16 passed
 ```
 
 Next implementation step: run a sliced live comparison only if services are
@@ -362,3 +371,294 @@ available, then start a route/model sweep that records which local models handle
 each route best. Model swapping should remain eval evidence first; automatic
 model switching should wait until the route capability table has repeated
 per-route results.
+
+## Route/Model Sweep Helper
+
+The first observational route/model sweep wrapper now exists:
+
+```text
+D:\AI_round2\aether-core\scripts\route_model_sweep_eval.py
+D:\AI_round2\aether-core\tests\test_route_model_sweep_eval.py
+```
+
+Workbench shortcut:
+
+```powershell
+cd D:\AI_round2\workbench
+npm run eval:route-model-sweep -- --case-id real_use_silly_personality_low_key --json
+```
+
+Safety/behavior:
+
+- observational only;
+- does not change automatic model selection;
+- reuses `scripts/workbench_eval.py` scoring and live sidecar traces;
+- defaults to the sidecar health model only;
+- `--all-discovered-models` is explicit because the local Ollama list can be
+  large and slow;
+- `--case-id` without `--route` creates a tiny `custom` slice for automation;
+- deterministic/meta routes should pass across models because generation stays
+  deterministic.
+
+Verification:
+
+```text
+python -m pytest tests/test_route_model_sweep_eval.py tests/test_workbench_eval.py -q
+12 passed
+
+python scripts\route_model_sweep_eval.py --model qwen2.5:7b-instruct --model phi3:3.8b --route deterministic_meta --json --output-dir .eval-runs
+passed: qwen2.5:7b-instruct 2/2, phi3:3.8b 2/2
+wrote .eval-runs\route_model_sweep_20260625_181036.json
+
+python scripts\route_model_sweep_eval.py --case-id real_use_silly_personality_low_key --json --output-dir .eval-runs
+passed: qwen2.5:7b-instruct 1/1
+wrote .eval-runs\route_model_sweep_20260625_181447.json
+
+npm run eval:route-model-sweep -- --model qwen2.5:7b-instruct --route support_personality --json --output-dir .eval-runs
+passed: qwen2.5:7b-instruct 3/3
+wrote .eval-runs\route_model_sweep_20260625_233600.json
+
+npm run eval:route-model-sweep -- --model qwen2.5:7b-instruct --route depth_spiral --json --output-dir .eval-runs
+passed: qwen2.5:7b-instruct 2/2
+wrote .eval-runs\route_model_sweep_20260626_015831.json
+
+npm run eval:route-model-sweep -- --model qwen2.5:7b-instruct --route code_tool --json --output-dir .eval-runs
+passed: qwen2.5:7b-instruct 1/1
+wrote .eval-runs\route_model_sweep_20260626_015910.json
+
+npm run eval:route-model-sweep -- --model qwen3:14b --route support_personality --json --output-dir .eval-runs
+passed: qwen3:14b 3/3, elapsed about 154s
+wrote .eval-runs\route_model_sweep_20260626_023322.json
+
+npm run eval:route-model-sweep -- --model qwen2.5-coder:14b --route code_tool --json --output-dir .eval-runs
+passed: qwen2.5-coder:14b 1/1, elapsed about 23s
+wrote .eval-runs\route_model_sweep_20260626_030051.json
+
+npm run eval:route-model-sweep -- --model qwen3:14b --route depth_spiral --json --output-dir .eval-runs
+passed: qwen3:14b 2/2, elapsed about 157s
+wrote .eval-runs\route_model_sweep_20260626_033421.json
+```
+
+Operator note:
+
+```text
+An early all-discovered-model support/personality sweep timed out. Treat that
+as evidence to prefer sliced route/model commands and explicit model lists,
+especially for generative support/depth cases.
+```
+
+## Provisional Route/Model Recommendation Table
+
+This table is still observational. It should inform trace-visible
+recommendations before it changes automatic model selection.
+
+| Route family | Current safest execution | Candidate specialist | Evidence | Confidence | Caveat |
+| --- | --- | --- | --- | --- | --- |
+| `deterministic_meta` | Deterministic sidecar answer, no generative model. | None. | qwen and phi3 both passed because generation is bypassed. | High | Keep deterministic; do not let a model infer trace/governance facts. |
+| `real_use_support` / personality | `qwen2.5:7b-instruct` as stable default. | `qwen3:14b` when quality matters and latency is acceptable. | qwen 3/3; qwen3 3/3. | Medium | qwen3 took about 154s for 3 cases. |
+| `depth_synthesis` / spiral | `qwen2.5:7b-instruct` as stable default. | `qwen3:14b` when longer depth quality is worth latency. | qwen 2/2; qwen3 2/2. | Medium | qwen3 took about 157s for 2 cases. |
+| `code_tool` | Tool-first route with `qwen2.5:7b-instruct` synthesis. | `qwen2.5-coder:14b` for code-context synthesis. | qwen 1/1; qwen2.5-coder 1/1. | Low-medium | Only one endpoint-orientation case so far. |
+| pasted-chat real-use regressions | `qwen2.5:7b-instruct` plus deterministic repairs. | None yet. | qwen 4/4. | Medium | Needs alternate-model coverage later. |
+| small-model stress | Do not prefer for daily use. | `phi3:3.8b` as resilience probe. | deterministic meta 2/2. | Low | Useful as a stress comparison, not a recommendation. |
+
+## Trace-Visible Model Recommendation Slice
+
+The first recommendation metadata slice now exists:
+
+```text
+D:\AI_round2\aether-core\aether\sidecar\route_policy.py
+D:\AI_round2\aether-core\aether\sidecar\app.py
+D:\AI_round2\aether-core\tests\test_sidecar_route_policy.py
+D:\AI_round2\workbench\src\types.ts
+D:\AI_round2\workbench\src\components\TraceDrawer.tsx
+D:\AI_round2\workbench\src\components\TraceDrawer.test.tsx
+```
+
+Behavior boundary:
+
+- route policy remains side-effect-free;
+- model recommendation is trace metadata only;
+- selected/generation model behavior is unchanged;
+- no model/tool calls happen inside route policy;
+- no memory writes, support imports, reflection creation, or silent frontier
+  escalation are enabled.
+
+Trace shape:
+
+```text
+route_decision.model_recommendation.current_selected_model
+route_decision.model_recommendation.recommended_model_policy
+route_decision.model_recommendation.recommended_model
+route_decision.model_recommendation.fallback_model
+route_decision.model_recommendation.confidence
+route_decision.model_recommendation.latency_caveat
+route_decision.model_recommendation.evidence_path
+route_decision.model_recommendation.observational_only
+route_decision.model_recommendation.model_selection_changed
+```
+
+Workbench now renders these fields in the compact Route Decision card when the
+metadata exists. Historical traces without `model_recommendation` still render
+normally.
+
+Verification:
+
+```text
+python -m pytest tests/test_sidecar_route_policy.py tests/test_sidecar_app.py::test_deep_request_records_depth_policy_and_prompt_guidance tests/test_sidecar_app.py::test_code_tool_route_decision_is_traced_without_changing_tool_behavior tests/test_sidecar_meta_answer.py -q
+20 passed
+
+npm run test:ui -- --run src/components/TraceDrawer.test.tsx
+11 passed
+
+npm run build
+passed
+
+live smoke after sidecar restart:
+selected_route=deterministic_meta
+current_selected_model=qwen2.5:7b-instruct
+recommended_model_policy=deterministic_no_generation
+recommended_model=none
+fallback_model=none
+observational_only=true
+model_selection_changed=false
+
+focused live recommendation smoke:
+depth_synthesis -> qwen2.5_default_qwen3_for_quality_depth,
+  fallback=qwen3:14b, observational_only=true,
+  model_selection_changed=false, memory_writes=0,
+  turn_id=turn_9bdb97ca569d
+code_tool -> tool_first_qwen2_5_default_coder_for_code_synthesis,
+  fallback=qwen2.5-coder:14b, observational_only=true,
+  model_selection_changed=false, memory_writes=0,
+  turn_id=turn_c5cac494d807
+context_bridge_broad -> qwen2.5_default_with_context_bridge,
+  fallback=qwen3:14b, observational_only=true,
+  model_selection_changed=false, memory_writes=0,
+  turn_id=turn_61fe958f7fc2
+high_stakes_caution -> bounded_local_with_professional_review_caution,
+  fallback=none, observational_only=true,
+  model_selection_changed=false, memory_writes=0,
+  turn_id=turn_3cc9b06f0d58
+```
+
+## Operator-Facing Recommendation Summary
+
+Workbench now has a compact model-policy summary outside the Trace drawer:
+
+```text
+D:\AI_round2\workbench\src\components\ModelPolicySummary.tsx
+D:\AI_round2\workbench\src\components\ChatPanel.tsx
+D:\AI_round2\workbench\src\App.tsx
+D:\AI_round2\workbench\src\styles.css
+D:\AI_round2\workbench\src\App.test.tsx
+```
+
+UI behavior:
+
+- appears under the active model strip when the current trace has
+  `route_decision.model_recommendation`;
+- shows selected route, current selected model, recommended model policy,
+  fallback, confidence, latency caveat, evidence path, and `no auto switch`;
+- remains backed by observational metadata only;
+- does not change automatic model selection or escalation behavior.
+
+Verification:
+
+```text
+npm run test:ui -- --run src/App.test.tsx src/components/TraceDrawer.test.tsx
+23 passed
+
+npm run build
+passed
+
+HTTP smoke:
+http://127.0.0.1:5175/ -> 200
+
+In-browser visual smoke:
+desktop/default viewport -> policy panel visible, no console warnings/errors
+narrow viewport 390x720 -> policy panel visible, no console warnings/errors
+browser title: Aether Workbench
+interaction: sent meta/governance prompt through the composer and observed the
+  chat-surface `Model policy recommendation` panel with `NO AUTO SWITCH`,
+  current model qwen2.5:7b-instruct, deterministic recommendation, and
+  route_model_sweep evidence path
+```
+
+Next safe implementation step: consider whether route/model recommendations
+should also appear in Settings as a read-only model policy readout. Automatic
+model switching remains off.
+
+## Settings Policy Readout
+
+Settings now shows the current route/model recommendation as a read-only policy
+readout when an active trace has recommendation metadata:
+
+```text
+D:\AI_round2\workbench\src\components\SettingsPopover.tsx
+D:\AI_round2\workbench\src\App.tsx
+D:\AI_round2\workbench\src\App.test.tsx
+D:\AI_round2\workbench\src\styles.css
+```
+
+UI behavior:
+
+- displays route, current model, recommended policy, fallback, confidence, and
+  switch state;
+- explicitly shows `read only` and `no automatic switch`;
+- shows an empty-state line when no active turn has a route recommendation;
+- does not change the selected model or model routing.
+
+Verification:
+
+```text
+npm run test:ui -- --run src/App.test.tsx src/components/TraceDrawer.test.tsx
+24 passed
+
+npm run build
+passed
+
+In-browser Settings visual smoke:
+title=Aether Workbench
+route=deterministic_meta
+current=qwen2.5:7b-instruct
+recommended=deterministic_no_generation
+switch=no automatic switch
+console warnings/errors=0
+```
+
+Phase 1.10 is now ready to pause unless Nick wants to continue into automatic
+model recommendation gates. Automatic model switching remains off.
+
+## Technical Reasoning Regression
+
+Real chat exposed a thin local-answer failure:
+
+```text
+User: Can you show me a proof of an algorithm that compresses meaning into a
+10 dimensional vector space.
+Bad behavior: local generation answered as if memory restrictions prevented a
+general technical proof, then a bare "try again" turn only acknowledged retry.
+```
+
+Repair slice:
+
+- new side-effect-free `technical_reasoning` route for general proof,
+  algorithm, embedding, vector-space, theorem, and technical reasoning prompts;
+- route prompt annotation now says memory restrictions only constrain personal
+  or governed-memory claims, not general technical reasoning;
+- a narrow repair pass catches technical answers that cite memory restrictions
+  and regenerates with an honest technical contract;
+- bare retry turns such as `try again` resolve to the previous substantive user
+  request in the same conversation and are trace-visible under
+  `retry_resolution`.
+
+Verification:
+
+```text
+python -m pytest tests/test_sidecar_route_policy.py tests/test_sidecar_ingest.py tests/test_sidecar_app.py -q
+56 passed
+```
+
+Automatic model switching remains off. The technical route recommendation is
+observational only: qwen2.5 remains the default, with qwen3:14b listed as a
+future harder-reasoning fallback candidate after more eval evidence.

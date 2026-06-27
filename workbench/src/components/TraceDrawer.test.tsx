@@ -38,6 +38,17 @@ const trace: Trace = {
       risk_level: 'low',
       memory_write_allowed: false,
       silent_escalation_allowed: false,
+      model_recommendation: {
+        current_selected_model: 'qwen3:14b',
+        recommended_model_policy: 'qwen2.5_default_qwen3_when_latency_ok',
+        recommended_model: 'qwen2.5:7b-instruct',
+        fallback_model: 'qwen3:14b',
+        confidence: 'medium',
+        latency_caveat: 'qwen3:14b passed support/personality but took about 154s for 3 cases',
+        evidence_path: '.eval-runs\\route_model_sweep_20260626_023322.json',
+        observational_only: true,
+        model_selection_changed: false,
+      },
     },
     guidance_kind: 'self_assessment',
     guidance_repaired: false,
@@ -130,6 +141,16 @@ test('renders clause-level governance decisions', () => {
   expect(within(decision).getByText('real use support')).toBeInTheDocument()
   expect(within(decision).getByText('Model policy')).toBeInTheDocument()
   expect(within(decision).getByText('local with support anchors')).toBeInTheDocument()
+  expect(within(decision).getByText('Current model')).toBeInTheDocument()
+  expect(within(decision).getByText('Recommended')).toBeInTheDocument()
+  expect(within(decision).getByText('qwen2.5 default qwen3 when latency ok')).toBeInTheDocument()
+  expect(within(decision).getByText('Fallback')).toBeInTheDocument()
+  expect(within(decision).getByText('Confidence')).toBeInTheDocument()
+  expect(within(decision).getByText('medium')).toBeInTheDocument()
+  expect(within(decision).getByText('Latency')).toBeInTheDocument()
+  expect(within(decision).getByText(/154s/)).toBeInTheDocument()
+  expect(within(decision).getByText('Evidence')).toBeInTheDocument()
+  expect(within(decision).getByText('.eval-runs\\route_model_sweep_20260626_023322.json')).toBeInTheDocument()
   expect(within(decision).getByText('Tool policy')).toBeInTheDocument()
   expect(within(decision).getByText('tools optional')).toBeInTheDocument()
   expect(within(decision).getByText('Repair')).toBeInTheDocument()
