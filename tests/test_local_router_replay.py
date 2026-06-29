@@ -63,3 +63,6 @@ def test_run_replay_accepts_small_pack_and_fake_ollama(tmp_path, monkeypatch):
 
     assert out["case_count"] == 1
     assert out["aggregate"]["routed_pass_count"] == 1
+    assert out["aggregate"]["trace_pass_count"] == 1
+    assert out["rows"][0]["trace"]["trace_schema"] == "aether.local_router.trace.v0"
+    assert out["rows"][0]["trace_judgment"]["passed"] is True

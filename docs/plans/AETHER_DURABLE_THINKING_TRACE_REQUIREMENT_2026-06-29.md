@@ -87,8 +87,8 @@ schema first, then the main app can adopt it.
 Success criteria:
 
 ```text
-1. Router CLI writes a trace JSON for every run.
-2. Replay eval can grade both answer quality and trace quality.
+1. Router CLI writes a trace JSON for every run. DONE in lab.
+2. Replay eval can grade both answer quality and trace quality. DONE in lab.
 3. A historical run can reload answer + trace after process restart.
 4. Learning candidates remain pending until promoted, rejected, or merged.
 5. The UI can show a compact trace without exposing raw hidden reasoning.

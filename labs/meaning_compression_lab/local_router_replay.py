@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from labs.meaning_compression_lab.local_router_cli import build_case
+from labs.meaning_compression_lab.local_router_cli import build_case, build_trace, judge_trace
 from labs.meaning_compression_lab.local_router_eval import route_for_task, run_route
 from labs.meaning_compression_lab.run_lab import OUT_DIR
 from labs.meaning_compression_lab.spiral_synthesis_eval import call_ollama, judge_answer, raw_prompt
@@ -38,6 +38,8 @@ def run_replay(
         raw_answer = call_ollama(raw_prompt(case), route.model, timeout)
         raw_judgment = judge_answer(raw_answer, case)
         routed = run_route(case, timeout=timeout, runner=call_ollama)
+        trace = build_trace(case, routed, source=f"local_router_replay:{item['id']}")
+        trace_judgment = judge_trace(trace, routed["judgment"])
         rows.append(
             {
                 "id": item["id"],
@@ -50,9 +52,12 @@ def run_replay(
                 "raw_judgment": raw_judgment,
                 "routed_answer": routed["answer"],
                 "routed_judgment": routed["judgment"],
+                "trace": trace,
+                "trace_judgment": trace_judgment,
                 "repaired": routed["repaired"],
                 "fallback_used": routed["fallback_used"],
                 "delta": round(routed["judgment"]["score"] - raw_judgment["score"], 3),
+                "trace_delta": round(trace_judgment["score"] - raw_judgment["score"], 3),
             }
         )
 
@@ -82,14 +87,19 @@ def print_report(out: dict[str, Any]) -> None:
         f"Routed pass {agg['routed_pass_count']}/{out['case_count']} avg {agg['routed_avg_score']:.3f} | "
         f"delta {agg['avg_delta']:+.3f}"
     )
-    _safe_print(f"Repairs: {agg['repair_count']} | Fallbacks: {agg['fallback_count']}")
+    _safe_print(
+        f"Trace pass {agg['trace_pass_count']}/{out['case_count']} avg {agg['trace_avg_score']:.3f} | "
+        f"Repairs: {agg['repair_count']} | Fallbacks: {agg['fallback_count']}"
+    )
     for row in out["rows"]:
         raw = row["raw_judgment"]
         routed = row["routed_judgment"]
+        trace = row["trace_judgment"]
         _safe_print("-" * 80)
         _safe_print(
             f"{row['id']} [{row['task_type']}] delta {row['delta']:+.3f} "
-            f"raw={raw['score']:.3f}/{raw['passed']} routed={routed['score']:.3f}/{routed['passed']}"
+            f"raw={raw['score']:.3f}/{raw['passed']} routed={routed['score']:.3f}/{routed['passed']} "
+            f"trace={trace['score']:.3f}/{trace['passed']}"
         )
         _safe_print(f"  route={row['route']['model']} / {row['route']['profile']} repaired={row['repaired']} fallback={row['fallback_used']}")
         _safe_print(f"  routed hard flags: trunc={routed['truncated']} leak={routed['leakage_hits']} weird={routed['weirdness_hits']} forbidden={routed['forbidden_hits']}")
@@ -106,6 +116,8 @@ def _aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "raw_avg_score": 0.0,
             "routed_avg_score": 0.0,
             "avg_delta": 0.0,
+            "trace_pass_count": 0,
+            "trace_avg_score": 0.0,
             "repair_count": 0,
             "fallback_count": 0,
         }
@@ -115,6 +127,8 @@ def _aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "raw_avg_score": round(sum(row["raw_judgment"]["score"] for row in rows) / len(rows), 3),
         "routed_avg_score": round(sum(row["routed_judgment"]["score"] for row in rows) / len(rows), 3),
         "avg_delta": round(sum(row["delta"] for row in rows) / len(rows), 3),
+        "trace_pass_count": sum(1 for row in rows if row["trace_judgment"]["passed"]),
+        "trace_avg_score": round(sum(row["trace_judgment"]["score"] for row in rows) / len(rows), 3),
         "repair_count": sum(1 for row in rows if row["repaired"]),
         "fallback_count": sum(1 for row in rows if row["fallback_used"]),
     }

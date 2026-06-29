@@ -38,11 +38,19 @@ Stop or pause if the work becomes only model shopping or prompt tasting.
 Next work:
 
 ```text
-1. Add trace JSON output to local_router_cli.
-2. Make replay eval grade trace quality.
-3. Curate a 30-50 case replay pack.
-4. Prove historical answer + trace reload after restart.
-5. Bring the trace pattern into Workbench only after the lab evidence holds.
+1. Curate a 30-50 case replay pack.
+2. Prove historical answer + trace reload after restart.
+3. Add trace-quality thresholds to the larger replay success gate.
+4. Bring the trace pattern into Workbench only after the lab evidence holds.
+```
+
+Completed after this pointer was created:
+
+```text
+local_router_cli now writes separate durable trace JSON files.
+local_router_replay now grades trace quality alongside answer quality.
+Latest written trace smoke:
+D:\AI_round2\labs\meaning_compression_lab\results\traces\local_router_trace_1782695107.json
 ```
 
 Contract:

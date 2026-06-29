@@ -186,6 +186,39 @@ After restart, a historical message should be able to reopen with the trace that
 produced it: what Aether remembered, inferred, refused to claim, repaired, and
 possibly learned.
 
+### Trace JSON Output Implemented In Lab
+
+Implemented after the initial 2026-06-29 handoff:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\local_router_cli.py
+D:\AI_round2\labs\meaning_compression_lab\local_router_replay.py
+D:\AI_round2\tests\test_local_router_cli.py
+D:\AI_round2\tests\test_local_router_replay.py
+```
+
+The CLI now includes a structured `trace` object in result JSON and writes a
+separate trace artifact:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\results\traces\local_router_trace_1782695107.json
+```
+
+The replay runner now scores `trace_judgment` per row and reports aggregate
+trace pass/score.
+
+Verification:
+
+```text
+python -m pytest tests\test_local_router_cli.py tests\test_local_router_replay.py tests\test_local_router_eval.py tests\test_spiral_synthesis_eval.py tests\test_attention_profile_eval.py -q
+26 passed
+
+python -m labs.meaning_compression_lab.local_router_replay --max-cases 2 --timeout 300 --no-write
+Raw pass 0/2 avg 0.581
+Routed pass 2/2 avg 0.829
+Trace pass 2/2 avg 1.000
+```
+
 ## Concept Mapping
 
 Use this current interpretation:
@@ -253,25 +286,22 @@ scaffold, verifier, and repair matter more than "largest model" for this lane.
 
 Best next tasks, in order:
 
-1. **Add trace JSON writing to `local_router_cli`.**
-   - Store answer, route, scaffold profile, verifier flags, repair/fallback,
-     confidence, and learning candidates.
-
-2. **Update replay eval to grade trace quality.**
-   - A good answer with a bad trace should not count as fully successful.
-
-3. **Curate a 30-50 case replay pack.**
+1. **Curate a 30-50 case replay pack.**
    - Keep architecture, personal synthesis, grant/business, exact memory,
      creative-production planning, code reasoning, and multi-turn correction.
 
-4. **Prove restart reload.**
+2. **Prove restart reload.**
    - A historical run should reload answer + trace after process restart.
 
-5. **Only then wire into Workbench.**
+3. **Strengthen trace-quality gates.**
+   - A good answer with a weak trace should not count as fully successful in
+     the larger replay.
+
+4. **Only then wire into Workbench.**
    - Add a compact Activity/Trace panel fed by structured trace summaries.
    - Keep raw hidden chain-of-thought out of the product contract.
 
-6. **Return trace artifacts to Phase 2 learner heartbeat.**
+5. **Return trace artifacts to Phase 2 learner heartbeat.**
    - Learning candidates remain pending until reviewed, rejected, or promoted.
 
 ## Success Criteria
