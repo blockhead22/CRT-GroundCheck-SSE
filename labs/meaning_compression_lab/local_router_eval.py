@@ -59,14 +59,20 @@ class RouteDecision:
 
 
 def classify_request(case_or_query: SpiralCase | str) -> str:
+    if isinstance(case_or_query, SpiralCase) and case_or_query.spine.get("task_type"):
+        return str(case_or_query.spine["task_type"])
     query = case_or_query.query if isinstance(case_or_query, SpiralCase) else case_or_query
     name = case_or_query.name if isinstance(case_or_query, SpiralCase) else ""
     text = f"{name} {query}".lower()
 
+    if _looks_like_business_planning(text):
+        return "business_planning"
     if "grant" in text or "business" in text or "r&d" in text:
         return "grant_business"
-    if "code" in text or "implementation" in text or "debug" in text:
-        return "code_reasoning"
+    if _looks_like_architecture_process(text):
+        return "architecture_process"
+    if _looks_like_code_implementation(text):
+        return "code_implementation"
     if "what's my" in text or "where do i" in text or "current" in text:
         return "exact_memory"
     if "mechanism" in text or "architecture" in text or "local model" in text:
@@ -91,7 +97,16 @@ def route_for_task(task_type: str) -> RouteDecision:
             fallback_model=DEFAULT_EXECUTOR,
             fallback_profile="semantic_spine",
         )
-    if task_type == "code_reasoning":
+    if task_type == "business_planning":
+        return RouteDecision(
+            task_type=task_type,
+            model=DEFAULT_EXECUTOR,
+            profile="section_lock",
+            reason="Personal small-business planning needs concrete assets, offers, risk, and bounded next steps.",
+            fallback_model=DEFAULT_EXECUTOR,
+            fallback_profile="semantic_spine",
+        )
+    if task_type in {"code_implementation", "code_reasoning"}:
         return RouteDecision(
             task_type=task_type,
             model=CODER_MODEL,
@@ -100,12 +115,30 @@ def route_for_task(task_type: str) -> RouteDecision:
             fallback_model=DEFAULT_EXECUTOR,
             fallback_profile="section_lock",
         )
+    if task_type == "architecture_process":
+        return RouteDecision(
+            task_type=task_type,
+            model=DEFAULT_EXECUTOR,
+            profile="section_lock",
+            reason="Architecture/process planning needs concrete next steps and risk boundaries, not patch-level code assumptions.",
+            fallback_model=DEFAULT_EXECUTOR,
+            fallback_profile="semantic_spine",
+        )
     if task_type == "architecture_synthesis":
         return RouteDecision(
             task_type=task_type,
             model=DEFAULT_EXECUTOR,
             profile="semantic_spine",
             reason="Architecture synthesis needs mechanisms and overclaim gates more than persona.",
+            fallback_model=DEFAULT_EXECUTOR,
+            fallback_profile="section_lock",
+        )
+    if task_type == "personal_synthesis":
+        return RouteDecision(
+            task_type=task_type,
+            model=DEFAULT_EXECUTOR,
+            profile="section_lock",
+            reason="Personal synthesis needs concrete receipts, bounded identity language, and visible limits.",
             fallback_model=DEFAULT_EXECUTOR,
             fallback_profile="section_lock",
         )
@@ -117,6 +150,79 @@ def route_for_task(task_type: str) -> RouteDecision:
         fallback_model=DEFAULT_EXECUTOR,
         fallback_profile="semantic_spine",
     )
+
+
+def _looks_like_code_implementation(text: str) -> bool:
+    implementation_cues = (
+        "give me code",
+        "code blocks",
+        "patch",
+        "diff",
+        "fix the",
+        "bug",
+        "debug",
+        "traceback",
+        ".py",
+        ".ts",
+        ".tsx",
+        ".js",
+        "pytest",
+        "npm test",
+    )
+    return any(cue in text for cue in implementation_cues)
+
+
+def _looks_like_business_planning(text: str) -> bool:
+    if "grant" in text or "r&d" in text or "crt/aether" in text or "local router" in text:
+        return False
+    planning_cues = (
+        "camera gear",
+        "photo/video",
+        "photog",
+        "work from home",
+        "print shop",
+        "shop work",
+        "sticker",
+        "screen print",
+        "website work",
+        "web design",
+        "music video",
+        "video services",
+        "video production",
+        "film stuff",
+        "brand a business",
+        "running the lair",
+        "creative dork",
+        "freelance",
+        "hustle",
+        "small business",
+        "small-business",
+        "clients",
+        "pricing",
+        "offer",
+        "applied myself",
+        "full small business",
+    )
+    return any(cue in text for cue in planning_cues)
+
+
+def _looks_like_architecture_process(text: str) -> bool:
+    process_cues = (
+        "roadmap",
+        "no code yet",
+        "what's first",
+        "whats first",
+        "how are these tools",
+        "tools or services",
+        "exposed to an llm",
+        "fallback logged",
+        "semantic string engine",
+        "worldview",
+        "memory at a time",
+        "core system",
+        "sentence structure learning",
+    )
+    return any(cue in text for cue in process_cues)
 
 
 def run_route(

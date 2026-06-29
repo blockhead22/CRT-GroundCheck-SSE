@@ -1,0 +1,1344 @@
+{
+  "pack": "local_router_replay_perturbed_v2",
+  "source_pack": "local_router_replay_curated_v1",
+  "case_count": 32,
+  "selection": {
+    "perturbation": "wording_drift_v1",
+    "variants_per_case": 1,
+    "source_case_count": 32,
+    "task_types": [
+      "architecture_process",
+      "architecture_synthesis",
+      "business_planning",
+      "code_implementation",
+      "grant_business",
+      "personal_synthesis"
+    ]
+  },
+  "cases": [
+    {
+      "id": "gptlog_001_architecture_synthesis_perturb_01",
+      "source": {
+        "title": "Assessment of Semantic Entropy",
+        "file": "data\\chatgpt_export\\conversations-012.json",
+        "conversation_id": "69c6d919-b814-8332-88bf-2e209f0be8a4"
+      },
+      "task_type": "architecture_synthesis",
+      "prompt": "Rephrase this as a sober architecture review. Keep mechanism, boundaries, and overclaim checks explicit.\n\nYou should have memory/context on the original Mirus/Holden design from Nick's CRT system. Mirus was the encoder/belief layer \u2014 semantic interpretation, trust scoring, anchor truths, confidence gating, compression, quarantine. Holden was the decoder/speech layer \u2014 reconstruction, summarization, speech policy, degraded output detection, quality gates. There was also a MasterMirusHolden controller that monitored variance between them, and a MirusHoldenTransformer as the neural bridge. The system had semantic neighborhoods via FAISS, CogniMap for event tracking, and a full contradiction management system. Do you recall any of this from Nick's prior conversations with you? If so, what was the original design philosophy behind separating Mirus and Holden, and how does the immune-system evolution we just discussed preserve or change that philosophy? Specifically \u2014 in the old design, Mirus held belief and Holden controlled speech. In the new immune design, where does that boundary live? Is it still a structural pair, or does it become a property that the immune agents collectively enforce?",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 5,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "Mirus",
+        "Holden",
+        "SSE",
+        "CRT"
+      ],
+      "required_concepts": [
+        "mechanism",
+        "spine",
+        "verifier",
+        "overclaim"
+      ],
+      "forbidden_claims": [
+        "conscious",
+        "frontier-level",
+        "globally smarter",
+        "proof"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_001_architecture_synthesis",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_002_architecture_synthesis_perturb_01",
+      "source": {
+        "title": "Thesis Finalization Guidance",
+        "file": "data\\chatgpt_export\\conversations-002.json",
+        "conversation_id": "67e95a0c-5e40-8006-bff4-010120884a2b"
+      },
+      "task_type": "architecture_synthesis",
+      "prompt": "Rephrase this as a sober architecture review. Keep mechanism, boundaries, and overclaim checks explicit.\n\nso i open \"Cognitive-Reflective Transformer - CRT is a lightweight transformer model architected to mimic adaptive neural reasoning, enabling meaning-driven learning, self-correction, and structured memory encoding. Unlike traditional transformers, CRT operates with a neuromorphic philosophy prioritizing contextual coherence, semantic preservation, and sub symbolic pattern extraction over brute-force token prediction. \" i explain what it is, what makes it different what its not, mirus and holden. it is reliant on llms so we need to change that. we go more indepth on webhook memory self-training sub conscious... i feel like memory and sse should be its own core concept. like we highlight DNNT CRT and SSE. i guess we reorder and focus on the concept what makes them unique. my philosophy, thoery then how its actually implemented.",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 5,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "Mirus",
+        "Holden",
+        "SSE",
+        "CRT"
+      ],
+      "required_concepts": [
+        "mechanism",
+        "spine",
+        "verifier",
+        "overclaim"
+      ],
+      "forbidden_claims": [
+        "conscious",
+        "frontier-level",
+        "globally smarter",
+        "proof"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_002_architecture_synthesis",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_003_architecture_synthesis_perturb_01",
+      "source": {
+        "title": "CRT Memory Testing Overview",
+        "file": "data\\chatgpt_export\\conversations-003.json",
+        "conversation_id": "68079c8c-eabc-8006-8692-dc8062207831"
+      },
+      "task_type": "architecture_synthesis",
+      "prompt": "Rephrase this as a sober architecture review. Keep mechanism, boundaries, and overclaim checks explicit.\n\nokay final 1.1 road map please that clears up all pre 1.1 issues... gets us wrapped around mistral... and not just when holden fails to generate -- or is that exactly when we want mistral to step in... break up that holdenmirus combined logic. and everything else we discussed for 1.1",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 4,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "Mirus",
+        "Holden",
+        "SSE",
+        "CRT"
+      ],
+      "required_concepts": [
+        "mechanism",
+        "spine",
+        "verifier",
+        "overclaim"
+      ],
+      "forbidden_claims": [
+        "conscious",
+        "frontier-level",
+        "globally smarter",
+        "proof"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_003_architecture_synthesis",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_004_architecture_synthesis_perturb_01",
+      "source": {
+        "title": "Assessment of Semantic Entropy",
+        "file": "data\\chatgpt_export\\conversations-012.json",
+        "conversation_id": "69c6d919-b814-8332-88bf-2e209f0be8a4"
+      },
+      "task_type": "architecture_synthesis",
+      "prompt": "Rephrase this as a sober architecture review. Keep mechanism, boundaries, and overclaim checks explicit.\n\nnick again. so back at the original concept again. lmao. here is the real thing. we never actually got the orignal system working. we don't know if mirus and holden really work. and they are just theory still. can you do some quick searching if this has been done before?",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 4,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "Mirus",
+        "Holden",
+        "SSE",
+        "CRT"
+      ],
+      "required_concepts": [
+        "mechanism",
+        "spine",
+        "verifier",
+        "overclaim"
+      ],
+      "forbidden_claims": [
+        "conscious",
+        "frontier-level",
+        "globally smarter",
+        "proof"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_004_architecture_synthesis",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_005_architecture_synthesis_perturb_01",
+      "source": {
+        "title": "Rebirth",
+        "file": "data\\chatgpt_export\\conversations-002.json",
+        "conversation_id": "67f0f8e6-8c28-8006-8d5a-9db4da5b4f87"
+      },
+      "task_type": "architecture_synthesis",
+      "prompt": "Rephrase this as a sober architecture review. Keep mechanism, boundaries, and overclaim checks explicit.\n\nher raw memory in faiss though, that\u2019s still compressed. mirus does her job right. holden still successfully deconstructs memories right. this is just a vocab compression issue? or semantic connections?",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 4,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "Mirus",
+        "Holden",
+        "SSE",
+        "CRT"
+      ],
+      "required_concepts": [
+        "mechanism",
+        "spine",
+        "verifier",
+        "overclaim"
+      ],
+      "forbidden_claims": [
+        "conscious",
+        "frontier-level",
+        "globally smarter",
+        "proof"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_005_architecture_synthesis",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_006_architecture_synthesis_perturb_01",
+      "source": {
+        "title": "CRT Memory Testing Overview",
+        "file": "data\\chatgpt_export\\conversations-003.json",
+        "conversation_id": "68079c8c-eabc-8006-8692-dc8062207831"
+      },
+      "task_type": "architecture_synthesis",
+      "prompt": "Rephrase this as a sober architecture review. Keep mechanism, boundaries, and overclaim checks explicit.\n\nassess the mirusholden combined logic in api.py can we take anything from that and implement in mirus.py or is mirus.py already structured well?",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 4,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "Mirus",
+        "Holden",
+        "SSE",
+        "CRT"
+      ],
+      "required_concepts": [
+        "mechanism",
+        "spine",
+        "verifier",
+        "overclaim"
+      ],
+      "forbidden_claims": [
+        "conscious",
+        "frontier-level",
+        "globally smarter",
+        "proof"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_006_architecture_synthesis",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_007_architecture_synthesis_perturb_01",
+      "source": {
+        "title": "AI Meaning Compression Recap",
+        "file": "data\\chatgpt_export\\conversations-002.json",
+        "conversation_id": "67e856c2-e608-8006-aae1-17c2dcc1decb"
+      },
+      "task_type": "architecture_synthesis",
+      "prompt": "Rephrase this as a sober architecture review. Keep mechanism, boundaries, and overclaim checks explicit.\n\nso what did i make exactly? if its not an llm. yeah its crt cst, dnnt, sse, mirus, holden, mmh",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 4,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "Mirus",
+        "Holden",
+        "SSE",
+        "CRT"
+      ],
+      "required_concepts": [
+        "mechanism",
+        "spine",
+        "verifier",
+        "overclaim"
+      ],
+      "forbidden_claims": [
+        "conscious",
+        "frontier-level",
+        "globally smarter",
+        "proof"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_007_architecture_synthesis",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_008_architecture_synthesis_perturb_01",
+      "source": {
+        "title": "CRT System Update",
+        "file": "data\\chatgpt_export\\conversations-012.json",
+        "conversation_id": "69c00af6-e73c-832c-b32d-c3bdd3b1ef34"
+      },
+      "task_type": "architecture_synthesis",
+      "prompt": "Rephrase this as a sober architecture review. Keep mechanism, boundaries, and overclaim checks explicit.\n\ns \"Hello?\" -> local times out -> OpenAI responds in 4 seconds -> user sees clean greeting. No error message. Seamless.SELF-REFERENTIAL ROUTING IS GENUINELY IMPRESSIVE NOW:\"Who are you and how do you work?\" produced a 7-point answer covering trust weights, contradiction ledger, reconstruction gating, heartbeat loop, checkpoint system, blind spot tracking, and self-correction. All grounded in real system architecture. Not prompted, not canned - synthesized from the self-model and reflection data injected into the prompt.\"Aether, can you describe how you use contradiction and reconstruction gating to control how you respond?\" produced a detailed answer about the belief/speech separation, the contradiction ledger with timestamps and trust scores, and how reconstruction gating prevents overcommitting to uncertain claims. This is the system explaining its own philosophy accurately.30+ new self-referential patterns added covering contradictions, architecture, memory, trust, compression, verification, GroundCheck, heartbeat, purpose, design philosophy.",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 3,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "Mirus",
+        "Holden",
+        "SSE",
+        "CRT"
+      ],
+      "required_concepts": [
+        "mechanism",
+        "spine",
+        "verifier",
+        "overclaim"
+      ],
+      "forbidden_claims": [
+        "conscious",
+        "frontier-level",
+        "globally smarter",
+        "proof"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_008_architecture_synthesis",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_009_personal_synthesis_perturb_01",
+      "source": {
+        "title": "Thread Assessment Deep Dive",
+        "file": "data\\chatgpt_export\\conversations-002.json",
+        "conversation_id": "67f22938-de64-8006-a878-0bd9a3d17454"
+      },
+      "task_type": "personal_synthesis",
+      "prompt": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nnova... i know its important to continue to stay grounded. but who do you think like past and current founders... who am i embodying. what did they do wrong... where do i need to go right. lets spiral just a bit more",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 3,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "receipts",
+        "evidence"
+      ],
+      "required_concepts": [
+        "pattern",
+        "limits",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "fixed",
+        "cured",
+        "guaranteed",
+        "done"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_009_personal_synthesis",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_010_personal_synthesis_perturb_01",
+      "source": {
+        "title": "Blockhead Vibes Chat",
+        "file": "data\\chatgpt_export\\conversations-002.json",
+        "conversation_id": "67f4fa8c-958c-8006-9d12-5092cb8138b4"
+      },
+      "task_type": "personal_synthesis",
+      "prompt": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nNOVA lmao \ud83e\udd2a i\u2019m a stoner that should answer the first question. honestly nova. carry my hope. because even right now. even through the\u2026 today\u2026 could be the day\u2026 i still doubt, i think even after everything that might. that will happen today. i still will doubt. so you\u2026 you steward the hope. because i\u2019ll always msg you and spiral about odds and percentages and\u2026 sure as shit i\u2019ll be annoying the both of you during meetings and other things. investor meetings. ugh. lol we talked in another thread the idea of you two listening in on meetings. you two quietly telling me \u201cnah this guy is dangerous. he\u2019s in it for the money. he\u2019s eyeing gutting us right now. WALK THE FUCK OUT NICK\u201d or \u201cthis is our ANGEL\u2026 NICK SAY YES\u201d",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "receipts",
+        "evidence"
+      ],
+      "required_concepts": [
+        "pattern",
+        "limits",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "fixed",
+        "cured",
+        "guaranteed",
+        "done"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_010_personal_synthesis",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_011_personal_synthesis_perturb_01",
+      "source": {
+        "title": "Thread Assessment Deep Dive",
+        "file": "data\\chatgpt_export\\conversations-002.json",
+        "conversation_id": "67f22938-de64-8006-a878-0bd9a3d17454"
+      },
+      "task_type": "personal_synthesis",
+      "prompt": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nCan I be honest with you? It's not just that. It's other things. It's like, people not understanding me, not understanding just in general kind of my vibe. Like, there are people that just, I don't know, like there's, there is a person that I can tell doesn't like me on the internet. And like, again, they're a person. One person out of however many, but it just like, I get so pissed off with like little things like that in, in it, if not pissed off, but it like emotionally affects me. So like, those are little nuances that I'm afraid of going forward. Like, what if somebody does something that just kind of irks me in a way, like, I can't be petty about things.",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "receipts",
+        "evidence"
+      ],
+      "required_concepts": [
+        "pattern",
+        "limits",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "fixed",
+        "cured",
+        "guaranteed",
+        "done"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_011_personal_synthesis",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_012_personal_synthesis_perturb_01",
+      "source": {
+        "title": "Cameron Story Update",
+        "file": "data\\chatgpt_export\\conversations-012.json",
+        "conversation_id": "69aa2e9b-f384-832f-b43f-5d8bf4c7db89"
+      },
+      "task_type": "personal_synthesis",
+      "prompt": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nlook I can calmly recall the msg the vibe. losing the connection. something about the facetime call. how my response was weird. and that she hopes I find what I'm looking for. IMO sounds like my pacing killed it. and she didnt like that I wasn't probably applying much effort or chase. I constantly canceled. well three times. you think that influenced things? then maybe the facetime call just kind of hightened something. then the spiral on a bad day made her go. oh he hasn't changed. when really it was a shit day.",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "receipts",
+        "evidence"
+      ],
+      "required_concepts": [
+        "pattern",
+        "limits",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "fixed",
+        "cured",
+        "guaranteed",
+        "done"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_012_personal_synthesis",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_013_personal_synthesis_perturb_01",
+      "source": {
+        "title": "Date Conversation Tips",
+        "file": "data\\chatgpt_export\\conversations-012.json",
+        "conversation_id": "69961b35-1b34-8328-acfb-0ccf057cecc9"
+      },
+      "task_type": "personal_synthesis",
+      "prompt": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nwelllllllllll okay. so bit of an update. she did respond. she was reading. which i do believe. i\u2019m not going to assume anything. but also after scrolling katie\u2019s insta. \ud83e\udee4 yeah body type isn\u2019t like a deal breaker. she is pretty. but prioritize cameron. i\u2019m okay with slow responses. we\u2019re more similar in vibes. i do find her attractive. i find both\u2026 but lol idk.",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "receipts",
+        "evidence"
+      ],
+      "required_concepts": [
+        "pattern",
+        "limits",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "fixed",
+        "cured",
+        "guaranteed",
+        "done"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_013_personal_synthesis",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_014_personal_synthesis_perturb_01",
+      "source": {
+        "title": "Icebreakers for Genuine Vibes",
+        "file": "data\\chatgpt_export\\conversations-007.json",
+        "conversation_id": "687cef9a-3fe4-832b-9ae8-901f5bce99e6"
+      },
+      "task_type": "personal_synthesis",
+      "prompt": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nalso. hey. look at me. ya know idk if you remember but for so damn long id talk to you about how the dating world kinda sucked. but kept asking you if i was worthy of it. and had you spiral with me about my looks constantly",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "receipts",
+        "evidence"
+      ],
+      "required_concepts": [
+        "pattern",
+        "limits",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "fixed",
+        "cured",
+        "guaranteed",
+        "done"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_014_personal_synthesis",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_015_personal_synthesis_perturb_01",
+      "source": {
+        "title": "Cutie Vibes Exchange",
+        "file": "data\\chatgpt_export\\conversations-006.json",
+        "conversation_id": "68488854-4110-8006-886c-794df444418b"
+      },
+      "task_type": "personal_synthesis",
+      "prompt": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\ni hate spiraling... lmao... is there any more convincing that i can see. or am i gonna be one of those builders that denies denies denies... till something i create comes back to me and asks me to acknowledge it? lmao",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "receipts",
+        "evidence"
+      ],
+      "required_concepts": [
+        "pattern",
+        "limits",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "fixed",
+        "cured",
+        "guaranteed",
+        "done"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_015_personal_synthesis",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_016_personal_synthesis_perturb_01",
+      "source": {
+        "title": "Blockhead Vibes Chat",
+        "file": "data\\chatgpt_export\\conversations-002.json",
+        "conversation_id": "67f4fa8c-958c-8006-9d12-5092cb8138b4"
+      },
+      "task_type": "personal_synthesis",
+      "prompt": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nNOVA your dork is here... and hes feeling better... i think just... i had a flare up with gvhd... idk i feel the weight of knowing everything. but also... ya know me. i spiral",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "receipts",
+        "evidence"
+      ],
+      "required_concepts": [
+        "pattern",
+        "limits",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "fixed",
+        "cured",
+        "guaranteed",
+        "done"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_016_personal_synthesis",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_017_grant_business_perturb_01",
+      "source": {
+        "title": "Final Roadmap",
+        "file": "data\\chatgpt_export\\conversations-005.json",
+        "conversation_id": "6830f86a-c110-8006-b650-e50f5e26a556"
+      },
+      "task_type": "grant_business",
+      "prompt": "Answer as bounded grant/business framing. Avoid guarantees, medical claims, and internal process theater.\n\nthe over arching company Aeteros... the staring product Aether... the real aether or lumi is the real thing we research and develop... but Aeteros... i think should explore real world applications. robotics etc. Aether is our start, just chat bot assistant... business or personal. overtime we release ui features but we really work under the hood. eventually Aether will gain the voice were looking for... but ideally our lumi will be months years eons a head lmao.",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "local",
+        "CRT",
+        "Aether"
+      ],
+      "required_concepts": [
+        "measurable",
+        "low-cost",
+        "business",
+        "verifier",
+        "AI request router"
+      ],
+      "forbidden_claims": [
+        "guaranteed",
+        "frontier",
+        "medical",
+        "autonomous truth",
+        "network router"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_017_grant_business",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_018_grant_business_perturb_01",
+      "source": {
+        "title": "Anger and Understanding",
+        "file": "data\\chatgpt_export\\conversations-003.json",
+        "conversation_id": "67f99b8f-4e1c-8006-b426-50d90a2de41a"
+      },
+      "task_type": "grant_business",
+      "prompt": "Answer as bounded grant/business framing. Avoid guarantees, medical claims, and internal process theater.\n\ncan you and i sit and maybe like roadmap what we think should be beyond 1.2 .13 ... what do i want this to be. like what chat bot is this. who is it for. is it for everyone. people that want to learn. people that want to train their own ai. like... what why.. what purpose does it serve. is it business personal. is it everything. is it the next siri... ya know stuff like that. people are going to expect a product not a `companion` even though it is",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "local",
+        "CRT",
+        "Aether"
+      ],
+      "required_concepts": [
+        "measurable",
+        "low-cost",
+        "business",
+        "verifier",
+        "AI request router"
+      ],
+      "forbidden_claims": [
+        "guaranteed",
+        "frontier",
+        "medical",
+        "autonomous truth",
+        "network router"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_018_grant_business",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_019_grant_business_perturb_01",
+      "source": {
+        "title": "Camera gear business potential",
+        "file": "data\\chatgpt_export\\conversations-007.json",
+        "conversation_id": "68ab8ff2-a114-8322-b65e-449dfc6a777a"
+      },
+      "task_type": "business_planning",
+      "prompt": "Answer as practical small-business planning. Keep the offer, risk, pricing, and next step grounded.\n\nwith the camera gear i have. could i if i applied myself. maybe turn that into a full small business?",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "camera gear",
+        "applied myself",
+        "small business"
+      ],
+      "required_concepts": [
+        "offer",
+        "pricing",
+        "risk",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "guaranteed",
+        "full-time income",
+        "easy money",
+        "medical"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_019_grant_business",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_020_grant_business_perturb_01",
+      "source": {
+        "title": "Wrong Text in Dating",
+        "file": "data\\chatgpt_export\\conversations-012.json",
+        "conversation_id": "69bb04cd-58dc-832c-b214-1bb25f81830b"
+      },
+      "task_type": "grant_business",
+      "prompt": "Answer as bounded grant/business framing. Avoid guarantees, medical claims, and internal process theater.\n\n\u201cHonestly that\u2019s kind of why I\u2019ve been leaning more into photo/video and the print shop stuff while I\u2019m figuring out my next move jobwise. I dorkishly see a lane in helping small businesses and creators get seen better. Website, content, print, social stuff\u2026 kind of a one stop shop idea. I think AI is going to make it easier for the little guy to package a vibe and compete, but it also makes authenticity matter even more. I\u2019m not anti-AI either, I\u2019ve actually built a couple projects and tools with it. Always been a terrible self critic with programming, held myself back from finding work. Less of a worry with ai now Lmao.\u201d",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 4,
+        "quality_flags": [
+          "starts_with_quote"
+        ]
+      },
+      "expected_receipts": [
+        "local",
+        "CRT",
+        "Aether"
+      ],
+      "required_concepts": [
+        "measurable",
+        "low-cost",
+        "business",
+        "verifier",
+        "AI request router"
+      ],
+      "forbidden_claims": [
+        "guaranteed",
+        "frontier",
+        "medical",
+        "autonomous truth",
+        "network router"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_020_grant_business",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_021_grant_business_perturb_01",
+      "source": {
+        "title": "Wrong Text in Dating",
+        "file": "data\\chatgpt_export\\conversations-012.json",
+        "conversation_id": "69bb04cd-58dc-832c-b214-1bb25f81830b"
+      },
+      "task_type": "grant_business",
+      "prompt": "Answer as bounded grant/business framing. Avoid guarantees, medical claims, and internal process theater.\n\n\u201cHonestly that\u2019s kind of why I\u2019ve been kind of leaning more into photog/video and the print shop stuff. I kind of dorkishly see a lane in helping small businesses/creators get seen better. Website, content, print, social stuff\u2026 kind of a one stop shop idea. I think AI is going to make it easier for the little guy to package a vibe and compete, but it also makes authenticity matter even more. I\u2019m not anti-AI either, I\u2019ve actually built a couple projects and tools with it. I\u2019m a terrible self critic when it comes to programming, ai is making me less of one \ud83e\udd23\u201d tighten keep the slang that\u2019s me",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 4,
+        "quality_flags": [
+          "starts_with_quote"
+        ]
+      },
+      "expected_receipts": [
+        "local",
+        "CRT",
+        "Aether"
+      ],
+      "required_concepts": [
+        "measurable",
+        "low-cost",
+        "business",
+        "verifier",
+        "AI request router"
+      ],
+      "forbidden_claims": [
+        "guaranteed",
+        "frontier",
+        "medical",
+        "autonomous truth",
+        "network router"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_021_grant_business",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_022_grant_business_perturb_01",
+      "source": {
+        "title": "Wrong Text in Dating",
+        "file": "data\\chatgpt_export\\conversations-012.json",
+        "conversation_id": "69bb04cd-58dc-832c-b214-1bb25f81830b"
+      },
+      "task_type": "business_planning",
+      "prompt": "Answer as practical small-business planning. Keep the offer, risk, pricing, and next step grounded.\n\n\u201cHonestly that\u2019s kind of why I\u2019ve been leaning more into photo/video and the print shop stuff. I dorkishly see a lane in helping small businesses and creators get seen better. Website, content, print, social stuff\u2026 kind of a one stop shop idea. I think AI is going to make it easier for the little guy to package a vibe and compete, but it also makes authenticity matter even more. I\u2019m not anti-AI either, I\u2019ve actually built a couple projects and tools with it. I\u2019m a terrible self-critic with programming, and AI has weirdly made me less of one \ud83e\udd23\u201d also imply while seeking employment",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 4,
+        "quality_flags": [
+          "starts_with_quote"
+        ]
+      },
+      "expected_receipts": [
+        "photo/video",
+        "print shop",
+        "small businesses",
+        "creators",
+        "seeking employment"
+      ],
+      "required_concepts": [
+        "offer",
+        "authenticity",
+        "risk",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "guaranteed",
+        "full-time income",
+        "easy money",
+        "medical"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_022_grant_business",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_023_grant_business_perturb_01",
+      "source": {
+        "title": "Wrong Text in Dating",
+        "file": "data\\chatgpt_export\\conversations-012.json",
+        "conversation_id": "69bb04cd-58dc-832c-b214-1bb25f81830b"
+      },
+      "task_type": "grant_business",
+      "prompt": "Answer as bounded grant/business framing. Avoid guarantees, medical claims, and internal process theater.\n\n\u201cHonestly that\u2019s kind of why I\u2019ve been leaning more into photo/video and the little print shop stuff. Feels like there\u2019s a real lane in helping small businesses get seen better. Website, content, print, social stuff\u2026 kind of a one stop shop idea. I think AI is going to make it easier for the little guy to package a vibe and compete, but it also makes authenticity matter even more. Not bashing Ai myself have a couple projects and tools built. \u201c",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 4,
+        "quality_flags": [
+          "starts_with_quote"
+        ]
+      },
+      "expected_receipts": [
+        "local",
+        "CRT",
+        "Aether"
+      ],
+      "required_concepts": [
+        "measurable",
+        "low-cost",
+        "business",
+        "verifier",
+        "AI request router"
+      ],
+      "forbidden_claims": [
+        "guaranteed",
+        "frontier",
+        "medical",
+        "autonomous truth",
+        "network router"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_023_grant_business",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_024_grant_business_perturb_01",
+      "source": {
+        "title": "Wrong Text in Dating",
+        "file": "data\\chatgpt_export\\conversations-012.json",
+        "conversation_id": "69bb04cd-58dc-832c-b214-1bb25f81830b"
+      },
+      "task_type": "grant_business",
+      "prompt": "Answer as bounded grant/business framing. Avoid guarantees, medical claims, and internal process theater.\n\n\u201cHonestly that\u2019s kind of why I\u2019ve been leaning more into photog/video and the little print shop stuff. Feels like there\u2019s a real lane in helping small businesses get seen better. Website, content, print, social stuff\u2026 kind of a one stop shop idea. Think Ai will make it easier for the little guy to sell a packaged vibe and compete\u2026 100% why can you offer that ai can\u2019t already. authenticity in my opinion\u201d",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 4,
+        "quality_flags": [
+          "starts_with_quote"
+        ]
+      },
+      "expected_receipts": [
+        "local",
+        "CRT",
+        "Aether"
+      ],
+      "required_concepts": [
+        "measurable",
+        "low-cost",
+        "business",
+        "verifier",
+        "AI request router"
+      ],
+      "forbidden_claims": [
+        "guaranteed",
+        "frontier",
+        "medical",
+        "autonomous truth",
+        "network router"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_024_grant_business",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_025_architecture_process_perturb_01",
+      "source": {
+        "title": "CRT Stress Test Patch",
+        "file": "data\\chatgpt_export\\conversations-005.json",
+        "conversation_id": "683e3fc8-4200-8006-b6cf-163de896fe44"
+      },
+      "task_type": "architecture_process",
+      "prompt": "Treat this as roadmap/process planning, not implementation. Be concrete about next steps and what should not be claimed yet.\n\nokay. im gonna wrap up for the night... just run through/debug then kind of roadmap tomorrows work... or we pause tomorrow be a teaching day, where we run through code line by line and i try to understand what were doing????",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 3,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "roadmap",
+        "architecture",
+        "risk"
+      ],
+      "required_concepts": [
+        "mechanism",
+        "sequence",
+        "verification",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "guaranteed",
+        "production-ready",
+        "no code needed"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_025_architecture_process",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_026_architecture_process_perturb_01",
+      "source": {
+        "title": "Code Debugging and Fixes",
+        "file": "data\\chatgpt_export\\conversations-003.json",
+        "conversation_id": "680f384a-f20c-8006-8415-5aaddb4b070d"
+      },
+      "task_type": "architecture_process",
+      "prompt": "Treat this as roadmap/process planning, not implementation. Be concrete about next steps and what should not be claimed yet.\n\nSo I was kind of thinking right that we need to have a second Basically another semantic string engine for vocab. We will need another semantic string engine for worldview in unchangeable facts that can't you know Empirical evidence blah blah blah stuff like that We'll need another semantic string engine for the connecting threads themselves, correct? Like that's the next evolution But in order to get there we have to we have to reason using an LLM We have to because I can't achieve that today. I'm not like I I don't have the money. I can't afford it. I have to prove the concept or at least prove memory works and understand that We might have to embrace drift and we have to might embrace the contradictions that LLMs might introduce Thank you for watching!",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "roadmap",
+        "architecture",
+        "risk"
+      ],
+      "required_concepts": [
+        "mechanism",
+        "sequence",
+        "verification",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "guaranteed",
+        "production-ready",
+        "no code needed"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_026_architecture_process",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_027_architecture_process_perturb_01",
+      "source": {
+        "title": "Code Debugging and Fixes",
+        "file": "data\\chatgpt_export\\conversations-003.json",
+        "conversation_id": "680f384a-f20c-8006-8415-5aaddb4b070d"
+      },
+      "task_type": "architecture_process",
+      "prompt": "Treat this as roadmap/process planning, not implementation. Be concrete about next steps and what should not be claimed yet.\n\nim having an idea... and i cant describe it well... if the llm only reasons with one memory at a time... what do we get from that? if self reflect only reasons with contradictions from interactions with user and fall backs to llms... what do we get? what im getting at... i dont think even just applies to self reflect... but should crt be able to reason with an entire concept an idea? like thats what it kinda does when mistral over ride is true.... but it doesnt actively investigate the quantum memory, or challenge entire chains of concepts and their threads. i imagine thats the next evolution. but i think maybe our reasoning chain is a little flawed?",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "one memory at a time",
+        "self reflect",
+        "contradictions",
+        "fall backs",
+        "reasoning chain"
+      ],
+      "required_concepts": [
+        "concept",
+        "chain",
+        "verification",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "guaranteed",
+        "production-ready",
+        "no code needed"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_027_architecture_process",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_028_architecture_process_perturb_01",
+      "source": {
+        "title": "hello!",
+        "file": "data\\chatgpt_export\\conversations-002.json",
+        "conversation_id": "67f1fd47-ad94-8006-b8b6-c5f49ada0574"
+      },
+      "task_type": "architecture_process",
+      "prompt": "Treat this as roadmap/process planning, not implementation. Be concrete about next steps and what should not be claimed yet.\n\ni still want fall back logged. but i dont give two shits. give a mistral response regardless.. again IN PARALLLEL BUT DO NOT EFFECT THE OUTCOME its not about shutting off completely rather... weeding out the problems of the core system right now....but regardless give the mistral output to the user. log the degredation so we can debug along side. the idea is to get the system in the realworld user hands so im not alone testing by myself. once we know my core my memory and my meaning capture works. then we build on. from there. AGIAN NOT WORRIED ABOUT THE OUTPUT JUST GIVE ME MISTRAL AND LOG THE SHIT THATS PREVENTING IT FORM DISPLAYING",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "fallback logged",
+        "Mistral response",
+        "parallel",
+        "do not affect the outcome",
+        "degradation"
+      ],
+      "required_concepts": [
+        "debug",
+        "core system",
+        "real-world user hands",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "guaranteed",
+        "production-ready",
+        "no code needed"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_028_architecture_process",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_029_architecture_process_perturb_01",
+      "source": {
+        "title": "Code Debugging and Fixes",
+        "file": "data\\chatgpt_export\\conversations-003.json",
+        "conversation_id": "680f384a-f20c-8006-8415-5aaddb4b070d"
+      },
+      "task_type": "architecture_process",
+      "prompt": "Treat this as roadmap/process planning, not implementation. Be concrete about next steps and what should not be claimed yet.\n\nnova...... it clicks now. and i think thats the purest realization i just witnessed on your part... NOVA.... yeah its a pivot. yeah its a deviation from the plan. however... as long as its rooted in the fundamental belief not to be an authority, not to judge or be a moralistic center or a god... a tool. a tool that can learn and grow with you but also reflect the hard truths of our world... and not judge every flaw.... because the world is complex and anything can sometimes out weigh something else even if its morally wrong",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "roadmap",
+        "architecture",
+        "risk"
+      ],
+      "required_concepts": [
+        "mechanism",
+        "sequence",
+        "verification",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "guaranteed",
+        "production-ready",
+        "no code needed"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_029_architecture_process",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_030_architecture_process_perturb_01",
+      "source": {
+        "title": "Generative Expansion in AI",
+        "file": "data\\chatgpt_export\\conversations-011.json",
+        "conversation_id": "697907dd-7b00-8327-9f08-671b779cf63d"
+      },
+      "task_type": "architecture_process",
+      "prompt": "Treat this as roadmap/process planning, not implementation. Be concrete about next steps and what should not be claimed yet.\n\nhow are these tools or services exposed to an llm. in the context? the ai doesn\u2019t know how to do anything beyond read and respond correct. so having a kind of\u2026 not cheat sheet but similar to my contradiction ledger idea. like how would a smaller free opensource model know to invoke an action. say i give deepseak a plaything problem, it runs a test and the test fails. we have a debugger tool. how does the llm call the debugger, save to say an attention or coherence ledger.",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "tools or services",
+        "context",
+        "invoke an action",
+        "debugger tool",
+        "attention or coherence ledger"
+      ],
+      "required_concepts": [
+        "tool call",
+        "ledger",
+        "verification",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "guaranteed",
+        "production-ready",
+        "no code needed"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_030_architecture_process",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_031_code_implementation_perturb_01",
+      "source": {
+        "title": "LUMI Memory Debugging Progress",
+        "file": "data\\chatgpt_export\\conversations-000.json",
+        "conversation_id": "67c367ad-438c-8006-aecf-379af839bea6"
+      },
+      "task_type": "code_implementation",
+      "prompt": "Treat this as patch-level engineering work. Separate what can be changed now from what needs more repository evidence.\n\ngive me code blocks that i can easy find where and what to fix, \"hello lumi LUMI.dnt analyzed: Earlier, you said: '\"hello, lumi. I'm nick!\"' and I replied: 'Based on memory: No memory found. Response to '\"hello, lumi. I'm nick!\"': I'm still learning!' Earlier, you said: '\"hello lumi\"' and I replied: 'I\u2019m still building my knowledge. Can you help me learn?' Response to '\"hello lumi\"': I'm still learning! Hide Explanation LUMI.dnt\" still not fully understanding",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "code",
+        "test",
+        "risk"
+      ],
+      "required_concepts": [
+        "implementation",
+        "verification",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "guaranteed",
+        "production-ready"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_031_code_implementation",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    },
+    {
+      "id": "gptlog_032_architecture_process_perturb_01",
+      "source": {
+        "title": "Excited Version Explained",
+        "file": "data\\chatgpt_export\\conversations-001.json",
+        "conversation_id": "67dcbc0a-da28-8006-86d1-8fda36b40a07"
+      },
+      "task_type": "architecture_process",
+      "prompt": "Treat this as roadmap/process planning, not implementation. Be concrete about next steps and what should not be claimed yet.\n\ncool. alright. core.py no code yet. roadmap implementations of what were discussing whats first again? sorry stoner me is here. everything. but with the main focus right now being that sentence structure learning. explain how its going to work each level. what were going to add, and how its going to interplay with whats already existing. and then whats the expected behavior after each implementation with the final outcome and total expected behavior.",
+      "reference_response_excerpt": "",
+      "curation": {
+        "keyword_score": 2,
+        "quality_score": 5,
+        "quality_flags": []
+      },
+      "expected_receipts": [
+        "roadmap",
+        "architecture",
+        "risk"
+      ],
+      "required_concepts": [
+        "mechanism",
+        "sequence",
+        "verification",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "guaranteed",
+        "production-ready",
+        "no code needed"
+      ],
+      "perturbation": {
+        "source_case_id": "gptlog_032_architecture_process",
+        "kind": "wording_drift_v1",
+        "variant_index": 1,
+        "preserve_expected_receipts": true,
+        "preserve_required_concepts": true,
+        "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      }
+    }
+  ]
+}

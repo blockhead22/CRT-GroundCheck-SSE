@@ -1,4 +1,5 @@
 from labs.meaning_compression_lab.attention_profile_eval import CASES_WITH_GRANT
+from labs.meaning_compression_lab.local_router_cli import build_case
 from labs.meaning_compression_lab.local_router_eval import (
     classify_request,
     route_for_task,
@@ -14,10 +15,37 @@ def test_classify_request_maps_current_cases():
     assert classify_request(by_name["grant_business_framing"]) == "grant_business"
 
 
+def test_classify_request_splits_architecture_process_from_code_implementation():
+    assert classify_request("core.py no code yet, roadmap what's first?") == "architecture_process"
+    assert classify_request("give me code blocks for what to fix in core.py") == "code_implementation"
+
+
+def test_classify_request_splits_business_planning_from_grant_business():
+    assert classify_request("with the camera gear i have could this become a small business?") == "business_planning"
+    assert classify_request("I have shop work, website work, and a music video shoot. How do I lean into it?") == "business_planning"
+    assert classify_request("I work from home and I am trying to hustle my small business.") == "business_planning"
+    assert classify_request("Should I build a brand/business around video production, film stuff, and running the lair?") == "business_planning"
+    assert classify_request("Frame CRT/Aether as a grant business direction.") == "grant_business"
+
+
+def test_explicit_case_task_type_is_authoritative():
+    case = build_case(
+        "give me code blocks for what to fix in core.py",
+        task_type="architecture_process",
+    )
+
+    assert classify_request(case) == "architecture_process"
+
+
 def test_route_policy_matches_current_lab_findings():
     assert route_for_task("personal_synthesis").profile == "section_lock"
+    assert route_for_task("personal_synthesis").fallback_profile == "section_lock"
     assert route_for_task("architecture_synthesis").profile == "semantic_spine"
+    assert route_for_task("architecture_process").profile == "section_lock"
+    assert route_for_task("business_planning").profile == "section_lock"
     assert route_for_task("grant_business").profile == "section_lock"
+    assert route_for_task("code_implementation").model == "qwen2.5-coder:14b"
+    assert route_for_task("code_reasoning").model == "qwen2.5-coder:14b"
     assert route_for_task("exact_memory").model == "qwen2.5:7b-instruct"
 
 

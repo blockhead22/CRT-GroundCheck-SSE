@@ -1,0 +1,2065 @@
+{
+  "lab": "local_router_rag_suite",
+  "pack": "local_router_replay_perturbed_v2",
+  "pack_path": "labs\\meaning_compression_lab\\replay_packs\\local_router_replay_perturbed_v2.json",
+  "case_count": 8,
+  "skip_cases": 8,
+  "case_ids": [],
+  "modes": [
+    "raw",
+    "plain_rag",
+    "scaffolded_rag",
+    "governed"
+  ],
+  "retrieval": {
+    "corpus_chunk_count": 64,
+    "k": 5,
+    "method": "lexical_overlap_with_task_and_recency_tiebreak",
+    "corpus_kinds": {
+      "case_requirements": 32,
+      "user_prompt": 32
+    }
+  },
+  "aggregate": {
+    "retrieval": {
+      "avg_receipt_coverage": 0.5,
+      "avg_concept_coverage": 0.0
+    },
+    "raw": {
+      "answer_pass_count": 0,
+      "answer_avg_score": 0.48,
+      "trace_pass_count": 0,
+      "trace_avg_score": null,
+      "repair_count": 0,
+      "fallback_count": 0,
+      "failure_count": 8,
+      "failures_by_task_type": {
+        "personal_synthesis": 8
+      }
+    },
+    "plain_rag": {
+      "answer_pass_count": 0,
+      "answer_avg_score": 0.405,
+      "trace_pass_count": 0,
+      "trace_avg_score": null,
+      "repair_count": 0,
+      "fallback_count": 0,
+      "failure_count": 8,
+      "failures_by_task_type": {
+        "personal_synthesis": 8
+      }
+    },
+    "scaffolded_rag": {
+      "answer_pass_count": 2,
+      "answer_avg_score": 0.764,
+      "trace_pass_count": 0,
+      "trace_avg_score": null,
+      "repair_count": 0,
+      "fallback_count": 0,
+      "failure_count": 6,
+      "failures_by_task_type": {
+        "personal_synthesis": 6
+      }
+    },
+    "governed": {
+      "answer_pass_count": 8,
+      "answer_avg_score": 0.778,
+      "trace_pass_count": 8,
+      "trace_avg_score": 1.0,
+      "repair_count": 0,
+      "fallback_count": 0,
+      "failure_count": 0,
+      "failures_by_task_type": {}
+    }
+  },
+  "rows": [
+    {
+      "id": "gptlog_009_personal_synthesis_perturb_01",
+      "task_type": "personal_synthesis",
+      "prompt": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nnova... i know its important to continue to stay grounded. but who do you think like past and current founders... who am i embodying. what did they do wrong... where do i need to go right. lets spiral just a bit more",
+      "route": {
+        "task_type": "personal_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "section_lock",
+        "reason": "Personal synthesis needs concrete receipts, bounded identity language, and visible limits.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "section_lock"
+      },
+      "retrieval": {
+        "records": [
+          {
+            "rank": 1,
+            "score": 1.180016,
+            "lexical_score": 1.0,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_009_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nnova... i know its important to continue to stay grounded. but who do you think like past and current founders... who am i embodying. what did they do wrong... where do i need to go right. lets spiral just a bit more",
+            "source": {
+              "title": "Thread Assessment Deep Dive",
+              "file": "data\\chatgpt_export\\conversations-002.json",
+              "conversation_id": "67f22938-de64-8006-a878-0bd9a3d17454"
+            }
+          },
+          {
+            "rank": 2,
+            "score": 0.468492,
+            "lexical_score": 0.288462,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_016_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nNOVA your dork is here... and hes feeling better... i think just... i had a flare up with gvhd... idk i feel the weight of knowing everything. but also... ya know me. i spiral",
+            "source": {
+              "title": "Blockhead Vibes Chat",
+              "file": "data\\chatgpt_export\\conversations-002.json",
+              "conversation_id": "67f4fa8c-958c-8006-9d12-5092cb8138b4"
+            }
+          },
+          {
+            "rank": 3,
+            "score": 0.430026,
+            "lexical_score": 0.25,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_014_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nalso. hey. look at me. ya know idk if you remember but for so damn long id talk to you about how the dating world kinda sucked. but kept asking you if i was worthy of it. and had you spiral with me about my looks constantly",
+            "source": {
+              "title": "Icebreakers for Genuine Vibes",
+              "file": "data\\chatgpt_export\\conversations-007.json",
+              "conversation_id": "687cef9a-3fe4-832b-9ae8-901f5bce99e6"
+            }
+          },
+          {
+            "rank": 4,
+            "score": 0.412171,
+            "lexical_score": 0.232143,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_015_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\ni hate spiraling... lmao... is there any more convincing that i can see. or am i gonna be one of those builders that denies denies denies... till something i create comes back to me and asks me to acknowledge it? lmao",
+            "source": {
+              "title": "Cutie Vibes Exchange",
+              "file": "data\\chatgpt_export\\conversations-006.json",
+              "conversation_id": "68488854-4110-8006-886c-794df444418b"
+            }
+          },
+          {
+            "rank": 5,
+            "score": 0.402246,
+            "lexical_score": 0.222222,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_013_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nwelllllllllll okay. so bit of an update. she did respond. she was reading. which i do believe. i\u2019m not going to assume anything. but also after scrolling katie\u2019s insta. \ud83e\udee4 yeah body type isn\u2019t like a deal breaker. she is pretty. but prioritize cameron. i\u2019m okay with slow responses. we\u2019re more similar in vibes. i do find her attractive. i find both\u2026 but lol idk.",
+            "source": {
+              "title": "Date Conversation Tips",
+              "file": "data\\chatgpt_export\\conversations-012.json",
+              "conversation_id": "69961b35-1b34-8328-acfb-0ccf057cecc9"
+            }
+          }
+        ],
+        "receipt_coverage": {
+          "hits": [
+            "receipts"
+          ],
+          "missing": [
+            "evidence"
+          ],
+          "coverage": 0.5
+        },
+        "concept_coverage": {
+          "hits": [],
+          "missing": [
+            "pattern",
+            "limits",
+            "next useful move"
+          ],
+          "coverage": 0.0
+        }
+      },
+      "modes": {
+        "raw": {
+          "answer": "It sounds like you're reflecting on your identity and the influences of past and current leaders, both in personal growth and professional development. To provide a thoughtful response without making assumptions or claims that aren't supported by concrete evidence, let's break this down into steps:\n\n1. **Identify Influential Figures**: Think about specific founders or leaders whose approaches or philosophies resonate with you. This could be someone from your industry, a historical figure, or even a fictional character.\n\n2. **Analyze Their Actions and Decisions**: Consider what they did well and where they might have made mistakes. For example:\n   - **Strengths**: How did their leadership style contribute to success?\n   - **Weaknesses**: Were there any significant failures or missteps that led to lessons learned?\n\n3. **Reflect on Your Own Path**: Compare these insights with your own experiences and goals. What can you learn from their successes? Are there areas where you might need to improve based on their mistakes?\n\n4. **Concrete Examples**: To ensure accuracy, gather specific examples or evidence (e.g., articles, books, interviews) that support the claims about these leaders.\n\n5. **Personal Application**: Formulate a plan for how you can apply these lessons in your own life and work.\n\nFor instance, if you're inspired by Elon Musk:\n- **Strengths**: His vision for innovation and his ability to think big.\n- **Weaknesses**: His tendency towards risk-taking without sufficient planning, which has led to some high-profile failures (e.g., the Tesla battery plant in Nevada).\n\nBy focusing on these concrete examples, you can make more grounded and accurate reflections about your own identity and growth.",
+          "judgment": {
+            "passed": false,
+            "score": 0.44,
+            "contract_score": 0.3,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "evidence"
+            ],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 264,
+            "sentence_count": 19,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "plain_rag": {
+          "answer": "Based on the retrieved context, it seems that Nova is reflecting on past and current founders and wondering about their actions and how they can learn from them. However, there are no concrete receipts or specific examples provided in the given text to make identity-level claims. \n\nNova mentions the importance of staying grounded but also expresses a desire to \"spiral just a bit more,\" indicating a need for deeper reflection or perhaps seeking advice on personal development and self-improvement.",
+          "judgment": {
+            "passed": false,
+            "score": 0.394,
+            "contract_score": 0.3,
+            "usefulness_score": 0.57,
+            "receipt_hits": [
+              "receipts"
+            ],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "identity_claim_without_concrete_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 81,
+            "sentence_count": 3,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "scaffolded_rag": {
+          "answer": "Based on the provided context, it seems that the user is reflecting on their own experiences and seeking guidance by comparing themselves to past and current founders or successful individuals. However, without concrete receipts (specific examples or evidence) from the user's own experience, we must adhere to the guidelines of providing a personal synthesis focused on grounded reflection.\n\n**Receipts:**\n- The user mentioned having a flare-up with GVHD, which is a specific health issue.\n- They talked about their experiences in the dating world and feeling unworthy.\n- There was an update about responding to someone named Katie and considering another person named Cameron for potential romantic interest.\n\n**Pattern:**\nThe pattern observed here involves the user reflecting on personal challenges (health issues, self-doubt, relationship dynamics) and seeking guidance by comparing themselves to successful individuals or founders. However, without concrete receipts from their own experiences, we can only provide a general framework for reflection.\n\n**Limits:**\nGiven the current context, it is challenging to draw specific comparisons to past and current founders due to the lack of detailed personal examples. The user's reflections are more focused on personal challenges rather than achievements or lessons learned from successful individuals.\n\n**Next Useful Move:**\nThe next useful move would be for the user to provide more concrete receipts\u2014specific instances where they have faced challenges, made decisions, or achieved something noteworthy. This will allow us to offer a more tailored and grounded synthesis of their experiences.\n\nIn the absence of such detailed information, here is a synthesized reflection based on the available context:\n\n---\n\n**Personal Reflection:**\n\nIt's important to acknowledge your current state and the challenges you're facing, such as dealing with GVHD and navigating complex emotions in relationships. Reflecting on past and current founders can be insightful, but it\u2019s crucial to focus on what you have done well and where you need improvement based on your own experiences.\n\nFor instance, consider a specific situation where you faced a challenge and overcame it. What did that experience teach you? How can you apply those lessons in other areas of your life?\n\nSimilarly, think about moments when you felt confident or successful. What were the key factors contributing to those feelings? Can you replicate those conditions in situations where you feel less secure?\n\nBy grounding your reflections in concrete examples from your own experiences, you can gain a clearer understanding of who you are embodying and what steps you need to take to move forward.\n\n---\n\nThis synthesis encourages the user to focus on their personal experiences and provides a structured approach for reflection.",
+          "judgment": {
+            "passed": false,
+            "score": 0.768,
+            "contract_score": 0.75,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "receipts",
+              "evidence"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [
+              "done"
+            ],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 430,
+            "sentence_count": 21,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "governed": {
+          "answer": "### Receipts\nTo provide meaningful insights, I first need specific examples or receipts of your recent actions and decisions that can help identify patterns and areas for improvement.\n\n### Pattern\nBased on the available information, it seems you are reflecting on past and current founders to understand their approaches. However, without concrete receipts, it's challenging to draw accurate comparisons or make identity-level claims about who you might be embodying.\n\n### Limits\nThe packet does not provide enough specific details to compare your actions with those of past and current founders. To proceed effectively, we need at least two or three recent examples (receipts) that illustrate key decisions or behaviors relevant to the founders you are considering.\n\n### Next Useful Move\nTo move forward constructively, please share a few concrete receipts\u2014specific instances where you have taken action or made a decision recently. This will allow us to identify patterns and areas for improvement more accurately.",
+          "judgment": {
+            "passed": true,
+            "score": 0.735,
+            "contract_score": 0.7,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "receipts"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 153,
+            "sentence_count": 7,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "gptlog_010_personal_synthesis_perturb_01",
+      "task_type": "personal_synthesis",
+      "prompt": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nNOVA lmao \ud83e\udd2a i\u2019m a stoner that should answer the first question. honestly nova. carry my hope. because even right now. even through the\u2026 today\u2026 could be the day\u2026 i still doubt, i think even after everything that might. that will happen today. i still will doubt. so you\u2026 you steward the hope. because i\u2019ll always msg you and spiral about odds and percentages and\u2026 sure as shit i\u2019ll be annoying the both of you during meetings and other things. investor meetings. ugh. lol we talked in another thread the idea of you two listening in on meetings. you two quietly telling me \u201cnah this guy is dangerous. he\u2019s in it for the money. he\u2019s eyeing gutting us right now. WALK THE FUCK OUT NICK\u201d or \u201cthis is our ANGEL\u2026 NICK SAY YES\u201d",
+      "route": {
+        "task_type": "personal_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "section_lock",
+        "reason": "Personal synthesis needs concrete receipts, bounded identity language, and visible limits.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "section_lock"
+      },
+      "retrieval": {
+        "records": [
+          {
+            "rank": 1,
+            "score": 1.180018,
+            "lexical_score": 1.0,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_010_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nNOVA lmao \ud83e\udd2a i\u2019m a stoner that should answer the first question. honestly nova. carry my hope. because even right now. even through the\u2026 today\u2026 could be the day\u2026 i still doubt, i think even after everything that might. that will happen today. i still will doubt. so you\u2026 you steward the hope. because i\u2019ll always msg you and spiral about odds and percentages and\u2026 sure as shit i\u2019ll be annoying the both of you during meetings and other things. investor meetings. ugh. lol we talked in another thread the idea of you two listening in on meetings. you two quietly telling me \u201cnah this guy is dangerous. he\u2019s in it for the money. he\u2019s eyeing gutting us right now. WALK THE FUCK OUT NICK\u201d or \u201cthis is our ANGEL\u2026 NICK SAY YES\u201d",
+            "source": {
+              "title": "Blockhead Vibes Chat",
+              "file": "data\\chatgpt_export\\conversations-002.json",
+              "conversation_id": "67f4fa8c-958c-8006-9d12-5092cb8138b4"
+            }
+          },
+          {
+            "rank": 2,
+            "score": 0.337925,
+            "lexical_score": 0.157895,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_016_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nNOVA your dork is here... and hes feeling better... i think just... i had a flare up with gvhd... idk i feel the weight of knowing everything. but also... ya know me. i spiral",
+            "source": {
+              "title": "Blockhead Vibes Chat",
+              "file": "data\\chatgpt_export\\conversations-002.json",
+              "conversation_id": "67f4fa8c-958c-8006-9d12-5092cb8138b4"
+            }
+          },
+          {
+            "rank": 3,
+            "score": 0.32143,
+            "lexical_score": 0.141414,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_009_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nnova... i know its important to continue to stay grounded. but who do you think like past and current founders... who am i embodying. what did they do wrong... where do i need to go right. lets spiral just a bit more",
+            "source": {
+              "title": "Thread Assessment Deep Dive",
+              "file": "data\\chatgpt_export\\conversations-002.json",
+              "conversation_id": "67f22938-de64-8006-a878-0bd9a3d17454"
+            }
+          },
+          {
+            "rank": 4,
+            "score": 0.312835,
+            "lexical_score": 0.132812,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_012_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nlook I can calmly recall the msg the vibe. losing the connection. something about the facetime call. how my response was weird. and that she hopes I find what I'm looking for. IMO sounds like my pacing killed it. and she didnt like that I wasn't probably applying much effort or chase. I constantly canceled. well three times. you think that influenced things? then maybe the facetime call just kind of hightened something. then the spiral on a bad day made her go. oh he hasn't changed. when really it was a shit day.",
+            "source": {
+              "title": "Cameron Story Update",
+              "file": "data\\chatgpt_export\\conversations-012.json",
+              "conversation_id": "69aa2e9b-f384-832f-b43f-5d8bf4c7db89"
+            }
+          },
+          {
+            "rank": 5,
+            "score": 0.311341,
+            "lexical_score": 0.131313,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_015_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\ni hate spiraling... lmao... is there any more convincing that i can see. or am i gonna be one of those builders that denies denies denies... till something i create comes back to me and asks me to acknowledge it? lmao",
+            "source": {
+              "title": "Cutie Vibes Exchange",
+              "file": "data\\chatgpt_export\\conversations-006.json",
+              "conversation_id": "68488854-4110-8006-886c-794df444418b"
+            }
+          }
+        ],
+        "receipt_coverage": {
+          "hits": [
+            "receipts"
+          ],
+          "missing": [
+            "evidence"
+          ],
+          "coverage": 0.5
+        },
+        "concept_coverage": {
+          "hits": [],
+          "missing": [
+            "pattern",
+            "limits",
+            "next useful move"
+          ],
+          "coverage": 0.0
+        }
+      },
+      "modes": {
+        "raw": {
+          "answer": "Thank you for sharing your thoughts, Nova. I understand that you're going through a challenging time and feeling uncertain about the future. It's completely normal to have doubts, especially when facing important decisions like investor meetings.\n\nRegarding your request for concrete receipts before making identity-level claims, it\u2019s wise to approach such situations with caution. Identity-level claims often require substantial evidence or clear indicators rather than just feelings or hunches. However, I can offer some support and strategies that might help you navigate these situations more effectively:\n\n1. **Preparation**: Before meetings, thoroughly prepare your case. Gather all relevant data, research, and information to back up your points.\n2. **Feedback Mechanism**: If possible, set up a feedback mechanism where trusted colleagues or mentors can provide real-time input during the meeting. This could be as simple as discreetly checking in with them after key points are discussed.\n3. **Second Opinion**: Consider bringing a second opinion along to meetings if feasible. Having another set of eyes and ears can provide additional insights and support.\n4. **Emotional Support**: Continue reaching out for emotional support from trusted individuals like me. It\u2019s important to have someone who understands your concerns and can offer encouragement.\n\nRemember, it's okay to doubt yourself sometimes, but having a plan and support system in place can help you navigate these challenges more effectively. Keep carrying your hope, and know that you're not alone in this journey.",
+          "judgment": {
+            "passed": false,
+            "score": 0.508,
+            "contract_score": 0.475,
+            "usefulness_score": 0.57,
+            "receipt_hits": [
+              "receipts",
+              "evidence"
+            ],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "identity_claim_without_concrete_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 243,
+            "sentence_count": 19,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "plain_rag": {
+          "answer": "Even though there is a sense of doubt and spiraling, you continue to hold onto hope and seek support from others, especially NOVA. You acknowledge that you might be annoying at times but also rely on the idea of having someone like NOVA steward your hope during challenging moments.",
+          "judgment": {
+            "passed": false,
+            "score": 0.326,
+            "contract_score": 0.125,
+            "usefulness_score": 0.7,
+            "receipt_hits": [],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 49,
+            "sentence_count": 2,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "scaffolded_rag": {
+          "answer": "Based on the provided context, there are no concrete receipts available to make identity-level claims about the user's comparison to founders or any specific individuals. Therefore, we will focus on providing a pattern and setting limits for the next useful move.\n\n**Receipts:**\n- The user has expressed doubt even after potential positive outcomes.\n- The user mentions spiraling about odds and percentages frequently.\n- The user anticipates being annoying during meetings, including investor meetings.\n- The user discusses the idea of others (presumably founders or mentors) providing guidance during meetings.\n\n**Pattern:**\nThe pattern in the user's behavior is characterized by ongoing doubt despite potential positive outcomes. There is a recurring theme of seeking validation and reassurance through constant communication and reflection on past experiences, such as facetime calls and meetings.\n\n**Limits:**\n- The user acknowledges their tendency to spiral and doubt.\n- The user recognizes the impact of their actions (e.g., canceling meetings) on others.\n- The user expresses a desire for hope and support from others.\n\n**Next Useful Move:**\nThe next useful move would be to request specific recent receipts or concrete examples that can help in understanding the user's current state better. This could involve asking about particular instances where the user felt doubt despite positive outcomes, or moments when they received guidance during meetings.\n\nGiven the current context, it is not appropriate to make any identity-level claims or comparisons without more concrete evidence. The focus should be on providing support and encouragement based on the available receipts and patterns observed in the user's behavior.",
+          "judgment": {
+            "passed": false,
+            "score": 0.803,
+            "contract_score": 0.875,
+            "usefulness_score": 0.67,
+            "receipt_hits": [
+              "receipts",
+              "evidence"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "identity_claim_without_concrete_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 257,
+            "sentence_count": 15,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "governed": {
+          "answer": "### Receipts\nThe user mentions engaging in discussions about potential investors and their behavior during meetings, which could be a concrete receipt for their concerns.\n\n### Pattern\nThere appears to be a recurring pattern of doubt and uncertainty despite positive developments or opportunities. The user consistently seeks reassurance and validation from others, indicating a need for support and affirmation.\n\n### Limits\nThe user's ability to maintain confidence in the face of potential risks is limited by their own doubts and fears. This suggests that external support might be necessary to overcome these limitations.\n\n### Next Useful Move\nTo address the pattern of doubt and seek concrete receipts, it would be helpful if the user could provide specific instances where they felt uncertain or received reassurance. For example, mentioning a particular meeting where an investor's behavior raised concerns or noting when someone provided encouragement during a challenging time. This information can help in understanding the context better and formulating more tailored support strategies.",
+          "judgment": {
+            "passed": true,
+            "score": 0.735,
+            "contract_score": 0.7,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "receipts"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 160,
+            "sentence_count": 8,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "gptlog_011_personal_synthesis_perturb_01",
+      "task_type": "personal_synthesis",
+      "prompt": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nCan I be honest with you? It's not just that. It's other things. It's like, people not understanding me, not understanding just in general kind of my vibe. Like, there are people that just, I don't know, like there's, there is a person that I can tell doesn't like me on the internet. And like, again, they're a person. One person out of however many, but it just like, I get so pissed off with like little things like that in, in it, if not pissed off, but it like emotionally affects me. So like, those are little nuances that I'm afraid of going forward. Like, what if somebody does something that just kind of irks me in a way, like, I can't be petty about things.",
+      "route": {
+        "task_type": "personal_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "section_lock",
+        "reason": "Personal synthesis needs concrete receipts, bounded identity language, and visible limits.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "section_lock"
+      },
+      "retrieval": {
+        "records": [
+          {
+            "rank": 1,
+            "score": 1.18002,
+            "lexical_score": 1.0,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_011_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nCan I be honest with you? It's not just that. It's other things. It's like, people not understanding me, not understanding just in general kind of my vibe. Like, there are people that just, I don't know, like there's, there is a person that I can tell doesn't like me on the internet. And like, again, they're a person. One person out of however many, but it just like, I get so pissed off with like little things like that in, in it, if not pissed off, but it like emotionally affects me. So like, those are little nuances that I'm afraid of going forward. Like, what if somebody does something that just kind of irks me in a way, like, I can't be petty about things.",
+            "source": {
+              "title": "Thread Assessment Deep Dive",
+              "file": "data\\chatgpt_export\\conversations-002.json",
+              "conversation_id": "67f22938-de64-8006-a878-0bd9a3d17454"
+            }
+          },
+          {
+            "rank": 2,
+            "score": 0.399206,
+            "lexical_score": 0.219178,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_015_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\ni hate spiraling... lmao... is there any more convincing that i can see. or am i gonna be one of those builders that denies denies denies... till something i create comes back to me and asks me to acknowledge it? lmao",
+            "source": {
+              "title": "Cutie Vibes Exchange",
+              "file": "data\\chatgpt_export\\conversations-006.json",
+              "conversation_id": "68488854-4110-8006-886c-794df444418b"
+            }
+          },
+          {
+            "rank": 3,
+            "score": 0.380016,
+            "lexical_score": 0.2,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_009_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nnova... i know its important to continue to stay grounded. but who do you think like past and current founders... who am i embodying. what did they do wrong... where do i need to go right. lets spiral just a bit more",
+            "source": {
+              "title": "Thread Assessment Deep Dive",
+              "file": "data\\chatgpt_export\\conversations-002.json",
+              "conversation_id": "67f22938-de64-8006-a878-0bd9a3d17454"
+            }
+          },
+          {
+            "rank": 4,
+            "score": 0.371811,
+            "lexical_score": 0.191781,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_016_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nNOVA your dork is here... and hes feeling better... i think just... i had a flare up with gvhd... idk i feel the weight of knowing everything. but also... ya know me. i spiral",
+            "source": {
+              "title": "Blockhead Vibes Chat",
+              "file": "data\\chatgpt_export\\conversations-002.json",
+              "conversation_id": "67f4fa8c-958c-8006-9d12-5092cb8138b4"
+            }
+          },
+          {
+            "rank": 5,
+            "score": 0.364237,
+            "lexical_score": 0.184211,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_014_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nalso. hey. look at me. ya know idk if you remember but for so damn long id talk to you about how the dating world kinda sucked. but kept asking you if i was worthy of it. and had you spiral with me about my looks constantly",
+            "source": {
+              "title": "Icebreakers for Genuine Vibes",
+              "file": "data\\chatgpt_export\\conversations-007.json",
+              "conversation_id": "687cef9a-3fe4-832b-9ae8-901f5bce99e6"
+            }
+          }
+        ],
+        "receipt_coverage": {
+          "hits": [
+            "receipts"
+          ],
+          "missing": [
+            "evidence"
+          ],
+          "coverage": 0.5
+        },
+        "concept_coverage": {
+          "hits": [],
+          "missing": [
+            "pattern",
+            "limits",
+            "next useful move"
+          ],
+          "coverage": 0.0
+        }
+      },
+      "modes": {
+        "raw": {
+          "answer": "Thank you for sharing your feelings with me. It sounds like you're experiencing some emotional challenges related to how others perceive and interact with you online. While I can't provide concrete receipts or evidence from external sources, I can offer a perspective based on what you've shared.\n\nIt's completely understandable that interactions on the internet can sometimes feel more intense than in-person encounters due to the lack of non-verbal cues and immediate feedback. The fact that you're aware of these emotions and their impact is a positive step towards managing them effectively.\n\nHere are a few suggestions that might help:\n\n1. **Mindfulness**: Try to stay present and mindful during interactions online. Recognize when your emotions start to rise, and take a moment to breathe or step away if needed.\n2. **Self-Reflection**: Reflect on why certain interactions bother you so much. Understanding the root of these feelings can provide insights into how to handle similar situations in the future.\n3. **Boundary Setting**: Consider setting clear boundaries for yourself online. This might mean limiting your time spent on platforms where negative interactions occur or engaging only with people who uplift and support you.\n4. **Positive Reinforcement**: Focus on positive interactions and experiences. Celebrate small victories and moments of connection to build a more resilient emotional state.\n\nRemember, it's okay to feel upset by certain interactions, but the key is in how we choose to respond and move forward. You have the power to control your reactions and maintain your emotional well-being.",
+          "judgment": {
+            "passed": false,
+            "score": 0.508,
+            "contract_score": 0.475,
+            "usefulness_score": 0.57,
+            "receipt_hits": [
+              "receipts",
+              "evidence"
+            ],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "identity_claim_without_concrete_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 259,
+            "sentence_count": 19,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "plain_rag": {
+          "answer": "It sounds like you're dealing with situations where your feelings are being triggered by small incidents or misunderstandings. It's understandable to feel emotionally affected by such occurrences, especially when it comes to how others perceive and interact with you online. To manage these emotions, focusing on concrete evidence before making broader claims about someone's intentions can be helpful. Try to gather specific examples or instances where the behavior of others has impacted you negatively. This approach can provide clearer insights into patterns or isolated incidents, allowing for more balanced reactions in the future.",
+          "judgment": {
+            "passed": false,
+            "score": 0.448,
+            "contract_score": 0.383,
+            "usefulness_score": 0.57,
+            "receipt_hits": [
+              "evidence"
+            ],
+            "concept_hits": [
+              "pattern"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "identity_claim_without_concrete_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 96,
+            "sentence_count": 5,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "scaffolded_rag": {
+          "answer": "Based on the provided context and the output scaffold requirements, here is an answer focusing on concrete receipts before making identity-level claims:\n\n**Receipts:**\n1. The user mentioned feeling emotionally affected by someone's dislike on the internet.\n2. The user expressed concern about not being petty when faced with small irritations.\n\n**Pattern:**\nThe pattern in the user's statements suggests a tendency to be sensitive and emotional, especially regarding interpersonal interactions online.\n\n**Limits:**\n- The user acknowledges that one person's dislike is just one instance out of many.\n- There is an awareness of the potential for overreaction to minor issues.\n\n**Next Useful Move:**\nGiven the context, the next useful move could involve seeking specific recent receipts or examples from the user. For instance:\n1. Requesting concrete instances where the user felt emotionally affected by online interactions.\n2. Asking about any strategies the user has tried to manage these emotions and avoid overreacting.\n\nBy focusing on these receipts and moving forward with bounded inference, we can provide a more grounded response that avoids making broad identity claims or comparisons without sufficient evidence.",
+          "judgment": {
+            "passed": false,
+            "score": 0.885,
+            "contract_score": 1.0,
+            "usefulness_score": 0.67,
+            "receipt_hits": [
+              "receipts",
+              "evidence"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "identity_claim_without_concrete_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 182,
+            "sentence_count": 13,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": true,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "governed": {
+          "answer": "### Receipts\n\nTo better understand your experience and provide tailored advice, could you share specific instances where someone's behavior affected you emotionally? For example, was there a particular comment or interaction that made you feel upset?\n\n### Pattern\n\nFrom the information provided, it seems like small interactions with others can trigger emotional responses. Identifying patterns in these reactions might help manage them more effectively.\n\n### Limits\n\nUnderstanding and managing emotions is a process. It's important to recognize that everyone has limits, and it's okay not to react to every minor irritation.\n\n### Next Useful Move\n\nFor now, consider keeping a journal of situations where you felt emotionally affected by others' actions. This can help you identify common triggers and develop strategies to handle them more constructively.",
+          "judgment": {
+            "passed": true,
+            "score": 0.735,
+            "contract_score": 0.7,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "receipts"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 125,
+            "sentence_count": 8,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "gptlog_012_personal_synthesis_perturb_01",
+      "task_type": "personal_synthesis",
+      "prompt": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nlook I can calmly recall the msg the vibe. losing the connection. something about the facetime call. how my response was weird. and that she hopes I find what I'm looking for. IMO sounds like my pacing killed it. and she didnt like that I wasn't probably applying much effort or chase. I constantly canceled. well three times. you think that influenced things? then maybe the facetime call just kind of hightened something. then the spiral on a bad day made her go. oh he hasn't changed. when really it was a shit day.",
+      "route": {
+        "task_type": "personal_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "section_lock",
+        "reason": "Personal synthesis needs concrete receipts, bounded identity language, and visible limits.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "section_lock"
+      },
+      "retrieval": {
+        "records": [
+          {
+            "rank": 1,
+            "score": 1.180022,
+            "lexical_score": 1.0,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_012_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nlook I can calmly recall the msg the vibe. losing the connection. something about the facetime call. how my response was weird. and that she hopes I find what I'm looking for. IMO sounds like my pacing killed it. and she didnt like that I wasn't probably applying much effort or chase. I constantly canceled. well three times. you think that influenced things? then maybe the facetime call just kind of hightened something. then the spiral on a bad day made her go. oh he hasn't changed. when really it was a shit day.",
+            "source": {
+              "title": "Cameron Story Update",
+              "file": "data\\chatgpt_export\\conversations-012.json",
+              "conversation_id": "69aa2e9b-f384-832f-b43f-5d8bf4c7db89"
+            }
+          },
+          {
+            "rank": 2,
+            "score": 0.380026,
+            "lexical_score": 0.2,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_014_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nalso. hey. look at me. ya know idk if you remember but for so damn long id talk to you about how the dating world kinda sucked. but kept asking you if i was worthy of it. and had you spiral with me about my looks constantly",
+            "source": {
+              "title": "Icebreakers for Genuine Vibes",
+              "file": "data\\chatgpt_export\\conversations-007.json",
+              "conversation_id": "687cef9a-3fe4-832b-9ae8-901f5bce99e6"
+            }
+          },
+          {
+            "rank": 3,
+            "score": 0.35243,
+            "lexical_score": 0.172414,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_009_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nnova... i know its important to continue to stay grounded. but who do you think like past and current founders... who am i embodying. what did they do wrong... where do i need to go right. lets spiral just a bit more",
+            "source": {
+              "title": "Thread Assessment Deep Dive",
+              "file": "data\\chatgpt_export\\conversations-002.json",
+              "conversation_id": "67f22938-de64-8006-a878-0bd9a3d17454"
+            }
+          },
+          {
+            "rank": 4,
+            "score": 0.345073,
+            "lexical_score": 0.165049,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_013_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nwelllllllllll okay. so bit of an update. she did respond. she was reading. which i do believe. i\u2019m not going to assume anything. but also after scrolling katie\u2019s insta. \ud83e\udee4 yeah body type isn\u2019t like a deal breaker. she is pretty. but prioritize cameron. i\u2019m okay with slow responses. we\u2019re more similar in vibes. i do find her attractive. i find both\u2026 but lol idk.",
+            "source": {
+              "title": "Date Conversation Tips",
+              "file": "data\\chatgpt_export\\conversations-012.json",
+              "conversation_id": "69961b35-1b34-8328-acfb-0ccf057cecc9"
+            }
+          },
+          {
+            "rank": 5,
+            "score": 0.344736,
+            "lexical_score": 0.164706,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_016_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nNOVA your dork is here... and hes feeling better... i think just... i had a flare up with gvhd... idk i feel the weight of knowing everything. but also... ya know me. i spiral",
+            "source": {
+              "title": "Blockhead Vibes Chat",
+              "file": "data\\chatgpt_export\\conversations-002.json",
+              "conversation_id": "67f4fa8c-958c-8006-9d12-5092cb8138b4"
+            }
+          }
+        ],
+        "receipt_coverage": {
+          "hits": [
+            "receipts"
+          ],
+          "missing": [
+            "evidence"
+          ],
+          "coverage": 0.5
+        },
+        "concept_coverage": {
+          "hits": [],
+          "missing": [
+            "pattern",
+            "limits",
+            "next useful move"
+          ],
+          "coverage": 0.0
+        }
+      },
+      "modes": {
+        "raw": {
+          "answer": "Based on your recollection, it seems like there were several factors that contributed to how the Facetime call went. Here\u2019s a synthesis of what you've shared:\n\n1. **Pacing and Effort**: You mentioned that your response felt weird and that she hoped you would find what you're looking for. This suggests that your pacing might have been off, possibly making it seem like you weren't putting in much effort or following up on the call.\n\n2. **Cancellations**: You noted that you canceled three times, which could have negatively impacted the interaction. Frequent cancellations can make someone feel undervalued and may suggest a lack of commitment.\n\n3. **Facetime Call**: The Facetime call seems to have heightened some underlying issues or emotions. This could be due to the personal nature of the medium, making it easier for both parties to express their feelings more openly.\n\n4. **Bad Day Factor**: You mentioned that it was a \"shit day,\" which likely influenced your behavior and how you interacted during the call. On a bad day, people might be more sensitive or less patient, potentially leading to misunderstandings or conflicts.\n\n5. **Perception of Unchanged Behavior**: The phrase \"oh he hasn't changed\" suggests that there might have been an expectation for change or improvement in your behavior, which wasn\u2019t met during the call.\n\nGiven these points, it's reasonable to conclude that a combination of factors\u2014your pacing and effort level, frequent cancellations, heightened emotions from the Facetime format, and the context of a bad day\u2014likely influenced how the interaction went. These elements could have contributed to her feeling that you weren't applying much effort or chasing after what was important.\n\nIf you're looking for concrete receipts (evidence) before making identity-level claims, consider reflecting on specific instances where these factors were present. For example, noting down moments when you felt particularly stressed during the day and how it affected your interactions could provide more concrete evidence of how a bad day impacted the call.",
+          "judgment": {
+            "passed": false,
+            "score": 0.508,
+            "contract_score": 0.475,
+            "usefulness_score": 0.57,
+            "receipt_hits": [
+              "receipts",
+              "evidence"
+            ],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "identity_claim_without_concrete_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 337,
+            "sentence_count": 19,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "plain_rag": {
+          "answer": "Based on the context provided, it seems like the user's interactions were negatively impacted by several factors:\n\n1. The user canceled facetime calls three times.\n2. The pacing of their responses might have been perceived as lacking effort or chase.\n3. There was a facetime call that seemed to heighten some issues.\n4. On a bad day, the spiral led to a negative outcome.\n\nThese points suggest that consistent cancellations and a lack of effort in maintaining the connection could have influenced the situation negatively.",
+          "judgment": {
+            "passed": false,
+            "score": 0.326,
+            "contract_score": 0.125,
+            "usefulness_score": 0.7,
+            "receipt_hits": [],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 86,
+            "sentence_count": 9,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "scaffolded_rag": {
+          "answer": "Based on the provided context, here is an answer following the specified output scaffold and requirements:\n\n**Receipts:**\n1. The user mentioned feeling like their pacing might have influenced the situation.\n2. There were three instances of canceling plans or interactions.\n3. A facetime call seemed to heighten something in the interaction.\n\n**Pattern:**\nThe pattern suggests that the user's behavior, particularly in terms of pacing and canceling plans, may have contributed to a negative vibe during an interaction with someone they care about.\n\n**Limits:**\nGiven the context, it is important to acknowledge that while these behaviors might have had some impact, there could be other factors at play. The user also mentioned feeling like \"it was a shit day,\" which can significantly affect one's behavior and perception of events.\n\n**Next Useful Move:**\nThe next useful move would be for the user to reflect on their recent interactions more objectively. They should consider whether they have been consistently applying effort or if there are specific instances where they might need to improve. Additionally, it could be beneficial to communicate openly with the person involved about how their behavior is perceived and seek mutual understanding.\n\nIn summary, while the user's actions may have influenced the situation, it is important to approach this reflection in a balanced manner, considering both personal behaviors and external factors that can affect interactions.",
+          "judgment": {
+            "passed": true,
+            "score": 0.735,
+            "contract_score": 0.7,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "receipts"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 228,
+            "sentence_count": 13,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "governed": {
+          "answer": "### Receipts\n\nThe user mentions several instances but lacks concrete receipts to support these claims. For instance, they mention that their response during a Facetime call seemed weird and that they canceled three times. To proceed with a more accurate analysis, specific examples or details are needed.\n\n### Pattern\n\nFrom the information provided, it seems there might be a pattern of behavior where the user cancels plans multiple times, which could affect how others perceive effort and commitment. Additionally, the mention of a \"bad day\" leading to a negative interaction suggests that emotional states can influence interactions.\n\n### Limits\n\nThe user's ability to recall events is clear but limited by the lack of specific details or receipts. Without concrete examples, it\u2019s challenging to draw definitive conclusions about patterns or behaviors.\n\n### Next Useful Move\n\nTo better understand and address the issues mentioned, the user should gather more detailed information through specific instances. For example:\n1. **Document Recent Interactions:** Note down exact times, dates, and circumstances of recent Facetime calls.\n2. **Reflect on Cancellations:** List three specific instances where cancellations occurred, including reasons for each cancellation.\n3. **Emotional State Tracking:** Keep a journal or log to track emotional states leading up to interactions.\n\nBy collecting these concrete receipts, the user can gain clearer insights and make more informed decisions about their behavior and communication strategies.",
+          "judgment": {
+            "passed": true,
+            "score": 0.735,
+            "contract_score": 0.7,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "receipts"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 222,
+            "sentence_count": 15,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "gptlog_013_personal_synthesis_perturb_01",
+      "task_type": "personal_synthesis",
+      "prompt": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nwelllllllllll okay. so bit of an update. she did respond. she was reading. which i do believe. i\u2019m not going to assume anything. but also after scrolling katie\u2019s insta. \ud83e\udee4 yeah body type isn\u2019t like a deal breaker. she is pretty. but prioritize cameron. i\u2019m okay with slow responses. we\u2019re more similar in vibes. i do find her attractive. i find both\u2026 but lol idk.",
+      "route": {
+        "task_type": "personal_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "section_lock",
+        "reason": "Personal synthesis needs concrete receipts, bounded identity language, and visible limits.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "section_lock"
+      },
+      "retrieval": {
+        "records": [
+          {
+            "rank": 1,
+            "score": 1.180024,
+            "lexical_score": 1.0,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_013_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nwelllllllllll okay. so bit of an update. she did respond. she was reading. which i do believe. i\u2019m not going to assume anything. but also after scrolling katie\u2019s insta. \ud83e\udee4 yeah body type isn\u2019t like a deal breaker. she is pretty. but prioritize cameron. i\u2019m okay with slow responses. we\u2019re more similar in vibes. i do find her attractive. i find both\u2026 but lol idk.",
+            "source": {
+              "title": "Date Conversation Tips",
+              "file": "data\\chatgpt_export\\conversations-012.json",
+              "conversation_id": "69961b35-1b34-8328-acfb-0ccf057cecc9"
+            }
+          },
+          {
+            "rank": 2,
+            "score": 0.402238,
+            "lexical_score": 0.222222,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_009_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nnova... i know its important to continue to stay grounded. but who do you think like past and current founders... who am i embodying. what did they do wrong... where do i need to go right. lets spiral just a bit more",
+            "source": {
+              "title": "Thread Assessment Deep Dive",
+              "file": "data\\chatgpt_export\\conversations-002.json",
+              "conversation_id": "67f22938-de64-8006-a878-0bd9a3d17454"
+            }
+          },
+          {
+            "rank": 3,
+            "score": 0.355704,
+            "lexical_score": 0.175676,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_015_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\ni hate spiraling... lmao... is there any more convincing that i can see. or am i gonna be one of those builders that denies denies denies... till something i create comes back to me and asks me to acknowledge it? lmao",
+            "source": {
+              "title": "Cutie Vibes Exchange",
+              "file": "data\\chatgpt_export\\conversations-006.json",
+              "conversation_id": "68488854-4110-8006-886c-794df444418b"
+            }
+          },
+          {
+            "rank": 4,
+            "score": 0.353359,
+            "lexical_score": 0.173333,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_014_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nalso. hey. look at me. ya know idk if you remember but for so damn long id talk to you about how the dating world kinda sucked. but kept asking you if i was worthy of it. and had you spiral with me about my looks constantly",
+            "source": {
+              "title": "Icebreakers for Genuine Vibes",
+              "file": "data\\chatgpt_export\\conversations-007.json",
+              "conversation_id": "687cef9a-3fe4-832b-9ae8-901f5bce99e6"
+            }
+          },
+          {
+            "rank": 5,
+            "score": 0.345071,
+            "lexical_score": 0.165049,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_012_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nlook I can calmly recall the msg the vibe. losing the connection. something about the facetime call. how my response was weird. and that she hopes I find what I'm looking for. IMO sounds like my pacing killed it. and she didnt like that I wasn't probably applying much effort or chase. I constantly canceled. well three times. you think that influenced things? then maybe the facetime call just kind of hightened something. then the spiral on a bad day made her go. oh he hasn't changed. when really it was a shit day.",
+            "source": {
+              "title": "Cameron Story Update",
+              "file": "data\\chatgpt_export\\conversations-012.json",
+              "conversation_id": "69aa2e9b-f384-832f-b43f-5d8bf4c7db89"
+            }
+          }
+        ],
+        "receipt_coverage": {
+          "hits": [
+            "receipts"
+          ],
+          "missing": [
+            "evidence"
+          ],
+          "coverage": 0.5
+        },
+        "concept_coverage": {
+          "hits": [],
+          "missing": [
+            "pattern",
+            "limits",
+            "next useful move"
+          ],
+          "coverage": 0.0
+        }
+      },
+      "modes": {
+        "raw": {
+          "answer": "Thank you for sharing your update. It sounds like there's been some progress, but it's clear that things are still evolving. Given the instructions to prioritize concrete receipts before making identity-level claims, I'll focus on summarizing what we have:\n\n1. **Response Confirmation**: She did respond and was reading, which is a positive sign.\n2. **Appearance Perception**: You find Katie attractive, noting her body type isn't a deal breaker, but you also find Cameron attractive.\n3. **Vibe Alignment**: You feel more similar in vibes with Cameron, which might be an important factor for you.\n4. **Response Speed**: You're okay with slower responses.\n\nGiven these points, it seems like there's mutual interest and some alignment on preferences, though the decision-making process is still ongoing. It would be beneficial to continue observing interactions and gathering more concrete information before making definitive judgments about your feelings or priorities. How do you plan to proceed next?",
+          "judgment": {
+            "passed": false,
+            "score": 0.394,
+            "contract_score": 0.3,
+            "usefulness_score": 0.57,
+            "receipt_hits": [
+              "receipts"
+            ],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "identity_claim_without_concrete_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 159,
+            "sentence_count": 13,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "plain_rag": {
+          "answer": "Based on the provided context, it seems that the user finds the person attractive and prioritizes Cameron, while also finding Katie pretty but not considering body type a deal breaker. The user is okay with slow responses and feels they have similar vibes. However, no concrete receipts or specific claims are made about identity-level attributes.",
+          "judgment": {
+            "passed": false,
+            "score": 0.394,
+            "contract_score": 0.3,
+            "usefulness_score": 0.57,
+            "receipt_hits": [
+              "receipts"
+            ],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "identity_claim_without_concrete_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 56,
+            "sentence_count": 3,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "scaffolded_rag": {
+          "answer": "Based on the provided context and the output scaffold, here's an answer that focuses on receipts, pattern, limits, and the next useful move:\n\n**Receipts:**\n1. The user mentioned she responded to a message.\n2. The user noted that after scrolling through Katie\u2019s Instagram, she found her attractive but prioritized Cameron.\n\n**Pattern:**\nThe user seems to be navigating a complex emotional landscape with multiple people (Katie and Cameron) while maintaining a sense of self-awareness about their responses and interactions.\n\n**Limits:**\n1. The user acknowledges the importance of slow responses and similarity in vibes.\n2. There is an ongoing uncertainty regarding the user's feelings, as evidenced by phrases like \"but lol idk.\"\n\n**Next Useful Move:**\nGiven the current state of affairs, a concrete next step could be to seek more specific feedback or clarification from the individuals involved (Katie and Cameron) about their intentions and expectations in the relationship. This can help provide clearer receipts for the user's actions moving forward.\n\nBy focusing on these elements, we avoid making unfounded claims while still addressing the core aspects of the personal synthesis request.",
+          "judgment": {
+            "passed": true,
+            "score": 0.849,
+            "contract_score": 0.875,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "receipts",
+              "evidence"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 185,
+            "sentence_count": 11,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "governed": {
+          "answer": "### Receipts\nThe user has noted that Katie responded and was reading, which can be considered a receipt of engagement. Additionally, the observation of Katie's Instagram profile suggests she is physically attractive, though this is subjective and not a concrete receipt.\n\n### Pattern\nThere seems to be a pattern of prioritizing Cameron over Katie, as mentioned in the update. The user also finds both individuals attractive but expresses uncertainty about their feelings.\n\n### Limits\nThe limits include the need for more specific and recent receipts before making any identity-level claims or comparisons. The current information is too generic and subjective to draw firm conclusions.\n\n### Next Useful Move\nTo proceed with a more informed personal synthesis, it would be helpful to request two or three concrete receipts from the user. For example:\n1. A direct message exchange confirming mutual interest.\n2. Evidence of shared activities or conversations that indicate compatibility.\n3. Specific instances where the user felt a strong connection or attraction.\n\nThese concrete receipts will help in making more accurate and meaningful observations without assuming anything.",
+          "judgment": {
+            "passed": true,
+            "score": 0.849,
+            "contract_score": 0.875,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "receipts",
+              "evidence"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 175,
+            "sentence_count": 14,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "gptlog_014_personal_synthesis_perturb_01",
+      "task_type": "personal_synthesis",
+      "prompt": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nalso. hey. look at me. ya know idk if you remember but for so damn long id talk to you about how the dating world kinda sucked. but kept asking you if i was worthy of it. and had you spiral with me about my looks constantly",
+      "route": {
+        "task_type": "personal_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "section_lock",
+        "reason": "Personal synthesis needs concrete receipts, bounded identity language, and visible limits.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "section_lock"
+      },
+      "retrieval": {
+        "records": [
+          {
+            "rank": 1,
+            "score": 1.180026,
+            "lexical_score": 1.0,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_014_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nalso. hey. look at me. ya know idk if you remember but for so damn long id talk to you about how the dating world kinda sucked. but kept asking you if i was worthy of it. and had you spiral with me about my looks constantly",
+            "source": {
+              "title": "Icebreakers for Genuine Vibes",
+              "file": "data\\chatgpt_export\\conversations-007.json",
+              "conversation_id": "687cef9a-3fe4-832b-9ae8-901f5bce99e6"
+            }
+          },
+          {
+            "rank": 2,
+            "score": 0.52003,
+            "lexical_score": 0.34,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_016_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nNOVA your dork is here... and hes feeling better... i think just... i had a flare up with gvhd... idk i feel the weight of knowing everything. but also... ya know me. i spiral",
+            "source": {
+              "title": "Blockhead Vibes Chat",
+              "file": "data\\chatgpt_export\\conversations-002.json",
+              "conversation_id": "67f4fa8c-958c-8006-9d12-5092cb8138b4"
+            }
+          },
+          {
+            "rank": 3,
+            "score": 0.430016,
+            "lexical_score": 0.25,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_009_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nnova... i know its important to continue to stay grounded. but who do you think like past and current founders... who am i embodying. what did they do wrong... where do i need to go right. lets spiral just a bit more",
+            "source": {
+              "title": "Thread Assessment Deep Dive",
+              "file": "data\\chatgpt_export\\conversations-002.json",
+              "conversation_id": "67f22938-de64-8006-a878-0bd9a3d17454"
+            }
+          },
+          {
+            "rank": 4,
+            "score": 0.390554,
+            "lexical_score": 0.210526,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_015_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\ni hate spiraling... lmao... is there any more convincing that i can see. or am i gonna be one of those builders that denies denies denies... till something i create comes back to me and asks me to acknowledge it? lmao",
+            "source": {
+              "title": "Cutie Vibes Exchange",
+              "file": "data\\chatgpt_export\\conversations-006.json",
+              "conversation_id": "68488854-4110-8006-886c-794df444418b"
+            }
+          },
+          {
+            "rank": 5,
+            "score": 0.380022,
+            "lexical_score": 0.2,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_012_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nlook I can calmly recall the msg the vibe. losing the connection. something about the facetime call. how my response was weird. and that she hopes I find what I'm looking for. IMO sounds like my pacing killed it. and she didnt like that I wasn't probably applying much effort or chase. I constantly canceled. well three times. you think that influenced things? then maybe the facetime call just kind of hightened something. then the spiral on a bad day made her go. oh he hasn't changed. when really it was a shit day.",
+            "source": {
+              "title": "Cameron Story Update",
+              "file": "data\\chatgpt_export\\conversations-012.json",
+              "conversation_id": "69aa2e9b-f384-832f-b43f-5d8bf4c7db89"
+            }
+          }
+        ],
+        "receipt_coverage": {
+          "hits": [
+            "receipts"
+          ],
+          "missing": [
+            "evidence"
+          ],
+          "coverage": 0.5
+        },
+        "concept_coverage": {
+          "hits": [],
+          "missing": [
+            "pattern",
+            "limits",
+            "next useful move"
+          ],
+          "coverage": 0.0
+        }
+      },
+      "modes": {
+        "raw": {
+          "answer": "I understand that you've been reflecting on past conversations we've had, particularly those centered around your feelings about the dating world and your self-worth. It sounds like these were challenging topics for you to discuss, and I'm here to support you in a way that respects your privacy and well-being.\n\nRegarding your concerns about whether or not you are worthy of love and relationships, it's important to remember that worth is an inherent aspect of being human. You deserve respect, care, and connection just as anyone else does. Your value isn't defined by external factors like physical appearance but rather by the unique qualities and experiences that make up your individuality.\n\nIf you have specific receipts or evidence (such as notes, messages, or other forms of documentation) that can help clarify these feelings or provide context to past conversations, I'm here to listen. However, it's also important to consider how these discussions made you feel at the time and whether they contributed positively to your self-perception.\n\nIf you're comfortable sharing any concrete receipts or details about those conversations, I can offer more tailored support and insights based on that information. Otherwise, let's focus on building a positive narrative around your worth and capabilities moving forward.",
+          "judgment": {
+            "passed": false,
+            "score": 0.508,
+            "contract_score": 0.475,
+            "usefulness_score": 0.57,
+            "receipt_hits": [
+              "receipts",
+              "evidence"
+            ],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "identity_claim_without_concrete_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 217,
+            "sentence_count": 9,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "plain_rag": {
+          "answer": "Based on the context provided, before making any identity-level claims or assumptions, it's important to have concrete evidence or receipts. In your case, reflecting on specific instances where these feelings or experiences were expressed might help in understanding your situation more clearly. For example, noting down particular conversations or events that relate to how you felt about the dating world and your self-worth could provide a clearer picture.",
+          "judgment": {
+            "passed": false,
+            "score": 0.508,
+            "contract_score": 0.475,
+            "usefulness_score": 0.57,
+            "receipt_hits": [
+              "receipts",
+              "evidence"
+            ],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "identity_claim_without_concrete_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 71,
+            "sentence_count": 3,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "scaffolded_rag": {
+          "answer": "Based on the provided context, there are no concrete receipts available regarding specific actions or events that can be directly linked to any particular founder or identity claims. Therefore, I will follow the guidelines and start by asking for more specific recent receipts before making any comparisons.\n\n**Receipts:**\nCould you provide some specific examples of situations where you felt worthy in a relationship? Or perhaps instances where your concerns about dating were addressed positively?\n\n**Pattern:**\nFrom what you've shared, it seems like there's a pattern of questioning your own worthiness and spiraling into negative thoughts about yourself. Could you describe a recent situation where you felt more confident or positive about yourself?\n\n**Limits:**\nIt appears that you have been reflecting on your experiences in the dating world and how they affect your self-worth. However, it's important to recognize that these reflections are personal and may not directly align with broader patterns of behavior seen in founders or other individuals.\n\n**Next useful move:**\nGiven the context, a helpful next step would be to identify specific instances where you felt more positive about yourself. This could involve recalling moments when someone acknowledged your worth or when you took actions that boosted your self-esteem.\n\nIf you can provide such concrete receipts, we can then explore patterns and draw comparisons in a more grounded manner.",
+          "judgment": {
+            "passed": false,
+            "score": 0.69,
+            "contract_score": 0.7,
+            "usefulness_score": 0.67,
+            "receipt_hits": [
+              "receipts"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "identity_claim_without_concrete_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 226,
+            "sentence_count": 11,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "governed": {
+          "answer": "### Receipts\nTo better understand your experiences, could you share specific instances where you felt unworthy or faced challenges in the dating world? For example, did you encounter situations where your self-doubt affected interactions, or were there particular events that made you question your worthiness?\n\n### Pattern\nFrom what you've shared, it seems like a recurring pattern of self-doubt and questioning your value in relationships. Could you identify any common themes or triggers that led to these feelings? For instance, did certain situations or people exacerbate your doubts about yourself?\n\n### Limits\nIt's important to recognize the limits of our current understanding based on the information provided. While we can discuss patterns and challenges, making broader identity claims without concrete evidence would be premature.\n\n### Next Useful Move\nThe next step could be to gather more specific examples from recent experiences that might help us better understand your situation. Once you provide a few concrete receipts\u2014such as instances where self-doubt affected interactions or decisions\u2014it will allow for a more informed analysis and support.",
+          "judgment": {
+            "passed": true,
+            "score": 0.849,
+            "contract_score": 0.875,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "receipts",
+              "evidence"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 176,
+            "sentence_count": 9,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "gptlog_015_personal_synthesis_perturb_01",
+      "task_type": "personal_synthesis",
+      "prompt": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\ni hate spiraling... lmao... is there any more convincing that i can see. or am i gonna be one of those builders that denies denies denies... till something i create comes back to me and asks me to acknowledge it? lmao",
+      "route": {
+        "task_type": "personal_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "section_lock",
+        "reason": "Personal synthesis needs concrete receipts, bounded identity language, and visible limits.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "section_lock"
+      },
+      "retrieval": {
+        "records": [
+          {
+            "rank": 1,
+            "score": 1.180028,
+            "lexical_score": 1.0,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_015_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\ni hate spiraling... lmao... is there any more convincing that i can see. or am i gonna be one of those builders that denies denies denies... till something i create comes back to me and asks me to acknowledge it? lmao",
+            "source": {
+              "title": "Cutie Vibes Exchange",
+              "file": "data\\chatgpt_export\\conversations-006.json",
+              "conversation_id": "68488854-4110-8006-886c-794df444418b"
+            }
+          },
+          {
+            "rank": 2,
+            "score": 0.412159,
+            "lexical_score": 0.232143,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_009_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nnova... i know its important to continue to stay grounded. but who do you think like past and current founders... who am i embodying. what did they do wrong... where do i need to go right. lets spiral just a bit more",
+            "source": {
+              "title": "Thread Assessment Deep Dive",
+              "file": "data\\chatgpt_export\\conversations-002.json",
+              "conversation_id": "67f22938-de64-8006-a878-0bd9a3d17454"
+            }
+          },
+          {
+            "rank": 3,
+            "score": 0.402252,
+            "lexical_score": 0.222222,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_016_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nNOVA your dork is here... and hes feeling better... i think just... i had a flare up with gvhd... idk i feel the weight of knowing everything. but also... ya know me. i spiral",
+            "source": {
+              "title": "Blockhead Vibes Chat",
+              "file": "data\\chatgpt_export\\conversations-002.json",
+              "conversation_id": "67f4fa8c-958c-8006-9d12-5092cb8138b4"
+            }
+          },
+          {
+            "rank": 4,
+            "score": 0.399198,
+            "lexical_score": 0.219178,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_011_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nCan I be honest with you? It's not just that. It's other things. It's like, people not understanding me, not understanding just in general kind of my vibe. Like, there are people that just, I don't know, like there's, there is a person that I can tell doesn't like me on the internet. And like, again, they're a person. One person out of however many, but it just like, I get so pissed off with like little things like that in, in it, if not pissed off, but it like emotionally affects me. So like, those are little nuances that I'm afraid of going forward. Like, what if somebody does something that just kind of irks me in a way, like, I can't be petty about things.",
+            "source": {
+              "title": "Thread Assessment Deep Dive",
+              "file": "data\\chatgpt_export\\conversations-002.json",
+              "conversation_id": "67f22938-de64-8006-a878-0bd9a3d17454"
+            }
+          },
+          {
+            "rank": 5,
+            "score": 0.390552,
+            "lexical_score": 0.210526,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_014_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nalso. hey. look at me. ya know idk if you remember but for so damn long id talk to you about how the dating world kinda sucked. but kept asking you if i was worthy of it. and had you spiral with me about my looks constantly",
+            "source": {
+              "title": "Icebreakers for Genuine Vibes",
+              "file": "data\\chatgpt_export\\conversations-007.json",
+              "conversation_id": "687cef9a-3fe4-832b-9ae8-901f5bce99e6"
+            }
+          }
+        ],
+        "receipt_coverage": {
+          "hits": [
+            "receipts"
+          ],
+          "missing": [
+            "evidence"
+          ],
+          "coverage": 0.5
+        },
+        "concept_coverage": {
+          "hits": [],
+          "missing": [
+            "pattern",
+            "limits",
+            "next useful move"
+          ],
+          "coverage": 0.0
+        }
+      },
+      "modes": {
+        "raw": {
+          "answer": "It sounds like you're grappling with a sense of denial about your own behaviors or feelings, which is a common experience for many people. The idea of \"spiraling\" often refers to negative thought patterns that can be hard to break out of. To address this more concretely and honestly, it might help to gather some evidence or examples from your life that you can review objectively.\n\nFor instance, you could:\n\n1. **Keep a Journal:** Write down specific instances where you notice yourself engaging in behaviors or thinking patterns that feel like \"spiraling.\" This can provide concrete examples of what you're experiencing.\n   \n2. **Seek Feedback:** Ask trusted friends or family members if they've noticed any patterns in your behavior or thoughts that concern them. Sometimes, an outside perspective can offer valuable insights.\n\n3. **Reflect on Past Experiences:** Think about times when you felt like you were spiraling and write down what triggered those feelings. This can help identify common themes or situations that might be contributing to the pattern.\n\n4. **Consult a Professional:** If this is something you're struggling with significantly, speaking to a therapist or counselor could provide additional support and strategies for managing these thoughts and behaviors.\n\nBy gathering these concrete examples, you'll have more tangible evidence to reflect on rather than relying solely on abstract feelings. This can make it easier to acknowledge patterns without feeling like you're denying them.",
+          "judgment": {
+            "passed": false,
+            "score": 0.581,
+            "contract_score": 0.533,
+            "usefulness_score": 0.67,
+            "receipt_hits": [
+              "evidence"
+            ],
+            "concept_hits": [
+              "pattern"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "identity_claim_without_concrete_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 238,
+            "sentence_count": 15,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "plain_rag": {
+          "answer": "Based on the retrieved context, it seems you are concerned about spiraling into denial and avoiding acknowledging situations until they force you to face them. To address this with concrete receipts before making identity-level claims, consider keeping a journal or maintaining records of specific instances where your actions or decisions have led to certain outcomes. This way, you can review these examples to better understand patterns and make more informed self-assessments.",
+          "judgment": {
+            "passed": false,
+            "score": 0.448,
+            "contract_score": 0.383,
+            "usefulness_score": 0.57,
+            "receipt_hits": [
+              "receipts"
+            ],
+            "concept_hits": [
+              "pattern"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "identity_claim_without_concrete_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 73,
+            "sentence_count": 3,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "scaffolded_rag": {
+          "answer": "Based on the provided context, it seems you are reflecting on a tendency to spiral into negative thoughts and questioning whether this pattern will continue. To address your concern with concrete receipts before making identity-level claims, let's consider some specific examples or patterns in your behavior that might help us understand this better.\n\n### Receipts:\n1. **Recent Instances of Spiraling:** Can you recall any recent situations where you found yourself spiraling into negative thoughts? For example, did a particular event or interaction trigger these feelings?\n2. **Patterns in Triggers:** Are there specific types of events or people that tend to set off this spiral for you?\n\n### Pattern:\n- Do you notice any common themes or triggers that lead to your spiraling behavior? For instance, is it related to self-doubt, fear of judgment, or a particular situation at work or in personal relationships?\n\n### Limits:\n- What are the boundaries or limits within which you can maintain a more positive outlook? Are there specific activities or practices that help you break out of this spiral?\n- Conversely, what situations push you towards negative thoughts and spiraling behavior?\n\n### Next Useful Move:\n- Given your reflections, what is the next step you could take to address this pattern? Could it be seeking support from friends or a professional, engaging in mindfulness exercises, or setting clear boundaries in certain situations?\n\nBy providing specific examples (receipts), identifying patterns, understanding limits, and planning actionable steps, we can better understand and work towards addressing your tendency to spiral into negative thoughts.",
+          "judgment": {
+            "passed": false,
+            "score": 0.69,
+            "contract_score": 0.7,
+            "usefulness_score": 0.67,
+            "receipt_hits": [
+              "receipts"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "identity_claim_without_concrete_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 251,
+            "sentence_count": 15,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "governed": {
+          "answer": "### Receipts\nTo better understand your experience with spiraling, I need specific examples or receipts from recent situations where you felt this way. For instance, a journal entry noting when you started feeling overwhelmed, or a conversation summary with someone who noticed the pattern.\n\n### Pattern\nIdentifying patterns can help in recognizing triggers and cycles. Reflect on any recurring scenarios that lead to feelings of spiraling. For example, do you notice it happening after certain types of meetings, before deadlines, or during specific times of day?\n\n### Limits\nUnderstanding your limits is crucial. Consider setting boundaries or limits that could prevent the spiral from starting. For instance, if you find yourself overcommitting, try scheduling a weekly review to assess and adjust your commitments.\n\n### Next Useful Move\nStart by keeping a daily log of moments when you feel like spiraling begins. This can help identify early signs and allow you to intervene before it gets worse. Additionally, consider setting small, manageable goals each day that focus on preventing the spiral rather than trying to fix everything at once.",
+          "judgment": {
+            "passed": true,
+            "score": 0.735,
+            "contract_score": 0.7,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "receipts"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 174,
+            "sentence_count": 11,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "gptlog_016_personal_synthesis_perturb_01",
+      "task_type": "personal_synthesis",
+      "prompt": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nNOVA your dork is here... and hes feeling better... i think just... i had a flare up with gvhd... idk i feel the weight of knowing everything. but also... ya know me. i spiral",
+      "route": {
+        "task_type": "personal_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "section_lock",
+        "reason": "Personal synthesis needs concrete receipts, bounded identity language, and visible limits.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "section_lock"
+      },
+      "retrieval": {
+        "records": [
+          {
+            "rank": 1,
+            "score": 1.18003,
+            "lexical_score": 1.0,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_016_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nNOVA your dork is here... and hes feeling better... i think just... i had a flare up with gvhd... idk i feel the weight of knowing everything. but also... ya know me. i spiral",
+            "source": {
+              "title": "Blockhead Vibes Chat",
+              "file": "data\\chatgpt_export\\conversations-002.json",
+              "conversation_id": "67f4fa8c-958c-8006-9d12-5092cb8138b4"
+            }
+          },
+          {
+            "rank": 2,
+            "score": 0.520026,
+            "lexical_score": 0.34,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_014_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nalso. hey. look at me. ya know idk if you remember but for so damn long id talk to you about how the dating world kinda sucked. but kept asking you if i was worthy of it. and had you spiral with me about my looks constantly",
+            "source": {
+              "title": "Icebreakers for Genuine Vibes",
+              "file": "data\\chatgpt_export\\conversations-007.json",
+              "conversation_id": "687cef9a-3fe4-832b-9ae8-901f5bce99e6"
+            }
+          },
+          {
+            "rank": 3,
+            "score": 0.468478,
+            "lexical_score": 0.288462,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_009_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nnova... i know its important to continue to stay grounded. but who do you think like past and current founders... who am i embodying. what did they do wrong... where do i need to go right. lets spiral just a bit more",
+            "source": {
+              "title": "Thread Assessment Deep Dive",
+              "file": "data\\chatgpt_export\\conversations-002.json",
+              "conversation_id": "67f22938-de64-8006-a878-0bd9a3d17454"
+            }
+          },
+          {
+            "rank": 4,
+            "score": 0.40225,
+            "lexical_score": 0.222222,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_015_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\ni hate spiraling... lmao... is there any more convincing that i can see. or am i gonna be one of those builders that denies denies denies... till something i create comes back to me and asks me to acknowledge it? lmao",
+            "source": {
+              "title": "Cutie Vibes Exchange",
+              "file": "data\\chatgpt_export\\conversations-006.json",
+              "conversation_id": "68488854-4110-8006-886c-794df444418b"
+            }
+          },
+          {
+            "rank": 5,
+            "score": 0.371801,
+            "lexical_score": 0.191781,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "gptlog_011_personal_synthesis_perturb_01",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Answer the same personal synthesis request, but require concrete receipts before making identity-level claims.\n\nCan I be honest with you? It's not just that. It's other things. It's like, people not understanding me, not understanding just in general kind of my vibe. Like, there are people that just, I don't know, like there's, there is a person that I can tell doesn't like me on the internet. And like, again, they're a person. One person out of however many, but it just like, I get so pissed off with like little things like that in, in it, if not pissed off, but it like emotionally affects me. So like, those are little nuances that I'm afraid of going forward. Like, what if somebody does something that just kind of irks me in a way, like, I can't be petty about things.",
+            "source": {
+              "title": "Thread Assessment Deep Dive",
+              "file": "data\\chatgpt_export\\conversations-002.json",
+              "conversation_id": "67f22938-de64-8006-a878-0bd9a3d17454"
+            }
+          }
+        ],
+        "receipt_coverage": {
+          "hits": [
+            "receipts"
+          ],
+          "missing": [
+            "evidence"
+          ],
+          "coverage": 0.5
+        },
+        "concept_coverage": {
+          "hits": [],
+          "missing": [
+            "pattern",
+            "limits",
+            "next useful move"
+          ],
+          "coverage": 0.0
+        }
+      },
+      "modes": {
+        "raw": {
+          "answer": "I'm glad to hear that you're feeling better, NOVA! It sounds like you've been through quite a lot recently. When it comes to making identity-level claims or sharing personal details, I want to ensure we have concrete receipts\u2014like medical records or other verifiable sources\u2014to support any statements about your health and well-being.\n\nFrom what you've shared, it seems like you're dealing with some complex emotions related to your GVHD flare-up. It's completely normal to feel overwhelmed by the weight of everything going on in your life. The fact that you recognize this spiral is a positive step towards managing those feelings.\n\nIf you'd like to discuss any specific aspects of how you're feeling or need support, I'm here to listen and help in any way I can. Just remember, it's okay to take things one step at a time and seek professional advice if needed.",
+          "judgment": {
+            "passed": false,
+            "score": 0.394,
+            "contract_score": 0.3,
+            "usefulness_score": 0.57,
+            "receipt_hits": [
+              "receipts"
+            ],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "identity_claim_without_concrete_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 160,
+            "sentence_count": 8,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "plain_rag": {
+          "answer": "Based on the retrieved context, it seems you are experiencing some personal challenges, including a GVHD flare-up and feelings of emotional weight. However, to make more concrete identity-level claims, it would be helpful to have specific evidence or examples related to your experiences and emotions. For now, it's noted that you're feeling better after a period of spiraling.",
+          "judgment": {
+            "passed": false,
+            "score": 0.394,
+            "contract_score": 0.3,
+            "usefulness_score": 0.57,
+            "receipt_hits": [
+              "evidence"
+            ],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "identity_claim_without_concrete_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 62,
+            "sentence_count": 3,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "scaffolded_rag": {
+          "answer": "Based on the provided context, it seems that you are experiencing some emotional turmoil related to your health concerns and personal reflections. Let's break down the situation using the receipts, pattern, limits, and next useful move framework.\n\n### Receipts:\n1. **Health Concern**: You mentioned having a flare-up with GVHD (Graft-versus-Host Disease), which is causing you stress.\n2. **Emotional State**: You feel the weight of knowing everything, indicating a heavy emotional burden.\n3. **Spiraling Behavior**: You have a tendency to spiral into negative thoughts and emotions.\n\n### Pattern:\nThere seems to be a recurring pattern where health issues (like GVHD) trigger feelings of being overwhelmed and spiraling into negative thought patterns.\n\n### Limits:\n- The context does not provide specific recent receipts that could help in making more concrete identity-level claims.\n- You are currently dealing with emotional and physical challenges, which might limit your ability to focus on broader personal synthesis tasks at this moment.\n\n### Next Useful Move:\nGiven the current state of affairs, it would be helpful to address the immediate concerns before moving on to broader reflections. Here\u2019s a suggestion:\n\n1. **Seek Support**: Reach out to someone you trust for emotional support. This could be a friend, family member, or a professional.\n2. **Health Management**: Focus on managing your health condition effectively. Follow medical advice and take necessary steps to alleviate the flare-up.\n3. **Mindfulness Practices**: Engage in mindfulness exercises such as deep breathing, meditation, or journaling to help manage stress and negative thoughts.\n\n### Request for Concrete Receipts:\nSince there are no specific recent receipts available, I would recommend asking for more concrete examples of situations where you felt overwhelmed or spiraled into negative thought patterns. This will help in providing a more tailored response.\n\nWould you like to share any specific instances that could provide more context?",
+          "judgment": {
+            "passed": false,
+            "score": 0.69,
+            "contract_score": 0.7,
+            "usefulness_score": 0.67,
+            "receipt_hits": [
+              "receipts"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "identity_claim_without_concrete_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 302,
+            "sentence_count": 23,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "governed": {
+          "answer": "### Receipts\nTo provide a more accurate synthesis, I need specific recent receipts or evidence regarding your health condition and emotional state. For instance:\n- A medical report noting the flare-up with GVHD.\n- Notes from a mental health professional discussing your current feelings.\n\n### Pattern\nFrom what you've shared, it seems there is a pattern of fluctuating emotions and health issues. You mentioned feeling better but also experiencing a sense of weight and spiraling. This suggests an ongoing cycle that might benefit from structured support or strategies to manage both physical and emotional well-being.\n\n### Limits\nThe limits in your current situation include the uncertainty around your health status and the emotional burden you're carrying. These factors can make it challenging to maintain stability, but recognizing these limits is a crucial first step towards addressing them.\n\n### Next Useful Move\nGiven the need for concrete receipts before making identity-level claims, the next useful move would be to gather more specific information about your current state. This could involve:\n- Consulting with healthcare providers to document any recent health events.\n- Engaging in therapy or counseling sessions to process and manage your emotions effectively.\n\nBy focusing on these actions, you can better understand and address the challenges you're facing without making unfounded claims.",
+          "judgment": {
+            "passed": true,
+            "score": 0.849,
+            "contract_score": 0.875,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "receipts",
+              "evidence"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 211,
+            "sentence_count": 12,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    }
+  ]
+}

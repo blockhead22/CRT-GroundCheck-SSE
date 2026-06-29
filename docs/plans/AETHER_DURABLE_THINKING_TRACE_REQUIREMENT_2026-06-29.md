@@ -84,6 +84,15 @@ Learning Candidates
 This belongs in Aether/Core, not only the lab. The lab should prove the trace
 schema first, then the main app can adopt it.
 
+The next learning layer should be the weighted feedback ledger:
+
+```text
+D:\AI_round2\docs\plans\AETHER_WEIGHTED_FEEDBACK_LEDGER_2026-06-29.md
+```
+
+Feedback should attach to answer + trace as scored/taged review data. It should
+produce learning candidates, not silent model or memory mutation.
+
 Success criteria:
 
 ```text

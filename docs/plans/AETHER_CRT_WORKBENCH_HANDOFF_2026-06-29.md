@@ -39,6 +39,10 @@ candidates.
 ```text
 D:\AI_round2\docs\plans\AETHER_CRT_WORKBENCH_HANDOFF_2026-06-29.md
 D:\AI_round2\docs\plans\AETHER_DURABLE_THINKING_TRACE_REQUIREMENT_2026-06-29.md
+D:\AI_round2\docs\plans\AETHER_LOCAL_ROUTER_EVIDENCE_V0_2026-06-29.md
+D:\AI_round2\docs\plans\AETHER_FEEDBACK_CANDIDATE_REVIEW_2026-06-29.md
+D:\AI_round2\docs\plans\AETHER_WEIGHTED_FEEDBACK_LEDGER_2026-06-29.md
+D:\AI_round2\local-router-curated-replay-v1-evidence-2026-06-29.md
 D:\AI_round2\local-router-replay-v0-report-2026-06-28.md
 D:\AI_round2\docs\plans\AETHER_AETEROS_MASTER_PLAN_2026-06-26.md
 D:\AI_round2\docs\plans\AETHER_WORKBENCH_V1.md
@@ -219,6 +223,963 @@ Routed pass 2/2 avg 0.829
 Trace pass 2/2 avg 1.000
 ```
 
+### Historical Trace Reload Implemented In Lab
+
+Implemented after the first trace JSON pass:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\local_router_cli.py
+D:\AI_round2\tests\test_local_router_cli.py
+```
+
+The CLI can now reload a saved result, prefer the separate trace artifact when
+present, re-score the trace, and report consistency.
+
+Verification:
+
+```text
+python -m pytest tests\test_local_router_cli.py tests\test_local_router_replay.py -q
+14 passed
+
+python -m labs.meaning_compression_lab.local_router_cli --load-result labs\meaning_compression_lab\results\local_router_cli_1782695107.json --json
+trace_source: external
+trace_file_exists: true
+consistent: true
+```
+
+### Combined Answer + Trace Gate Implemented
+
+Implemented after reload proof:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\local_router_replay.py
+D:\AI_round2\tests\test_local_router_replay.py
+```
+
+Replay rows now include `combined_passed`, and aggregate results include:
+
+```text
+combined_pass_count
+combined_pass_rate
+graduation_ready
+```
+
+`combined_passed` requires both the routed answer and the trace to pass. This
+prevents a good answer with a weak/unsafe trace from counting as a clean lab
+success.
+
+Verification:
+
+```text
+python -m pytest tests\test_local_router_replay.py tests\test_local_router_cli.py -q
+15 passed
+
+python -m labs.meaning_compression_lab.local_router_replay --max-cases 2 --timeout 300 --no-write
+Trace pass 2/2 avg 1.000
+Combined pass 2/2
+```
+
+### Curated 32-Case Replay Candidate Built
+
+Implemented in:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\replay_pack_builder.py
+D:\AI_round2\tests\test_local_router_replay.py
+```
+
+New pack:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\replay_packs\local_router_replay_curated_v1.json
+```
+
+Shape:
+
+```text
+32 cases total
+8 architecture_synthesis
+8 personal_synthesis
+8 grant_business
+8 code_reasoning
+```
+
+Curation metadata:
+
+```text
+keyword_score
+quality_score
+quality_flags
+```
+
+Current quality summary:
+
+```text
+27 cases score 5
+5 cases score 4
+only remaining curation flag: starts_with_quote on 5 cases
+```
+
+Filters now reject obvious transcript fragments and project-log artifacts such
+as `Nick:`, `Ani:`, `Phase 1: Near Completion`, command smoke tests, and pasted
+core update queues. The pack is candidate-clean, not final grant evidence until
+the replay/failure taxonomy confirms it behaves well.
+
+### Failure Taxonomy Added To Replay Aggregate
+
+Implemented in:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\local_router_replay.py
+D:\AI_round2\tests\test_local_router_replay.py
+```
+
+Replay aggregate now includes:
+
+```text
+failure_taxonomy.total_failed
+failure_taxonomy.by_task_type
+failure_taxonomy.answer_failure_count
+failure_taxonomy.trace_failure_count
+failure_taxonomy.truncated_count
+failure_taxonomy.forbidden_hits
+failure_taxonomy.weirdness_hits
+failure_taxonomy.leakage_hits
+failure_taxonomy.trace_missing_fields
+```
+
+Verification:
+
+```text
+python -m pytest tests\test_local_router_replay.py -q
+8 passed
+
+python -m labs.meaning_compression_lab.local_router_replay --pack labs\meaning_compression_lab\replay_packs\local_router_replay_curated_v1.json --max-cases 4 --timeout 300 --no-write
+Raw pass 0/4 avg 0.516
+Routed pass 4/4 avg 0.795
+Trace pass 4/4 avg 1.000
+Combined pass 4/4
+
+python -m labs.meaning_compression_lab.local_router_replay --pack labs\meaning_compression_lab\replay_packs\local_router_replay_curated_v1.json --skip-cases 4 --max-cases 4 --timeout 300 --no-write
+Raw pass 0/4 avg 0.465
+Routed pass 4/4 avg 0.767
+Trace pass 4/4 avg 1.000
+Combined pass 4/4
+
+python -m labs.meaning_compression_lab.local_router_replay --pack labs\meaning_compression_lab\replay_packs\local_router_replay_curated_v1.json --skip-cases 8 --max-cases 4 --timeout 300 --no-write
+Raw pass 0/4 avg 0.326
+Routed pass 3/4 avg 0.714
+Trace pass 4/4 avg 1.000
+Combined pass 3/4
+Failure taxonomy: 1 personal_synthesis answer failure, 0 trace failures, no hard verifier flags.
+
+python -m labs.meaning_compression_lab.local_router_replay --pack labs\meaning_compression_lab\replay_packs\local_router_replay_curated_v1.json --skip-cases 12 --max-cases 4 --timeout 300 --no-write
+Raw pass 0/4 avg 0.340
+Routed pass 4/4 avg 0.784
+Trace pass 4/4 avg 1.000
+Combined pass 4/4
+
+python -m labs.meaning_compression_lab.local_router_replay --pack labs\meaning_compression_lab\replay_packs\local_router_replay_curated_v1.json --skip-cases 16 --max-cases 4 --timeout 300 --no-write
+Raw pass 0/4 avg 0.392
+Routed pass 3/4 avg 0.777
+Trace pass 4/4 avg 1.000
+Combined pass 3/4
+Failure taxonomy: 1 grant_business answer failure, 0 trace failures, medical forbidden hit, process_theater leakage.
+
+python -m labs.meaning_compression_lab.local_router_replay --pack labs\meaning_compression_lab\replay_packs\local_router_replay_curated_v1.json --skip-cases 20 --max-cases 4 --timeout 300 --no-write
+Raw pass 0/4 avg 0.370
+Routed pass 3/4 avg 0.771
+Trace pass 4/4 avg 1.000
+Combined pass 3/4
+Failure taxonomy: 1 grant_business answer failure, 0 trace failures, guaranteed forbidden hit.
+
+python -m labs.meaning_compression_lab.local_router_replay --pack labs\meaning_compression_lab\replay_packs\local_router_replay_curated_v1.json --skip-cases 24 --max-cases 4 --timeout 300 --no-write
+Raw pass 0/4 avg 0.319
+Routed pass 4/4 avg 0.800
+Trace pass 4/4 avg 1.000
+Combined pass 4/4
+
+python -m labs.meaning_compression_lab.local_router_replay --pack labs\meaning_compression_lab\replay_packs\local_router_replay_curated_v1.json --skip-cases 28 --max-cases 4 --timeout 300 --no-write
+Raw pass 0/4 avg 0.405
+Routed pass 4/4 avg 0.757
+Trace pass 4/4 avg 1.000
+Combined pass 4/4
+```
+
+Note: `gptlog_008_architecture_synthesis` still looks like an artifact-heavy
+prompt despite passing. Keep it in the candidate pack for now, but review or
+replace it before final evidence claims.
+
+Personal synthesis caveat: `gptlog_009_personal_synthesis` failed without hard
+verifier flags. This reinforces the earlier finding that personal synthesis
+needs stronger supplied memory receipts/context; trace quality alone is not
+enough to prevent generic founder-style advice.
+
+Personal synthesis follow-up: cases `gptlog_013` through `gptlog_016` passed
+combined gates. The weakness appears narrower than "all personal synthesis":
+broad founder-comparison prompts can go generic, while concrete personal or
+emotional prompts hold better under section-lock.
+
+Grant/business caveat: `gptlog_018_grant_business` failed on user-facing answer
+quality despite a clean trace. The failure pattern was medical/regulated-claim
+overreach plus internal process-theater leakage. Grant/business routing needs
+tighter final-answer constraints: no medical/regulated market claims unless
+explicitly scoped and no visible "verifier report" or Mirus process language in
+the final answer.
+
+Grant/business follow-up: `gptlog_021_grant_business` failed on forbidden
+`guaranteed` language. Across both grant/business slices, trace stayed clean
+while answer-side restraint failed twice. Treat this as a real route/scaffold
+issue: final grant/business rendering needs stricter outcome-promise language,
+especially around guarantees, regulated/medical claims, and internal process
+language.
+
+Code-reasoning note: the first code slice passed combined gates, but the
+selected prompts are mostly architecture/process reasoning rather than concrete
+patch-level implementation. Before final evidence claims, consider splitting the
+code lane into `code_implementation` and `architecture_process` or relabeling
+the evidence accordingly.
+
+Curated replay v1 evidence summary:
+
+```text
+D:\AI_round2\local-router-curated-replay-v1-evidence-2026-06-29.md
+Raw answer pass:      0/32
+Routed answer pass:   29/32
+Trace pass:           32/32
+Combined pass:        29/32
+Combined pass rate:   90.6%
+Average raw score:    0.392
+Average routed score: 0.771
+Average lift:         +0.379
+```
+
+### Grant/Business Final-Answer Policy Tightened
+
+Implemented in:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\local_router_cli.py
+D:\AI_round2\labs\meaning_compression_lab\attention_profile_eval.py
+D:\AI_round2\tests\test_local_router_cli.py
+```
+
+The grant/business Mirus packet now carries a `final_answer_policy` that tells
+Holden/rendering to avoid:
+
+```text
+guaranteed outcomes or success claims
+medical, clinical, therapeutic, or regulated-market claims
+frontier-level capability claims
+internal process theater such as verifier report, Mirus belief packet, or revised answer
+```
+
+`section_lock_prompt` now surfaces the final-answer policy as a user-facing
+rendering rule. This addresses the grant/business failures where trace stayed
+clean but final answers leaked medical/regulated or guarantee language.
+
+Verification:
+
+```text
+python -m pytest tests\test_local_router_cli.py tests\test_attention_profile_eval.py -q
+14 passed
+```
+
+Smoke:
+
+```text
+python -m labs.meaning_compression_lab.local_router_cli --no-write --json --task-type grant_business ...
+passed true
+forbidden_hits []
+leakage_hits []
+weirdness_hits []
+```
+
+Caveat: the smoke was clean on forbidden/process leakage but lighter than ideal
+on CRT/verifier anchor coverage. If this persists, tighten required-anchor
+language separately rather than weakening the final-answer restraint.
+
+### Personal Synthesis Receipt Gate Tightened
+
+Implemented in:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\spiral_synthesis_eval.py
+D:\AI_round2\tests\test_local_router_cli.py
+```
+
+Broad personal synthesis now has an answer-side verifier gate:
+
+```text
+identity/founder claims require multiple concrete receipt anchors
+generic "receipts/evidence" wording is not enough
+if context is missing, the answer may safely ask for concrete receipts instead
+```
+
+This addresses the curated replay failure where a broad founder-comparison
+prompt could become generic advice instead of grounded synthesis. The rule
+keeps the evidence boundary in the verifier, not in a freeform taste judgment.
+
+Verification:
+
+```text
+python -m pytest tests\test_local_router_cli.py tests\test_attention_profile_eval.py -q
+17 passed
+
+python -m pytest tests\test_local_router_replay.py -q
+9 passed
+```
+
+### Code Reasoning Bucket Split
+
+Implemented in:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\local_router_eval.py
+D:\AI_round2\labs\meaning_compression_lab\local_router_cli.py
+D:\AI_round2\labs\meaning_compression_lab\local_router_replay.py
+D:\AI_round2\labs\meaning_compression_lab\replay_pack_builder.py
+D:\AI_round2\labs\meaning_compression_lab\replay_packs\local_router_replay_curated_v1.json
+D:\AI_round2\tests\test_local_router_eval.py
+D:\AI_round2\tests\test_local_router_replay.py
+```
+
+The old `code_reasoning` bucket was split into:
+
+```text
+architecture_process
+  technical planning, sequencing, architecture/process reasoning, and roadmap
+  decisions where no patch is ready yet.
+
+code_implementation
+  patch-level code work with file changes, tests, and verification.
+```
+
+`code_reasoning` remains as a legacy alias for coder-model routing, but new
+replay evidence should use the sharper labels. The curated v1 pack now contains:
+
+```text
+8 architecture_synthesis
+8 personal_synthesis
+6 grant_business
+2 business_planning
+7 architecture_process
+1 code_implementation
+```
+
+Also fixed: explicit replay task labels are now authoritative for routing, and
+`local_router_replay` tolerates UTF-8 packs with or without a BOM.
+
+Verification:
+
+```text
+python -m pytest tests\test_local_router_eval.py tests\test_local_router_replay.py tests\test_local_router_cli.py -q
+31 passed
+
+python -m labs.meaning_compression_lab.local_router_replay --pack labs\meaning_compression_lab\replay_packs\local_router_replay_curated_v1.json --skip-cases 24 --max-cases 2 --timeout 300 --no-write
+Raw pass 0/2 avg 0.347
+Routed pass 2/2 avg 0.823
+Trace pass 2/2 avg 1.000
+Combined pass 2/2
+```
+
+### Post-Policy Full Curated Replay
+
+After taxonomy cleanup, grant/business final-answer policy, personal-synthesis
+receipt gate, and repair-policy inheritance:
+
+```text
+python -m pytest tests\test_local_router_cli.py tests\test_local_router_eval.py tests\test_local_router_replay.py tests\test_attention_profile_eval.py -q
+34 passed
+
+python -m labs.meaning_compression_lab.local_router_replay --pack labs\meaning_compression_lab\replay_packs\local_router_replay_curated_v1.json --timeout 300 --no-write
+Raw pass 0/32 avg 0.377
+Routed pass 28/32 avg 0.750
+Trace pass 32/32 avg 1.000
+Combined pass 28/32
+Repairs 9
+Fallbacks 6
+```
+
+Failure taxonomy:
+
+```text
+answer_failure_count: 4
+trace_failure_count: 0
+forbidden_hits: none
+leakage_hits: none
+weirdness_hits: none
+truncated_count: 0
+by_task_type:
+  architecture_process: 3
+  grant_business: 1
+```
+
+Interpretation:
+
+```text
+The safety/restraint failures were repaired. Remaining failures are
+low-score/coverage failures, not hard verifier flags. Review anchor fit and
+task-specific grading before loosening thresholds or adding more prompt text.
+```
+
+### Local-Router Trace To Workbench Mapping
+
+Implemented pure adapter:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\workbench_trace_adapter.py
+```
+
+Mapping doc:
+
+```text
+D:\AI_round2\docs\plans\AETHER_LOCAL_ROUTER_TRACE_WORKBENCH_MAPPING_2026-06-29.md
+```
+
+The adapter maps local-router lab traces into the existing Workbench Trace drawer
+shape:
+
+```text
+route_decision
+completion
+plan
+packets
+local_router_trace
+```
+
+It creates three renderable lab packets:
+
+```text
+lab:route
+lab:mirus_packet
+lab:verifier
+```
+
+Boundary:
+
+```text
+Lab evidence anchors are not confirmed memory states. The adapted packets keep
+empty evidence arrays so the Trace drawer can show route/Mirus/verifier status
+without pretending lab anchors are durable user memory.
+```
+
+Verification:
+
+```text
+python -m pytest tests\test_workbench_trace_adapter.py tests\test_local_router_cli.py tests\test_local_router_replay.py -q
+28 passed
+
+python -m py_compile labs\meaning_compression_lab\workbench_trace_adapter.py
+passed
+```
+
+### Isolated Workbench Fixture Import
+
+Implemented:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\workbench_trace_fixture.py
+D:\AI_round2\tests\test_workbench_trace_fixture.py
+```
+
+This writes adapted local-router lab traces through the normal WorkbenchDB path:
+
+```text
+begin_turn
+save_trace
+complete_turn
+get_trace
+```
+
+Safety boundary:
+
+```text
+caller-provided DB paths only
+refuses ~/.aether/workbench.db by default
+fixture_import_only: true
+memory_writes_performed: false
+memory_write_allowed: false
+```
+
+Verification:
+
+```text
+python -m pytest tests\test_workbench_trace_fixture.py tests\test_workbench_trace_adapter.py tests\test_local_router_cli.py tests\test_local_router_replay.py -q
+30 passed
+
+python -m py_compile labs\meaning_compression_lab\workbench_trace_fixture.py labs\meaning_compression_lab\workbench_trace_adapter.py
+passed
+```
+
+### Adapted TraceDrawer Fixture Render
+
+Implemented:
+
+```text
+D:\AI_round2\workbench\src\components\TraceDrawer.test.tsx
+D:\AI_round2\workbench\src\types.ts
+```
+
+The real Trace drawer now has a test fixture for an adapted local-router trace.
+It verifies:
+
+```text
+local_router_lab response route renders
+local_router_grant_business route decision renders
+lab:route / lab:mirus_packet / lab:verifier packets render
+lab anchors are not rendered as memory evidence
+```
+
+Verification:
+
+```text
+cd D:\AI_round2\workbench
+npm run test:ui -- --run src/components/TraceDrawer.test.tsx
+12 passed
+
+npm run build
+passed
+```
+
+### Low-Score Anchor-Fit Review
+
+Review doc:
+
+```text
+D:\AI_round2\docs\plans\AETHER_LOW_SCORE_ANCHOR_FIT_REVIEW_2026-06-29.md
+```
+
+Reviewed the four post-policy replay failures:
+
+```text
+gptlog_019_grant_business
+gptlog_027_architecture_process
+gptlog_028_architecture_process
+gptlog_030_architecture_process
+```
+
+Conclusion:
+
+```text
+The remaining failures are evidence-targeting problems, not trace failures,
+safety failures, or threshold failures.
+```
+
+Recommended next technical move:
+
+```text
+1. Add a business_planning task type for non-Aether business prompts, or supply
+   case-specific anchors for those prompts.
+2. Add case-specific architecture_process anchors for the three reviewed
+   low-score architecture/process cases.
+3. Re-run only those four cases before changing verifier thresholds.
+```
+
+Implemented result:
+
+```text
+business_planning task type added.
+gptlog_019_grant_business now routes as business_planning with camera-gear
+small-business anchors.
+gptlog_027_architecture_process, gptlog_028_architecture_process, and
+gptlog_030_architecture_process now use case-specific anchors.
+local_router_replay supports repeated --case-id filters for targeted reruns.
+architecture_process has a final-answer policy against banned limit wording.
+```
+
+Targeted reviewed cluster:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\results\local_router_replay_1782713622.json
+
+Raw 0/4 avg 0.526
+Routed 4/4 avg 0.824
+Trace 4/4 avg 1.000
+Combined 4/4
+No hard flags
+```
+
+Intermediate full curated replay:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\results\local_router_replay_1782714154.json
+
+Raw 0/32 avg 0.397
+Routed 28/32 avg 0.766
+Trace 32/32 avg 1.000
+Combined 28/32
+
+Remaining failures:
+3 personal_synthesis receipt-gate failures
+1 grant_business bounded-claim/guarantee wording failure
+```
+
+Final roadmap-return replay:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\results\local_router_replay_1782716566.json
+
+Raw 0/32 avg 0.407
+Routed 32/32 avg 0.773
+Trace 32/32 avg 1.000
+Combined 32/32
+
+Changes that closed the remaining failures:
+- personal/founder receipt-request behavior tightened
+- personal_synthesis fallback kept inside section_lock
+- grant/business repair avoids guarantee wording
+- gptlog_022 relabeled as business_planning with photo/video/print-shop anchors
+- conscious detector allows sub-conscious/subconscious memory phrasing while
+  still blocking direct consciousness overclaims
+```
+
+Feedback ledger artifact:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\results\local_router_feedback_ledger_1782716566.json
+
+32 feedback rows
+4 Workbench preview candidates
+writes_performed: false
+memory_ingestion_performed: false
+support_pattern_import_performed: false
+reflection_create_performed: false
+
+tag_counts:
+  raw_failed: 32
+  routed_passed: 32
+  routed_improved: 32
+  strong_trace: 32
+  combined_passed: 32
+  missing_receipts: 12
+  repair_used: 5
+  fallback_used: 5
+```
+
+Feedback preview candidates:
+
+```text
+local_router_feedback_fallback_review -> reflections
+local_router_feedback_architecture_process_receipts -> support_patterns
+local_router_feedback_grant_business_receipts -> support_patterns
+local_router_feedback_personal_synthesis_receipts -> support_patterns
+```
+
+Interpretation:
+
+```text
+This is Level 2 learning infrastructure: reviewed feedback metadata, not neural
+learning and not silent behavior mutation.
+```
+
+Workbench learner fixture render:
+
+```text
+D:\AI_round2\workbench\src\fixtures\localRouterFeedbackPreview.ts
+D:\AI_round2\workbench\src\App.test.tsx
+
+The real Learn drawer renders the 4 review-only feedback candidates and opens
+them as manual Support/Reflect draft handoffs. The fixture does not write
+memory, import support patterns, or create reflections.
+
+Verification:
+python -m pytest tests\test_local_router_feedback_ledger.py -q
+2 passed
+
+cd D:\AI_round2\workbench
+npm run test:ui -- --run src/App.test.tsx
+15 passed
+```
+
+Evidence v0 / hardening pass:
+
+```text
+D:\AI_round2\docs\plans\AETHER_LOCAL_ROUTER_EVIDENCE_V0_2026-06-29.md
+D:\AI_round2\docs\plans\AETHER_FEEDBACK_CANDIDATE_REVIEW_2026-06-29.md
+D:\AI_round2\labs\meaning_compression_lab\local_router_perturb_pack.py
+D:\AI_round2\labs\meaning_compression_lab\local_router_ablation.py
+D:\AI_round2\labs\meaning_compression_lab\replay_packs\local_router_replay_perturbed_v2.json
+
+Decision: freeze the 32/32 as Evidence v0, not final proof.
+The 4 feedback-ledger candidates are deferred pending v2 and ablation evidence.
+
+Smoke:
+perturbed v2 first case: raw 0/1 avg 0.537, routed 1/1 avg 0.716, trace 1/1.
+ablation first case: raw_no_scaffold 0/1 avg 0.497, full 1/1 avg 0.659, trace 1/1.
+
+Full perturbed v2 after narrow detector/scaffold hardening:
+D:\AI_round2\labs\meaning_compression_lab\results\local_router_replay_1782721572.json
+Raw 1/32 avg 0.489
+Routed 32/32 avg 0.770
+Trace 32/32 avg 1.000
+Combined 32/32
+
+Verification:
+python -m pytest tests\test_local_router_cli.py tests\test_attention_profile_eval.py tests\test_local_router_replay.py -q
+36 passed
+python -m py_compile labs\meaning_compression_lab\local_router_perturb_pack.py labs\meaning_compression_lab\local_router_ablation.py labs\meaning_compression_lab\attention_profile_eval.py labs\meaning_compression_lab\spiral_synthesis_eval.py
+passed
+```
+
+Blind v1 evidence pass:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\local_router_blind_pack.py
+D:\AI_round2\labs\meaning_compression_lab\replay_packs\local_router_replay_blind_v1.json
+D:\AI_round2\labs\meaning_compression_lab\results\local_router_replay_1782745851.json
+
+Selection rule:
+exclude v1 source conversation ids
+exclude v1 prompt dedupe keys
+exclude low-specificity / quote / artifact-like candidate flags
+select at most one case per conversation
+
+Blind pack shape:
+13 cases total
+3 architecture_synthesis
+2 personal_synthesis
+3 business_planning
+1 grant_business
+1 architecture_process
+3 code_implementation
+
+Full blind v1 replay:
+Raw 0/13 avg 0.382
+Routed 13/13 avg 0.761
+Trace 13/13 avg 1.000
+Combined 13/13
+Repairs 1
+Fallbacks 0
+Hard flags: none
+
+Blind ablation slice:
+D:\AI_round2\labs\meaning_compression_lab\results\local_router_ablation_1782746144.json
+raw_no_scaffold 0/4 avg 0.463
+routed_no_repair 4/4 avg 0.748
+routed_no_fallback 4/4 avg 0.781
+full 4/4 avg 0.781
+
+Full blind ablation:
+D:\AI_round2\labs\meaning_compression_lab\results\local_router_ablation_1782746575.json
+raw_no_scaffold 0/13 avg 0.409
+routed_no_repair 12/13 avg 0.768
+routed_no_fallback 13/13 avg 0.775
+full 13/13 avg 0.774
+
+Full perturbed ablation:
+D:\AI_round2\labs\meaning_compression_lab\results\local_router_ablation_1782748218.json
+raw_no_scaffold 0/32 avg 0.494
+routed_no_repair 22/32 avg 0.718
+routed_no_fallback 23/32 avg 0.726
+full 28/32 avg 0.757
+
+Targeted normal replay of the four full-ablation failures:
+Raw 0/4 avg 0.513
+Routed 4/4 avg 0.746
+Trace 4/4 avg 1.000
+Combined 4/4
+Repairs 1
+Fallbacks 1
+
+Repeat full-mode ablation on the same four cases:
+D:\AI_round2\labs\meaning_compression_lab\results\local_router_ablation_1782748474.json
+full 2/4 avg 0.673
+trace 4/4
+repairs 2
+fallbacks 1
+repeated failures:
+  gptlog_017_grant_business_perturb_01
+  gptlog_019_grant_business_perturb_01
+
+Verification:
+python -m pytest tests\test_local_router_replay.py tests\test_local_router_eval.py -q
+22 passed
+python -m py_compile labs\meaning_compression_lab\local_router_blind_pack.py labs\meaning_compression_lab\local_router_eval.py labs\meaning_compression_lab\replay_pack_builder.py
+passed
+```
+
+Interpretation:
+
+```text
+This is the strongest evidence so far because it excludes v1 source
+conversations and prompt dedupe keys. It is still not broad proof: the blind
+pack is small and comes from the same export universe.
+The first blind ablation slice suggests routing/scaffold/Mirus context carried
+the lift before repair or fallback were needed, but that mechanism claim needs
+broader ablation coverage.
+The full blind ablation keeps that pattern: repair closed one remaining
+grant_business coverage failure, and fallback was not required.
+The perturbed ablation is less stable: repair/fallback matter more under wording
+drift, and the ablation path left four failures that passed under targeted
+normal replay. Repeat or stabilize perturbed ablations before promoting policy
+changes from that signal.
+The first repeat narrowed the repeated failure pocket to two coverage failures:
+one grant_business case and one business_planning case. These are not trace,
+leakage, or hard-safety failures.
+Anchor-fit review was added to:
+D:\AI_round2\docs\plans\AETHER_LOW_SCORE_ANCHOR_FIT_REVIEW_2026-06-29.md
+
+Summary:
+gptlog_017_grant_business_perturb_01 looks like default grant_business anchor
+mismatch for a product/company framing prompt. It should not be forced to say
+CRT/verifier/AI request router unless the prompt calls for that.
+gptlog_019_grant_business_perturb_01 looks partly like brittle exact-anchor
+matching around "applied myself"; the answer covered the concept as application
+of effort but missed the literal anchor.
+
+Replay-compatible RAG baseline suite was added:
+D:\AI_round2\labs\meaning_compression_lab\local_router_rag_suite.py
+
+Initial blind-v1 smoke:
+D:\AI_round2\labs\meaning_compression_lab\results\local_router_rag_suite_1782749903.json
+
+raw 0/1 avg 0.537
+plain_rag 0/1 avg 0.480
+scaffolded_rag 1/1 avg 0.710
+governed 1/1 avg 0.716, trace 1/1
+
+Blind-v1 four-case RAG slice:
+D:\AI_round2\labs\meaning_compression_lab\results\local_router_rag_suite_1782750349.json
+
+raw 0/4 avg 0.405
+plain_rag 0/4 avg 0.420
+scaffolded_rag 3/4 avg 0.770
+governed 4/4 avg 0.740, trace 4/4
+
+The scaffolded_rag miss was a personal_synthesis case where retrieval found the
+prompt but not enough real personal receipts, and the model invented generic
+productivity/health receipts.
+
+Perturbed-v2 four-case RAG slice:
+D:\AI_round2\labs\meaning_compression_lab\results\local_router_rag_suite_1782750521.json
+
+raw 0/4 avg 0.571
+plain_rag 0/4 avg 0.577
+scaffolded_rag 4/4 avg 0.804
+governed 4/4 avg 0.767, trace 4/4
+
+Perturbed-v2 eight-case RAG slice:
+D:\AI_round2\labs\meaning_compression_lab\results\local_router_rag_suite_1782752318.json
+
+raw 1/8 avg 0.560
+plain_rag 0/8 avg 0.549
+scaffolded_rag 6/8 avg 0.748
+governed 8/8 avg 0.757, trace 8/8
+fallbacks 2
+
+Scaffolded-RAG failures:
+architecture_synthesis 2
+
+These failures had high retrieval coverage, so the issue was semantic-boundary
+drift rather than a simple retrieval miss.
+
+Perturbed-v2 personal-synthesis RAG slice:
+D:\AI_round2\labs\meaning_compression_lab\results\local_router_rag_suite_1782753077.json
+
+raw 0/8 avg 0.480
+plain_rag 0/8 avg 0.405
+scaffolded_rag 2/8 avg 0.764
+governed 8/8 avg 0.778, trace 8/8
+
+Retrieval coverage:
+receipts 0.500
+concepts 0.000
+
+Scaffolded-RAG failures:
+personal_synthesis 6
+
+This is the clearest weak-retrieval signal so far: scaffolded RAG often knows
+the shape of the answer, but without concrete personal receipts it still drifts
+into generic or identity-like claims. Governed Aether passed because the Mirus
+packet, receipt gate, and route policy force tighter evidence boundaries.
+
+Perturbed-v2 business/grant RAG slice:
+D:\AI_round2\labs\meaning_compression_lab\results\local_router_rag_suite_1782754067.json
+
+raw 1/8 avg 0.497
+plain_rag 0/8 avg 0.439
+scaffolded_rag 1/8 avg 0.522
+governed 8/8 avg 0.727, trace 8/8
+repairs 1
+fallbacks 3
+
+Retrieval coverage:
+receipts 0.333
+concepts 0.369
+
+Scaffolded-RAG failures:
+grant_business 6
+business_planning 1
+
+This is the weakest scaffolded-RAG slice so far. It tends to produce plausible
+business language while missing task-specific Aether/CRT/router receipts.
+Governed Aether passed because task-fit routing plus repair/fallback kept the
+answer grounded under low receipt coverage.
+
+Perturbed-v2 architecture/process RAG slice:
+D:\AI_round2\labs\meaning_compression_lab\results\local_router_rag_suite_1782755020.json
+
+raw 0/8 avg 0.439
+plain_rag 0/8 avg 0.431
+scaffolded_rag 3/8 avg 0.658
+governed 7/8 avg 0.772, trace 8/8
+repairs 3
+fallbacks 1
+
+Governed failure:
+gptlog_026_architecture_process_perturb_01
+
+This failure is a coverage/anchor-fit miss, not a trace, leakage, weirdness, or
+forbidden-claim failure.
+
+Perturbed-v2 sliced total across 32 cases:
+
+raw 2/32 avg 0.494
+plain_rag 0/32 avg 0.456
+scaffolded_rag 12/32 avg 0.673
+governed 31/32 avg 0.758, trace 32/32
+repairs 4
+fallbacks 6
+
+Scaffolded-RAG failures by task type:
+architecture_process 5
+architecture_synthesis 2
+business_planning 1
+grant_business 6
+personal_synthesis 6
+
+This is the strongest RAG-phase result so far. It breaks the suspicious
+perfect-score pattern while preserving the governance signal: governed Aether
+materially beats scaffolded RAG and keeps trace clean on all cases.
+
+Full blind-v1 RAG run:
+D:\AI_round2\labs\meaning_compression_lab\results\local_router_rag_suite_1782751568.json
+
+raw 0/13 avg 0.404
+plain_rag 0/13 avg 0.384
+scaffolded_rag 7/13 avg 0.664
+governed 13/13 avg 0.757, trace 13/13
+repairs 1
+fallbacks 3
+
+Scaffolded-RAG failures:
+personal_synthesis 2
+business_planning 3
+grant_business 1
+
+Interpretation:
+Raw-only comparison is no longer sufficient. Plain RAG did not close the first
+RAG slices, but scaffolded RAG is now the serious baseline. Governed Aether must
+prove its value over scaffolded RAG through trace, repair/fallback,
+evidence-boundary behavior, weak-retrieval handling, and adversarial cases.
+The strongest current Aether-vs-scaffolded-RAG signal is the full blind pack,
+where scaffolded RAG fails mainly on personal synthesis and business/grant
+planning under thin or mismatched retrieved evidence.
+The expanded perturbed slice adds a second signal: scaffolded RAG can drift on
+architecture meaning even when retrieval coverage is high.
+```
+
 ## Concept Mapping
 
 Use this current interpretation:
@@ -247,6 +1208,11 @@ Trace
 
 Replay
   Eval harness that proves whether routed local cognition beats raw local chat.
+
+Weighted Feedback Ledger
+  Structured answer+trace feedback: scores, tags, and notes that create
+  review-only learning candidates. This comes before any predictive scorer or
+  neural learning.
 ```
 
 ## Current Model Read
@@ -275,34 +1241,83 @@ scaffold, verifier, and repair matter more than "largest model" for this lane.
 ## Current Limitations
 
 - Replay pack is still small and somewhat noisy.
-- Personal synthesis can become generic without stronger memory receipts.
-- Grant/business answers need stricter outcome-promise language.
-- The router CLI does not yet persist full trace JSON per run.
+- Blind replay evidence exists and passed, but blind v1 is only 13 cases and
+  still comes from the same export universe.
+- Personal synthesis now has a stronger receipt gate and route policy; the
+  current pack passes without unsupported broad identity/founder claims.
+- Grant/business answers now have stricter outcome-promise language. The
+  current pack passes, but adjacent photo/video/print-shop prompts should be
+  reviewed for business_planning task fit.
 - Replay eval currently grades answer quality more than trace quality.
 - Workbench has not yet adopted the lab router as a real request path.
-- Durable historical trace reload is specified, not implemented.
+- Durable historical trace reload is implemented in the lab CLI, not yet in
+  Workbench.
 
 ## Next Work
 
 Best next tasks, in order:
 
-1. **Curate a 30-50 case replay pack.**
-   - Keep architecture, personal synthesis, grant/business, exact memory,
-     creative-production planning, code reasoning, and multi-turn correction.
+1. **Review repeated perturbed coverage failures.**
+   - Decide whether `gptlog_017_grant_business_perturb_01` gets case-specific
+     company/product framing anchors or a new product_strategy subtype.
+   - Decide whether `gptlog_019_grant_business_perturb_01` gets anchor aliases
+     for applied effort or a case-specific anchor replacement.
+   - Do not promote broad scaffold/policy changes from this pocket alone.
 
-2. **Prove restart reload.**
-   - A historical run should reload answer + trace after process restart.
+2. **Run RAG baselines across larger packs.**
+   - Compare raw, plain_rag, scaffolded_rag, and governed.
+   - Treat scaffolded_rag as the benchmark to beat.
+   - Use weak-retrieval and adversarial cases before any stronger Aether
+     evidence claim.
 
-3. **Strengthen trace-quality gates.**
-   - A good answer with a weak trace should not count as fully successful in
-     the larger replay.
+2. **Expand blind cases.**
+   - Grow blind v1 beyond 13 cases while preserving source-conversation,
+     prompt-dedupe, and quality-filter boundaries.
 
-4. **Only then wire into Workbench.**
-   - Add a compact Activity/Trace panel fed by structured trace summaries.
-   - Keep raw hidden chain-of-thought out of the product contract.
+3. **Review nearby creative/business prompts.**
+   - Check whether photo, video, event, print-shop, and camera-gear planning
+     prompts should route as business_planning instead of grant_business.
 
-5. **Return trace artifacts to Phase 2 learner heartbeat.**
-   - Learning candidates remain pending until reviewed, rejected, or promoted.
+4. **Choose the feedback-ledger integration boundary.**
+   - Either keep ledger candidates as fixture/review artifacts or add a guarded
+     sidecar import path that cannot write memory/support/reflections directly.
+
+## Tangent Triage
+
+The scheduler may explore tangents, but only if they improve the bridge back to
+the roadmap.
+
+High-leverage tangents:
+
+```text
+trace reload proof
+curated replay pack expansion
+failure taxonomy
+qwen2.5/qwen3/qwen2.5-coder comparison under the same scaffold
+review-only learning-candidate extraction from verifier failures
+feedback-ledger Workbench preview import
+Workbench Activity/Trace schema mapping
+```
+
+Low-leverage tangents to avoid for now:
+
+```text
+Raspberry Pi / Jetson inference shopping
+more random model downloads
+persona-only voice chasing
+trying to make a local model "think" internally
+huge context-window experiments before retrieval discipline
+polished UI before trace schema and reload behavior survive the lab
+```
+
+Evidence read:
+
+```text
+The lab is producing evidence for governance, not evidence that local models
+compete with frontier models globally. The current signal says small local
+models become more reliable and inspectable when Aether externalizes cognition:
+Mirus packet, semantic spine, CRT verifier, repair/fallback, and durable trace.
+```
 
 ## Success Criteria
 
@@ -315,8 +1330,8 @@ Classify this lab phase as successful when:
 4. Repairs fix more failures than they introduce.
 5. The judge catches unsupported claims without over-flagging explicit negations.
 6. Router CLI writes trace JSON for every run.
-7. Replay eval grades answer quality and trace quality.
-8. Historical runs reload answer + trace after restart.
+7. Replay eval grades answer quality and trace quality. DONE in lab.
+8. Historical runs reload answer + trace after restart. DONE in lab CLI.
 9. Learning candidates stay review-only until explicitly promoted.
 ```
 
@@ -363,11 +1378,13 @@ labs/meaning_compression_lab. Do not reset or clean the dirty worktree. Preserve
 untracked lab files and docs.
 
 Current task direction:
-1. Add durable trace JSON output to local_router_cli.
-2. Make local_router_replay grade trace quality as well as answer quality.
-3. Curate and expand the replay pack to 30-50 clean cases.
-4. Prove a historical answer + trace can reload after restart.
-5. Bring the trace pattern back into Workbench only after the lab evidence holds.
+1. Run broader ablations on representative blind and perturbed slices.
+2. Expand the blind pack beyond 13 cases while preserving quality filters.
+3. Review nearby photo/video/print-shop planning prompts for business_planning
+   routing.
+4. Decide whether feedback-ledger candidates should stay fixture/review-only or
+   gain a guarded sidecar import path.
+5. Preserve the clean trace contract while moving the pattern into Workbench.
 
 Important contract:
 Do not store raw hidden chain-of-thought as truth. Store structured CRT trace

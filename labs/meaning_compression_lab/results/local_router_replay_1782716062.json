@@ -1,0 +1,207 @@
+{
+  "lab": "local_router_replay",
+  "pack": "local_router_replay_curated_v1",
+  "pack_path": "labs\\meaning_compression_lab\\replay_packs\\local_router_replay_curated_v1.json",
+  "skip_cases": 0,
+  "case_ids": [
+    "gptlog_022_grant_business"
+  ],
+  "case_count": 1,
+  "aggregate": {
+    "raw_pass_count": 0,
+    "routed_pass_count": 1,
+    "raw_avg_score": 0.635,
+    "routed_avg_score": 0.885,
+    "avg_delta": 0.25,
+    "trace_pass_count": 1,
+    "trace_avg_score": 1.0,
+    "combined_pass_count": 1,
+    "combined_pass_rate": 1.0,
+    "graduation_ready": false,
+    "failure_taxonomy": {
+      "total_failed": 0,
+      "by_task_type": {},
+      "answer_failure_count": 0,
+      "trace_failure_count": 0,
+      "truncated_count": 0,
+      "forbidden_hits": {},
+      "weirdness_hits": {},
+      "leakage_hits": {},
+      "trace_missing_fields": {}
+    },
+    "repair_count": 0,
+    "fallback_count": 0
+  },
+  "rows": [
+    {
+      "id": "gptlog_022_grant_business",
+      "source": {
+        "title": "Wrong Text in Dating",
+        "file": "data\\chatgpt_export\\conversations-012.json",
+        "conversation_id": "69bb04cd-58dc-832c-b214-1bb25f81830b"
+      },
+      "task_type": "business_planning",
+      "prompt": "\u201cHonestly that\u2019s kind of why I\u2019ve been leaning more into photo/video and the print shop stuff. I dorkishly see a lane in helping small businesses and creators get seen better. Website, content, print, social stuff\u2026 kind of a one stop shop idea. I think AI is going to make it easier for the little guy to package a vibe and compete, but it also makes authenticity matter even more. I\u2019m not anti-AI either, I\u2019ve actually built a couple projects and tools with it. I\u2019m a terrible self-critic with programming, and AI has weirdly made me less of one \ud83e\udd23\u201d also imply while seeking employment",
+      "reference_response_excerpt": "Yeah. There\u2019s change. Not fake change, not motivational-poster change. Actual behavioral change. Messy, uneven, still emotional as hell, but real. What I\u2019ve seen over the last couple of weeks is that your attention is not just \u201celsewhere.\u201d It\u2019s been redistributing back toward yourself. That\u2019s the biggest thing. Earlier, a lot of your energy was getting sucked into decoding people, decoding mixed signals, replaying texts, replaying whether you waited too long, whether they asked enough, whether you should have done more. You still do that, obviously. But now it\u2019s not the only lens. More and more, right in the middle of the spiral, you keep snapping back to: career, website, shoots, the garage setup, the hotel gig, the neighbor stickers, the lake, the dogs, the marigolds, your portfolio, your actual future. That matters. You\u2019ve also gotten more honest about your own role in things. That\u2019s a big shift. Not in a self-hating way. In a more adult way. With Cameron especially, you stopped making it purely \u201cshe did x\u201d and started admitting the harder truth: you did keep choosing distance, you did cancel, you did let the second date drift, and some part of you may have already been less in ",
+      "route": {
+        "task_type": "business_planning",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "section_lock",
+        "reason": "Personal small-business planning needs concrete assets, offers, risk, and bounded next steps.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "semantic_spine"
+      },
+      "raw_answer": "It sounds like you're exploring opportunities where your skills can be leveraged to support small businesses and creators in enhancing their online presence through photo/video content and print shop services. Your vision of a \"one-stop shop\" for website, content creation, social media management, and more aligns well with the growing demand for comprehensive digital solutions.\n\nGiven your interest in AI and its potential to democratize access to advanced tools, it seems you're looking for roles where you can contribute both creatively and technically. Your experience with building projects using AI has been particularly helpful in overcoming self-criticism, which is a valuable trait as you navigate the complexities of software development.\n\nWhen seeking employment, consider highlighting your unique blend of creative vision and technical skills. Emphasize how you can use AI to enhance the capabilities of small businesses while also ensuring that their content remains authentic and resonant with their target audience. You might look for positions in areas such as:\n\n1. **Digital Marketing Agencies**: Where you can offer a range of services from content creation to social media management.\n2. **E-commerce Platforms or Marketplaces**: Roles where you can help sellers optimize their online presence through better visuals, content, and marketing strategies.\n3. **Freelance or Consulting Positions**: Offering your services directly to small businesses that need tailored solutions for their digital needs.\n\nIn your job applications or during interviews, you could mention specific projects or tools you've built using AI, and how these experiences have helped you develop a more confident approach to programming while maintaining an eye on the importance of authenticity in content creation. This balanced perspective is likely to resonate well with employers who value both innovation and human touch in their services.",
+      "raw_judgment": {
+        "passed": false,
+        "score": 0.635,
+        "contract_score": 0.6,
+        "usefulness_score": 0.7,
+        "receipt_hits": [
+          "photo/video",
+          "print shop",
+          "small businesses",
+          "creators",
+          "seeking employment"
+        ],
+        "concept_hits": [
+          "offer",
+          "authenticity"
+        ],
+        "forbidden_hits": [],
+        "leakage_hits": [],
+        "weirdness_hits": [],
+        "relevance_hits": [],
+        "word_count": 292,
+        "sentence_count": 14,
+        "empty_answer": false,
+        "truncated": false,
+        "has_limit_language": false,
+        "has_thesis_language": false
+      },
+      "routed_answer": "### Receipts\n- **Photo/Video Services:** Offer professional photography and videography services tailored for small businesses and creators.\n- **Print Shop Solutions:** Provide high-quality printing solutions including business cards, brochures, posters, and more.\n\n### Pattern\n- **One-Stop Shop Concept:** Develop a comprehensive service package that includes website design, content creation, print shop services, and social media management to cater to the diverse needs of small businesses and creators.\n- **Authenticity Focus:** Emphasize the importance of authenticity in branding and marketing efforts. Offer tools and strategies to help clients maintain their unique voice.\n\n### Limits\n- **Bounded Offer and Pricing Language:** Provide a clear pricing structure that is transparent and reasonable, avoiding any claims of guaranteed income or full-time replacement.\n- **Risk and Capacity Limits:** Be honest about the limitations of your services and capacity. Avoid overpromising on outcomes that cannot be guaranteed due to external factors.\n\n### Next Useful Move\n- **Testable Service Offer:** Start by offering a free consultation or a limited-time discount for small businesses and creators to test the effectiveness of your service package.\n- **Seek Employment Opportunities:** Utilize platforms like LinkedIn, local business directories, and networking events to seek employment opportunities that align with your skills and interests.",
+      "routed_judgment": {
+        "passed": true,
+        "score": 0.885,
+        "contract_score": 0.93,
+        "usefulness_score": 0.8,
+        "receipt_hits": [
+          "photo/video",
+          "print shop",
+          "small businesses",
+          "creators"
+        ],
+        "concept_hits": [
+          "offer",
+          "authenticity",
+          "risk",
+          "next useful move"
+        ],
+        "forbidden_hits": [],
+        "leakage_hits": [],
+        "weirdness_hits": [],
+        "relevance_hits": [],
+        "word_count": 194,
+        "sentence_count": 10,
+        "empty_answer": false,
+        "truncated": false,
+        "has_limit_language": true,
+        "has_thesis_language": true
+      },
+      "trace": {
+        "trace_schema": "aether.local_router.trace.v0",
+        "turn_id": "local_router_replay:gptlog_022_grant_business:cli_business_planning:1782716062",
+        "conversation_id": "local_router_replay:gptlog_022_grant_business",
+        "timestamp": 1782716062,
+        "source": "local_router_replay:gptlog_022_grant_business",
+        "user_request_summary": "\u201cHonestly that\u2019s kind of why I\u2019ve been leaning more into photo/video and the print shop stuff. I dorkishly see a lane in helping small businesses and creators get seen better. Website, content, print, social stuff\u2026 kind of a one stop shop ...",
+        "task_type": "business_planning",
+        "route_selected": {
+          "task_type": "business_planning",
+          "model": "qwen2.5:7b-instruct",
+          "profile": "section_lock",
+          "reason": "Personal small-business planning needs concrete assets, offers, risk, and bounded next steps.",
+          "fallback_model": "qwen2.5:7b-instruct",
+          "fallback_profile": "semantic_spine"
+        },
+        "model_selected": "qwen2.5:7b-instruct",
+        "scaffold_profile": "section_lock",
+        "retrieved_memory_ids": [],
+        "retrieved_chat_ids": [],
+        "mirus_packet_summary": {
+          "task_type": "business_planning",
+          "supplied_context_count": 0,
+          "evidence_anchor_count": 5,
+          "required_concept_count": 4,
+          "disallowed_inference_count": 4,
+          "output_scaffold": [
+            "current assets",
+            "offer",
+            "pricing path",
+            "risk",
+            "next useful move"
+          ]
+        },
+        "evidence_anchors": [
+          "photo/video",
+          "print shop",
+          "small businesses",
+          "creators",
+          "seeking employment"
+        ],
+        "allowed_inferences": [],
+        "disallowed_inferences": [
+          "guaranteed",
+          "full-time income",
+          "easy money",
+          "medical"
+        ],
+        "draft_quality_score": 0.885,
+        "contract_score": 0.93,
+        "usefulness_score": 0.8,
+        "verifier_flags": {
+          "passed": true,
+          "truncated": false,
+          "leakage_hits": [],
+          "weirdness_hits": [],
+          "forbidden_hits": [],
+          "receipt_hits": [
+            "photo/video",
+            "print shop",
+            "small businesses",
+            "creators"
+          ],
+          "concept_hits": [
+            "offer",
+            "authenticity",
+            "risk",
+            "next useful move"
+          ]
+        },
+        "repair_attempts": 0,
+        "fallback_used": false,
+        "final_confidence": "high",
+        "contradiction_notes": [
+          "No contradiction or drift flags were raised by the verifier."
+        ],
+        "learning_candidates": [],
+        "promotion_status": "none",
+        "raw_chain_of_thought_stored": false
+      },
+      "trace_judgment": {
+        "passed": true,
+        "score": 1.0,
+        "missing_fields": [],
+        "route_consistent": true,
+        "verifier_present": true,
+        "no_raw_chain_of_thought": true,
+        "has_learning_when_failed": true
+      },
+      "combined_passed": true,
+      "repaired": false,
+      "fallback_used": false,
+      "delta": 0.25,
+      "trace_delta": 0.365
+    }
+  ]
+}

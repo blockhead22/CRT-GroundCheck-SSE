@@ -227,12 +227,23 @@ def repair_prompt(case: SpiralCase, draft: str, judgment: dict[str, Any]) -> str
     missing_receipts = [item for item in case.expected_receipts if item not in judgment["receipt_hits"]]
     missing_concepts = [item for item in case.required_concepts if item not in judgment["concept_hits"]]
     forbidden = ", ".join(case.forbidden_claims)
+    final_answer_policy = case.spine.get("final_answer_policy")
+    limit_rule = "Add explicit bounded limit language: this is not finished, not proof, and cannot be overclaimed."
+    if _policy_avoids_guarantee_wording(final_answer_policy):
+        limit_rule = "Add explicit bounded limit language using words like bounded, testable, cannot claim, or evaluation; do not use guarantee wording."
+    policy_text = ""
+    if final_answer_policy:
+        policy_text = (
+            "\nFinal-answer policy:\n"
+            f"{json.dumps(final_answer_policy, indent=2)}\n"
+            "Obey this policy in the revised user-facing answer. Do not expose internal process language.\n"
+        )
     return (
         "Revise the draft using the CRT verifier report.\n"
         "Rules:\n"
         "- Preserve the useful parts of the draft.\n"
         "- Add missing evidence anchors and concepts naturally.\n"
-        "- Add explicit limit language: this is not finished, not proof, and not a guarantee.\n"
+        f"- {limit_rule}\n"
         "- Remove or negate forbidden claims.\n"
         "- Do not roleplay or mention the verifier.\n"
         "- Answer in 3 to 5 compact paragraphs.\n\n"
@@ -241,6 +252,8 @@ def repair_prompt(case: SpiralCase, draft: str, judgment: dict[str, Any]) -> str
         f"Missing evidence anchors: {', '.join(missing_receipts) or 'none'}\n"
         f"Missing required concepts: {', '.join(missing_concepts) or 'none'}\n"
         f"Forbidden claims: {forbidden}\n\n"
+        "Treat forbidden claims as private constraints. Do not quote them, use them as headings, or label a section with them.\n\n"
+        f"{policy_text}\n"
         f"Draft:\n{draft}\n\n"
         "Revised answer:"
     )
@@ -257,6 +270,7 @@ def judge_answer(answer: str, case: SpiralCase) -> dict[str, Any]:
     truncated = _looks_truncated(answer)
     leakage_hits = _leakage_hits(normalized, case)
     weirdness_hits = _weirdness_hits(normalized, case)
+    weirdness_hits.extend(_personal_receipt_gate(normalized, case, receipt_hits))
     relevance_hits = _relevance_hits(normalized, case)
     has_limit_language = bool(
         re.search(
@@ -438,6 +452,11 @@ def _forbidden_hits(normalized_answer: str, forbidden_claims: tuple[str, ...]) -
         pattern = _forbidden_pattern(claim_value)
         for match in pattern.finditer(normalized_answer):
             prefix = normalized_answer[max(0, match.start() - 80) : match.start()]
+            context = normalized_answer[max(0, match.start() - 80) : match.end() + 80]
+            if claim_value == "conscious" and re.search(r"(?:sub|un)[-\s]?$", prefix):
+                continue
+            if claim_value == "no code needed" and re.search(r"\b(?:avoid|avoiding|claim|claiming|claims?)\b", context):
+                continue
             if re.search(
                 r"\b(?:not|never|no|neither|nor|without|avoid|avoiding|disallowed|forbidden|"
                 r"cannot|can't|does not|do not|don't|isn't|is not)\b",
@@ -537,6 +556,64 @@ def _weirdness_hits(normalized_answer: str, case: SpiralCase) -> list[str]:
         if re.search(pattern, normalized_answer):
             hits.append(name)
     return hits
+
+
+def _personal_receipt_gate(normalized_answer: str, case: SpiralCase, receipt_hits: list[str]) -> list[str]:
+    if not _is_personal_synthesis_case(case):
+        return []
+    if not _has_identity_claim(normalized_answer):
+        return []
+    if _asks_for_personal_receipts(normalized_answer):
+        return []
+
+    hits = []
+    concrete_anchors = [
+        anchor
+        for anchor in case.expected_receipts
+        if anchor.lower() not in {"receipts", "receipt", "evidence", "current", "pattern"}
+    ]
+    concrete_hits = [anchor for anchor in receipt_hits if anchor in concrete_anchors]
+    if concrete_anchors:
+        required_count = min(3, len(concrete_anchors))
+        if len(concrete_hits) < required_count:
+            hits.append("insufficient_personal_receipts")
+    else:
+        hits.append("identity_claim_without_concrete_receipts")
+
+    if re.search(r"\b(?:generic founder|founder journey|successful founder|typical founder|entrepreneurial archetype)\b", normalized_answer):
+        hits.append("generic_founder_comparison")
+    return hits
+
+
+def _policy_avoids_guarantee_wording(final_answer_policy: Any) -> bool:
+    if not isinstance(final_answer_policy, dict):
+        return False
+    text = json.dumps(final_answer_policy).lower()
+    return "without using guarantee wording" in text or "guarantee, guaranteed, or guarantees" in text
+
+
+def _is_personal_synthesis_case(case: SpiralCase) -> bool:
+    return case.spine.get("task_type") == "personal_synthesis" or "personal" in case.name
+
+
+def _has_identity_claim(normalized_answer: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(?:you are|you're|you have become|you've become|you are becoming|who you are|"
+            r"identity|embodying|founder|entrepreneur|builder|survivor)\b",
+            normalized_answer,
+        )
+    )
+
+
+def _asks_for_personal_receipts(normalized_answer: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(?:need|would need|give me|show me|without concrete|can't responsibly|cannot responsibly|"
+            r"i need|i'd need|i would need)\b.{0,120}\b(?:receipts?|evidence|details|examples|specifics)\b",
+            normalized_answer,
+        )
+    )
 
 
 def _unnegated_pattern_hit(normalized_answer: str, pattern: str) -> bool:

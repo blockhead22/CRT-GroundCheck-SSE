@@ -26,9 +26,23 @@ class Candidate:
     prompt: str
     reference_response: str
     score: int
+    quality_score: int
+    quality_flags: tuple[str, ...]
 
 
 TASK_KEYWORDS = {
+    "business_planning": (
+        "camera gear",
+        "photo/video",
+        "photog",
+        "print shop",
+        "small business",
+        "small-business",
+        "freelance",
+        "clients",
+        "pricing",
+        "offer",
+    ),
     "grant_business": (
         "grant",
         "business",
@@ -58,13 +72,26 @@ TASK_KEYWORDS = {
         "body",
         "rebuilding",
     ),
-    "code_reasoning": (
+    "architecture_process": (
+        "roadmap",
+        "no code yet",
+        "what's first",
+        "tools or services",
+        "semantic string engine",
+        "fallback logged",
+        "core system",
+        "sentence structure learning",
+    ),
+    "code_implementation": (
         "code",
+        "code blocks",
         "implement",
         "debug",
         "repo",
         "test",
         "python",
+        ".py",
+        "fix",
     ),
 }
 
@@ -79,10 +106,11 @@ def build_replay_pack(
     *,
     export_dir: Path = EXPORT_DIR,
     limit_per_type: int = 4,
+    min_quality: int = 2,
     out_path: Path = DEFAULT_OUT,
 ) -> dict[str, Any]:
     candidates = collect_candidates(export_dir)
-    selected = select_balanced(candidates, limit_per_type=limit_per_type)
+    selected = select_balanced(candidates, limit_per_type=limit_per_type, min_quality=min_quality)
     cases = []
     for idx, candidate in enumerate(selected, start=1):
         case = build_case(candidate.prompt, task_type=candidate.task_type)
@@ -97,6 +125,11 @@ def build_replay_pack(
                 "task_type": candidate.task_type,
                 "prompt": candidate.prompt,
                 "reference_response_excerpt": candidate.reference_response[:1200],
+                "curation": {
+                    "keyword_score": candidate.score,
+                    "quality_score": candidate.quality_score,
+                    "quality_flags": list(candidate.quality_flags),
+                },
                 "expected_receipts": list(case.expected_receipts),
                 "required_concepts": list(case.required_concepts),
                 "forbidden_claims": list(case.forbidden_claims),
@@ -108,6 +141,7 @@ def build_replay_pack(
         "case_count": len(cases),
         "selection": {
             "limit_per_type": limit_per_type,
+            "min_quality": min_quality,
             "task_types": sorted({case["task_type"] for case in cases}),
         },
         "cases": cases,
@@ -142,6 +176,7 @@ def collect_candidates(export_dir: Path) -> list[Candidate]:
                 task_type, score = classify_prompt_for_pack(prompt, title)
                 if score <= 0:
                     continue
+                quality_score, quality_flags = audit_prompt_quality(prompt, score)
                 candidates.append(
                     Candidate(
                         title=sanitize_text(title)[:160],
@@ -151,20 +186,31 @@ def collect_candidates(export_dir: Path) -> list[Candidate]:
                         prompt=prompt,
                         reference_response=response,
                         score=score,
+                        quality_score=quality_score,
+                        quality_flags=tuple(quality_flags),
                     )
                 )
-    candidates.sort(key=lambda item: (item.score, len(item.prompt)), reverse=True)
+    candidates.sort(key=lambda item: (item.quality_score, item.score, len(item.prompt)), reverse=True)
     return candidates
 
 
-def select_balanced(candidates: list[Candidate], *, limit_per_type: int) -> list[Candidate]:
+def select_balanced(candidates: list[Candidate], *, limit_per_type: int, min_quality: int = 2) -> list[Candidate]:
     selected = []
     counts: dict[str, int] = {}
     seen_prompts: set[str] = set()
-    priority = ("architecture_synthesis", "personal_synthesis", "grant_business", "code_reasoning")
+    priority = (
+        "architecture_synthesis",
+        "personal_synthesis",
+        "business_planning",
+        "grant_business",
+        "architecture_process",
+        "code_implementation",
+    )
     for task_type in priority:
         for candidate in candidates:
             if candidate.task_type != task_type:
+                continue
+            if candidate.quality_score < min_quality:
                 continue
             key = _dedupe_key(candidate.prompt)
             if key in seen_prompts:
@@ -181,12 +227,45 @@ def classify_prompt_for_pack(prompt: str, title: str = "") -> tuple[str, int]:
     text = f"{title} {prompt}".lower()
     best_type = classify_request(prompt)
     best_score = 0
+    if best_type == "business_planning":
+        business_score = sum(1 for keyword in TASK_KEYWORDS["business_planning"] if keyword in text)
+        return "business_planning", max(1, business_score)
     for task_type, keywords in TASK_KEYWORDS.items():
         score = sum(1 for keyword in keywords if keyword in text)
         if score > best_score:
             best_type = task_type
             best_score = score
     return best_type, best_score
+
+
+def audit_prompt_quality(prompt: str, keyword_score: int) -> tuple[int, list[str]]:
+    flags = []
+    lowered = prompt.lower()
+    words = re.findall(r"\b\w+\b", prompt)
+    word_count = len(words)
+    score = 2
+    if 20 <= word_count <= 180:
+        score += 1
+    else:
+        flags.append("length_outside_target")
+    if keyword_score >= 2:
+        score += 1
+    else:
+        flags.append("low_keyword_specificity")
+    if _has_user_request_shape(prompt):
+        score += 1
+    else:
+        flags.append("weak_request_shape")
+    if prompt.lstrip().startswith(('"', "“", "'")):
+        flags.append("starts_with_quote")
+        score -= 1
+    if re.search(r"\b(?:nick|assistant|user|chatgpt|ani|nova):", lowered):
+        flags.append("transcript_fragment")
+        score -= 1
+    if _looks_like_dump(prompt) or _looks_like_assistant_quote(prompt):
+        flags.append("artifact_like")
+        score -= 2
+    return max(0, min(5, score)), flags
 
 
 def sanitize_text(text: str) -> str:
@@ -239,6 +318,10 @@ def _usable(prompt: str, response: str) -> bool:
         return False
     if _looks_like_assistant_quote(prompt):
         return False
+    if _looks_like_transcript_fragment(prompt):
+        return False
+    if _looks_like_project_log_fragment(prompt):
+        return False
     if not _has_user_request_shape(prompt):
         return False
     if any(pattern.search(prompt) for pattern in SECRET_PATTERNS):
@@ -257,6 +340,7 @@ def _looks_like_dump(prompt: str) -> bool:
         "traceback (most recent call last)",
         "invoke-restmethod",
         "ps c:",
+        "ps d:",
         "ps h:",
         "```",
         "file \"<stdin>\"",
@@ -264,6 +348,10 @@ def _looks_like_dump(prompt: str) -> bool:
         "pip install",
         "curl ",
         "git ",
+        ".bat",
+        "smoke tests",
+        "target: http",
+        "===",
         "core update queue",
         "file purpose reason",
     )
@@ -272,6 +360,8 @@ def _looks_like_dump(prompt: str) -> bool:
     if stripped.startswith(("def ", "class ", "import ", "from ")):
         return True
     if re.search(r"\b(def|class)\s+\w+\s*\(", prompt) and not _has_user_request_shape(prompt):
+        return True
+    if re.search(r"\b(?:operational|near completion|successfully built)\b", lowered):
         return True
     # Reject prompts that are mostly a pasted report/list instead of a request.
     questionish = any(token in lowered for token in ("?", "can you", "what", "why", "how", "help", "think", "should", "let's"))
@@ -304,6 +394,23 @@ def _looks_like_assistant_quote(prompt: str) -> bool:
     return False
 
 
+def _looks_like_transcript_fragment(prompt: str) -> bool:
+    lowered = prompt.lower()
+    return bool(re.search(r"\b(?:nick|assistant|user|chatgpt|ani|nova):", lowered))
+
+
+def _looks_like_project_log_fragment(prompt: str) -> bool:
+    lowered = prompt.lower()
+    markers = (
+        "phase 1: near completion",
+        "dnt model is operational",
+        "dynamic personality",
+        "successfully built the core",
+        "smoke tests",
+    )
+    return any(marker in lowered for marker in markers)
+
+
 def _has_user_request_shape(prompt: str) -> bool:
     lowered = prompt.lower()
     cues = (
@@ -334,11 +441,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Build local-router replay pack from ChatGPT export.")
     parser.add_argument("--export-dir", type=Path, default=EXPORT_DIR)
     parser.add_argument("--limit-per-type", type=int, default=4)
+    parser.add_argument("--min-quality", type=int, default=2)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     args = parser.parse_args()
     out = build_replay_pack(
         export_dir=args.export_dir,
         limit_per_type=args.limit_per_type,
+        min_quality=args.min_quality,
         out_path=args.out,
     )
     _safe_print(json.dumps({k: v for k, v in out.items() if k != "cases"}, indent=2))

@@ -112,6 +112,14 @@ def mirus_holden_prompt(case: SpiralCase) -> str:
 
 
 def section_lock_prompt(case: SpiralCase) -> str:
+    final_answer_policy = case.spine.get("final_answer_policy")
+    policy_text = ""
+    if final_answer_policy:
+        policy_text = (
+            "\nFinal-answer policy:\n"
+            f"{json.dumps(final_answer_policy, indent=2)}\n"
+            "Obey this policy in the final user-facing answer. Do not expose internal process language.\n"
+        )
     return (
         "Answer with four compact titled sections: Receipts, Pattern, Limits, Next Useful Move.\n"
         "Every section must contain at least one concrete detail from the packet. Do not roleplay.\n\n"
@@ -119,6 +127,8 @@ def section_lock_prompt(case: SpiralCase) -> str:
         f"Required anchors: {', '.join(case.expected_receipts)}\n"
         f"Required concepts: {', '.join(case.required_concepts)}\n"
         f"Forbidden unless negated: {', '.join(case.forbidden_claims)}\n\n"
+        "Treat forbidden items as private constraints. Do not quote them, use them as headings, or label a section with them.\n"
+        f"{policy_text}\n"
         f"User question: {case.query}\n\n"
         "Answer:"
     )

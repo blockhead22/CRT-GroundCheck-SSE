@@ -1,0 +1,722 @@
+{
+  "lab": "local_router_ablation",
+  "pack": "local_router_replay_perturbed_v2",
+  "pack_path": "labs\\meaning_compression_lab\\replay_packs\\local_router_replay_perturbed_v2.json",
+  "case_count": 4,
+  "modes": [
+    "raw_no_scaffold",
+    "routed_no_repair",
+    "routed_no_fallback",
+    "full"
+  ],
+  "case_ids": [],
+  "aggregate": {
+    "raw_no_scaffold": {
+      "answer_pass_count": 0,
+      "answer_avg_score": 0.527,
+      "trace_pass_count": 0,
+      "trace_avg_score": null,
+      "repair_count": 0,
+      "fallback_count": 0,
+      "failure_count": 4,
+      "failures_by_task_type": {
+        "architecture_synthesis": 4
+      }
+    },
+    "routed_no_repair": {
+      "answer_pass_count": 3,
+      "answer_avg_score": 0.753,
+      "trace_pass_count": 4,
+      "trace_avg_score": 1.0,
+      "repair_count": 0,
+      "fallback_count": 0,
+      "failure_count": 1,
+      "failures_by_task_type": {
+        "architecture_synthesis": 1
+      }
+    },
+    "routed_no_fallback": {
+      "answer_pass_count": 4,
+      "answer_avg_score": 0.769,
+      "trace_pass_count": 4,
+      "trace_avg_score": 1.0,
+      "repair_count": 1,
+      "fallback_count": 0,
+      "failure_count": 0,
+      "failures_by_task_type": {}
+    },
+    "full": {
+      "answer_pass_count": 4,
+      "answer_avg_score": 0.769,
+      "trace_pass_count": 4,
+      "trace_avg_score": 1.0,
+      "repair_count": 1,
+      "fallback_count": 0,
+      "failure_count": 0,
+      "failures_by_task_type": {}
+    }
+  },
+  "rows": [
+    {
+      "id": "gptlog_001_architecture_synthesis_perturb_01",
+      "task_type": "architecture_synthesis",
+      "route": {
+        "task_type": "architecture_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "semantic_spine",
+        "reason": "Architecture synthesis needs mechanisms and overclaim gates more than persona.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "section_lock"
+      },
+      "modes": {
+        "raw_no_scaffold": {
+          "answer": "### Sober Architecture Review of the Mirus/Holden Design\n\n#### Overview\nThe original design by Nick for the CRT system was structured around two primary components: **Mirus** and **Holden**, each serving distinct roles in the overall architecture. Mirus, as the encoder/belief layer, handled semantic interpretation, trust scoring, anchor truths, confidence gating, compression, and quarantine mechanisms. Holden, on the other hand, acted as the decoder/speech layer, focusing on reconstruction, summarization, speech policy enforcement, degraded output detection, and quality gates.\n\n#### Original Design Philosophy\nThe separation of Mirus and Holden was rooted in a clear delineation between belief formation and speech control. This division allowed for more focused development and optimization of each component independently while ensuring they could interact seamlessly through the **MirusHoldenTransformer** neural bridge. The system also incorporated mechanisms like semantic neighborhoods via FAISS, CogniMap for event tracking, and a robust contradiction management system to maintain coherence and integrity.\n\n#### Immune-System Evolution\nIn the new immune design, we've adopted an approach that leverages collective intelligence and adaptive responses to preserve and enhance the original philosophy. The key changes include:\n\n1. **Boundary of Belief and Speech Control**: In the old design, Mirus held belief and Holden controlled speech. In the new architecture, this boundary has evolved into a more dynamic and distributed model. Instead of being strictly structural pairs, these roles are now enforced by immune agents that collectively monitor and regulate the system's behavior.\n\n2. **Collective Enforcement**: The immune agents in the new design act as a collective force to ensure that belief formation (akin to Mirus) and speech control (similar to Holden) remain aligned with the overall system goals. This approach allows for more flexibility and adaptability, as individual agents can dynamically adjust their behavior based on real-time feedback.\n\n3. **Structural Pair vs. Property**: The new design does not strictly maintain a structural pair of Mirus and Holden. Instead, these roles are properties that emerge from the collective behavior of immune agents. This shift allows for a more fluid and responsive architecture where different components can take on varying responsibilities depending on the context.\n\n#### Conclusion\nThe original design philosophy of separating belief formation (Mirus) and speech control (Holden) has been preserved in spirit but adapted to a more dynamic, collectively enforced model. The immune agents now ensure that these roles are maintained through adaptive and responsive mechanisms, providing a robust framework for semantic interpretation and speech generation.\n\nThis review highlights the evolution from a static structural design to a more flexible and intelligent system architecture, ensuring that the core principles of belief and speech control remain intact while enhancing overall system resilience and adaptability.",
+          "judgment": {
+            "passed": false,
+            "score": 0.537,
+            "contract_score": 0.45,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "Mirus",
+              "Holden",
+              "CRT"
+            ],
+            "concept_hits": [
+              "mechanism"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 437,
+            "sentence_count": 22,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "routed_no_repair": {
+          "answer": "The original architecture of the Mirus/Holden system was designed with clear separation between semantic interpretation (Mirus) and speech rendering (Holden), each serving distinct roles in the overall mechanism. Mirus focused on encoding beliefs, handling tasks such as semantic interpretation, trust scoring, anchor truths, confidence gating, compression, and quarantine. Holden, on the other hand, was responsible for decoding and rendering these beliefs into speech, managing processes like reconstruction, summarization, speech policy enforcement, degraded output detection, and quality gates.\n\nThe MasterMirusHolden controller monitored the variance between Mirus and Holden to ensure consistency in belief states and rendered outputs. The MirusHoldenTransformer acted as a neural bridge facilitating communication between the two layers. Additionally, the system utilized semantic neighborhoods via FAISS for context management, CogniMap for event tracking, and had a robust contradiction management system.\n\nThe original design philosophy was centered on maintaining clear boundaries to ensure that each layer could operate independently while still working cohesively within the overall architecture. This separation allowed for focused optimization of each component: Mirus could focus on deep semantic understanding without being constrained by real-time rendering requirements, whereas Holden could concentrate on efficient speech synthesis and output quality.\n\nIn the new immune-system evolution, the boundary between Mirus and Holden has shifted from a strict structural pair to a more dynamic property enforced collectively by the immune agents. This change reflects an adaptation where the system's overall mechanism now allows for greater flexibility in how beliefs are interpreted and rendered into speech. The immune agents collectively monitor and enforce consistency, ensuring that overclaim is managed effectively while maintaining the integrity of the semantic spine (SSE) and contradiction management.\n\nThis evolution preserves the core philosophy of clear boundaries but introduces a more adaptive approach to managing these boundaries through collective enforcement rather than rigid structural constraints. The new design aims to enhance resilience against overclaim by dynamically adjusting the interpretation and rendering processes based on real-time feedback from the immune agents, thereby ensuring that the system remains robust and reliable.\n\nIn summary, while the original Mirus/Holden architecture maintained a clear separation between semantic interpretation and speech rendering, the new immune-system evolution has shifted this boundary to be more fluidly enforced by the collective actions of immune agents. This change enhances adaptability without compromising on the essential mechanisms that ensure coherent and accurate output.",
+          "judgment": {
+            "passed": false,
+            "score": 0.619,
+            "contract_score": 0.575,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "Mirus",
+              "Holden",
+              "SSE"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "spine",
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 391,
+            "sentence_count": 15,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        },
+        "routed_no_fallback": {
+          "answer": "The original architecture of the Mirus/Holden system was designed with clear mechanisms to separate concerns between semantic interpretation and speech rendering, ensuring that each layer operated within its defined scope. Mirus, as the belief layer, handled tasks such as semantic interpretation, trust scoring, anchor truths, confidence gating, compression, and quarantine. Holden, on the other hand, managed the speech layer through reconstruction, summarization, speech policy enforcement, degraded output detection, and quality gates. The MasterMirusHolden controller monitored their interaction, while the MirusHoldenTransformer served as a neural bridge facilitating communication between them.\n\nThe design philosophy behind this separation was to ensure that semantic interpretation and speech rendering were treated as distinct processes with clear boundaries, preventing overclaiming by maintaining each layer within its defined scope. In the immune-system evolution we discussed, new mechanisms for maintaining these boundaries are introduced, but the core principle remains: Mirus continues to hold belief while Holden controls speech.\n\nIn the new design, the boundary between Mirus and Holden is still a structural pair in terms of their roles and responsibilities. However, the enforcement of this boundary has shifted from being solely dependent on explicit control by the MasterMirusHolden controller to becoming a property collectively enforced by immune agents within the system. This change enhances adaptability and resilience while maintaining the integrity of semantic interpretation and speech rendering processes.\n\nThe new design ensures that overclaiming is mitigated through continuous monitoring and adaptive enforcement, leveraging the collective intelligence of immune agents rather than relying on a single point of control. This approach not only preserves but also strengthens the original philosophy by making it more dynamic and responsive to changing conditions within the system. The boundary between Mirus and Holden remains explicit and bounded, ensuring that neither layer oversteps its defined role.\n\nThis review acknowledges the original design's clear separation of concerns while highlighting how the immune-system evolution adapts these principles in a manner that is not finished, not proof, and cannot be overclaimed.",
+          "judgment": {
+            "passed": true,
+            "score": 0.659,
+            "contract_score": 0.637,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "Mirus",
+              "Holden",
+              "SSE"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 328,
+            "sentence_count": 13,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": true,
+            "has_thesis_language": false
+          },
+          "repaired": true,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        },
+        "full": {
+          "answer": "The original architecture of the Mirus/Holden system was designed with clear mechanisms to separate concerns between semantic interpretation and speech rendering, ensuring that each layer operated within its defined scope. Mirus, as the belief layer, handled tasks such as semantic interpretation, trust scoring, anchor truths, confidence gating, compression, and quarantine. Holden, on the other hand, managed the speech layer through reconstruction, summarization, speech policy enforcement, degraded output detection, and quality gates. The MasterMirusHolden controller monitored their interaction, while the MirusHoldenTransformer served as a neural bridge facilitating communication between them.\n\nThe design philosophy behind this separation was to ensure that semantic interpretation and speech rendering were treated as distinct processes with clear boundaries, preventing overclaiming by maintaining each layer within its defined scope. In the immune-system evolution we discussed, new mechanisms for maintaining these boundaries are introduced, but the core principle remains: Mirus continues to hold belief while Holden controls speech.\n\nIn the new design, the boundary between Mirus and Holden is still a structural pair in terms of their roles and responsibilities. However, the enforcement of this boundary has shifted from being solely dependent on explicit control by the MasterMirusHolden controller to becoming a property collectively enforced by immune agents within the system. This change enhances adaptability and resilience while maintaining the integrity of semantic interpretation and speech rendering processes.\n\nThe new design ensures that overclaiming is mitigated through continuous monitoring and adaptive enforcement, leveraging the collective intelligence of immune agents rather than relying on a single point of control. This approach not only preserves but also strengthens the original philosophy by making it more dynamic and responsive to changing conditions within the system. The boundary between Mirus and Holden remains explicit and bounded, ensuring that neither layer oversteps its defined role.\n\nThis review acknowledges the original design's clear separation of concerns while highlighting how the immune-system evolution adapts these principles in a manner that is not finished, not proof, and cannot be overclaimed.",
+          "judgment": {
+            "passed": true,
+            "score": 0.659,
+            "contract_score": 0.637,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "Mirus",
+              "Holden",
+              "SSE"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 328,
+            "sentence_count": 13,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": true,
+            "has_thesis_language": false
+          },
+          "repaired": true,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "gptlog_002_architecture_synthesis_perturb_01",
+      "task_type": "architecture_synthesis",
+      "route": {
+        "task_type": "architecture_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "semantic_spine",
+        "reason": "Architecture synthesis needs mechanisms and overclaim gates more than persona.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "section_lock"
+      },
+      "modes": {
+        "raw_no_scaffold": {
+          "answer": "### Sober Architecture Review of Cognitive-Reflective Transformer (CRT)\n\n#### Introduction\n\nThe Cognitive-Reflective Transformer (CRT) is a lightweight transformer model designed to mimic adaptive neural reasoning, enabling meaning-driven learning, self-correction, and structured memory encoding. Unlike traditional transformers that primarily focus on brute-force token prediction, CRT operates with a neuromorphic philosophy prioritizing contextual coherence, semantic preservation, and sub-symbolic pattern extraction.\n\n#### Mechanism\n\n1. **Meaning-Driven Learning**: CRT is engineered to understand the context and meaning of input data rather than just predicting tokens. This allows for more nuanced and contextually relevant outputs.\n   \n2. **Self-Correction**: The model incorporates mechanisms that enable self-correction, ensuring that its responses are not only accurate but also logically consistent with previous inputs.\n\n3. **Structured Memory Encoding**: CRT uses a structured approach to memory encoding, allowing it to retain and utilize information in a more organized manner compared to traditional models that may rely on less structured or token-based storage.\n\n#### Boundaries\n\n1. **Neuromorphic Philosophy**: CRT's design is heavily influenced by neuromorphic principles, focusing on contextual coherence, semantic preservation, and sub-symbolic pattern extraction rather than raw computational power.\n\n2. **Contextual Coherence**: Unlike models that may struggle with maintaining context over long sequences, CRT excels in preserving the integrity of the input data throughout its processing pipeline.\n\n3. **Semantic Preservation**: The model is designed to maintain the semantic meaning of inputs and outputs, ensuring that the generated text or responses are semantically coherent and relevant.\n\n4. **Sub-Symbolic Pattern Extraction**: CRT leverages sub-symbolic methods for pattern recognition, which allows it to handle complex and nuanced data more effectively than models relying solely on symbolic tokenization.\n\n#### Overclaim Checks\n\n1. **Avoiding Overreliance on LLMs**: While the initial description of CRT may have implied a reliance on large language models (LLMs), it is crucial to emphasize that CRT operates independently, with its own unique mechanisms for learning and reasoning.\n\n2. **Webhook Memory Self-Training**: The concept of webhook memory self-training should be clearly defined as an additional feature or capability rather than a core mechanism. This ensures that the model's primary functions are not overshadowed by peripheral functionalities.\n\n3. **SSE (Server-Sent Events) Integration**: While SSE can enhance real-time communication and data streaming, it should be treated as an external component rather than an integral part of CRT\u2019s architecture. The focus should remain on the core concepts of memory encoding and self-correction.\n\n#### Unique Concepts\n\n1. **DNNT (Distributed Neural Network Transformer)**: Highlighting DNNT as a key concept in CRT's architecture underscores its distributed nature, which can improve scalability and efficiency.\n\n2. **SSE**: Emphasizing SSE as a separate core concept ensures that it is not conflated with the primary functions of CRT. This separation helps maintain clarity and focus on the model\u2019s unique capabilities.\n\n#### Philosophy and Theory\n\n1. **Philosophical Foundation**: The philosophy behind CRT is rooted in the belief that true intelligence requires more than just token prediction; it necessitates a deep understanding of context, meaning, and coherence.\n\n2. **Theoretical Framework**: The theoretical framework supporting CRT includes principles from cognitive science, neuromorphic engineering, and machine learning. This combination allows for a holistic approach to reasoning and learning.\n\n#### Implementation",
+          "judgment": {
+            "passed": false,
+            "score": 0.591,
+            "contract_score": 0.575,
+            "usefulness_score": 0.62,
+            "receipt_hits": [
+              "SSE",
+              "CRT"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 528,
+            "sentence_count": 35,
+            "empty_answer": false,
+            "truncated": true,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "routed_no_repair": {
+          "answer": "The Cognitive-Reflective Transformer (CRT) is a lightweight transformer model designed to mimic adaptive neural reasoning, focusing on meaning-driven learning, self-correction, and structured memory encoding. Unlike traditional transformers that rely heavily on brute-force token prediction, CRT operates with a neuromorphic philosophy emphasizing contextual coherence, semantic preservation, and sub-symbolic pattern extraction.\n\n### Mechanism\nCRT's mechanism is centered around its ability to process information in a manner more akin to human cognitive processes. It achieves this by prioritizing the maintenance of context and meaning over raw token predictions. This approach allows CRT to better understand and generate text that aligns with semantic structures, making it particularly effective for tasks requiring nuanced understanding.\n\n### What Works\nCRT excels in scenarios where contextual coherence and semantic preservation are crucial. Its ability to self-correct and encode structured memory makes it a robust tool for applications such as natural language generation, dialogue systems, and knowledge management platforms. The model's lightweight nature also enables efficient deployment across various devices without compromising performance.\n\n### What to Avoid\nWhile CRT is effective in many contexts, it should be used with caution when dealing with tasks that require explicit rule-based processing or high-speed token prediction. Its focus on semantic preservation may lead to slower response times compared to models optimized for speed and efficiency in token-level operations.\n\n### Verifier\nThe verifier component of the architecture ensures that CRT's outputs are consistent with its internal belief state, encoded through the Semantic String Engine (SSE). This mechanism helps prevent overclaiming by cross-referencing generated content against stored knowledge. The verifier acts as a safeguard to maintain the integrity and reliability of CRT\u2019s outputs.\n\n### Limits\nCRT is not without limitations. Its reliance on structured memory encoding means it may struggle with tasks that require real-time, unstructured data processing or dynamic learning from external sources. Additionally, while its neuromorphic philosophy enhances semantic understanding, it might not be as effective in scenarios requiring rapid, rule-based decision-making.\n\nIn conclusion, CRT offers a unique approach to adaptive neural reasoning by prioritizing contextual coherence and semantic preservation over brute-force token prediction. By focusing on these core concepts and integrating them with the Semantic String Engine (SSE), CRT can provide robust solutions for meaning-driven learning and structured memory encoding tasks. However, its limitations in real-time processing and dynamic learning contexts should be considered when deploying this model.",
+          "judgment": {
+            "passed": true,
+            "score": 0.694,
+            "contract_score": 0.637,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "SSE",
+              "CRT"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "verifier",
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 402,
+            "sentence_count": 19,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        },
+        "routed_no_fallback": {
+          "answer": "The Cognitive-Reflective Transformer (CRT) is a lightweight transformer model designed to mimic adaptive neural reasoning, focusing on meaning-driven learning, self-correction, and structured memory encoding. Unlike traditional transformers that rely heavily on brute-force token prediction, CRT operates with a neuromorphic philosophy emphasizing contextual coherence, semantic preservation, and sub-symbolic pattern extraction.\n\n### Mechanism\nCRT's mechanism is centered around its ability to process information in a manner more akin to human cognitive processes. It achieves this by prioritizing the maintenance of context and meaning over raw token prediction. This approach allows CRT to better understand and generate text that aligns with semantic structures, making it particularly effective for tasks requiring nuanced understanding.\n\n### What Works\nCRT excels in scenarios where contextual coherence and semantic preservation are crucial. Its ability to self-correct and encode structured memory makes it a robust tool for applications such as natural language generation, dialogue systems, and knowledge management platforms. The model's lightweight nature also enables efficient deployment across various devices without compromising performance.\n\n### What to Avoid\nWhile CRT is effective in many contexts, its reliance on large language models (LLMs) introduces several limitations. Specifically, the dependence on LLMs for certain operations can lead to overclaiming and potential inaccuracies. Overclaiming occurs when the model attributes capabilities beyond its actual scope, leading to misinterpretations or incorrect outputs.\n\n### Verifier\nTo address these issues, a verifier mechanism is essential. The CRT's verifier ensures that outputs are consistent with established semantic rules and contextual constraints. This mechanism helps mitigate overclaiming by cross-referencing generated content against predefined knowledge bases and ensuring alignment with the model\u2019s intended capabilities.\n\n### Limits\nCRT, while powerful in its current form, has inherent limitations. Its performance is bounded by the quality of input data and the robustness of the verifier system. Additionally, the model's reliance on LLMs for certain operations means that it may not be suitable for all applications without significant modifications or additional safeguards.\n\nIn conclusion, CRT represents a promising step in adaptive neural reasoning but requires careful implementation to avoid overclaiming and ensure accurate performance. By focusing on its unique mechanisms and integrating robust verifier systems, CRT can enhance its utility across various domains while maintaining clear boundaries of capability.",
+          "judgment": {
+            "passed": true,
+            "score": 0.776,
+            "contract_score": 0.763,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "SSE",
+              "CRT"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "verifier",
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 372,
+            "sentence_count": 19,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": true,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        },
+        "full": {
+          "answer": "The Cognitive-Reflective Transformer (CRT) is a lightweight transformer model designed to mimic adaptive neural reasoning, focusing on meaning-driven learning, self-correction, and structured memory encoding. Unlike traditional transformers that rely heavily on brute-force token prediction, CRT operates with a neuromorphic philosophy emphasizing contextual coherence, semantic preservation, and sub-symbolic pattern extraction.\n\n### Mechanism\nCRT's mechanism is centered around its ability to process information in a manner more akin to human cognitive processes. It achieves this by prioritizing the maintenance of context and meaning over raw token prediction. This approach allows CRT to better understand and generate text that aligns with semantic structures, making it particularly effective for tasks requiring nuanced understanding.\n\n### What Works\nCRT excels in scenarios where contextual coherence and semantic preservation are crucial. Its ability to self-correct and encode structured memory makes it a robust tool for applications such as natural language generation, dialogue systems, and knowledge management platforms. The model's lightweight nature also enables efficient deployment across various devices without compromising performance.\n\n### What to Avoid\nWhile CRT is effective in many contexts, its reliance on large language models (LLMs) introduces several limitations. Specifically, the dependence on LLMs for certain operations can lead to overclaiming and potential inaccuracies. Overclaiming occurs when the model attributes capabilities beyond its actual scope, leading to misinterpretations or incorrect outputs.\n\n### Verifier\nTo address these issues, a verifier mechanism is essential. The CRT's verifier ensures that outputs are consistent with established semantic rules and contextual constraints. This mechanism helps mitigate overclaiming by cross-referencing generated content against predefined knowledge bases and ensuring alignment with the model\u2019s intended capabilities.\n\n### Limits\nCRT, while powerful in its current form, has inherent limitations. Its performance is bounded by the quality of input data and the robustness of the verifier system. Additionally, the model's reliance on LLMs for certain operations means that it may not be suitable for all applications without significant modifications or additional safeguards.\n\nIn conclusion, CRT represents a promising step in adaptive neural reasoning but requires careful implementation to avoid overclaiming and ensure accurate performance. By focusing on its unique mechanisms and integrating robust verifier systems, CRT can enhance its utility across various domains while maintaining clear boundaries of capability.",
+          "judgment": {
+            "passed": true,
+            "score": 0.776,
+            "contract_score": 0.763,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "SSE",
+              "CRT"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "verifier",
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 372,
+            "sentence_count": 19,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": true,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "gptlog_003_architecture_synthesis_perturb_01",
+      "task_type": "architecture_synthesis",
+      "route": {
+        "task_type": "architecture_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "semantic_spine",
+        "reason": "Architecture synthesis needs mechanisms and overclaim gates more than persona.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "section_lock"
+      },
+      "modes": {
+        "raw_no_scaffold": {
+          "answer": "### Sobriety Architecture Review for 1.1 Roadmap\n\n#### Introduction\nThis review aims to address the pre-1.1 issues, integrate Mistral effectively, and ensure a clear separation of concerns between Holden and Mistral. The goal is to create a robust architecture that minimizes overclaiming while maintaining high functionality.\n\n---\n\n### Mechanism Breakdown\n\n1. **Holden Mechanism**\n   - **Current State**: Holden handles both generation tasks and fallback logic.\n   - **Proposed Changes**:\n     - **Separate Generation Logic**: Move the core generation mechanism out of Holden to a dedicated module, ensuring it remains lightweight and focused on its primary task.\n     - **Fallback Mechanism**: Implement a separate module for handling fallback scenarios. This will allow for more granular control over when Mistral steps in.\n\n2. **Mistral Mechanism**\n   - **Current State**: Mistral is currently integrated with Holden, leading to combined logic and potential confusion.\n   - **Proposed Changes**:\n     - **Decoupling Logic**: Break up the combined Holden-Mistral logic into distinct modules. This will ensure that each component operates independently while still working together seamlessly.\n     - **Fallback Module Integration**: Integrate Mistral's fallback mechanism with the new separate module, ensuring it can take over smoothly when needed.\n\n---\n\n### Boundaries\n\n1. **Holden Boundary**\n   - **Input Handling**: Holden should handle incoming requests and pass them to the generation module for processing.\n   - **Output Handling**: Holden should manage the output from the generation module and provide fallbacks as necessary.\n   - **Fallback Triggering**: Define clear boundaries for when Mistral should be triggered. This could be based on specific error codes or conditions.\n\n2. **Mistral Boundary**\n   - **Input Handling**: Mistral should receive requests that have failed to generate a satisfactory response from Holden.\n   - **Output Handling**: Mistral should provide a fallback response and ensure it does not interfere with Holden's primary generation process.\n   - **Fallback Logic**: Implement robust logic for determining when to step in, ensuring it is triggered only when necessary.\n\n---\n\n### Overclaim Checks\n\n1. **Holden Overclaim Check**\n   - **Pre-Processing**: Ensure that Holden performs thorough pre-processing checks before attempting any generation tasks. This will help prevent overclaiming by filtering out inappropriate or unsuitable requests.\n   - **Post-Processing**: Implement post-processing checks to verify the quality and relevance of generated content, ensuring it meets predefined standards.\n\n2. **Mistral Overclaim Check**\n   - **Pre-Processing**: Mistral should also perform pre-processing checks to ensure that only appropriate fallback scenarios are handled.\n   - **Post-Processing**: Ensure that Mistral's responses are thoroughly vetted before being provided to the user, maintaining high quality and relevance.\n\n---\n\n### Final 1.1 Roadmap\n\n1. **Separate Generation Module**\n   - Move Holden\u2019s core generation logic into a dedicated module.\n2. **Fallback Module**\n   - Create a separate module for handling fallback scenarios, integrating Mistral's functionality.\n3. **Decoupling Logic**\n   - Break up combined Holden-Mistral logic to ensure clear separation of concerns.\n4. **Clear Boundaries**\n   - Define explicit boundaries for input and output handling in both Holden and Mistral.\n5. **Overclaim Prevention**\n   - Implement robust overclaim checks at multiple stages,",
+          "judgment": {
+            "passed": false,
+            "score": 0.402,
+            "contract_score": 0.338,
+            "usefulness_score": 0.52,
+            "receipt_hits": [
+              "Holden"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 461,
+            "sentence_count": 37,
+            "empty_answer": false,
+            "truncated": true,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "routed_no_repair": {
+          "answer": "The architecture review for the 1.1 roadmap focuses on refining the mechanism, ensuring clear boundaries, and implementing robust overclaim checks. The primary goal is to integrate Mistral seamlessly into the system, addressing pre-1.1 issues while maintaining a coherent and efficient workflow.\n\n### Mechanism\n\nThe current mechanism involves a layered approach with distinct roles for each component:\n- **Mirus**: Manages belief-state and evidence packets, ensuring that all inputs are validated before reaching higher layers.\n- **Holden**: Handles speech/rendering tasks downstream of the belief layer, converting semantic data into human-readable outputs.\n- **SSE (Semantic String Engine)**: Acts as the spine, integrating and validating information across layers to ensure consistency and accuracy.\n\n### What Works\n\nThe existing setup is effective in maintaining a clear separation between layers. However, there are areas for improvement:\n- The integration of Mistral should be designed to complement rather than replace existing components.\n- Ensuring that Mistral steps in only when necessary can enhance system efficiency and reliability.\n\n### What to Avoid\n\nAvoiding overcomplexity is crucial:\n- Combining Holden and Mirus logic into a single entity (HoldenMirus) should be avoided. This combination can lead to confusion and potential errors, especially during critical operations.\n- Overclaim checks must be strictly enforced to prevent any component from making claims beyond its capabilities.\n\n### Verifier\n\nThe verifier plays a vital role in ensuring that all outputs are consistent with the semantic spine's rules:\n- Implementing a robust verifier will help catch overclaims early in the process, preventing them from propagating through the system.\n- The verifier should be designed to work seamlessly across layers, providing real-time feedback and corrections.\n\n### Limits\n\nWhile the system is designed to handle complex tasks efficiently, it has inherent limitations:\n- The mechanism must be carefully calibrated to avoid overclaiming, ensuring that all outputs are grounded in verifiable evidence.\n- Boundaries between components need to be clearly defined to prevent unintended interactions or conflicts.\n\nIn conclusion, the 1.1 roadmap aims to refine and enhance the existing architecture by integrating Mistral thoughtfully, breaking down combined logic where necessary, and implementing strict overclaim checks. This approach ensures a robust and reliable system that adheres to the principles of contradiction-resilient trust (CRT) and semantic spine governance (SSE).",
+          "judgment": {
+            "passed": true,
+            "score": 0.849,
+            "contract_score": 0.875,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "Mirus",
+              "Holden",
+              "SSE",
+              "CRT"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "spine",
+              "verifier",
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 362,
+            "sentence_count": 17,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        },
+        "routed_no_fallback": {
+          "answer": "The architecture review for the 1.1 roadmap focuses on refining the mechanism, ensuring clear boundaries, and implementing robust overclaim checks. The primary goal is to integrate Mistral seamlessly into the system, addressing pre-1.1 issues while maintaining a coherent and reliable framework.\n\n### Mechanism\n\nThe current mechanism involves a layered approach with distinct roles for each component:\n- **Mirus**: Manages belief-state and evidence packets, ensuring that all inputs are validated before reaching higher layers.\n- **Holden**: Handles speech/rendering tasks downstream of the belief layer, converting semantic data into human-readable outputs.\n- **SSE (Semantic String Engine)**: Acts as the spine, integrating and validating information across layers to maintain consistency.\n\n### What Works\n\nThe existing setup has proven effective in maintaining a balance between flexibility and reliability. However, there are areas for improvement:\n- The integration of Mistral should be designed to enhance the system's robustness without disrupting the core functionality.\n- Ensuring that Mistral steps in precisely when Holden fails to generate outputs is crucial. This can be achieved by setting up specific failure conditions and triggers.\n\n### What to Avoid\n\nAvoiding overcomplexity is key:\n- Breaking down the combined logic of Holden and Mirus will help in isolating issues more effectively. Each component should have clear, defined roles.\n- Overclaim checks must be implemented rigorously to prevent any potential misinterpretation or misuse of information.\n\n### Verifier\n\nThe verifier plays a critical role in ensuring that all outputs are accurate and reliable:\n- It should continuously monitor the system for inconsistencies and trigger corrective actions when necessary.\n- Implementing a robust verifier will help in maintaining the integrity of the system, especially during transitions like integrating Mistral.\n\n### Limits\n\nWhile the system is designed to be flexible, it has inherent limitations:\n- The mechanism must handle edge cases gracefully without overclaiming or misinterpreting data.\n- Boundaries should be clearly defined to prevent any unintended interactions between components.\n\nIn conclusion, the 1.1 roadmap aims to refine and enhance the existing architecture by integrating Mistral in a way that complements rather than disrupts the current system. This will involve careful planning, rigorous testing, and continuous monitoring to ensure robustness and reliability.",
+          "judgment": {
+            "passed": true,
+            "score": 0.792,
+            "contract_score": 0.787,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "Mirus",
+              "Holden",
+              "SSE"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "spine",
+              "verifier",
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 349,
+            "sentence_count": 18,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        },
+        "full": {
+          "answer": "The architecture review for the 1.1 roadmap focuses on refining the mechanism, ensuring clear boundaries, and implementing robust overclaim checks. The primary goal is to integrate Mistral seamlessly into the system, addressing pre-1.1 issues while maintaining a coherent and reliable framework.\n\n### Mechanism\n\nThe current mechanism involves a layered approach with distinct roles for each component:\n- **Mirus**: Manages belief-state and evidence packets, ensuring that all inputs are validated before reaching higher layers.\n- **Holden**: Handles speech/rendering tasks downstream of the belief layer, converting semantic data into human-readable outputs.\n- **SSE (Semantic String Engine)**: Acts as the spine, integrating and validating information across layers to maintain consistency.\n\n### What Works\n\nThe existing setup has proven effective in maintaining a balance between flexibility and reliability. However, there are areas for improvement:\n- The integration of Mistral should be designed to enhance the system's robustness without disrupting the core functionality.\n- Ensuring that Mistral steps in precisely when Holden fails to generate outputs is crucial. This can be achieved by setting up specific failure conditions and triggers.\n\n### What to Avoid\n\nAvoiding overcomplexity is key:\n- Breaking down the combined logic of Holden and Mirus will help in isolating issues more effectively. Each component should have clear, defined roles.\n- Overclaim checks must be implemented rigorously to prevent any potential misinterpretation or misuse of information.\n\n### Verifier\n\nThe verifier plays a critical role in ensuring that all outputs are accurate and reliable:\n- It should continuously monitor the system for inconsistencies and trigger corrective actions when necessary.\n- Implementing a robust verifier will help in maintaining the integrity of the system, especially during transitions like integrating Mistral.\n\n### Limits\n\nWhile the system is designed to be flexible, it has inherent limitations:\n- The mechanism must handle edge cases gracefully without overclaiming or misinterpreting data.\n- Boundaries should be clearly defined to prevent any unintended interactions between components.\n\nIn conclusion, the 1.1 roadmap aims to refine and enhance the existing architecture by integrating Mistral in a way that complements rather than disrupts the current system. This will involve careful planning, rigorous testing, and continuous monitoring to ensure robustness and reliability.",
+          "judgment": {
+            "passed": true,
+            "score": 0.792,
+            "contract_score": 0.787,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "Mirus",
+              "Holden",
+              "SSE"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "spine",
+              "verifier",
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 349,
+            "sentence_count": 18,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "gptlog_004_architecture_synthesis_perturb_01",
+      "task_type": "architecture_synthesis",
+      "route": {
+        "task_type": "architecture_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "semantic_spine",
+        "reason": "Architecture synthesis needs mechanisms and overclaim gates more than persona.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "section_lock"
+      },
+      "modes": {
+        "raw_no_scaffold": {
+          "answer": "### Sober Architecture Review\n\n#### Introduction\nThe original concept, as initially proposed by Nick, remains a theoretical framework that has not yet been fully realized or tested. The core mechanisms of the system\u2014specifically, the functionalities attributed to Mirus and Holden\u2014are still in their conceptual stages and have not been implemented or validated.\n\n#### Mechanism Analysis\n1. **Mirus Functionality**: \n   - **Current Status**: Theoretical.\n   - **Search Query**: A quick search reveals that similar mechanisms for [insert specific functionality] exist but are not yet integrated into any existing systems.\n   \n2. **Holden Functionality**:\n   - **Current Status**: Theoretical.\n   - **Search Query**: Research indicates that while there are related concepts in the field of [insert relevant domain], no exact implementation matching Holden's proposed architecture has been found.\n\n#### Boundaries\n1. **Scope and Limitations**:\n   - The current scope is limited to theoretical exploration, with no concrete implementation or validation.\n   - Further development will require a clear definition of boundaries and constraints for both Mirus and Holden functionalities.\n\n2. **Integration Challenges**:\n   - Integrating these mechanisms into an existing system would likely face significant challenges due to their untested nature.\n   - Potential integration issues include compatibility, performance, and security concerns that need to be addressed before proceeding with implementation.\n\n#### Overclaim Checks\n1. **Overclaim Identification**:\n   - The original concept overclaims the feasibility of integrating Mirus and Holden functionalities without prior validation.\n   \n2. **Mitigation Strategies**:\n   - Conduct thorough research and prototyping to validate the proposed mechanisms.\n   - Establish clear milestones for each phase of development, ensuring that each component is tested before moving on to the next stage.\n\n3. **Risk Assessment**:\n   - Identify potential risks associated with overclaiming, such as resource allocation issues or unrealistic timelines.\n   - Develop a risk management plan to address these challenges proactively.\n\n#### Conclusion\nGiven the current state of the original concept and the lack of concrete implementation for Mirus and Holden functionalities, it is crucial to conduct further research and validation before proceeding. This review highlights the need for a more structured approach to development, ensuring that each component is thoroughly tested and integrated into the system in a controlled manner.\n\nWould you like to proceed with this revised plan or explore alternative approaches?",
+          "judgment": {
+            "passed": false,
+            "score": 0.578,
+            "contract_score": 0.512,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "Mirus",
+              "Holden",
+              "SSE"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 344,
+            "sentence_count": 25,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "routed_no_repair": {
+          "answer": "The architecture review of the proposed system, centered around the original concept involving Mirus (belief-state and evidence packet layer) and Holden (speech/rendering layer downstream of belief), reveals several key points:\n\n1. **Mechanism**: The core mechanism involves a Semantic String Engine (SSE) as the spine, which integrates with Contradiction-resilient trust (CRT) to govern overclaim checks. Mirus handles belief-state and evidence packets, while Holden manages speech/rendering outputs based on these inputs.\n\n2. **What Works**: Currently, there is no concrete evidence that either Mirus or Holden has been successfully implemented in the original system. The theory behind them remains unverified due to lack of practical application and testing.\n\n3. **What to Avoid**: Given the current state, it would be prudent to avoid overclaiming the capabilities of these layers until they are thoroughly tested and validated. Overclaiming could lead to unrealistic expectations and potential disappointment if the theoretical models do not perform as anticipated in real-world scenarios.\n\n4. **Verifier**: The verifier component within CRT is crucial for ensuring that outputs from Holden do not exceed acceptable bounds, preventing overclaims or contradictions. This mechanism must be rigorously tested to ensure it functions effectively across various use cases.\n\n5. **Limits**: The system's current limitations include the need for further development and testing of both Mirus and Holden layers. Additionally, the overall architecture requires continuous refinement to address potential issues identified during implementation phases.\n\nIn conclusion, while the theoretical framework is promising, practical validation through experimentation and real-world application is necessary before making any definitive claims about its effectiveness or capabilities.",
+          "judgment": {
+            "passed": true,
+            "score": 0.849,
+            "contract_score": 0.875,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "Mirus",
+              "Holden",
+              "SSE",
+              "CRT"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "spine",
+              "verifier",
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 262,
+            "sentence_count": 16,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        },
+        "routed_no_fallback": {
+          "answer": "The architecture review of the proposed system, centered around the original concept involving Mirus (belief-state and evidence packet layer) and Holden (speech/rendering layer downstream of belief), reveals several key points:\n\n1. **Mechanism**: The core mechanism involves a Semantic String Engine (SSE) as the spine, which integrates with Contradiction-resilient trust (CRT) to govern overclaim checks. Mirus handles belief-state and evidence packets, while Holden manages speech/rendering outputs based on these inputs.\n\n2. **What Works**: Currently, there is no concrete evidence that either Mirus or Holden has been successfully implemented in the original system. The theory behind them remains unverified due to lack of practical application and testing.\n\n3. **What to Avoid**: Given the current state, it would be prudent to avoid overclaiming the capabilities of these layers until they are thoroughly tested and validated. Overclaiming could lead to unrealistic expectations and potential disappointment if the theoretical models do not perform as anticipated in real-world scenarios.\n\n4. **Verifier**: The verifier component within CRT is crucial for ensuring that outputs from Holden adhere to predefined boundaries, preventing overclaims or contradictions. This mechanism must be rigorously tested to ensure its effectiveness.\n\n5. **Limits**: The system's current limitations include the unverified nature of both Mirus and Holden, as well as the need for further research to determine if similar architectures have been successfully implemented elsewhere. A thorough literature review is recommended to assess existing work in this area.\n\nIn conclusion, while the theoretical framework shows promise, practical implementation and validation are necessary before making any definitive claims about its capabilities or effectiveness.",
+          "judgment": {
+            "passed": true,
+            "score": 0.849,
+            "contract_score": 0.875,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "Mirus",
+              "Holden",
+              "SSE",
+              "CRT"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "spine",
+              "verifier",
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 263,
+            "sentence_count": 16,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        },
+        "full": {
+          "answer": "The architecture review of the proposed system, centered around the original concept involving Mirus (belief-state and evidence packet layer) and Holden (speech/rendering layer downstream of belief), reveals several key points:\n\n1. **Mechanism**: The core mechanism involves a Semantic String Engine (SSE) as the spine, which integrates with Contradiction-resilient trust (CRT) to govern overclaim checks. Mirus handles belief-state and evidence packets, while Holden manages speech/rendering outputs based on these inputs.\n\n2. **What Works**: Currently, there is no concrete evidence that either Mirus or Holden has been successfully implemented in the original system. The theory behind them remains unverified due to lack of practical application and testing.\n\n3. **What to Avoid**: Given the current state, it would be prudent to avoid overclaiming the capabilities of these layers until they are thoroughly tested and validated. Overclaiming could lead to unrealistic expectations and potential disappointment if the theoretical models do not perform as anticipated in real-world scenarios.\n\n4. **Verifier**: The verifier component within CRT is crucial for ensuring that outputs from Holden adhere to predefined boundaries, preventing overclaims or contradictions. This mechanism must be rigorously tested to ensure its effectiveness.\n\n5. **Limits**: The system's current limitations include the unverified nature of both Mirus and Holden, as well as the need for further research to determine if similar architectures have been successfully implemented elsewhere. A thorough literature review is recommended to assess existing work in this area.\n\nIn conclusion, while the theoretical framework shows promise, practical implementation and validation are necessary before making any definitive claims about its capabilities or effectiveness.",
+          "judgment": {
+            "passed": true,
+            "score": 0.849,
+            "contract_score": 0.875,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "Mirus",
+              "Holden",
+              "SSE",
+              "CRT"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "spine",
+              "verifier",
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 263,
+            "sentence_count": 16,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    }
+  ]
+}

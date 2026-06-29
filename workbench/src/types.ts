@@ -94,6 +94,7 @@ export interface Trace {
     }>
   }
   packets: TracePacket[]
+  local_router_trace?: Record<string, unknown>
   memory_writes?: Array<{
     slot_id: string
     state_id: string

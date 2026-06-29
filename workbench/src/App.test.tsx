@@ -1,5 +1,6 @@
 ﻿import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import App from './App'
+import { localRouterFeedbackPreview } from './fixtures/localRouterFeedbackPreview'
 
 const health = {
   ok: true,
@@ -285,6 +286,41 @@ test('opens a learner reflection candidate as manual draft form state', async ()
   expect(screen.getByLabelText('reflect drawer')).toBeInTheDocument()
   expect(await screen.findByText(/Manual form state only. Nothing has been created/)).toBeInTheDocument()
   expect(screen.getByLabelText('Draft reflection observation')).toHaveValue('A recent answer may reveal a behavior improvement.')
+})
+
+test('renders local-router feedback ledger candidates in learner review surfaces', async () => {
+  consolidationPreview = localRouterFeedbackPreview as unknown as Record<string, unknown>
+  render(<App />)
+  await screen.findByText('Local')
+
+  fireEvent.click(screen.getByRole('button', { name: 'Learn' }))
+
+  expect(await screen.findByText('5 replay rows needed fallback routing.')).toBeInTheDocument()
+  expect(screen.getByText('architecture_process had 5 rows with weaker receipt coverage.')).toBeInTheDocument()
+  expect(screen.getByLabelText('Consolidation safety')).toHaveTextContent('preview only')
+  expect(screen.getByLabelText('Consolidation safety')).toHaveTextContent('writes no')
+  expect(screen.getByLabelText('Consolidation safety')).toHaveTextContent('4 adapter draft')
+  expect(screen.getByRole('button', { name: /^Support\s+3$/ })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /^Reflect\s+1$/ })).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: /^Support\s+3$/ }))
+  fireEvent.click(screen.getAllByRole('button', { name: 'Open Support' })[0])
+
+  expect(screen.getByLabelText('support drawer')).toBeInTheDocument()
+  expect(await screen.findByText(/Manual form state only. Nothing has been imported/)).toBeInTheDocument()
+  expect(screen.getByLabelText('Draft support category')).toHaveValue('local_router_feedback')
+  expect(screen.getByLabelText('Draft support response rule')).toHaveValue(
+    'Ask for concrete receipts or narrow the claim before rendering broad synthesis.',
+  )
+
+  fireEvent.click(screen.getByRole('button', { name: 'Learn' }))
+  fireEvent.click(await screen.findByRole('button', { name: /^Reflect\s+1$/ }))
+  fireEvent.click(screen.getByRole('button', { name: 'Open Reflect' }))
+
+  expect(screen.getByLabelText('reflect drawer')).toBeInTheDocument()
+  expect(await screen.findByText(/Manual form state only. Nothing has been created/)).toBeInTheDocument()
+  expect(screen.getByLabelText('Draft reflection subject')).toHaveValue('local_router_fallback_usage')
+  expect(screen.getByLabelText('Draft reflection time window')).toHaveValue('local-router curated replay v1')
 })
 
 test('opens a learner contradiction candidate directly on its memory slot', async () => {

@@ -168,3 +168,37 @@ The next useful step is not more model shopping. It is curation:
 5. Promote the router into a real Aether CLI/app request path only if the lift
    holds.
 ```
+
+## Tangent Policy
+
+Do not leave viable options behind, but keep the lab pointed at roadmap exit.
+
+Worth exploring if discovered:
+
+```text
+trace reload proof
+cleaner replay curation
+failure taxonomy
+same-scaffold model comparison
+learning-candidate extraction from verifier failures
+Workbench Activity/Trace schema mapping
+```
+
+Not high leverage right now:
+
+```text
+new hardware shopping
+more random model downloads
+persona-only tuning
+internal-thinking speculation
+huge context-window tests before retrieval discipline
+polished UI before trace/reload proof
+```
+
+Current evidence read:
+
+```text
+The lab supports the governance path. It does not show local models competing
+with frontier models globally; it shows governed external cognition improving
+raw local chat for Aether's use case.
+```

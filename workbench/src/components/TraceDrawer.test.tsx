@@ -202,6 +202,147 @@ test('renders route decisions from initial trace metadata for historical traces 
   expect(within(decision).getByText('allowed')).toBeInTheDocument()
 })
 
+test('renders adapted local-router lab traces without memory evidence promotion', () => {
+  const adaptedTrace: Trace = {
+    query: 'Frame Aether as a practical grant direction.',
+    status: 'resolved',
+    turn_id: 'turn_lab',
+    conversation_id: 'conv_lab',
+    model: 'qwen2.5:7b-instruct',
+    generation_model: 'qwen2.5:7b-instruct',
+    route_decision: {
+      selected_route: 'local_router_grant_business',
+      candidate_routes: [{
+        route: 'local_router_grant_business',
+        confidence: 0.9,
+        reason: 'Grant/business framing benefits from compact sections.',
+      }],
+      selected_model_policy: 'lab_profile_section_lock',
+      tool_policy: 'no_tools_lab_replay',
+      repair_policy: 'repair_once_then_fallback',
+      escalation_allowed: false,
+      escalation_reason: null,
+      route_reason: 'Grant/business framing benefits from compact sections.',
+      route_confidence: 0.9,
+      risk_level: 'low',
+      memory_write_allowed: false,
+      silent_escalation_allowed: false,
+      model_recommendation: {
+        current_selected_model: 'qwen2.5:7b-instruct',
+        recommended_model_policy: 'observational_lab_result',
+        recommended_model: 'qwen2.5:7b-instruct',
+        fallback_model: 'qwen2.5:7b-instruct',
+        confidence: 'high',
+        latency_caveat: 'lab trace only; no automatic model switching',
+        evidence_path: 'labs/meaning_compression_lab/results/traces',
+        observational_only: true,
+        model_selection_changed: false,
+      },
+    },
+    completion: {
+      source: 'local_router_lab',
+      needs_stronger_model: false,
+      generation_model: 'qwen2.5:7b-instruct',
+      guidance_kind: 'section_lock',
+      guidance_repaired: false,
+      guidance_repair_failed: false,
+    },
+    plan: {
+      status: 'resolved',
+      coverage: 1,
+      unresolved_clauses: [],
+      clauses: [
+        {
+          clause_id: 'c_route',
+          text: 'Select local model and scaffold profile',
+          status: 'resolved',
+          candidate_slots: [],
+          reason_code: 'route_selected',
+        },
+        {
+          clause_id: 'c_mirus',
+          text: 'Compile Mirus packet and evidence anchors',
+          status: 'resolved',
+          candidate_slots: [],
+          reason_code: 'mirus_packet_compiled',
+        },
+        {
+          clause_id: 'c_verifier',
+          text: 'Verify answer against anchors, concepts, and disallowed claims',
+          status: 'resolved',
+          candidate_slots: [],
+          reason_code: 'verifier_passed',
+        },
+      ],
+    },
+    packets: [
+      {
+        request_id: 'r_route',
+        clause_id: 'c_route',
+        clause_text: 'Select local model and scaffold profile',
+        planner_slot: 'route',
+        slot_id: 'lab:route',
+        mode: 'trace_metadata',
+        release: 'answerable',
+        reason: 'route_selected',
+        evidence: [],
+      },
+      {
+        request_id: 'r_mirus',
+        clause_id: 'c_mirus',
+        clause_text: 'Compile Mirus packet and evidence anchors',
+        planner_slot: 'mirus_packet',
+        slot_id: 'lab:mirus_packet',
+        mode: 'trace_metadata',
+        release: 'answerable',
+        reason: 'evidence_anchor_packet_available',
+        evidence: [],
+      },
+      {
+        request_id: 'r_verifier',
+        clause_id: 'c_verifier',
+        clause_text: 'Verify answer against anchors, concepts, and disallowed claims',
+        planner_slot: 'verifier',
+        slot_id: 'lab:verifier',
+        mode: 'trace_metadata',
+        release: 'answerable',
+        reason: 'verifier_passed',
+        evidence: [],
+      },
+    ],
+    local_router_trace: {
+      trace_schema: 'aether.local_router.trace.v0',
+      raw_chain_of_thought_stored: false,
+      fixture_import_only: true,
+      memory_write_allowed: false,
+    },
+  }
+
+  render(<TraceDrawer trace={adaptedTrace} />)
+
+  expect(screen.getByText('100%')).toBeInTheDocument()
+  const route = screen.getByLabelText('Response route')
+  expect(within(route).getByText('local router lab')).toBeInTheDocument()
+  expect(within(route).getAllByText('qwen2.5:7b-instruct')).toHaveLength(2)
+  expect(within(route).getByText('section lock')).toBeInTheDocument()
+  const decision = screen.getByLabelText('Route decision')
+  expect(within(decision).getByText('local router grant business')).toBeInTheDocument()
+  expect(within(decision).getByText('lab profile section lock')).toBeInTheDocument()
+  expect(within(decision).getByText('no tools lab replay')).toBeInTheDocument()
+  expect(within(decision).getByText('repair once then fallback')).toBeInTheDocument()
+  expect(within(decision).getByText('observational lab result')).toBeInTheDocument()
+  expect(within(decision).getByText('lab trace only; no automatic model switching')).toBeInTheDocument()
+  expect(screen.getByText('lab:route')).toBeInTheDocument()
+  expect(screen.getByText('lab:mirus_packet')).toBeInTheDocument()
+  expect(screen.getByText('lab:verifier')).toBeInTheDocument()
+  expect(screen.getByText('Select local model and scaffold profile')).toBeInTheDocument()
+  expect(screen.getByText('Compile Mirus packet and evidence anchors')).toBeInTheDocument()
+  expect(screen.getByText('Verify answer against anchors, concepts, and disallowed claims')).toBeInTheDocument()
+  expect(screen.queryByText('local')).not.toBeInTheDocument()
+  expect(screen.queryByText('CRT')).not.toBeInTheDocument()
+  expect(screen.queryByText('Aether')).not.toBeInTheDocument()
+})
+
 test('makes patch previews visibly non-applied', () => {
   render(<TraceDrawer trace={{
     ...trace,

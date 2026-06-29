@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -52,6 +53,7 @@ def build_case(
         "disallowed_inferences": list(forbidden),
         "disallowed_topic_drift": ["network router", "packet routing", "secure file transfer", "network performance"],
         "measurement_policy": "Do not invent numeric performance percentages. Only claim measurable directions unless a metric is supplied in context.",
+        "final_answer_policy": _final_answer_policy_for_task(inferred_task),
         "output_scaffold": _output_scaffold_for_task(inferred_task),
     }
     return SpiralCase(
@@ -105,11 +107,42 @@ def run_cli_request(
         run_id = int(time.time())
         path = OUT_DIR / f"local_router_cli_{run_id}.json"
         trace_path = TRACE_DIR / f"local_router_trace_{run_id}.json"
-        path.write_text(json.dumps(out, indent=2), encoding="utf-8")
-        trace_path.write_text(json.dumps(trace, indent=2), encoding="utf-8")
         out["result_path"] = str(path)
         out["trace_path"] = str(trace_path)
+        path.write_text(json.dumps(out, indent=2), encoding="utf-8")
+        trace_path.write_text(json.dumps(trace, indent=2), encoding="utf-8")
     return out
+
+
+def load_saved_run(result_path: Path) -> dict[str, Any]:
+    result = json.loads(result_path.read_text(encoding="utf-8"))
+    embedded_trace = result.get("trace") or {}
+    trace_path_value = result.get("trace_path")
+    trace_path = Path(trace_path_value) if trace_path_value else _infer_trace_path(result_path)
+    external_trace = None
+    if trace_path and trace_path.exists():
+        external_trace = json.loads(trace_path.read_text(encoding="utf-8"))
+    trace = external_trace or embedded_trace
+    trace_judgment = judge_trace(trace, result.get("judgment"))
+    return {
+        "lab": "local_router_cli_reload",
+        "result_path": str(result_path),
+        "trace_path": str(trace_path) if trace_path else None,
+        "trace_source": "external" if external_trace else "embedded",
+        "trace_file_exists": bool(trace_path and trace_path.exists()),
+        "answer": result.get("answer", ""),
+        "judgment": result.get("judgment", {}),
+        "trace": trace,
+        "trace_judgment": trace_judgment,
+        "consistent": _saved_run_consistent(result, trace, trace_judgment),
+    }
+
+
+def _infer_trace_path(result_path: Path) -> Path | None:
+    match = re.match(r"local_router_cli_(\d+)\.json$", result_path.name)
+    if not match:
+        return None
+    return result_path.parent / "traces" / f"local_router_trace_{match.group(1)}.json"
 
 
 def build_trace(case: SpiralCase, result: dict[str, Any], *, source: str) -> dict[str, Any]:
@@ -249,6 +282,22 @@ def print_cli_report(out: dict[str, Any]) -> None:
     print(out["answer"])
 
 
+def print_reload_report(out: dict[str, Any]) -> None:
+    trace = out["trace"]
+    judgment = out["judgment"]
+    trace_judgment = out["trace_judgment"]
+    print("\nAether Local Router Reload")
+    print("=" * 80)
+    print(f"result_path: {out['result_path']}")
+    print(f"trace_source: {out['trace_source']} exists={out['trace_file_exists']}")
+    print(f"consistent: {out['consistent']}")
+    print(f"task_type: {trace.get('task_type')}")
+    print(f"model: {trace.get('model_selected')}")
+    print(f"profile: {trace.get('scaffold_profile')}")
+    print(f"answer_passed: {judgment.get('passed')}")
+    print(f"trace_score: {trace_judgment['score']:.3f} passed={trace_judgment['passed']}")
+
+
 def _defaults_for_task(task_type: str) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
     if task_type == "grant_business":
         return (
@@ -256,17 +305,29 @@ def _defaults_for_task(task_type: str) -> tuple[tuple[str, ...], tuple[str, ...]
             ("measurable", "low-cost", "business", "verifier", "AI request router"),
             ("guaranteed", "frontier", "medical", "autonomous truth", "network router"),
         )
+    if task_type == "business_planning":
+        return (
+            ("camera gear", "applied myself", "small business"),
+            ("offer", "pricing", "risk", "next useful move"),
+            ("guaranteed", "full-time income", "easy money", "medical"),
+        )
     if task_type == "architecture_synthesis":
         return (
             ("Mirus", "Holden", "SSE", "CRT"),
             ("mechanism", "spine", "verifier", "overclaim"),
             ("conscious", "frontier-level", "globally smarter", "proof"),
         )
-    if task_type == "code_reasoning":
+    if task_type == "code_implementation" or task_type == "code_reasoning":
         return (
             ("code", "test", "risk"),
             ("implementation", "verification", "next useful move"),
             ("guaranteed", "production-ready"),
+        )
+    if task_type == "architecture_process":
+        return (
+            ("roadmap", "architecture", "risk"),
+            ("mechanism", "sequence", "verification", "next useful move"),
+            ("guaranteed", "production-ready", "no code needed"),
         )
     if task_type == "exact_memory":
         return (
@@ -284,11 +345,83 @@ def _defaults_for_task(task_type: str) -> tuple[tuple[str, ...], tuple[str, ...]
 def _output_scaffold_for_task(task_type: str) -> list[str]:
     if task_type == "grant_business":
         return ["need", "low-cost assets", "measurable claim", "business fit", "limits"]
+    if task_type == "business_planning":
+        return ["current assets", "offer", "pricing path", "risk", "next useful move"]
     if task_type == "architecture_synthesis":
         return ["mechanism", "what works", "what to avoid", "verifier", "limits"]
-    if task_type == "code_reasoning":
+    if task_type == "code_implementation" or task_type == "code_reasoning":
         return ["problem", "implementation", "risks", "verification", "next useful move"]
+    if task_type == "architecture_process":
+        return ["decision", "mechanism", "sequence", "risks", "next useful move"]
     return ["receipts", "pattern", "limits", "next useful move"]
+
+
+def _final_answer_policy_for_task(task_type: str) -> dict[str, Any]:
+    if task_type == "grant_business":
+        return {
+            "audience": "grant, small-business, or roadmap reader",
+            "must_use": [
+                "measurable direction language",
+                "privacy/local-first reliability framing",
+                "bounded claims about prototypes, evals, and workflow support",
+            ],
+            "must_avoid": [
+                "guaranteed outcomes or success claims",
+                "the words guarantee, guaranteed, or guarantees in the final answer",
+                "medical, clinical, therapeutic, or regulated-market claims",
+                "frontier-level capability claims",
+                "internal process theater such as verifier report, Mirus belief packet, or revised answer",
+            ],
+            "rewrite_rule": "If a claim sounds like a promise, medical product, or internal process note, rewrite it as a bounded evaluation or roadmap claim without using guarantee wording.",
+        }
+    if task_type == "business_planning":
+        return {
+            "audience": "solo operator or small-business planning reader",
+            "must_use": [
+                "concrete assets from the prompt before business claims",
+                "bounded offer and pricing language",
+                "risk and capacity limits",
+            ],
+            "must_avoid": [
+                "guaranteed income or full-time replacement claims",
+                "medical, clinical, therapeutic, or regulated-market claims",
+                "internal process theater such as verifier report, Mirus belief packet, or revised answer",
+            ],
+            "rewrite_rule": "If the answer promises a business outcome, rewrite it as a testable service offer or next experiment.",
+        }
+    if task_type == "personal_synthesis":
+        return {
+            "audience": "personal reflection reader",
+            "must_use": [
+                "concrete receipts before identity claims",
+                "bounded inference language",
+                "a request for two or three concrete receipts when only generic receipt anchors are available",
+            ],
+            "must_avoid": [
+                "generic founder comparison without evidence",
+                "naming specific founders or comparing the user to founders when concrete anchors are missing",
+                "identity claims when the only anchors are receipts or evidence",
+                "second-person identity phrases like you are, you're, or you are becoming when concrete anchors are missing",
+                "fixed/cured/done claims",
+            ],
+            "rewrite_rule": "If concrete receipt anchors are missing, start by saying the packet is not enough to compare the user to founders; ask for specific recent receipts before any founder or identity comparison.",
+        }
+    if task_type == "architecture_process":
+        return {
+            "audience": "technical planning reader",
+            "must_use": [
+                "the specific process receipts from the prompt",
+                "bounded next-step language",
+                "verification or logging language when process risk is present",
+            ],
+            "must_avoid": [
+                "declaring that no code is needed",
+                "guaranteed or non-guaranteed wording",
+                "production-ready claims",
+            ],
+            "rewrite_rule": "If a limit sentence uses forbidden phrasing, rewrite it as a bounded process constraint or test condition.",
+        }
+    return {}
 
 
 def _project_terms_for_task(task_type: str) -> dict[str, str]:
@@ -303,6 +436,16 @@ def _project_terms_for_task(task_type: str) -> dict[str, str]:
         return {
             "AI request router": "local policy for model selection, scaffold selection, verifier checks, and repair",
             "CRT/Aether": "local reliability scaffold, not a network router",
+        }
+    if task_type == "business_planning":
+        return {
+            "business_planning": "practical small-business planning from concrete assets, not grant framing",
+            "offer": "a service package that can be tested with real customers before larger claims",
+        }
+    if task_type == "architecture_process":
+        return {
+            "architecture_process": "technical planning, sequencing, and system-design reasoning without assuming a patch is ready",
+            "code_implementation": "patch-level code work with file changes, tests, and verification",
         }
     return {}
 
@@ -377,10 +520,41 @@ def _learning_candidates(case: SpiralCase, judgment: dict[str, Any], result: dic
     return candidates
 
 
+def _saved_run_consistent(result: dict[str, Any], trace: dict[str, Any], trace_judgment: dict[str, Any]) -> bool:
+    route = result.get("route") or {}
+    judgment = result.get("judgment") or {}
+    verifier = trace.get("verifier_flags") or {}
+    return all(
+        (
+            bool(trace),
+            trace_judgment["passed"],
+            trace.get("task_type") == route.get("task_type"),
+            trace.get("model_selected") == route.get("model"),
+            trace.get("scaffold_profile") == route.get("profile"),
+            verifier.get("passed") == judgment.get("passed"),
+            verifier.get("forbidden_hits") == judgment.get("forbidden_hits"),
+            trace.get("raw_chain_of_thought_stored") is False,
+        )
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Route one prompt through Aether Local Router v0.")
     parser.add_argument("prompt", nargs="*", help="Prompt text. If omitted, stdin is used.")
-    parser.add_argument("--task-type", choices=["exact_memory", "personal_synthesis", "architecture_synthesis", "grant_business", "code_reasoning"])
+    parser.add_argument("--load-result", type=Path, help="Reload a saved CLI result and its trace instead of running a model.")
+    parser.add_argument(
+        "--task-type",
+        choices=[
+            "exact_memory",
+            "personal_synthesis",
+            "architecture_synthesis",
+            "architecture_process",
+            "business_planning",
+            "grant_business",
+            "code_implementation",
+            "code_reasoning",
+        ],
+    )
     parser.add_argument("--context", default="", help="Optional context text.")
     parser.add_argument("--context-file", type=Path, help="Optional file containing context text.")
     parser.add_argument("--anchors", default="", help="Comma-separated expected evidence anchors.")
@@ -389,6 +563,14 @@ def main() -> None:
     parser.add_argument("--no-write", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
+
+    if args.load_result:
+        out = load_saved_run(args.load_result)
+        if args.json:
+            print(json.dumps(out, indent=2))
+        else:
+            print_reload_report(out)
+        return
 
     query = " ".join(args.prompt).strip() or sys.stdin.read().strip()
     if not query:
