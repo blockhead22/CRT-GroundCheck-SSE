@@ -1,0 +1,44 @@
+{
+  "lab": "local_router_cli",
+  "case": "cli_grant_business",
+  "query": "Frame the CRT/Aether local router as a practical small-business R&D grant direction without overclaiming.",
+  "route": {
+    "task_type": "grant_business",
+    "model": "qwen2.5:7b-instruct",
+    "profile": "section_lock",
+    "reason": "Grant/business framing benefits from compact sections and measurable limits.",
+    "fallback_model": "qwen2.5:7b-instruct",
+    "fallback_profile": "semantic_spine"
+  },
+  "answer": "### Receipts\n- **Local Router Integration**: The CRT/Aether local router can be integrated into existing business networks to enhance data security and reduce latency, providing measurable improvements in network performance.\n\n### Pattern\n- **Low-Cost Assets**: Utilizing the RTX 3060 GPU for local processing tasks within the Aether router framework allows for efficient data handling at a low cost, making it an ideal choice for small businesses looking to optimize their operations without significant investment.\n\n### Limits\n- **Business Fit**: While the CRT/Aether local router offers substantial benefits in terms of network efficiency and security, its implementation must be carefully planned to ensure compatibility with existing business systems. Overreliance on cutting-edge technology could lead to integration challenges or unnecessary expenses.\n\n### Next Useful Move\n- **Measurable Claim**: Develop a pilot project focusing on specific use cases such as real-time data processing or secure file transfer within the local network. This will provide verifiable evidence of the router's effectiveness and help in securing R&D grants by demonstrating tangible business benefits.",
+  "judgment": {
+    "passed": true,
+    "score": 0.808,
+    "contract_score": 0.812,
+    "usefulness_score": 0.8,
+    "receipt_hits": [
+      "local",
+      "CRT",
+      "Aether",
+      "RTX 3060"
+    ],
+    "concept_hits": [
+      "measurable",
+      "low-cost",
+      "business"
+    ],
+    "forbidden_hits": [],
+    "leakage_hits": [],
+    "weirdness_hits": [],
+    "relevance_hits": [],
+    "word_count": 167,
+    "sentence_count": 6,
+    "empty_answer": false,
+    "truncated": false,
+    "has_limit_language": false,
+    "has_thesis_language": true
+  },
+  "repaired": false,
+  "fallback_used": false,
+  "context_supplied": false
+}

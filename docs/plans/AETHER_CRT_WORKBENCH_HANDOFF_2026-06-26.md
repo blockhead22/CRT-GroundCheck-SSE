@@ -19,17 +19,20 @@ Phase 1.6 programming robustness             first pass done, preserve as needed
 Phase 1.7 tone / personality / support       implemented and tested
 Phase 1.8 contradiction disposition          implemented first pass, tested
 Phase 1.9 representation compression evals   implemented first pass, strong signal
-Phase 1.10 route/model selection             active, observational only
+Phase 1.10 route/model selection             ready to pause, observational only
 Phase 1.11 Aether/Aeteros layer split        strategic rule added
-Phase 2 governed learner / Mirus loop        scaffolded, review-only
+Phase 2 governed learner / Mirus loop        active re-entry, review-only
 ```
 
 Current rule:
 
 ```text
-Route policy may annotate traces/prompts and recommend models, but it must not
-silently switch models, write memory, call tools, import support patterns,
-create reflections, or escalate to frontier models.
+Build Aether for Nick first, with the explicit intent to extract reusable
+Aeteros Core mechanisms later. Personalize the content; generalize the
+mechanism.
+
+No silent durable writes, support imports, reflection creation, model switching,
+tool calls inside route_policy, or frontier escalation.
 ```
 
 ## Read These First
@@ -47,6 +50,7 @@ D:\AI_round2\docs\plans\AETHER_RECOVERED_CONCEPT_INTEGRATION_AUDIT_2026-06-24.md
 D:\AI_round2\docs\plans\AETHER_ISOLATED_FIXTURE_EVAL_RUNBOOK_2026-06-25.md
 D:\AI_round2\docs\plans\AETHER_LEARN_DRAFT_PROMOTION_RUNBOOK_2026-06-25.md
 D:\AI_round2\docs\plans\AETEROS_AETHER_LAYER_SPLIT_2026-06-25.md
+D:\AI_round2\docs\plans\AETHER_AETEROS_MASTER_PLAN_2026-06-26.md
 ```
 
 ## What Changed Most Recently
@@ -272,35 +276,37 @@ Expected checks:
 
 Best next work, in order:
 
-1. **Pause Phase 1.10 as observational unless Nick explicitly wants automatic
-   model gates.**
+1. **Return to Phase 2 governed learner heartbeat.**
+   - Recent turns/traces should produce reviewable Memory, Support,
+     Reflection, and Contradiction candidates.
+   - Workbench should make those candidates visible with apply/defer/reject
+     affordances.
+   - Candidate evidence must explain why the learner proposed each item.
+   - Nothing becomes durable memory or behavior until reviewed.
+
+2. **Keep Phase 1.10 paused as observational unless Nick explicitly wants a
+   manual model gate.**
    - Route decisions, recommendation metadata, Trace drawer, chat summary, and
      Settings readout exist.
-   - Automatic switching should not happen until there is more evidence and a
-     user-visible override/undo story.
+   - Automatic switching should not happen.
 
-2. **Add a small route/model operator gate, not silent auto-switching.**
+3. **Optional: add a small route/model operator gate, not silent auto-switching.**
    - Best shape: a read-only recommendation plus optional manual "try with
      recommended model" action.
    - Keep deterministic/meta routes deterministic.
    - Keep frontier escalation user-approved only.
 
-3. **Broaden technical reasoning evals.**
+4. **Broaden technical reasoning evals.**
    - Add proof/impossibility, algorithm tradeoff, embeddings, compression, and
      programming-theory prompts.
    - Compare qwen2.5 vs qwen3 on a small explicit slice.
    - Do not use `--all-discovered-models` unsupervised.
 
-4. **Continue archive/import onboarding carefully.**
+5. **Continue archive/import onboarding carefully.**
    - For Nick, personal fast bootstrap is acceptable.
    - For product/open-source users, keep import reviewable and provenance-rich.
    - Separate user-authored claims, user semantics, assistant support stance,
      and assistant interpretations.
-
-5. **Move toward the Phase 2 background learner heartbeat.**
-   - It should propose reviewable facts, contradictions, support patterns,
-     reflections, and self-improvement notes.
-   - It must not silently write confirmed memory.
 
 6. **Keep the Aether/Aeteros split visible.**
    - Aether: Nick's dogfooded local proof loop.
@@ -322,7 +328,8 @@ revive the legacy frontend/API. Do not do repo breakout cleanup yet. Preserve
 dirty worktree context and do not reset/delete untracked files.
 
 Current lane: Phase 1.10 governed route/model selection is functionally
-observational and ready to pause unless Nick wants manual model gates.
+observational and should pause unless Nick wants a manual model gate. Roadmap
+re-entry is Phase 2 governed learner heartbeat.
 
 Current status:
 - route_policy is side-effect-free;
@@ -342,9 +349,8 @@ Immediate next task:
 1. Restart sidecar/Workbench if needed.
 2. Run a manual smoke with meta/governance, technical proof, "try again",
    GPT-corpus provenance, and project-purpose prompts.
-3. If stable, either pause Phase 1.10 and start broader technical-reasoning evals,
-   or design a manual "try recommended model" gate. Do not silently switch
-   models.
+3. If stable, continue Phase 2 by making learner candidates visible and
+   reviewable in Workbench. Do not silently switch models.
 
 Safety contract: no silent durable writes, no support imports, no reflection
 creation, no silent frontier escalation, and no model/tool calls inside
@@ -356,6 +362,6 @@ route_policy.
 Aether is a working local governed-memory Workbench with trace-visible memory
 release, contradiction disposition, depth/continuation, review-only
 support/learner flows, archive-derived support/reflection stance, representation
-compression eval evidence, and observational route/model policy. The next
-frontier is not "more magic"; it is stable manual/operator model routing,
-broader technical reasoning evals, and a review-only background learner loop.
+compression eval evidence, and observational route/model policy. The roadmap
+has returned to Phase 2: make the reviewed learner heartbeat visible,
+evidence-backed, and useful without silent memory or behavior changes.

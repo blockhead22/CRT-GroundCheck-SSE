@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aeteros - AI Memory With Receipts</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="theme.css">
+<style>
+  body.aeteros-landing {
+    background:
+      radial-gradient(circle at 72% 10%, rgba(34,211,238,0.13), transparent 34%),
+      radial-gradient(circle at 18% 18%, rgba(129,140,248,0.14), transparent 32%),
+      linear-gradient(180deg, #06080d 0%, #080b11 45%, #07090d 100%);
+    color: #dce6f3;
+  }
+  .landing-shell {
+    min-height: 100vh;
+    overflow: hidden;
+  }
+  .landing-nav {
+    position: fixed;
+    top: 42px;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px clamp(20px, 5vw, 72px);
+    pointer-events: none;
+  }
+  .landing-brand,
+  .landing-links {
+    pointer-events: auto;
+  }
+  .landing-brand {
+    font-family: var(--mono);
+    letter-spacing: 0.48em;
+    font-size: 0.76em;
+    color: #f8fbff;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+  .landing-links {
+    display: flex;
+    gap: 22px;
+    align-items: center;
+  }
+  .landing-links a {
+    color: rgba(220,230,243,0.72);
+    text-decoration: none;
+    font-family: var(--mono);
+    font-size: 0.68em;
+    letter-spacing: 0.08em;
+  }
+  .landing-links a:hover { color: #ffffff; }
+  .aeteros-hero {
+    position: relative;
+    min-height: calc(100vh - 42px);
+    display: grid;
+    grid-template-columns: minmax(320px, 0.78fr) minmax(420px, 1fr);
+    align-items: center;
+    gap: clamp(22px, 4vw, 64px);
+    padding: 118px clamp(22px, 5vw, 76px) 58px;
+  }
+  .hero-copy {
+    position: relative;
+    z-index: 2;
+    max-width: 660px;
+  }
+  .hero-copy h1 {
+    font-family: 'Montserrat', var(--sans);
+    font-size: clamp(4rem, 10vw, 8.5rem);
+    line-height: 0.84;
+    letter-spacing: 0.06em;
+    color: #ffffff;
+    margin: 0 0 24px;
+    text-transform: uppercase;
+    text-shadow: 0 0 38px rgba(129,140,248,0.25);
+  }
+  .hero-copy .lead {
+    font-family: var(--mono);
+    color: #f8fbff;
+    font-size: clamp(1.35rem, 2.6vw, 2.2rem);
+    line-height: 1.18;
+    margin-bottom: 18px;
+  }
+  .hero-copy .plain {
+    max-width: 520px;
+    color: rgba(220,230,243,0.72);
+    font-size: 1rem;
+    line-height: 1.8;
+  }
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin: 32px 0 28px;
+  }
+  .hero-actions a {
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 0 20px;
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 0.78em;
+    text-decoration: none;
+  }
+  .primary-action {
+    color: #ffffff;
+    background: linear-gradient(135deg, #385dff, #18c8ff);
+    box-shadow: 0 18px 60px rgba(24,200,255,0.22);
+  }
+  .secondary-action {
+    color: rgba(226,237,255,0.86);
+    border: 1px solid rgba(169,190,255,0.28);
+    background: rgba(8,13,24,0.66);
+  }
+  .hero-quote {
+    max-width: 470px;
+    border: 1px solid rgba(122,154,220,0.22);
+    border-left: 3px solid #5f7cff;
+    border-radius: 8px;
+    background: rgba(6,10,18,0.66);
+    color: #bdd1ef;
+    padding: 20px 22px;
+    font-family: var(--mono);
+    font-size: clamp(0.9rem, 1.4vw, 1.12rem);
+    line-height: 1.6;
+  }
+  .hero-art {
+    position: relative;
+    min-height: 620px;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid rgba(121,151,210,0.18);
+    background:
+      radial-gradient(circle at 56% 42%, rgba(34,211,238,0.16), transparent 24%),
+      radial-gradient(circle at 72% 66%, rgba(255,132,72,0.12), transparent 22%),
+      linear-gradient(145deg, rgba(7,13,24,0.98), rgba(4,8,15,0.98));
+    box-shadow: 0 28px 110px rgba(0,0,0,0.42);
+  }
+  .hero-art::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 36px 36px;
+    z-index: 1;
+    mask-image: radial-gradient(circle at 56% 45%, black, transparent 78%);
+  }
+  .graph-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .receipt-chip {
+    position: absolute;
+    z-index: 3;
+    width: min(250px, 42%);
+    border: 1px solid rgba(70,226,255,0.34);
+    background: rgba(2,12,22,0.74);
+    backdrop-filter: blur(12px);
+    border-radius: 8px;
+    padding: 14px 16px;
+    color: #9fefff;
+    font-family: var(--mono);
+    font-size: 0.72em;
+    line-height: 1.6;
+  }
+  .receipt-chip strong {
+    display: block;
+    color: #eaffff;
+    font-size: 1.03em;
+    margin-bottom: 5px;
+  }
+  .receipt-chip.hot {
+    right: 24px;
+    bottom: 104px;
+    border-color: rgba(255,132,72,0.55);
+    color: #ffc59a;
+  }
+  .receipt-chip.cool {
+    right: 42px;
+    top: 118px;
+  }
+  .legend-strip {
+    position: absolute;
+    left: 28px;
+    right: 28px;
+    bottom: 24px;
+    z-index: 3;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    border: 1px solid rgba(121,151,210,0.18);
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(9,13,22,0.72);
+  }
+  .hero-vector {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+  }
+  .vector-label {
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.06em;
+  }
+  .legend-strip div {
+    padding: 13px 14px;
+    font-family: var(--mono);
+    font-size: 0.66em;
+    color: rgba(220,230,243,0.72);
+  }
+  .landing-main {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 24px clamp(20px, 5vw, 72px) 90px;
+  }
+  .section-band {
+    padding: 78px 0;
+    border-top: 1px solid rgba(121,151,210,0.13);
+  }
+  .section-head {
+    max-width: 760px;
+    margin-bottom: 34px;
+  }
+  .section-head h2 {
+    font-family: var(--mono);
+    font-size: clamp(1.85rem, 4vw, 3rem);
+    line-height: 1.08;
+    color: #f8fbff;
+    margin-bottom: 16px;
+  }
+  .section-head p {
+    color: rgba(220,230,243,0.72);
+    font-size: 1rem;
+    max-width: 660px;
+  }
+  .receipt-demo {
+    display: grid;
+    grid-template-columns: 0.72fr 1fr;
+    gap: 34px;
+    align-items: center;
+  }
+  .receipt-points {
+    display: grid;
+    gap: 18px;
+  }
+  .point-row {
+    display: grid;
+    grid-template-columns: 38px 1fr;
+    gap: 15px;
+    align-items: start;
+  }
+  .point-icon {
+    width: 38px;
+    height: 38px;
+    border: 1px solid rgba(34,211,238,0.42);
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    color: #22d3ee;
+  }
+  .point-row h3 {
+    font-family: var(--sans);
+    font-size: 1rem;
+    margin: 0 0 4px;
+  }
+  .point-row p {
+    color: rgba(220,230,243,0.64);
+    font-size: 0.9rem;
+    margin: 0;
+  }
+  .terminal-card {
+    border: 1px solid rgba(121,151,210,0.2);
+    border-radius: 10px;
+    background: rgba(8,13,24,0.82);
+    overflow: hidden;
+    box-shadow: 0 18px 80px rgba(0,0,0,0.32);
+  }
+  .terminal-bar {
+    height: 38px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 15px;
+    border-bottom: 1px solid rgba(121,151,210,0.16);
+  }
+  .terminal-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .terminal-dot:nth-child(1) { background: #ff6b6b; }
+  .terminal-dot:nth-child(2) { background: #f6c85f; }
+  .terminal-dot:nth-child(3) { background: #62d47e; }
+  .terminal-body {
+    padding: 24px;
+    font-family: var(--mono);
+    color: rgba(220,230,243,0.76);
+    font-size: 0.86rem;
+    line-height: 1.75;
+  }
+  .terminal-body .cyan { color: #22d3ee; }
+  .terminal-body .amber { color: #ff9b54; }
+  .terminal-body .green { color: #6ee7b7; }
+  .mini-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: rgba(121,151,210,0.18);
+    border: 1px solid rgba(121,151,210,0.18);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .mini-card {
+    min-height: 250px;
+    background:
+      linear-gradient(180deg, rgba(16,25,43,0.82), rgba(8,13,24,0.92));
+    padding: 24px;
+  }
+  .mini-card h3 {
+    font-family: var(--mono);
+    font-size: 1rem;
+    color: #f8fbff;
+    margin: 0 0 14px;
+  }
+  .mini-card p {
+    color: rgba(220,230,243,0.66);
+    font-size: 0.9rem;
+  }
+  .mini-card svg {
+    height: 94px;
+    width: 100%;
+    margin-bottom: 20px;
+  }
+  .contradiction-map {
+    display: grid;
+    grid-template-columns: 1fr 170px 1fr;
+    gap: 22px;
+    align-items: center;
+  }
+  .belief-box {
+    border-radius: 10px;
+    padding: 22px;
+    min-height: 168px;
+    background: rgba(8,13,24,0.86);
+    border: 1px solid rgba(34,211,238,0.34);
+  }
+  .belief-box.warn {
+    border-color: rgba(255,132,72,0.58);
+  }
+  .belief-box h3 {
+    margin: 0 0 8px;
+    font-family: var(--mono);
+    color: #f8fbff;
+    font-size: 1rem;
+  }
+  .belief-box p {
+    margin: 0;
+    color: rgba(220,230,243,0.68);
+    font-size: 0.9rem;
+  }
+  .tension-link {
+    display: grid;
+    place-items: center;
+    gap: 12px;
+    color: #ff9b54;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-align: center;
+  }
+  .dashed-line {
+    width: 100%;
+    height: 2px;
+    background: repeating-linear-gradient(90deg, #ff6f4a 0 10px, transparent 10px 18px);
+    box-shadow: 0 0 20px rgba(255,111,74,0.42);
+  }
+  .layer-split {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+  .layer-panel {
+    position: relative;
+    min-height: 330px;
+    border: 1px solid rgba(121,151,210,0.2);
+    border-radius: 12px;
+    background: rgba(8,13,24,0.76);
+    padding: 24px;
+    overflow: hidden;
+  }
+  .layer-panel h3 {
+    font-family: var(--mono);
+    font-size: 1.05rem;
+    color: #f8fbff;
+    margin: 0 0 10px;
+  }
+  .layer-panel p {
+    color: rgba(220,230,243,0.66);
+    font-size: 0.9rem;
+  }
+  .node-field {
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    bottom: 18px;
+    height: 112px;
+    opacity: 0.82;
+  }
+  .status-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+  }
+  .status-panel {
+    border-radius: 12px;
+    padding: 26px;
+    background: rgba(8,13,24,0.82);
+    border: 1px solid rgba(34,211,238,0.34);
+  }
+  .status-panel.proof {
+    border-color: rgba(255,132,72,0.58);
+  }
+  .status-panel h3 {
+    font-family: var(--mono);
+    font-size: 1.05rem;
+    margin: 0 0 16px;
+  }
+  .status-panel ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .status-panel li {
+    position: relative;
+    padding-left: 24px;
+    color: rgba(220,230,243,0.7);
+    font-size: 0.9rem;
+  }
+  .status-panel li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.72em;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+  }
+  .read-next-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+  }
+  .read-card {
+    min-height: 190px;
+    border: 1px solid rgba(121,151,210,0.18);
+    border-radius: 12px;
+    background: rgba(8,13,24,0.72);
+    padding: 22px;
+    text-decoration: none;
+    color: rgba(220,230,243,0.72);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .read-card strong {
+    display: block;
+    color: #f8fbff;
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+  }
+  .read-card span {
+    color: #63e6ff;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+  }
+  .landing-footer {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 30px clamp(20px, 5vw, 72px) 58px;
+    border-top: 1px solid rgba(121,151,210,0.13);
+    color: rgba(220,230,243,0.55);
+    font-family: var(--mono);
+    font-size: 0.72em;
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .tiny-note {
+    color: rgba(220,230,243,0.42);
+  }
+  .spark {
+    animation: pulseSpark 2.8s ease-in-out infinite;
+    transform-origin: center;
+  }
+  @keyframes pulseSpark {
+    0%, 100% { opacity: 0.55; transform: scale(0.94); }
+    50% { opacity: 1; transform: scale(1.06); }
+  }
+  @media (max-width: 1000px) {
+    .landing-nav {
+      position: static;
+      padding-top: 22px;
+    }
+    .landing-links {
+      display: none;
+    }
+    .aeteros-hero {
+      min-height: auto;
+      grid-template-columns: 1fr;
+      padding-top: 54px;
+    }
+    .hero-art {
+      min-height: 460px;
+    }
+    .receipt-demo,
+    .contradiction-map,
+    .status-columns {
+      grid-template-columns: 1fr;
+    }
+    .tension-link {
+      min-height: 72px;
+    }
+    .layer-split,
+    .mini-grid,
+    .read-next-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 640px) {
+    .hero-copy h1 {
+      font-size: clamp(3rem, 18vw, 4.4rem);
+      letter-spacing: 0.03em;
+    }
+    .hero-art {
+      min-height: 380px;
+      border-radius: 12px;
+    }
+    .receipt-chip {
+      display: none;
+    }
+    .legend-strip {
+      left: 14px;
+      right: 14px;
+      grid-template-columns: 1fr;
+    }
+    .section-band {
+      padding: 54px 0;
+    }
+    .landing-footer {
+      flex-direction: column;
+    }
+  }
+</style>
+</head>
+<body class="aeteros-landing">
+<div class="landing-shell">
+
+<nav class="landing-nav">
+  <a class="landing-brand" href="home.html">Aeteros</a>
+  <div class="landing-links">
+    <a href="#receipts">Receipts</a>
+    <a href="#contradictions">Contradictions</a>
+    <a href="#split">Layer Split</a>
+    <a href="#read-next">Read Next</a>
+  </div>
+</nav>
+
+<header class="aeteros-hero" id="top">
+  <div class="hero-copy">
+    <h1>AETEROS</h1>
+    <p class="lead">AI memory with receipts.</p>
+    <p class="plain">A plain-English field guide for the project: what Aether is, what Aeteros Core becomes, why contradictions matter, and where the actual evidence lives.</p>
+    <div class="hero-actions">
+      <a class="primary-action" href="#receipts">Start with the idea
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <a class="secondary-action" href="labs.html">Read the evidence
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </div>
+    <div class="hero-quote">The model is the mouth.<br>The substrate is the self.</div>
+  </div>
+
+  <div class="hero-art" aria-label="Luminous memory graph over a late-night desk">
+    <svg class="hero-vector" viewBox="0 0 900 700" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <defs>
+        <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="5" result="blur"/>
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <linearGradient id="coreGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#22d3ee"/>
+          <stop offset="55%" stop-color="#5b7cff"/>
+          <stop offset="100%" stop-color="#a78bfa"/>
+        </linearGradient>
+        <linearGradient id="amberGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ff6f4a"/>
+          <stop offset="100%" stop-color="#ffd166"/>
+        </linearGradient>
+      </defs>
+
+      <g opacity="0.35" stroke="rgba(121,151,210,0.28)" stroke-width="1">
+        <path d="M110 570H790M110 500H790M110 430H790M110 360H790M110 290H790M110 220H790M110 150H790"/>
+        <path d="M150 110V610M230 110V610M310 110V610M390 110V610M470 110V610M550 110V610M630 110V610M710 110V610"/>
+      </g>
+
+      <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M206 402 294 268 430 318 514 188 650 250 714 386 586 490 414 520 300 470Z" stroke="rgba(34,211,238,0.72)" stroke-width="2.4"/>
+        <path d="M294 268 300 470 514 188 586 490 650 250 430 318 206 402" stroke="rgba(129,140,248,0.46)" stroke-width="1.5"/>
+        <path d="M414 520 542 588 714 386" stroke="url(#amberGrad)" stroke-width="3" stroke-dasharray="12 13"/>
+        <path d="M430 318 542 588" stroke="rgba(255,132,72,0.34)" stroke-width="1.5" stroke-dasharray="6 12"/>
+      </g>
+
+      <g filter="url(#softGlow)">
+        <circle class="spark" cx="514" cy="188" r="10" fill="#22d3ee"/>
+        <circle class="spark" cx="430" cy="318" r="8" fill="#67e8f9"/>
+        <circle class="spark" cx="650" cy="250" r="8" fill="#8ea2ff"/>
+        <circle class="spark" cx="294" cy="268" r="7" fill="#a78bfa"/>
+        <circle class="spark" cx="714" cy="386" r="7" fill="#67e8f9"/>
+        <circle class="spark" cx="542" cy="588" r="8" fill="#ff9b54"/>
+      </g>
+
+      <g>
+        <circle cx="514" cy="350" r="88" fill="rgba(34,211,238,0.04)" stroke="rgba(34,211,238,0.42)" stroke-width="1.4"/>
+        <circle cx="514" cy="350" r="58" fill="rgba(91,124,255,0.05)" stroke="rgba(129,140,248,0.42)" stroke-width="1.2"/>
+        <path d="M514 292 548 350 514 408 480 350Z" fill="rgba(34,211,238,0.08)" stroke="url(#coreGrad)" stroke-width="2"/>
+        <circle cx="514" cy="350" r="16" fill="#22d3ee" filter="url(#softGlow)"/>
+      </g>
+
+      <g>
+        <rect x="98" y="150" width="190" height="82" rx="10" fill="rgba(2,12,22,0.72)" stroke="rgba(34,211,238,0.36)"/>
+        <text x="120" y="184" class="vector-label" fill="#67e8f9">supported belief</text>
+        <text x="120" y="210" class="vector-label" fill="rgba(220,230,243,0.66)">source + trust</text>
+
+        <rect x="612" y="92" width="200" height="92" rx="10" fill="rgba(2,12,22,0.72)" stroke="rgba(129,140,248,0.38)"/>
+        <text x="634" y="128" class="vector-label" fill="#aebcff">review packet</text>
+        <text x="634" y="154" class="vector-label" fill="rgba(220,230,243,0.66)">not confirmed yet</text>
+
+        <rect x="640" y="486" width="190" height="92" rx="10" fill="rgba(28,12,8,0.58)" stroke="rgba(255,132,72,0.58)"/>
+        <text x="662" y="522" class="vector-label" fill="#ffb07c">open tension</text>
+        <text x="662" y="548" class="vector-label" fill="rgba(255,214,180,0.68)">preserve + ask</text>
+      </g>
+    </svg>
+    <div class="receipt-chip cool"><strong>Receipt</strong>source: user approved<br>status: supported<br>confidence: bounded</div>
+    <div class="receipt-chip hot"><strong>Contradiction</strong>two beliefs in tension<br>review: required<br>action: preserve</div>
+    <div class="legend-strip">
+      <div>cyan: supported belief</div>
+      <div>amber: open tension</div>
+      <div>indigo: memory graph</div>
+    </div>
+  </div>
+</header>
+
+<main class="landing-main">
+
+<section class="section-band" id="receipts">
+  <div class="section-head">
+    <h2>Memory With Receipts</h2>
+    <p>Not "the assistant remembers a thing." A useful memory carries provenance, trust, review state, and a reason it was allowed into the answer.</p>
+  </div>
+
+  <div class="receipt-demo">
+    <div class="receipt-points">
+      <div class="point-row">
+        <div class="point-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L11 4.93" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M14 11a5 5 0 0 0-7.07 0L4.8 13.12a5 5 0 0 0 7.07 7.07L13 19.07" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </div>
+        <div>
+          <h3>Source-linked</h3>
+          <p>Every important belief points back to where it came from.</p>
+        </div>
+      </div>
+      <div class="point-row">
+        <div class="point-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 4 7v6c0 5 3.4 7.5 8 9 4.6-1.5 8-4 8-9V7l-8-4Z" stroke="currentColor" stroke-width="1.8"/><path d="m9 12 2 2 4-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <h3>Review-aware</h3>
+          <p>Archive patterns, support style, and reflections stay candidates until accepted.</p>
+        </div>
+      </div>
+      <div class="point-row">
+        <div class="point-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 12h18M12 3v18M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <div>
+          <h3>Confidence-bounded</h3>
+          <p>The system should not speak louder than the evidence supports.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="terminal-card">
+      <div class="terminal-bar">
+        <span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span>
+      </div>
+      <div class="terminal-body">
+        <span class="cyan">BELIEF</span>: Nick wants blunt, useful project guidance.<br>
+        status: <span class="green">reviewed support pattern</span><br>
+        source: archive-derived, manually accepted<br>
+        authority: behavior guidance, not profile fact<br>
+        release rule: use when project doubt appears<br><br>
+        <span class="amber">NOTE</span>: if it becomes costume-mode, repair toward concise.
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-band" id="concepts">
+  <div class="section-head">
+    <h2>The Idea In Three Moves</h2>
+    <p>The project gets much easier once the pieces stop trying to be one magical blob.</p>
+  </div>
+
+  <div class="mini-grid">
+    <div class="mini-card">
+      <svg viewBox="0 0 220 90" aria-hidden="true">
+        <circle cx="42" cy="45" r="7" fill="#22d3ee"/><circle cx="100" cy="22" r="5" fill="#8ea2ff"/><circle cx="164" cy="58" r="6" fill="#22d3ee"/>
+        <path d="M42 45 100 22 164 58" stroke="#22d3ee" stroke-width="1.4" opacity=".6"/>
+      </svg>
+      <h3>Store Evidence</h3>
+      <p>Memory is not a vibe. It is a record with source, confidence, trust, and state.</p>
+    </div>
+    <div class="mini-card">
+      <svg viewBox="0 0 220 90" aria-hidden="true">
+        <rect x="22" y="20" width="70" height="46" rx="8" fill="none" stroke="#22d3ee"/><rect x="128" y="20" width="70" height="46" rx="8" fill="none" stroke="#ff8a4c"/>
+        <path d="M92 44h36" stroke="#ff6f4a" stroke-width="2" stroke-dasharray="7 7"/>
+      </svg>
+      <h3>Preserve Tension</h3>
+      <p>Contradictions get labeled and reviewed. They do not get quietly paved over.</p>
+    </div>
+    <div class="mini-card">
+      <svg viewBox="0 0 220 90" aria-hidden="true">
+        <path d="M28 62c34-42 68-42 102 0s52 24 68 0" stroke="#22d3ee" stroke-width="2" fill="none"/>
+        <path d="M28 44c34-28 68-28 102 0s52 18 68 0" stroke="#8ea2ff" stroke-width="1.4" fill="none" opacity=".7"/>
+      </svg>
+      <h3>Speak Carefully</h3>
+      <p>The model can answer, but the governed system decides what context is safe to release.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section-band" id="contradictions">
+  <div class="section-head">
+    <h2>Contradictions Are Signals</h2>
+    <p>Sometimes the user changed. Sometimes the context changed. Sometimes the model guessed. The system should preserve that boundary long enough to understand it.</p>
+  </div>
+
+  <div class="contradiction-map">
+    <div class="belief-box">
+      <h3>The sky is blue during the day</h3>
+      <p>High confidence. Source-linked. Still context-dependent.</p>
+    </div>
+    <div class="tension-link">
+      <div class="dashed-line"></div>
+      <div>contradiction<br>or missing context?</div>
+    </div>
+    <div class="belief-box warn">
+      <h3>The sky is green</h3>
+      <p>Low confidence. Needs review. Maybe a sunset, a joke, a hallucination, or a bad extraction.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section-band" id="split">
+  <div class="section-head">
+    <h2>Aether, Aeteros Core, Aeteros</h2>
+    <p>Build it personally first. Extract the reusable machinery later. The trick is knowing which layer a thing belongs to.</p>
+  </div>
+
+  <div class="layer-split">
+    <div class="layer-panel">
+      <h3>Aether</h3>
+      <p>The dogfooded Workbench: Nick's local proof loop, private archive, support style, and day-to-day testing ground.</p>
+      <svg class="node-field" viewBox="0 0 260 110" aria-hidden="true">
+        <g fill="#22d3ee" opacity=".86">
+          <circle cx="38" cy="68" r="3"/><circle cx="72" cy="38" r="3"/><circle cx="126" cy="60" r="4"/><circle cx="184" cy="34" r="3"/><circle cx="222" cy="76" r="3"/>
+        </g>
+        <path d="M38 68 72 38 126 60 184 34 222 76" fill="none" stroke="#22d3ee" opacity=".45"/>
+      </svg>
+    </div>
+    <div class="layer-panel">
+      <h3>Aeteros Core</h3>
+      <p>The reusable mechanisms: governed memory, contradiction state, trace, review, route policy, compression evals.</p>
+      <svg class="node-field" viewBox="0 0 260 110" aria-hidden="true">
+        <polygon points="130,16 214,56 178,96 82,96 46,56" fill="none" stroke="#a78bfa" stroke-width="1.6"/>
+        <path d="M130 16 130 96M46 56h168M82 96l132-40M178 96 46 56" stroke="#a78bfa" opacity=".45"/>
+      </svg>
+    </div>
+    <div class="layer-panel">
+      <h3>Aeteros</h3>
+      <p>The possible company or research wrapper: trustworthy AI memory, auditability, and product packaging.</p>
+      <svg class="node-field" viewBox="0 0 260 110" aria-hidden="true">
+        <path d="M16 74c42-50 82-50 124 0s74 24 104-8" stroke="#22d3ee" stroke-width="2" fill="none"/>
+        <path d="M16 52c42-32 82-32 124 0s74 16 104-6" stroke="#8ea2ff" stroke-width="1.4" fill="none" opacity=".55"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<section class="section-band" id="status">
+  <div class="section-head">
+    <h2>Working Now vs Still Needs Proof</h2>
+    <p>The page gets to be fun, but the claim discipline stays on. This is a proof loop, not a victory lap.</p>
+  </div>
+
+  <div class="status-columns">
+    <div class="status-panel">
+      <h3>Working Now</h3>
+      <ul>
+        <li>Local Workbench proof loop.</li>
+        <li>Governed memory release into answers.</li>
+        <li>Trace-visible route and model policy.</li>
+        <li>Contradiction disposition labels.</li>
+        <li>Review-only support and reflection guidance.</li>
+        <li>Representation replay evals.</li>
+      </ul>
+    </div>
+    <div class="status-panel proof">
+      <h3>Still Needs Proof</h3>
+      <ul>
+        <li>External validation beyond dogfooding.</li>
+        <li>Broader natural-language contradiction coverage.</li>
+        <li>Cleaner public claim sourcing.</li>
+        <li>Polished product packaging.</li>
+        <li>Automatic model switching remains off.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section-band" id="read-next">
+  <div class="section-head">
+    <h2>Read Next</h2>
+    <p>Choose your door. Stoner Nick can start friendly. Serious Nick can go straight to the receipts.</p>
+  </div>
+
+  <div class="read-next-grid">
+    <a class="read-card" href="why-this-matters.html">
+      <div><strong>Why This Matters</strong> The cleanest problem statement.</div>
+      <span>open the overview -></span>
+    </a>
+    <a class="read-card" href="meaning-compression-crt.html">
+      <div><strong>Meaning Compression</strong> The bridge from old CRT language to current Aether.</div>
+      <span>explore the idea -></span>
+    </a>
+    <a class="read-card" href="labs.html">
+      <div><strong>Labs</strong> The measured examples and scaffold evidence.</div>
+      <span>read the evidence -></span>
+    </a>
+    <a class="read-card" href="claim-evaluation-guide.html">
+      <div><strong>Claim Guide</strong> What is proven, directional, or still aspirational.</div>
+      <span>keep us honest -></span>
+    </a>
+  </div>
+</section>
+
+</main>
+
+<footer class="landing-footer">
+  <div>Aeteros is experimental research. Not everything here is solved.</div>
+  <div class="tiny-note">Questions, field notes, and late-night clarity welcome.</div>
+</footer>
+
+</div>
+<script src="docs.js"></script>
+</body>
+</html>

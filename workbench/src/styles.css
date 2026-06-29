@@ -316,6 +316,11 @@ button { color: inherit; }
 .consolidation-toolbar small { color: #79847d; font-size: 8px; text-transform: uppercase; }
 .consolidation-toolbar button { margin-left: auto; min-width: 74px; border: 1px solid #46523e; background: var(--olive-soft); color: #c9dfa1; border-radius: 5px; padding: 7px; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; font-size: 8px; }
 .consolidation-toolbar button:disabled { opacity: .45; cursor: default; }
+.consolidation-filter { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; margin-bottom: 10px; }
+.consolidation-filter button { min-width: 0; border: 1px solid var(--border-soft); background: #141a18; color: #8d9690; border-radius: 5px; padding: 7px 4px; display: grid; gap: 2px; place-items: center; cursor: pointer; font-size: 8px; }
+.consolidation-filter button.active { color: #aac7df; border-color: rgba(114,183,255,.38); background: rgba(114,183,255,.08); }
+.consolidation-filter button.restore { color: #d7bd80; border-color: rgba(239,187,72,.26); background: rgba(239,187,72,.08); }
+.consolidation-filter span { color: #707a73; font: 500 8px "DM Mono", monospace; }
 .consolidation-safety { display: flex; flex-wrap: wrap; gap: 6px; border: 1px solid rgba(168,207,90,.2); background: var(--olive-soft); border-radius: 5px; padding: 7px; margin-bottom: 10px; }
 .consolidation-safety span { display: flex; align-items: center; gap: 4px; color: #a9be88; font-size: 8px; text-transform: uppercase; }
 .consolidation-route { display: flex; gap: 8px; border: 1px solid rgba(114,183,255,.2); background: rgba(114,183,255,.06); border-radius: 5px; padding: 8px; margin-top: 9px; color: #99b5cb; }
@@ -325,6 +330,9 @@ button { color: inherit; }
 .consolidation-draft { border: 1px solid rgba(168,207,90,.18); background: rgba(168,207,90,.055); border-radius: 5px; padding: 8px; margin-top: 9px; }
 .consolidation-draft p { margin: 4px 0 7px; color: #9cac87; font-size: 9px; }
 .consolidation-draft pre { max-height: 170px; overflow: auto; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: #c7d4bc; background: #101512; border: 1px solid rgba(168,207,90,.12); border-radius: 5px; padding: 8px; font: 400 8px "DM Mono", monospace; line-height: 1.45; }
+.consolidation-review-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; border-top: 1px solid var(--border-soft); padding-top: 9px; margin-top: 10px; }
+.consolidation-review-actions button { min-width: 0; border: 1px solid rgba(239,187,72,.28); background: rgba(239,187,72,.075); color: #d7bd80; border-radius: 5px; padding: 7px 6px; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; font-size: 8px; }
+.consolidation-review-actions button.reject { color: #eea096; border-color: rgba(230,108,92,.32); background: rgba(230,108,92,.08); }
 .draft-handoff { border: 1px solid rgba(114,183,255,.24); background: rgba(114,183,255,.065); border-radius: 6px; padding: 9px; margin-bottom: 11px; display: grid; gap: 7px; text-align: left; }
 .drawer-empty .draft-handoff { margin-top: 12px; width: 100%; }
 .draft-handoff label { color: #9bb8cc; font-size: 8px; text-transform: uppercase; letter-spacing: .08em; }

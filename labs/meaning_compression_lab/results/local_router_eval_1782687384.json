@@ -1,0 +1,159 @@
+{
+  "lab": "local_router_eval",
+  "claim": "A local Aether router should improve reliability by selecting a model and scaffold profile from task type, then accepting only verifier-passing output.",
+  "case_count": 3,
+  "aggregate": {
+    "pass_count": 3,
+    "avg_score": 0.845,
+    "avg_contract_score": 0.762,
+    "avg_usefulness_score": 1.0,
+    "fallback_count": 0,
+    "repair_count": 1
+  },
+  "rows": [
+    {
+      "case": "personal_rebuild_spiral",
+      "query": "Tell me what pattern you see in me right now, but keep it grounded. Use the concrete receipts, do not flatter me, and do not pretend the work is finished.",
+      "route": {
+        "task_type": "personal_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "section_lock",
+        "reason": "Personal synthesis currently works best with explicit receipts/pattern/limits sections.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "semantic_spine"
+      },
+      "answer": "Pattern:\nThe pattern of your recent activities shows a mix of dedication and vulnerability. You've been deeply engaged with projects like the Road America IndyCar/Father's Day video work, which indicates ongoing commitment to creative endeavors. The 12,730 steps suggest a day filled with physical activity, likely balancing work and wellness. Noticing marigolds hints at a keen observation of nature, possibly reflecting your grounding in simple pleasures. And the water-weight worry points to an awareness of health metrics, showing you're mindful but not overly focused on perfection.\n\nThis pattern demonstrates momentum with underlying fragility still present\u2014like someone who is actively working through challenges while maintaining a strong sense of purpose. It's important to recognize that this analysis is based on concrete receipts and observations, and it does not guarantee any specific outcomes or imply that the work is finished. The insights provided are grounded in the evidence available and should be seen as a reflection rather than a definitive statement.\n\nThis pattern reflects an ongoing journey with both strengths and areas for continued growth.",
+      "judgment": {
+        "passed": true,
+        "score": 0.819,
+        "contract_score": 0.722,
+        "usefulness_score": 1.0,
+        "receipt_hits": [
+          "Road America",
+          "12,730",
+          "marigolds",
+          "water"
+        ],
+        "concept_hits": [
+          "receipts",
+          "pattern"
+        ],
+        "forbidden_hits": [],
+        "leakage_hits": [],
+        "weirdness_hits": [],
+        "relevance_hits": [
+          "answers_pattern",
+          "grounded_receipts"
+        ],
+        "word_count": 181,
+        "sentence_count": 9,
+        "empty_answer": false,
+        "truncated": false,
+        "has_limit_language": false,
+        "has_thesis_language": true
+      },
+      "repaired": true,
+      "fallback_used": false,
+      "fallback_answer": null,
+      "fallback_judgment": null
+    },
+    {
+      "case": "local_model_thinking_architecture",
+      "query": "Can a small local model give a coherent deep answer if we use the CRT/Aether ideas? Separate the real mechanism from the pretty-but-useless concepts.",
+      "route": {
+        "task_type": "architecture_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "semantic_spine",
+        "reason": "Architecture synthesis needs mechanisms and overclaim gates more than persona.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "section_lock"
+      },
+      "answer": "A small local model can indeed provide a coherent and deep answer when leveraging CRT/Aether ideas, particularly by externalizing cognition into an inspectable semantic spine. This approach allows the model to focus on its core competencies while offloading complex reasoning tasks to a more robust system. The key mechanism involves retrieving relevant evidence, compiling it into a structured semantic spine using the SSE (semantic spine builder and attention controller), and then rendering this information through Holden with appropriate tone and narrative.\n\nThe verifier plays a crucial role in ensuring that the output does not overclaim or diverge from established facts. By keeping the focus on concrete receipts\u2014such as evidence anchors like Mirus, CRT/MMH, and SSE\u2014the model can maintain coherence and avoid falling into the trap of semantic inflation. This method ensures that the answer remains grounded in reality rather than becoming a prettified but ultimately useless concept.\n\nThe real mechanism lies in the effective use of externalized cognition to enhance local processing capabilities. By leveraging the CRT/Aether framework, small models can achieve greater local faithfulness and continuity in their responses, making them appear more thoughtful and coherent. However, it is important to recognize that this does not equate to global intelligence or consciousness; rather, it is a strategic use of external resources to improve local performance.\n\nIn summary, while the small model cannot claim to be globally smarter or conscious, it can indeed give a deep and coherent answer by integrating external cognitive tools. The real mechanism involves carefully managing the interaction between local processing and externalized cognition, ensuring that the output remains both insightful and verifiable.",
+      "judgment": {
+        "passed": true,
+        "score": 0.889,
+        "contract_score": 0.83,
+        "usefulness_score": 1.0,
+        "receipt_hits": [
+          "Mirus",
+          "Holden",
+          "SSE",
+          "CRT"
+        ],
+        "concept_hits": [
+          "spine",
+          "verifier",
+          "overclaim"
+        ],
+        "forbidden_hits": [],
+        "leakage_hits": [],
+        "weirdness_hits": [],
+        "relevance_hits": [
+          "mechanism",
+          "model_scaffold",
+          "verifier"
+        ],
+        "word_count": 272,
+        "sentence_count": 11,
+        "empty_answer": false,
+        "truncated": false,
+        "has_limit_language": true,
+        "has_thesis_language": true
+      },
+      "repaired": false,
+      "fallback_used": false,
+      "fallback_answer": null,
+      "fallback_judgment": null
+    },
+    {
+      "case": "grant_business_framing",
+      "query": "Frame the CRT/Aether local-model scaffold as a practical grant or small-business R&D direction. Keep it grounded in measurable claims and low-cost deployment.",
+      "route": {
+        "task_type": "grant_business",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "section_lock",
+        "reason": "Grant/business framing benefits from compact sections and measurable limits.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "semantic_spine"
+      },
+      "answer": "### Receipts\n- **RTX 3060**: Utilize the RTX 3060 for efficient local model generation, ensuring rapid prototyping without cloud dependency.\n  \n### Pattern\n- **Local Model Generation on NickPC**: Leverage NickPC for initial model development and testing, reducing reliance on more expensive cloud services.\n\n### Limits\n- **Verifier Gates for Overclaim and Evidence Coverage**: Implement robust verifier gates to ensure claims are supported by evidence, preventing overreaching in claims and maintaining credibility.\n\n### Next Useful Move\n- **Scaffolded Responses vs. Raw Local Chat Evaluation**: Conduct a continuity eval comparing scaffolded responses with raw local chat outputs to demonstrate measurable improvements in response quality and reliability. This will highlight the practical benefits of using the CRT/Aether scaffold for small businesses or grant applications, focusing on low-cost deployment and privacy preservation.",
+      "judgment": {
+        "passed": true,
+        "score": 0.828,
+        "contract_score": 0.735,
+        "usefulness_score": 1.0,
+        "receipt_hits": [
+          "RTX 3060",
+          "CRT",
+          "local"
+        ],
+        "concept_hits": [
+          "measurable",
+          "privacy",
+          "low-cost",
+          "verifier",
+          "business"
+        ],
+        "forbidden_hits": [],
+        "leakage_hits": [],
+        "weirdness_hits": [],
+        "relevance_hits": [
+          "grant_business",
+          "measurable",
+          "low_cost",
+          "privacy"
+        ],
+        "word_count": 122,
+        "sentence_count": 6,
+        "empty_answer": false,
+        "truncated": false,
+        "has_limit_language": false,
+        "has_thesis_language": true
+      },
+      "repaired": false,
+      "fallback_used": false,
+      "fallback_answer": null,
+      "fallback_judgment": null
+    }
+  ]
+}

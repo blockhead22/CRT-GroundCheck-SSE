@@ -6,9 +6,13 @@
 (function() {
 
   // ── Doc manifest (reading order) ──
-  // Reading order: Evidence → Architecture → Theory → Reference
+  // Reading order: Start Here -> Evidence -> Architecture -> Theory -> Reference
   var DOCS = [
     { href: 'home.html',                  label: 'Home',                   group: null },
+    { href: 'start-here.html',            label: 'Start Here',             group: 'Start Here' },
+    { href: 'why-this-matters.html',      label: 'Why This Matters',       group: 'Start Here' },
+    { href: 'meaning-compression-crt.html', label: 'Meaning Compression',  group: 'Start Here' },
+    { href: 'claim-evaluation-guide.html', label: 'Claim Guide',           group: 'Start Here' },
     // Evidence (what's broken, proof, and pipeline validation)
     { href: 'experiments.html',            label: 'Evidence Overview',      group: 'Evidence' },
     { href: 'contradiction-density.html',  label: 'Contradiction Density',  group: 'Evidence' },
@@ -311,6 +315,7 @@
 
   // ── Inject standard footer (replaces any existing .footer div) ──
   function injectFooter() {
+    if (document.body.classList.contains('aeteros-landing')) return;
     // Remove all existing footers
     var old = document.querySelectorAll('.footer');
     old.forEach(function(el) { el.remove(); });

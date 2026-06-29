@@ -1,7 +1,18 @@
-import { ArrowRight, GitBranch, RefreshCcw, Route, ShieldCheck } from 'lucide-react'
+import { ArrowRight, Clock3, GitBranch, RefreshCcw, Route, ShieldCheck, XCircle } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
 import type { ConsolidationCandidate, ConsolidationPreview, ReviewDraftHandoff } from '../types'
+
+type CandidateFilter = 'all' | 'memory' | 'support_patterns' | 'reflections'
+type LocalReviewState = 'active' | 'deferred' | 'dismissed'
+type ReviewSurface = 'memory' | 'support' | 'reflect'
+
+const FILTERS: Array<{ label: string; value: CandidateFilter }> = [
+  { label: 'All', value: 'all' },
+  { label: 'Memory', value: 'memory' },
+  { label: 'Support', value: 'support_patterns' },
+  { label: 'Reflect', value: 'reflections' },
+]
 
 function surfaceLabel(surface: string) {
   return surface.replace('_', ' ')
@@ -13,8 +24,6 @@ function candidateTone(item: ConsolidationCandidate) {
   if (item.category === 'support_style_candidate') return 'deferred'
   return ''
 }
-
-type ReviewSurface = 'memory' | 'support' | 'reflect'
 
 interface ConsolidationDrawerProps {
   onOpenReviewSurface?: (surface: ReviewSurface, options?: { slotId?: string; draftHandoff?: ReviewDraftHandoff }) => void
@@ -60,6 +69,8 @@ export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawer
   const [preview, setPreview] = useState<ConsolidationPreview | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [filter, setFilter] = useState<CandidateFilter>('all')
+  const [localReview, setLocalReview] = useState<Record<string, LocalReviewState>>({})
 
   async function load() {
     setLoading(true)
@@ -75,14 +86,44 @@ export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawer
 
   useEffect(() => { void load() }, [])
 
+  const candidates = preview?.candidates || []
+
   const counts = useMemo(() => {
     const result = new Map<string, number>()
-    for (const item of preview?.candidates || []) {
+    for (const item of candidates) {
       const surface = item.review_route?.surface || 'unknown'
       result.set(surface, (result.get(surface) || 0) + 1)
     }
     return [...result.entries()]
-  }, [preview])
+  }, [candidates])
+
+  const queueStats = useMemo(() => {
+    const stats = { active: 0, deferred: 0, dismissed: 0, routed: 0, adapterRequired: 0 }
+    for (const item of candidates) {
+      const state = localReview[item.candidate_id] || 'active'
+      if (state === 'dismissed') stats.dismissed += 1
+      else if (state === 'deferred') stats.deferred += 1
+      else stats.active += 1
+      if (routeSurface(item.review_route?.surface)) stats.routed += 1
+      if (item.review_route?.requires_adapter) stats.adapterRequired += 1
+    }
+    return stats
+  }, [candidates, localReview])
+
+  const visibleCandidates = useMemo(() => candidates.filter((item) => {
+    if (localReview[item.candidate_id] === 'dismissed') return false
+    return filter === 'all' || item.review_route?.surface === filter
+  }), [candidates, filter, localReview])
+
+  function setCandidateState(candidateId: string, state: LocalReviewState) {
+    setLocalReview((current) => ({ ...current, [candidateId]: state }))
+  }
+
+  function restoreHidden() {
+    setLocalReview((current) => Object.fromEntries(
+      Object.entries(current).filter(([, state]) => state !== 'dismissed'),
+    ))
+  }
 
   if (!preview?.candidates.length && !error) {
     return (
@@ -107,6 +148,18 @@ export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawer
           <span>{preview?.inspected_turn_count || 0}</span>
           <small>turns inspected</small>
         </div>
+        <div>
+          <span>{queueStats.active}</span>
+          <small>active queue</small>
+        </div>
+        <div>
+          <span>{queueStats.deferred}</span>
+          <small>deferred</small>
+        </div>
+        <div>
+          <span>{queueStats.routed}</span>
+          <small>routable</small>
+        </div>
         {counts.map(([surface, count]) => (
           <div key={surface}>
             <span>{count}</span>
@@ -115,6 +168,23 @@ export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawer
         ))}
         <button disabled={loading} onClick={() => void load()}><RefreshCcw size={13} />Refresh</button>
       </div>
+      <div className="consolidation-filter" aria-label="Learner candidate route filter">
+        {FILTERS.map((item) => (
+          <button
+            key={item.value}
+            className={filter === item.value ? 'active' : ''}
+            onClick={() => setFilter(item.value)}
+          >
+            {item.label}
+            {item.value !== 'all' ? <span>{counts.find(([surface]) => surface === item.value)?.[1] || 0}</span> : null}
+          </button>
+        ))}
+        {queueStats.dismissed ? (
+          <button className="restore" onClick={restoreHidden}>
+            Restore hidden <span>{queueStats.dismissed}</span>
+          </button>
+        ) : null}
+      </div>
       {preview ? (
         <div className="consolidation-safety" aria-label="Consolidation safety">
           <span><ShieldCheck size={12} />{preview.mode.replace('_', ' ')}</span>
@@ -122,14 +192,17 @@ export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawer
           <span>memory {preview.memory_ingestion_performed ? 'yes' : 'no'}</span>
           <span>support import {preview.support_pattern_import_performed ? 'yes' : 'no'}</span>
           <span>reflection create {preview.reflection_create_performed ? 'yes' : 'no'}</span>
+          <span>session review only</span>
+          {queueStats.adapterRequired ? <span>{queueStats.adapterRequired} adapter draft</span> : null}
         </div>
       ) : null}
       {error ? <div className="inline-notice">{error}</div> : null}
       <div className="reflection-list">
-        {(preview?.candidates || []).map((item) => (
+        {visibleCandidates.map((item) => (
           <article className={`reflection-card ${candidateTone(item)}`} key={item.candidate_id}>
             {(() => {
               const draft = draftPreview(item)
+              const state = localReview[item.candidate_id] || 'active'
               return (
                 <>
             <div className="reflection-head">
@@ -149,6 +222,7 @@ export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawer
               <span>{item.review_required ? 'review required' : 'no review'}</span>
               <span>{item.memory_write_allowed ? 'memory write allowed' : 'no memory write'}</span>
               <span>{item.confirmed_fact ? 'confirmed fact' : 'not a fact'}</span>
+              <span>{state} this session</span>
             </div>
             <div className="consolidation-route">
               <Route size={13} />
@@ -192,11 +266,30 @@ export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawer
                 ))}
               </div>
             ) : null}
+            <div className="consolidation-review-actions" aria-label={`Learner review controls for ${item.candidate_id}`}>
+              {state === 'deferred' ? (
+                <button onClick={() => setCandidateState(item.candidate_id, 'active')}>
+                  <RefreshCcw size={12} />Return to Queue
+                </button>
+              ) : (
+                <button onClick={() => setCandidateState(item.candidate_id, 'deferred')}>
+                  <Clock3 size={12} />Defer Session
+                </button>
+              )}
+              <button className="reject" onClick={() => setCandidateState(item.candidate_id, 'dismissed')}>
+                <XCircle size={12} />Hide Session
+              </button>
+            </div>
                 </>
               )
             })()}
           </article>
         ))}
+        {preview && !visibleCandidates.length ? (
+          <div className="drawer-empty compact">
+            <p>No active learner candidates match this route filter.</p>
+          </div>
+        ) : null}
       </div>
     </div>
   )

@@ -5,6 +5,18 @@
 Latest continuity packet:
 
 ```text
+D:\AI_round2\docs\plans\AETHER_CRT_WORKBENCH_HANDOFF_2026-06-29.md
+```
+
+Stable current-state pointer:
+
+```text
+D:\AI_round2\docs\plans\AETHER_CURRENT_STATE.md
+```
+
+Previous continuity packet:
+
+```text
 D:\AI_round2\docs\plans\AETHER_CRT_WORKBENCH_HANDOFF_2026-06-26.md
 ```
 
@@ -44,17 +56,37 @@ Aether/Aeteros layer split:
 D:\AI_round2\docs\plans\AETEROS_AETHER_LAYER_SPLIT_2026-06-25.md
 ```
 
+Product/master plan:
+
+```text
+D:\AI_round2\docs\plans\AETHER_AETEROS_MASTER_PLAN_2026-06-26.md
+```
+
 Current lane:
 
 ```text
-Phase 1.10 governed route/model selection.
-Route decisions are trace-visible, prompt-annotated, and have observational
-model recommendation metadata. Workbench shows the recommendation in Trace,
-the chat surface, and Settings, but automatic model selection has not been
-changed. Phase 1.10 is ready to pause unless Nick wants a manual "try
-recommended model" gate. A fresh technical_reasoning route now covers general
-proof/algorithm/vector prompts, and bare retry turns such as "try again" resolve
-to the previous substantive request.
+Roadmap re-entry after local-router/CRT trace lab:
+Phase 1.10 governed route/model selection remains observational in Workbench,
+but the lab now owns an active validation lane for local routing, semantic
+spines, verifier repair, replay evals, and durable structured thinking traces.
+The active product lane is still Phase 2 governed learner heartbeat: recent
+turns/traces produce reviewable Memory, Support, Reflection, and Contradiction
+candidates, with no durable behavior or memory change until operator review.
+
+New bridge requirement:
+historical messages should reload structured trace summaries after restart:
+classification, retrieval, Mirus packet, route/model/scaffold, verifier flags,
+repair/fallback decisions, contradiction notes, confidence, and learning
+candidates. Do not store raw hidden chain-of-thought as truth.
+```
+
+Current local-router / trace references:
+
+```text
+D:\AI_round2\docs\plans\AETHER_DURABLE_THINKING_TRACE_REQUIREMENT_2026-06-29.md
+D:\AI_round2\local-router-replay-v0-report-2026-06-28.md
+D:\AI_round2\aether-local-router-v0-notes-2026-06-28.md
+D:\AI_round2\aether-local-router-cli-v0-notes-2026-06-28.md
 ```
 
 Adjacent active lane:
@@ -115,6 +147,15 @@ Use the Aether/Aeteros layer split as the strategic organizing rule. Every new
 feature, eval, memory, archive import, support pattern, route behavior, or model
 policy should be labeled as Nick Layer, Workbench, Aeteros Core, or
 Research/Product Evidence.
+
+Use the master plan as the product rule:
+
+```text
+Build Aether for Nick first, with the explicit intent to extract reusable
+Aeteros Core mechanisms later.
+
+Personalize the content. Generalize the mechanism.
+```
 
 The original v1 proof loop is now implemented far enough to dogfood:
 
@@ -1066,6 +1107,9 @@ Current interpretation:
 - Aeteros is the possible company/research container around the general core.
 - The business/legal formation layer stays outside this technical roadmap until
   Nick handles it separately.
+- Nick's memory is private proof-loop material, not public product material.
+- Product Aether emerges when the Nick Layer can be removed and the remaining
+  Workbench/Core mechanisms still work for another user's owned context.
 
 Suggested Aeteros framing:
 
@@ -1089,6 +1133,16 @@ Next slice:
 - keep Nick archive/support/profile material in the Nick Layer;
 - extract reusable mechanisms into Aeteros Core;
 - expand non-Nick synthetic and held-out evals as Research/Product Evidence.
+
+Roadmap re-entry decision from 2026-06-26:
+
+- Phase 1.10 can remain observational for now.
+- Do not silently switch models.
+- Do not resume broad artifact archaeology unless a specific implementation gap
+  requires a specific source.
+- Next active build target is Phase 2 governed learner heartbeat:
+  reviewable candidates from recent turns/traces, visible evidence, and manual
+  apply/defer/reject affordances in Workbench.
 
 ## Developer shortcuts
 

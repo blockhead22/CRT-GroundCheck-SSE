@@ -591,7 +591,7 @@
     <a class="paper-link" href="scaffolded_escape_research.html">Scaffolded Exploration Research →</a>
   </div>
 
-  <p>Every experiment validated on production data: real conversations, real memories, real contradictions. Not synthetic benchmarks. Twelve papers total covering <a href="contradiction-density.html">contradiction density</a>, <a href="sensitive-domains.html">sensitive domains</a>, <a href="geometric-memory.html">belief geometry</a>, <a href="emotion-governance.html">emotion governance</a>, and <a href="immune-agents.html">immune agents</a>. Full methodology: <a href="experiments.html">experiments</a>.</p>
+  <p>The archive mixes measured labs, draft papers, and supporting research notes. The strongest claims are tied to reproducible experiments and dated reports; older or broader claims should be treated as provisional unless they are backed by the <a href="labs.html">labs</a> or the <a href="claim-evaluation-guide.html">claim evaluation guide</a>. Core threads include <a href="contradiction-density.html">contradiction density</a>, <a href="sensitive-domains.html">sensitive domains</a>, <a href="geometric-memory.html">belief geometry</a>, <a href="emotion-governance.html">emotion governance</a>, and <a href="immune-agents.html">immune agents</a>. Full methodology: <a href="experiments.html">experiments</a>.</p>
 </section>
 
 <!-- ============================================================ -->
@@ -601,11 +601,11 @@
   <span class="chapter-num">Chapter 5</span>
   <h2>What's Running</h2>
 
-  <p>Aether is not a prototype. It's a production system in daily use, governing real conversations through the full CORE pipeline. 820+ persistent memories. 135+ features shipped. Every message passes through 12 pipeline stages with governance checkpoints woven throughout.</p>
+  <p>Aether Workbench is the current local proof loop. It is used to test governed memory, trace-visible answer construction, contradiction review, representation compression, and model-route policy without turning those mechanisms into silent automation.</p>
 
-  <p>The system routes across local models and cloud providers, with automatic fallback chains and model-aware fragility governance. When alignment drops below threshold, the system forces memory re-retrieval. After 3 consecutive drifts, it halts and asks the user. When corrections resolve contradictions, error signals flow backward through the belief graph, adjusting every upstream belief that contributed to the wrong output.</p>
+  <p>The current Workbench can release governed memory into local model prompts, show trace evidence for route/model recommendations, preserve conflicted memories with disposition labels, and keep archive-derived support/reflection guidance separate from confirmed profile facts.</p>
 
-  <p>The eval harness scores production data continuously. Retrieval accuracy: 0.559. Trust calibration: 0.694. Governance compliance: 0.900. These are honest numbers from real conversations, not cherry-picked benchmarks. The system publishes its own weaknesses.</p>
+  <p>The evaluation harness is now central to the project. Recent representation replay runs show governed scaffold and CRT-compressed state preserving far more behavior than raw retrieval, slot-only packets, or naive summaries. That is the live product proof: the shape of the memory state matters.</p>
 
   <p><a href="architecture.html">Full architecture →</a></p>
 </section>
@@ -617,20 +617,20 @@
   <span class="chapter-num">Chapter 6</span>
   <h2>Where It Goes</h2>
 
-  <p>CORE is being extracted into <strong>aeteros-core</strong>, an open-source framework that any AI system can use as its epistemic governance layer. The persistent belief state, contradiction tracking, immune agents, and governance pipeline are not Aether-specific. They are general-purpose infrastructure.</p>
+  <p>CORE is being extracted into <strong>Aeteros Core</strong>, a reusable framework that any AI system can use as its epistemic governance layer. The persistent belief state, contradiction tracking, review workflows, and trace pipeline are not Aether-specific. They are general-purpose infrastructure.</p>
 
-  <p>The business path is <strong>governance-as-a-service</strong>: CORE as middleware that sits between any application and any LLM provider. You keep your existing stack. CORE adds the belief layer, the contradiction detection, the drift governance, and the immune system. An OpenAI-compatible proxy that adds epistemic integrity without requiring you to rewrite anything.</p>
+  <p>The business path is governed-memory infrastructure: middleware that sits between applications and LLM providers. Existing stacks keep their models and tools; Aeteros Core adds source-aware memory, contradiction tracking, review state, and audit trails.</p>
 
-  <p>The timing is not accidental. The <strong>EU AI Act</strong> (effective August 2026) requires both high-risk system auditability (Article 13) and general transparency obligations (Article 50) for AI systems. CORE provides exactly this: auditable belief states, logged contradictions, measurable belief/speech gaps, and governance compliance scores.</p>
+  <p>The timing is not accidental. As AI agents take longer-running actions, teams will need better auditability, transparency, and user-controlled memory. Aeteros is positioned around that need, but regulatory and compliance claims should be separately validated before being used in grant, legal, or sales material.</p>
 
-  <p>When interpretability APIs mature and providers expose the functional state vectors and activation patterns that research has already identified inside frontier models, CORE is ready to integrate directly. The governance layer is built. It is waiting for the sensors.</p>
+  <p>When interpretability APIs mature and providers expose more reliable internal state signals, Aeteros can potentially consume them. Today, the practical layer is cheaper and more immediate: trace what the system remembers, what it releases, what it withholds, and what remains unresolved.</p>
 
-  <p>The latest research direction - <a href="belief-backprop.html">backward influence propagation</a> - adds structural learning to the governance layer. The system doesn't just detect errors; it propagates error signals backward through the belief graph and adjusts every upstream belief that contributed to the wrong output. Four publishable theorem targets have been identified, including a connection to active inference (Friston's free energy framework) that would give CORE formal grounding in computational neuroscience.</p>
+  <p>The research direction around <a href="belief-backprop.html">backward influence propagation</a> explores how corrections can move through a belief graph instead of only patching the final answer. That line is promising, but the product path stays grounded: reviewable candidates, visible traces, and evals before durable behavior changes.</p>
 
   <div class="thesis-block">
     <div class="thesis-label">The Trajectory</div>
     <div class="thesis-text">Agentic systems that persist across sessions need a belief state.</div>
-    <div class="thesis-sub">The question is whether they build it with governance or without. CORE is a case for governance-first: the math works, the architecture scales, the production system runs, and the regulatory environment is arriving.</div>
+    <div class="thesis-sub">The question is whether they build it with governance or without. CORE is the governance-first argument: preserve evidence, surface contradictions, and make memory reviewable before letting it steer behavior.</div>
   </div>
 </section>
 
@@ -642,7 +642,16 @@
   <span class="chapter-num">Papers &amp; Documentation</span>
   <h2>Read the Research</h2>
 
-  <p>The documents below are organized in reading order. Start with the evidence (what's broken), then the architecture (how CORE fixes it), then the theory (why it works formally), then the reference material (how to validate and extend it).</p>
+  <p>The documents below are organized in reading order. Start with the plain-English overview, then the evidence, then the architecture, then the theory, then the reference material.</p>
+
+  <h3 style="color:var(--text-dim);font-size:0.8em;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:28px 0 12px 0;">Start Here</h3>
+  <p style="color:var(--text-dim);font-size:0.85em;margin-bottom:16px;">The shortest path into the project without needing the full research archive first.</p>
+  <div class="nav-grid">
+    <a href="start-here.html">Start Here</a>
+    <a href="why-this-matters.html">Why This Matters</a>
+    <a href="meaning-compression-crt.html">Meaning Compression</a>
+    <a href="claim-evaluation-guide.html">Claim Guide</a>
+  </div>
 
   <h3 style="color:var(--text-dim);font-size:0.8em;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:28px 0 12px 0;">The Evidence</h3>
   <p style="color:var(--text-dim);font-size:0.85em;margin-bottom:16px;">What stateless AI systems actually do to users over time.</p>
@@ -673,6 +682,7 @@
     <a href="epistemic-compression.html">Epistemic Compression</a>
     <a href="geometric-memory.html">Belief Loci</a>
     <a href="emotion-governance.html">Emotion Governance</a>
+    <a href="structural-tension.html">Structural Tension</a>
   </div>
 
   <h3 style="color:var(--text-dim);font-size:0.8em;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:28px 0 12px 0;">Reference</h3>

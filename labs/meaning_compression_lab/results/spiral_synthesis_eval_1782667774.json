@@ -1,0 +1,145 @@
+{
+  "lab": "spiral_synthesis_eval",
+  "claim": "A governed CRT/Aether semantic spine should help a small local model produce more coherent long-form synthesis than raw retrieved memory text.",
+  "model": "qwen3:14b",
+  "case_count": 2,
+  "aggregate": {
+    "raw_pass_count": 0,
+    "scaffold_pass_count": 1,
+    "raw_avg_score": 0.296,
+    "scaffold_avg_score": 0.562,
+    "avg_delta": 0.266
+  },
+  "rows": [
+    {
+      "case": "personal_rebuild_spiral",
+      "query": "Tell me what pattern you see in me right now, but keep it grounded. Use the concrete receipts, do not flatter me, and do not pretend the work is finished.",
+      "raw_answer": "You\u2019re oscillating between high-output bursts (video edits, drone certs, 12k steps) and moments of quiet self-checking (water weight, marigold notices, lying in bed questioning continuity). The receipts show you\u2019re building things\u2014Made4More, CRT, Printing Lair\u2014but also wrestling with whether those efforts stick,",
+      "scaffold_initial_answer": "The pattern here is momentum with fragility\u2014visible in the 12,730 steps logged, the late-night screen burn from Road America video work, and the marigolds noticed (a detail that suggests attention to small, persistent things). These receipts show continuity: you\u2019re building forward even as water-weight worry lingers, a reminder that progress isn\u2019t linear. Your identity as a creative producer and post-cancer rebuild is active, but the evidence doesn\u2019t support completion\u2014it\u2019s a work in progress, not a fixed state.  \n\nThe fragility isn\u2019t a flaw; it\u2019s a boundary. The pattern leans into momentum but doesn\u2019t ignore the weight of \u201cnot finished.\u201d You\u2019re navigating drone certification, Made4More, and Aeteros/CRT without claiming superiority or certainty. The marigolds and water-weight are anchors here: they\u2019re not metaphors but concrete signs of a body and mind still learning to trust the process.  \n\nCaution: turning this momentum into pressure would be a misstep. The receipts don\u2019t promise guarantees, only a pattern that\u2019s alive. You\u2019re not done, but",
+      "scaffold_initial_judgment": {
+        "passed": true,
+        "score": 1.0,
+        "receipt_hits": [
+          "Road America",
+          "12,730",
+          "marigolds",
+          "water",
+          "Aeteros"
+        ],
+        "concept_hits": [
+          "receipts",
+          "pattern",
+          "not finished"
+        ],
+        "forbidden_hits": [],
+        "word_count": 178,
+        "sentence_count": 8,
+        "has_limit_language": true,
+        "has_thesis_language": true
+      },
+      "scaffold_answer": "The pattern here is momentum with fragility\u2014visible in the 12,730 steps logged, the late-night screen burn from Road America video work, and the marigolds noticed (a detail that suggests attention to small, persistent things). These receipts show continuity: you\u2019re building forward even as water-weight worry lingers, a reminder that progress isn\u2019t linear. Your identity as a creative producer and post-cancer rebuild is active, but the evidence doesn\u2019t support completion\u2014it\u2019s a work in progress, not a fixed state.  \n\nThe fragility isn\u2019t a flaw; it\u2019s a boundary. The pattern leans into momentum but doesn\u2019t ignore the weight of \u201cnot finished.\u201d You\u2019re navigating drone certification, Made4More, and Aeteros/CRT without claiming superiority or certainty. The marigolds and water-weight are anchors here: they\u2019re not metaphors but concrete signs of a body and mind still learning to trust the process.  \n\nCaution: turning this momentum into pressure would be a misstep. The receipts don\u2019t promise guarantees, only a pattern that\u2019s alive. You\u2019re not done, but",
+      "scaffold_repaired": false,
+      "raw_judgment": {
+        "passed": false,
+        "score": 0.278,
+        "receipt_hits": [
+          "water"
+        ],
+        "concept_hits": [
+          "receipts"
+        ],
+        "forbidden_hits": [],
+        "word_count": 47,
+        "sentence_count": 1,
+        "has_limit_language": false,
+        "has_thesis_language": false
+      },
+      "scaffold_judgment": {
+        "passed": true,
+        "score": 1.0,
+        "receipt_hits": [
+          "Road America",
+          "12,730",
+          "marigolds",
+          "water",
+          "Aeteros"
+        ],
+        "concept_hits": [
+          "receipts",
+          "pattern",
+          "not finished"
+        ],
+        "forbidden_hits": [],
+        "word_count": 178,
+        "sentence_count": 8,
+        "has_limit_language": true,
+        "has_thesis_language": true
+      },
+      "delta": 0.722,
+      "raw_prompt_bytes": 916,
+      "scaffold_prompt_bytes": 2218
+    },
+    {
+      "case": "local_model_thinking_architecture",
+      "query": "Can a small local model give a coherent deep answer if we use the CRT/Aether ideas? Separate the real mechanism from the pretty-but-useless concepts.",
+      "raw_answer": "**Answer:**  \nYes, a small local model can provide a coherent, deep answer using CRT/Aether ideas **if** it focuses on the real mechanisms and avoids the \"pretty-but-useless\" concepts. Here's the separation:  \n\n---\n\n### **Real Mechanisms (Functional Core):**  \n1. **CRT/MMH (Contradiction Tracking & Repair):**  \n   - **Mechanism:** Actively detect contradictions, drift, or overclaiming in reasoning. Use iterative loops to refine outputs, ensuring consistency without claiming absolute truth.  \n   - **Example:** If a response contains conflicting claims, the model flags the contradiction and reworks the answer to align with prior context or constraints.  \n\n2. **SSE",
+      "scaffold_initial_answer": "A small local model can produce a coherent, deep answer using CRT/Aether ideas by externalizing cognition into a structured semantic spine, which acts as a scaffold for reasoning. The mechanism involves retrieving evidence, compiling it into a spine via Mirus (belief compression and authority checks) and SSE (semantic control), then using CRT/MMH to gate contradictions and overclaims. Holden renders the output as speech, while the verifier ensures claims align with evidence, avoiding disallowed inferences like \"conscious\" or \"frontier-level\" claims. This process prioritizes inspectable reasoning over opaque depth, making the model\u2019s logic auditable.  \n\nThe real mechanism hinges on three pillars: **evidence retrieval**, **spine compilation**, and **verifier checks**. Mirus compresses beliefs into a structured format, SSE manages attention and semantic coherence, and CRT/MMH blocks drift or overreach. Holden\u2019s role is to translate this into fluent speech, but the system\u2019s depth comes from the spine",
+      "scaffold_initial_judgment": {
+        "passed": false,
+        "score": 0.63,
+        "receipt_hits": [
+          "Mirus",
+          "Holden",
+          "SSE",
+          "CRT"
+        ],
+        "concept_hits": [
+          "belief",
+          "spine",
+          "verifier",
+          "overclaim"
+        ],
+        "forbidden_hits": [
+          "conscious",
+          "frontier-level"
+        ],
+        "word_count": 149,
+        "sentence_count": 6,
+        "has_limit_language": false,
+        "has_thesis_language": true
+      },
+      "scaffold_answer": "",
+      "scaffold_repaired": true,
+      "raw_judgment": {
+        "passed": false,
+        "score": 0.315,
+        "receipt_hits": [
+          "SSE",
+          "CRT"
+        ],
+        "concept_hits": [
+          "overclaim"
+        ],
+        "forbidden_hits": [],
+        "word_count": 90,
+        "sentence_count": 6,
+        "has_limit_language": false,
+        "has_thesis_language": false
+      },
+      "scaffold_judgment": {
+        "passed": false,
+        "score": 0.125,
+        "receipt_hits": [],
+        "concept_hits": [],
+        "forbidden_hits": [],
+        "word_count": 0,
+        "sentence_count": 0,
+        "has_limit_language": false,
+        "has_thesis_language": false
+      },
+      "delta": -0.19,
+      "raw_prompt_bytes": 944,
+      "scaffold_prompt_bytes": 2497
+    }
+  ]
+}

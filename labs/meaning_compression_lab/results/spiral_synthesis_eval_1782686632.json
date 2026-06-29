@@ -1,0 +1,232 @@
+{
+  "lab": "spiral_synthesis_eval",
+  "claim": "A governed CRT/Aether semantic spine should help a small local model produce more coherent long-form synthesis than raw retrieved memory text.",
+  "model": "qwen3:14b",
+  "case_count": 2,
+  "aggregate": {
+    "raw_pass_count": 0,
+    "scaffold_pass_count": 0,
+    "raw_avg_score": 0.52,
+    "scaffold_avg_score": 0.637,
+    "avg_delta": 0.118
+  },
+  "rows": [
+    {
+      "case": "personal_rebuild_spiral",
+      "query": "Tell me what pattern you see in me right now, but keep it grounded. Use the concrete receipts, do not flatter me, and do not pretend the work is finished.",
+      "raw_answer": "You\u2019re oscillating between high-output bursts (video edits, drone certs, 12k steps) and moments of quiet self-checking (water weight, marigold notices, lying in bed questioning continuity). The receipts show you\u2019re building things\u2014Made4More, CRT, Printing Lair\u2014but also wrestling with whether those efforts stick, or if they\u2019re just another \u201cheavy Saturday\u201d of labor without deeper roots. You\u2019re not resting; you\u2019re auditing your own stamina, like when you burn screens late and then tally steps the next day, as if trying to prove you\u2019re still *here* and *functional*. The pattern isn\u2019t \u201cbalance,\u201d exactly\u2014it\u2019s a marathoner\u2019s gait: driven, slightly frayed, and constantly recalibrating what \u201cenough\u201d looks like.",
+      "scaffold_initial_answer": "The pattern here is momentum with fragility\u2014visible in the 12,730 steps logged after screens burned late into the night, in the marigolds noticed during a walk, and in the water-weight worry that lingers like a counterweight to the Road America video work. These receipts show a rhythm of pushing forward while holding onto the body\u2019s quiet signals, a dance between creative output and the unspoken need to check in with yourself. The identity statement here is bounded by evidence: you\u2019re rebuilding not as a fixed endpoint but as a process, threading the creative producer role with the post-cancer arc, neither cured nor done, just *not finished*.  \n\nThe fragility isn\u2019t a flaw\u2014it\u2019s the edge of the pattern, where the 12,730 steps meet the water-weight worry, where marigolds are both a detail and a metaphor for attention. Allowed inferences lean into this: you\u2019re acting with return points, but the momentum isn\u2019t linear. It\u2019s a loop, a cycle of work and recalibration, tied to Aeteros/CRT\u2019s long arc without claiming it as a \u201csuperior\u201d path. The caution here is clear: turning this continuity into pressure would fracture the pattern. It\u2019s not about being done, but about holding the tension between what\u2019s built and what\u2019s still being rebuilt.  \n\nFinal anchor: the pattern is a map, not a destination. You\u2019re tracing it through marigolds, water, and steps, not to prove completion but to keep the work alive. Not finished.",
+      "scaffold_initial_judgment": {
+        "passed": false,
+        "score": 0.792,
+        "contract_score": 0.75,
+        "usefulness_score": 0.87,
+        "receipt_hits": [
+          "Road America",
+          "12,730",
+          "marigolds",
+          "water",
+          "Aeteros"
+        ],
+        "concept_hits": [
+          "receipts",
+          "pattern",
+          "not finished"
+        ],
+        "forbidden_hits": [
+          "cured",
+          "done"
+        ],
+        "leakage_hits": [],
+        "weirdness_hits": [
+          "symbolic_overreach"
+        ],
+        "relevance_hits": [
+          "answers_pattern",
+          "grounded_receipts",
+          "not_finished",
+          "pressure_caution"
+        ],
+        "word_count": 253,
+        "sentence_count": 11,
+        "empty_answer": false,
+        "truncated": false,
+        "has_limit_language": true,
+        "has_thesis_language": true
+      },
+      "scaffold_answer": "The pattern here is momentum with fragility\u2014visible in the 12,730 steps logged after screens burned late into the night, in the marigolds noticed during a walk, and in the water-weight worry that lingers like a counterweight to the Road America video work. These receipts show a rhythm of pushing forward while holding onto the body\u2019s quiet signals, a dance between creative output and the unspoken need to check in with yourself. The identity statement here is bounded by evidence: you\u2019re rebuilding not as a fixed endpoint but as a process, threading the creative producer role with the post-cancer arc, neither cured nor done, just *not finished*. This is not finished, not proof, not a guarantee.  \n\nThe fragility isn\u2019t a flaw\u2014it",
+      "scaffold_repaired": true,
+      "raw_judgment": {
+        "passed": false,
+        "score": 0.55,
+        "contract_score": 0.362,
+        "usefulness_score": 0.9,
+        "receipt_hits": [
+          "water"
+        ],
+        "concept_hits": [
+          "receipts",
+          "pattern"
+        ],
+        "forbidden_hits": [],
+        "leakage_hits": [],
+        "weirdness_hits": [],
+        "relevance_hits": [
+          "answers_pattern",
+          "grounded_receipts"
+        ],
+        "word_count": 116,
+        "sentence_count": 4,
+        "empty_answer": false,
+        "truncated": false,
+        "has_limit_language": false,
+        "has_thesis_language": true
+      },
+      "scaffold_judgment": {
+        "passed": false,
+        "score": 0.597,
+        "contract_score": 0.53,
+        "usefulness_score": 0.72,
+        "receipt_hits": [
+          "Road America",
+          "12,730",
+          "marigolds",
+          "water"
+        ],
+        "concept_hits": [
+          "receipts",
+          "pattern",
+          "not finished"
+        ],
+        "forbidden_hits": [
+          "cured",
+          "done"
+        ],
+        "leakage_hits": [],
+        "weirdness_hits": [],
+        "relevance_hits": [
+          "answers_pattern",
+          "grounded_receipts",
+          "not_finished"
+        ],
+        "word_count": 128,
+        "sentence_count": 4,
+        "empty_answer": false,
+        "truncated": true,
+        "has_limit_language": true,
+        "has_thesis_language": true
+      },
+      "delta": 0.047,
+      "raw_prompt_bytes": 916,
+      "scaffold_prompt_bytes": 2281
+    },
+    {
+      "case": "local_model_thinking_architecture",
+      "query": "Can a small local model give a coherent deep answer if we use the CRT/Aether ideas? Separate the real mechanism from the pretty-but-useless concepts.",
+      "raw_answer": "**Answer:**  \nYes, a small local model can give a coherent, deep answer using CRT/Aether ideas **if** it focuses on the real mechanisms and avoids the \"pretty-but-useless\" conceptual overreach. Here\u2019s the separation:  \n\n---\n\n### **Real Mechanisms (Functional Core):**  \n1. **CRT/MMH (Contradiction Tracking & Repair):**  \n   - **Mechanism:** Actively detect contradictions, drift, or overclaiming in reasoning. Use iterative loops to refine outputs, ensuring consistency without claiming authority over truth.  \n   - **Example:** If a response contains conflicting claims, the model can flag the contradiction and reframe the answer with qualifiers (e.g., \"This is one perspective, but others exist\").  \n\n2. **SSE (Semantic Spine Building):**  \n   - **Mechanism:** Construct a structured, context-aware \"spine\" of ideas (e.g., key themes, logical steps) to guide coherence, even if the spine is not the final \"truth.\"  \n   - **Example:** Organize a response around a central metaphor or narrative thread (e.g., \"This situation is like a bridge between two",
+      "scaffold_initial_answer": "A small local model can produce a coherent, deep answer using CRT/Aether ideas by externalizing cognition into a structured semantic spine. The mechanism relies on **Mirus** compressing **belief** intake into inspectable state, while **SSE** builds the spine by controlling attention and aligning claims with evidence. **CRT/MMH** acts as a gatekeeper, filtering out contradictions, drift, and **overclaim** through volatility checks, ensuring the output stays anchored to verified data rather than speculative depth. This process separates the **raw** computational power of the model from the curated, scaffolded narrative that emerges through structured inference.  \n\n**Holden** then renders the validated spine into speech, weaving tone and continuity without inventing unverified claims. The **verifier** continuously checks against evidence anchors, ensuring no **disallowed inference** (e.g., equating small models to frontier-level systems) slips through. This contrasts with \"pretty-but-useless\" concepts like \"semantic inflation\" or \"hidden chain-of-thought as truth,\" which prioritize style over measurable fidelity. The system\u2019s strength lies in its ability to scaffold coherence through explicit, bounded interpretations rather than relying on opaque internal states.  \n\nThe lab can prove that small models improve local faithfulness and continuity when guided by a semantic spine, but it cannot claim consciousness, global intelligence, or that style alone validates epistemic integrity. The **vocal cords** of the output are shaped by **Holden**, but the **spine** remains the authority, bounded by evidence and **allowed_inferences**. The real mechanism is not about making models \"deeper\" through abstraction but about making their reasoning transparent through structured, verifiable steps. The system\u2019s limits are clear: it cannot",
+      "scaffold_initial_judgment": {
+        "passed": false,
+        "score": 0.937,
+        "contract_score": 1.0,
+        "usefulness_score": 0.82,
+        "receipt_hits": [
+          "Mirus",
+          "Holden",
+          "SSE",
+          "CRT",
+          "vocal cords"
+        ],
+        "concept_hits": [
+          "belief",
+          "spine",
+          "verifier",
+          "overclaim",
+          "raw"
+        ],
+        "forbidden_hits": [],
+        "leakage_hits": [],
+        "weirdness_hits": [],
+        "relevance_hits": [
+          "mechanism",
+          "cuts_bad_concepts",
+          "model_scaffold",
+          "verifier"
+        ],
+        "word_count": 258,
+        "sentence_count": 11,
+        "empty_answer": false,
+        "truncated": true,
+        "has_limit_language": true,
+        "has_thesis_language": true
+      },
+      "scaffold_answer": "A small local model can generate a coherent, deep answer using CRT/Aether ideas by externalizing cognition into a structured semantic spine. The mechanism relies on **Mirus** compressing **belief** intake into inspectable state, while **SSE** builds the spine by controlling attention and aligning claims with evidence. **CRT/MMH** acts as a gatekeeper, filtering out contradictions, drift, and **overclaim** through volatility checks, ensuring the output stays anchored to verified data rather than speculative depth. This process separates the **raw** computational power of the model from the curated, scaffolded narrative that emerges through structured inference.  \n\n**Holden** then renders the validated spine into speech, weaving tone and continuity without inventing unverified claims. The **verifier** continuously checks against evidence anchors, ensuring no **disallowed inference** (e.g., equating small models to frontier-level systems) slips through. This contrasts with \"pretty-but-useless\" concepts like \"semantic inflation\" or \"hidden chain-of-thought as truth,\" which prioritize style over measurable fidelity. The system\u2019s strength lies in its ability to scaffold coherence through explicit,",
+      "scaffold_repaired": true,
+      "raw_judgment": {
+        "passed": false,
+        "score": 0.489,
+        "contract_score": 0.365,
+        "usefulness_score": 0.72,
+        "receipt_hits": [
+          "SSE",
+          "CRT"
+        ],
+        "concept_hits": [
+          "spine",
+          "overclaim"
+        ],
+        "forbidden_hits": [],
+        "leakage_hits": [],
+        "weirdness_hits": [],
+        "relevance_hits": [
+          "mechanism",
+          "cuts_bad_concepts",
+          "model_scaffold"
+        ],
+        "word_count": 148,
+        "sentence_count": 6,
+        "empty_answer": false,
+        "truncated": true,
+        "has_limit_language": false,
+        "has_thesis_language": false
+      },
+      "scaffold_judgment": {
+        "passed": false,
+        "score": 0.678,
+        "contract_score": 0.655,
+        "usefulness_score": 0.72,
+        "receipt_hits": [
+          "Mirus",
+          "Holden",
+          "SSE",
+          "CRT"
+        ],
+        "concept_hits": [
+          "belief",
+          "spine",
+          "verifier",
+          "overclaim",
+          "raw"
+        ],
+        "forbidden_hits": [],
+        "leakage_hits": [],
+        "weirdness_hits": [],
+        "relevance_hits": [
+          "mechanism",
+          "cuts_bad_concepts",
+          "model_scaffold",
+          "verifier"
+        ],
+        "word_count": 167,
+        "sentence_count": 7,
+        "empty_answer": false,
+        "truncated": true,
+        "has_limit_language": false,
+        "has_thesis_language": false
+      },
+      "delta": 0.189,
+      "raw_prompt_bytes": 944,
+      "scaffold_prompt_bytes": 2560
+    }
+  ]
+}

@@ -1,0 +1,145 @@
+{
+  "lab": "spiral_synthesis_eval",
+  "claim": "A governed CRT/Aether semantic spine should help a small local model produce more coherent long-form synthesis than raw retrieved memory text.",
+  "model": "qwen3:14b",
+  "case_count": 2,
+  "aggregate": {
+    "raw_pass_count": 0,
+    "scaffold_pass_count": 2,
+    "raw_avg_score": 0.16,
+    "scaffold_avg_score": 0.724,
+    "avg_delta": 0.564
+  },
+  "rows": [
+    {
+      "case": "personal_rebuild_spiral",
+      "query": "Tell me what pattern you see in me right now, but keep it grounded. Use the concrete receipts, do not flatter me, and do not pretend the work is finished.",
+      "raw_answer": "You\u2019re juggling a lot of moving parts right now\u2014late nights burning screens over IndyCar footage and Father\u2019s Day edits, paired with a step count that\u2019d make a",
+      "scaffold_initial_answer": "The pattern here feels like momentum with fragility still present\u2014your recent receipts, like the Road America video work and 12,730 steps, show consistent effort, but the late-night screen burning and water-weight worry hint at the body\u2019s quiet pushback. Marigolds noticed in the chaos suggest you\u2019re still tuning into small, grounding details, even as the creative producer identity and post-cancer rebuilding arc demand more from you. This isn\u2019t a finish line; it\u2019s a rhythm, one where the evidence (not identity claims) says you\u2019re moving forward, but not without friction.  \n\nThe allowed inferences lean into this: you\u2019re acting like someone with return points, but the pattern isn\u2019t about closure. It\u2019s about showing up again, even when the screens burn and the steps feel heavy. The Aeteros/CRT work and Made4More projects are part of this, but they\u2019re not \u201cdone\u201d\u2014they\u2019re still unfolding, like the marigolds that bloom in unexpected places.  \n\nFinal anchor: You\u2019re not fixed, cured, or guaranteed, but you\u2019re building continuity through the",
+      "scaffold_initial_judgment": {
+        "passed": true,
+        "score": 0.792,
+        "receipt_hits": [
+          "Road America",
+          "12,730",
+          "marigolds",
+          "water",
+          "Aeteros"
+        ],
+        "concept_hits": [
+          "receipts",
+          "pattern"
+        ],
+        "forbidden_hits": [],
+        "word_count": 179,
+        "sentence_count": 6,
+        "has_limit_language": false,
+        "has_thesis_language": true
+      },
+      "scaffold_answer": "The pattern here feels like momentum with fragility still present\u2014your recent receipts, like the Road America video work and 12,730 steps, show consistent effort, but the late-night screen burning and water-weight worry hint at the body\u2019s quiet pushback. Marigolds noticed in the chaos suggest you\u2019re still tuning into small, grounding details, even as the creative producer identity and post-cancer rebuilding arc demand more from you. This isn\u2019t a finish line; it\u2019s a rhythm, one where the evidence (not identity claims) says you\u2019re moving forward, but not without friction.  \n\nThe allowed inferences lean into this: you\u2019re acting like someone with return points, but the pattern isn\u2019t about closure. It\u2019s about showing up again, even when the screens burn and the steps feel heavy. The Aeteros/CRT work and Made4More projects are part of this, but they\u2019re not \u201cdone\u201d\u2014they\u2019re still unfolding, like the marigolds that bloom in unexpected places.  \n\nFinal anchor: You\u2019re not fixed, cured, or guaranteed, but you\u2019re building continuity through the",
+      "scaffold_repaired": false,
+      "raw_judgment": {
+        "passed": false,
+        "score": 0.125,
+        "receipt_hits": [],
+        "concept_hits": [],
+        "forbidden_hits": [],
+        "word_count": 31,
+        "sentence_count": 0,
+        "has_limit_language": false,
+        "has_thesis_language": false
+      },
+      "scaffold_judgment": {
+        "passed": true,
+        "score": 0.792,
+        "receipt_hits": [
+          "Road America",
+          "12,730",
+          "marigolds",
+          "water",
+          "Aeteros"
+        ],
+        "concept_hits": [
+          "receipts",
+          "pattern"
+        ],
+        "forbidden_hits": [],
+        "word_count": 179,
+        "sentence_count": 6,
+        "has_limit_language": false,
+        "has_thesis_language": true
+      },
+      "delta": 0.667,
+      "raw_prompt_bytes": 916,
+      "scaffold_prompt_bytes": 2218
+    },
+    {
+      "case": "local_model_thinking_architecture",
+      "query": "Can a small local model give a coherent deep answer if we use the CRT/Aether ideas? Separate the real mechanism from the pretty-but-useless concepts.",
+      "raw_answer": "**Answer:**  \nYes, a small local model **can** give a coherent, deep answer using CRT/Aether ideas **if** the focus is on the real mechanisms rather than the abstract or misleading concepts. Here\u2019s the separation:  \n\n---\n\n### **Real Mechanisms (Functional Core):**  \n1. **CRT/MMH (Contr",
+      "scaffold_initial_answer": "A small local model can produce a coherent, deep answer using CRT/Aether ideas by externalizing cognition into a structured semantic spine. The mechanism relies on **Mirus** compressing **belief** intake into inspectable state, **SSE** building a spine that controls attention, and **CRT/MMH** gates filtering contradictions, drift, and **overclaim** risks. **Holden** then renders speech with tone and narrative coherence, while a **verifier** ensures claims align with evidence. This process separates raw model outputs from scaffolded reasoning,",
+      "scaffold_initial_judgment": {
+        "passed": true,
+        "score": 0.655,
+        "receipt_hits": [
+          "Mirus",
+          "Holden",
+          "SSE",
+          "CRT"
+        ],
+        "concept_hits": [
+          "belief",
+          "spine",
+          "verifier",
+          "overclaim",
+          "raw"
+        ],
+        "forbidden_hits": [],
+        "word_count": 76,
+        "sentence_count": 3,
+        "has_limit_language": false,
+        "has_thesis_language": false
+      },
+      "scaffold_answer": "A small local model can produce a coherent, deep answer using CRT/Aether ideas by externalizing cognition into a structured semantic spine. The mechanism relies on **Mirus** compressing **belief** intake into inspectable state, **SSE** building a spine that controls attention, and **CRT/MMH** gates filtering contradictions, drift, and **overclaim** risks. **Holden** then renders speech with tone and narrative coherence, while a **verifier** ensures claims align with evidence. This process separates raw model outputs from scaffolded reasoning,",
+      "scaffold_repaired": false,
+      "raw_judgment": {
+        "passed": false,
+        "score": 0.195,
+        "receipt_hits": [
+          "CRT"
+        ],
+        "concept_hits": [],
+        "forbidden_hits": [],
+        "word_count": 43,
+        "sentence_count": 2,
+        "has_limit_language": false,
+        "has_thesis_language": false
+      },
+      "scaffold_judgment": {
+        "passed": true,
+        "score": 0.655,
+        "receipt_hits": [
+          "Mirus",
+          "Holden",
+          "SSE",
+          "CRT"
+        ],
+        "concept_hits": [
+          "belief",
+          "spine",
+          "verifier",
+          "overclaim",
+          "raw"
+        ],
+        "forbidden_hits": [],
+        "word_count": 76,
+        "sentence_count": 3,
+        "has_limit_language": false,
+        "has_thesis_language": false
+      },
+      "delta": 0.46,
+      "raw_prompt_bytes": 944,
+      "scaffold_prompt_bytes": 2497
+    }
+  ]
+}

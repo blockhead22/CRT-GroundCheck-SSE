@@ -1,0 +1,44 @@
+{
+  "lab": "local_router_cli",
+  "case": "cli_architecture_synthesis",
+  "query": "Explain why the Aether local router is roadmap-aligned and not just prompt tasting.",
+  "route": {
+    "task_type": "architecture_synthesis",
+    "model": "qwen2.5:7b-instruct",
+    "profile": "semantic_spine",
+    "reason": "Architecture synthesis needs mechanisms and overclaim gates more than persona.",
+    "fallback_model": "qwen2.5:7b-instruct",
+    "fallback_profile": "section_lock"
+  },
+  "answer": "### Receipts\nThe Aether local router is designed to align with the project's roadmap by integrating key components such as Mirus, Holden, SSE, and CRT. These elements ensure that the router functions beyond mere \"prompt tasting\" (a term implying superficial or unstructured use).\n\n### Pattern\nAether operates as a mechanism for local model selection, scaffold selection, verifier checks, and repair. This pattern ensures that it is not just a tool for surface-level interactions but a robust framework supporting deeper integration with project requirements.\n\n### Limits\nWhile Aether is roadmap-aligned through its comprehensive mechanisms like Mirus (belief-state and evidence packet layer) and Holden (speech/rendering layer downstream of belief), it has specific limitations. For instance, the verifier component ensures that overclaims are managed effectively, but this does not make Aether \"proof\" or globally smarter.\n\n### Next Useful Move\nThe next useful move is to implement and test Aether in a local environment where Mirus, Holden, SSE, and CRT can be fully utilized. This will validate its alignment with the project roadmap and ensure it performs beyond prompt tasting by addressing overclaims and providing robust verification mechanisms.",
+  "judgment": {
+    "passed": true,
+    "score": 0.808,
+    "contract_score": 0.812,
+    "usefulness_score": 0.8,
+    "receipt_hits": [
+      "Mirus",
+      "Holden",
+      "SSE",
+      "CRT"
+    ],
+    "concept_hits": [
+      "mechanism",
+      "verifier",
+      "overclaim"
+    ],
+    "forbidden_hits": [],
+    "leakage_hits": [],
+    "weirdness_hits": [],
+    "relevance_hits": [],
+    "word_count": 185,
+    "sentence_count": 8,
+    "empty_answer": false,
+    "truncated": false,
+    "has_limit_language": false,
+    "has_thesis_language": true
+  },
+  "repaired": false,
+  "fallback_used": true,
+  "context_supplied": false
+}

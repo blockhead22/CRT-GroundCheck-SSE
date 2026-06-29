@@ -594,3 +594,409 @@ The weak version was "I invented AGI-ish model architecture."
 The strong version was "frontier and local models both need an epistemic harness that preserves personal meaning, contradiction, trust, and continuation across time."
 
 The strong version is still valid, still valuable, and much more buildable than the early naming made it sound.
+
+## 2026-06-26 Restart Addendum: Lumi Core Variant Pass
+
+Nick clarified that `H:\holder\lumi_ai\lumi_ai` is the oldest original layer,
+and that the `core*.py` files are variations of the main system. We did a
+targeted second pass before moving on to CRT.
+
+Decision:
+
+- do not spend more broad compute on `C:\Users\block\Downloads\src\src` for
+  now; that folder is Claude Code tooling-leak context and can wait until the
+  tooling lane;
+- keep Lumi as the original concept layer;
+- treat CRT as the next deeper historical layer, especially because it likely
+  has more extensive zip/version history.
+
+### Lumi Source Spine
+
+Main visible variants:
+
+- `H:\holder\lumi_ai\lumi_ai\core.before.py`
+- `H:\holder\lumi_ai\lumi_ai\core1.py`
+- `H:\holder\lumi_ai\lumi_ai\core2.py`
+- `H:\holder\lumi_ai\lumi_ai\core3.py`
+- `H:\holder\lumi_ai\lumi_ai\core4.py`
+- `H:\holder\lumi_ai\lumi_ai\core5.py`
+- `H:\holder\lumi_ai\lumi_ai\core7.py`
+- `H:\holder\lumi_ai\lumi_ai\core8 big changes after this.py`
+- `H:\holder\lumi_ai\lumi_ai\core.py`
+- `H:\holder\lumi_ai\lumi_ai\core9.py`
+
+Read:
+
+- `core9.py` is a late broken merge with a parse error around an empty
+  `self_refine_response` body.
+- `core.py` parses cleanly and appears to be the better late canonical file.
+- The folder is snapshot-heavy rather than commit-history-heavy.
+- The zips under `secure_memory` are runtime-state bundles, not hidden source
+  versions.
+
+### Evolution In The Core Files
+
+Rough progression:
+
+1. `core.before.py`
+   - memory + DNT + Mistral fallback;
+   - self-repair ladder;
+   - semantic expansion;
+   - structured reasoning response;
+   - adaptive confidence thresholding;
+   - memory compression with age/confidence/retrieval-frequency heuristics.
+
+2. `core1.py` / `core2.py`
+   - smaller memory + DNT + Mistral + self-consistency baseline;
+   - removed some of the explicit repair ladder from `core.before.py`.
+
+3. `core3.py`
+   - philosophical query detection;
+   - personality injection;
+   - curiosity follow-ups;
+   - reasoning-shift evaluation;
+   - response/reasoning logging.
+
+4. `core4.py` / `core5.py`
+   - step-by-step reasoning comparison;
+   - external validation;
+   - response/refinement alignment checks;
+   - contradiction summaries;
+   - reasoning history retrieval.
+
+5. `core7.py` / `core8 big changes after this.py`
+   - `VocabularyManager`;
+   - pending-vocabulary tracking;
+   - WordNet/external validation path;
+   - chain-of-thought scaffold;
+   - background learning;
+   - autonomous tests.
+
+6. `core.py`
+   - `CoherenceManager`;
+   - `MasterMirusHolden`;
+   - sentence structuring;
+   - webhook logging;
+   - route/blend loop with DNT, external validation, and Mistral.
+
+### Lumi Runtime Evidence
+
+The `secure_memory` folder proves the system ran as a real loop, not only a
+code sketch:
+
+- `memory_meta.json`: 251 memory records with query, response, vector,
+  timestamp, source, version, and reasoning fields.
+- `high_confidence_meta.json`: 7 high-confidence records.
+- `reasoning_history.json`: 183 reasoning-shift records.
+- `lumi_evolution_log.json`: 816 evolution/state entries.
+- `pending_vocab.json`: 3,346 pending vocabulary entries.
+- `speech_patterns.json`: 1,757 speech-pattern fragments.
+- `lumi_self_questions.json`: large but malformed JSON, evidence that the
+  reflection loop outgrew the persistence discipline.
+
+The zipped state bundles contain combinations of:
+
+- `memory_meta.json`;
+- `pending_vocab.json`;
+- `lumi_evolution_log.json`;
+- `raw_logs.log`;
+- `reasoning_history.json`;
+- `test_results.log`;
+- `lumi_self_questions.json`.
+
+They are worth sampling later if a specific behavior question needs evidence,
+but they are not a reason to stay in Lumi before checking CRT.
+
+### Diamonds Worth Carrying Forward
+
+`core.before.py` has a useful repair-controller ancestor:
+
+```text
+low confidence / too many unknown tokens
+  -> rephrase
+  -> reuse past successful repair when a similar query exists
+  -> structured reasoning response
+  -> fallback/refinement
+```
+
+Modern Aether mapping:
+
+- self-repair ladder -> route-specific repair controller;
+- semantic expansion -> depth/continuation expansion checks;
+- structured reasoning response -> technical/code/tool answer scaffolds;
+- dynamic confidence thresholds -> model/route health telemetry, not automatic
+  authority;
+- memory compression by confidence/age/frequency -> governed consolidation
+  candidate scoring, not silent deletion.
+
+`core.py` has the strongest late Lumi conceptual pieces:
+
+- `CoherenceManager`: compares current response against memory responses,
+  tracks average similarity and variance, and logs drift-like signals.
+- `MasterMirusHolden`: evaluates subsystem variance across memory/reasoning/
+  speech lengths and chooses actions from log-only through reset-like recovery.
+- `call_lumi`: early governed route/blend loop across local generation,
+  memory, external validation, and fallback model.
+
+Modern Aether mapping:
+
+- CoherenceManager -> variance/drift repair evals and trace diagnostics;
+- MasterMirusHolden -> reviewed regulator/repair policy, not autonomous
+  self-modification;
+- route/blend loop -> Phase 1.10 route/model policy, kept side-effect-free and
+  operator-visible;
+- pending vocab -> unknown-token / missing-capability pressure signal;
+- runtime tests -> private eval cases for contradiction, fallback-alignment,
+  uncertainty handling, and self-model honesty.
+
+`nnw.py` remains conceptually useful:
+
+- seed fact -> expanded multi-sentence response;
+- connector variety;
+- non-repetition;
+- category-specific descriptors.
+
+Modern Aether mapping:
+
+- not a knowledge base to copy;
+- useful as a depth/continuation design ancestor:
+  seed -> expansion plan -> varied connective logic -> coverage check -> avoid
+  repetition.
+
+### What Not To Revive Raw
+
+- the tiny DNT as an actual generator;
+- 10D token-stat embeddings as meaningful semantic memory;
+- random personality injection as a substitute for support style;
+- automatic self-questioning writes;
+- "do you consent to an update" identity language;
+- storing Mistral-blended text as high-confidence memory;
+- self-aware or human-like claims;
+- webhook/autonomous side effects as a default behavior.
+
+### Honest Read
+
+Lumi was the oldest continuity instinct made executable. It was not robust, but
+it already contained the center of the current project:
+
+```text
+local model + memory + fallback + self-check + reflection log + drift detection
+```
+
+The implementation was rough. The signal was real.
+
+Best next move: move to `D:\CRT`, because CRT is likely where the same instincts
+became more extensive, more documented, and more versioned.
+
+## 2026-06-26 Restart Addendum: CRT Code Pass
+
+Scope:
+
+- focused on `D:\CRT` code only;
+- intentionally parked `D:\CRT\compression_lab` for the later compression lane;
+- treated root docs and roadmap markdown as background, not primary evidence;
+- checked active non-compression Python with AST parsing: 73 files parsed cleanly.
+
+### Active Runtime Spine
+
+CRT is the first excavated folder where the Lumi instincts become a concrete
+runtime system instead of mostly conceptual prototypes.
+
+Primary code path:
+
+```text
+start_agent.py
+  -> core.api Flask chat route
+  -> Mirus input/memory intake
+  -> SemanticMemoryManager storage/retrieval
+  -> GFN/GNN route policy
+  -> Holden breathing / inflation / collapse
+  -> fallback quarantine and reflection queue
+  -> Cogni logs, collapse trails, metrics
+```
+
+Important active files:
+
+- `D:\CRT\start_agent.py`: startup diagnostics, memory recovery, identity/worldview
+  anchor reinjection, background breathing pulse.
+- `D:\CRT\core\api.py`: main chat orchestration; direct instructions, memory
+  retrieval, route decision, Holden breathing, fallback, final memory writes,
+  streaming diagnostics.
+- `D:\CRT\core\mirus.py`: Mirus interpreter and memory intake; estimates
+  confidence/resonance and compresses user input before storage.
+- `D:\CRT\core\memory.py`: semantic memory manager; FAISS-backed recall,
+  trust/confidence scoring, anchor protection, contradiction penalties, semantic
+  connection map updates.
+- `D:\CRT\core\holden.py`: reconstruction engine; compress/decompress,
+  inflation, summarization, degraded-output detection, retry/fallback handling,
+  `irc_loop`.
+- `D:\CRT\core\self_reflect.py`: reflection queue, reasoning-history diffs,
+  contradiction resolution, subconscious reflection, self-questioning, repair
+  processing.
+- `D:\CRT\core\cogni.py`: event logging and collapse-trail lineage.
+- `D:\CRT\core\metrics.py`: semantic drift/alignment, reconstruction integrity,
+  recall success, routing, anchor similarity, load/fatigue metrics.
+- `D:\CRT\core\gfn_router.py` and `D:\CRT\core\gfn.py`: route graph ancestors
+  for current Aether route/model selection thinking.
+- `D:\CRT\core\fallback_quarantine.py`, `D:\CRT\core\repair_utils.py`: quarantine
+  and repair-loop ancestors.
+- `D:\CRT\core\vocab.py`, `D:\CRT\core\unk_growth_engine.py`: dynamic vocab and
+  unknown-token pressure signals.
+- `D:\CRT\core\monitoring.py`: `CoherenceManager` and `MasterMirusHolden` carried
+  forward from Lumi into a more explicit regulator layer.
+
+Peripheral code surfaces checked:
+
+- `D:\CRT\backend\logs.py`, `D:\CRT\backend\vector_orbit.py`: simple Flask
+  views over vector logs, collapse trails, reflection queue, Cogni logs, and a
+  PCA orbit view. Useful as a dashboard ancestor, not core reasoning logic.
+- `D:\CRT\crt_faiss_dashboard.py`, `D:\CRT\test_faiss_debug.py`: FAISS/memory
+  diagnostics and visualization helpers.
+- `D:\CRT\scripts\audit_vocab.py`: pending-vocab audit that splits clean tokens
+  from fallback/junk tokens.
+- `D:\CRT\scripts\full_system_purify.py`: destructive-style cleanup ancestor
+  for vocab and memory. Conceptually useful as an audit filter, but should only
+  become a reviewed dry-run report in modern Aether.
+- `D:\CRT\compression_master.py`, `D:\CRT\decompression_master.py`,
+  `D:\CRT\compression_validator.py`, `D:\CRT\scripts\compress_docx_flow.py`:
+  compression-related code noted but left for the dedicated compression pass
+  with `compression_lab`.
+
+### Version Archive Note
+
+`D:\CRT\core 2.zip` is worth keeping in the archaeology set, but it is not a
+separate lost architecture. It contains 52 Python entries; all map onto active
+live files. Comparison against the live `D:\CRT\core` folder:
+
+- 32 files match exactly;
+- 20 files differ;
+- no source files exist only in the zip.
+
+Most meaningful differences concentrate in:
+
+- `core/memory.py`: older heavier anchor/bootstrap injection and memory handling;
+- `core/self_reflect.py`: older reflection queue shape and background reflection
+  write paths;
+- smaller patch deltas in `holden.py`, `api.py`, `mirus.py`, `cogni.py`,
+  `metrics.py`, `vocab.py`, and fallback/repair modules.
+
+Interpretation: `core 2.zip` is a late-May 2025 source-history snapshot. Use it
+for intent and regression archaeology, not as a cleaner implementation to port.
+
+### Logic Worth Carrying Forward
+
+CRT's strongest recoverable ideas are the observability and governance signals:
+
+- Mirus/Holden split:
+  - Mirus as meaning intake, confidence/resonance estimation, and memory write
+    gate;
+  - Holden as reconstruction, breathing, summarization, and degraded-output
+    detector.
+- Memory scoring:
+  - similarity;
+  - recency;
+  - confidence;
+  - resonance;
+  - trust score / trust weight;
+  - contradiction penalty;
+  - anchor boost;
+  - tone factor.
+- Collapse trails:
+  - memory seeds;
+  - breathing text;
+  - expansion text;
+  - summarization text;
+  - fallback use;
+  - confidence and trust before/after.
+- Reflection queue:
+  - degraded breathing;
+  - fallback drift;
+  - low-confidence reconstruction;
+  - vocabulary degradation;
+  - contradiction repair candidates.
+- Passive ethics trace:
+  - logs violations and no-violation traces;
+  - does not pretend ethics is a magic blocklist;
+  - useful as a review/eval signal.
+- Coherence and variance regulators:
+  - `CoherenceManager` tracks semantic drift against memory;
+  - `MasterMirusHolden` tracks subsystem variance and can suggest/reset in old
+    code.
+- Route graph:
+  - Memory -> Ethics -> Holden;
+  - optional Reflect/Fallback routes;
+  - current Aether Phase 1.10 can inherit the route-observation idea while
+    remaining side-effect-free.
+- Fallback quarantine:
+  - degraded fallback should be tagged, distrusted, and queued for repair;
+  - fallback can provide speech, but should not become truth silently.
+- Unknown-token pressure:
+  - pending vocabulary and OOV events are useful as missing-capability telemetry;
+  - do not treat dynamic vocab expansion as proof of learning.
+- Metrics as training/eval evidence:
+  - semantic alignment delta;
+  - reconstruction integrity;
+  - memory recall result;
+  - anchor similarity;
+  - contradiction resolution rate;
+  - route/load/fatigue signals.
+
+### What Not To Revive Raw
+
+- automatic memory mutation as a hidden side effect;
+- hardcoded `nick` attribution in general chat memory;
+- startup anchor reinjection as silent truth repair;
+- self-awareness, identity, or feeling claims as fixed memory;
+- autonomous `promote_to_truth` contradiction handling;
+- forced anchor drift correction without a review gate;
+- storing Mistral/fallback output as ordinary trusted memory;
+- using fallback voice as evidence that memory is correct;
+- dynamic vocab file deletion/merge behavior without audit;
+- background self-questioning that writes new memories by itself;
+- route graph decisions that call mismatched or partially stubbed node APIs;
+- passive ethics logs being presented as actual safety enforcement;
+- root webhooks/background threads as default behavior;
+- old personal anchor language as product-facing truth.
+
+### Modern Aether Mapping
+
+Best translation into current Aether:
+
+```text
+old CRT autonomous loop
+  -> modern reviewed learner heartbeat
+
+old anchor reinjection
+  -> explicit reviewed memory candidate / belief audit
+
+old contradiction repair
+  -> contradiction finding + evidence bundle + ask-before-write
+
+old route graph
+  -> deterministic route policy telemetry and manual "try recommended model" gate
+
+old fallback quarantine
+  -> model-output provenance + fallback distrust + repair eval
+
+old collapse trails
+  -> response lineage, retry diagnostics, and consolidation candidate evidence
+
+old vocab/OOV expansion
+  -> missing-concept signal, not automatic ontology growth
+```
+
+### Honest Read
+
+CRT contains the richest pre-Aether code history so far. It is messy, heavily
+patched, and full of autonomous paths that should not be copied into the modern
+system. But the core design pressure is valuable:
+
+```text
+memory is not enough;
+memory needs provenance, contradiction handling, trust scoring, reconstruction
+trails, and review gates.
+```
+
+That is directly aligned with the current Workbench safety contract. The right
+move is to carry forward CRT's ledgers, scores, and repair queues, while moving
+all belief-changing behavior behind explicit review.

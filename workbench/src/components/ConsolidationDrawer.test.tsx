@@ -71,6 +71,7 @@ const preview = {
 }
 
 beforeEach(() => {
+  vi.mocked(api.consolidationCandidates).mockClear()
   vi.mocked(api.consolidationCandidates).mockResolvedValue(preview)
 })
 
@@ -81,6 +82,7 @@ test('renders preview-only consolidation candidates and safety flags', async () 
   expect(screen.getByText(preview.candidates[1].summary)).toBeInTheDocument()
   expect(screen.getByLabelText('Consolidation safety')).toHaveTextContent('preview only')
   expect(screen.getByLabelText('Consolidation safety')).toHaveTextContent('writes no')
+  expect(screen.getByLabelText('Consolidation safety')).toHaveTextContent('session review only')
   expect(screen.getAllByText('no memory write').length).toBeGreaterThan(0)
   expect(screen.getAllByText('not a fact').length).toBeGreaterThan(0)
   expect(screen.getByText(/open_slot_review via \/v1\/slots\/user:workspace/i)).toBeInTheDocument()
@@ -90,10 +92,32 @@ test('renders preview-only consolidation candidates and safety flags', async () 
   expect(screen.getByText(/Preview only. The review drawer still has to adapt and submit this manually./)).toBeInTheDocument()
 })
 
+test('filters and triages learner candidates in session only', async () => {
+  render(<ConsolidationDrawer />)
+
+  expect(await screen.findByText(preview.candidates[0].summary)).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: /^Support\s+1$/ }))
+
+  expect(screen.queryByText(preview.candidates[0].summary)).not.toBeInTheDocument()
+  expect(screen.getByText(preview.candidates[1].summary)).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Defer Session' }))
+  expect(screen.getByText('deferred this session')).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Hide Session' }))
+  expect(screen.queryByText(preview.candidates[1].summary)).not.toBeInTheDocument()
+  expect(screen.getByText('No active learner candidates match this route filter.')).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: /^Restore hidden\s+1$/ }))
+  expect(screen.getByText(preview.candidates[1].summary)).toBeInTheDocument()
+  expect(screen.getByText('active this session')).toBeInTheDocument()
+})
+
 test('refreshes consolidation preview on demand', async () => {
   render(<ConsolidationDrawer />)
 
-  fireEvent.click(await screen.findByRole('button', { name: 'Refresh' }))
+  await screen.findByText(preview.candidates[0].summary)
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh' }))
 
   await waitFor(() => expect(api.consolidationCandidates).toHaveBeenCalledTimes(2))
 })
