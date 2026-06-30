@@ -1,28 +1,11 @@
 # macOS resource forks (NEVER commit these)
 ._*
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-*.egg-info/
-dist/
-build/
-.venv/
-venv/
-ENV/
-
-# Browser profile (cookies/sessions from Playwright)
-data/browser_profile/
-
-# Environment variables
-.env
-.env.local
-
-# IDEs
-.vscode/
+# Local/editor/agent state
+/.claude/
+/.claude/worktrees/
+/.codex/
+/.vscode/
 .idea/
 *.swp
 *.swo
@@ -32,76 +15,78 @@ data/browser_profile/
 .DS_Store
 Thumbs.db
 
-# Training data logs (chat conversation JSONL files)
-training_data/chat_logs/
+# Environment variables
+.env
+.env.*
+!.env.example
 
-# Test outputs
+# Python/runtime caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.so
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
+venv/
+ENV/
+
+# Node/build outputs
+node_modules/
+dist/
+build/
+.next/
+out/
+coverage/
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.env.local
+/electron/node_modules/
+/electron/dist/
+/workbench/node_modules/
+/workbench/release/
+/workbench/release-coder/
+/workbench/release-fixed/
+/workbench/release-reflect/
+/workbench/release-conversations/
+/docs/node_modules/
+/docs/node_modules/**/dist/
+/sse-chat-ui/node_modules/
+/sse-chat-ui/dist/
+
+# Browser profile (cookies/sessions from Playwright)
+data/browser_profile/
+
+# Logs/temp/debug output
 *.log
+*.out
+*.err
+*.tmp
+*.cache
+.tmp/
+.tmp_debug/
+ai_logs/
+tmp/
+temp_*
+debug_*
+temp_pyfiles.txt
 test_output*.txt
 *_results.json
 DIAGNOSTIC_REPORT.json
 RETEST_*.json
-contradiction_stress_test_output/
-integration_test_output/
-output_index/
-eval_results_smoke/
-eval_results*/
-
-# Artifacts - ignore generated stress test files
-artifacts/*.jsonl
-artifacts/*.db
-artifacts/adversarial_challenge_*.json
-artifacts/crt_stress_*
-artifacts/stress_test_*.md
-artifacts/TEST_RESULTS_*.md
-
-# Databases — NEVER commit database files
-*.db
-*.db-journal
-*.db-wal
-*.db-shm
-memory_dumps/
-contradiction_stress_test_output/
-integration_test_output/
-
-# Stale response/log files
 resp.txt
 response.txt
 response2.txt
 body.json
 demo_stress_run.jsonl
 test_transcript.json
-test_ledger.db
-test_memory.db
-demo_facts.db
 chat_logs_save.md
 
-# Cache
-.sse_cache.json
-.sse_multi_cache.json
-
-# Documentation output
-
-*.cache
-
-# Frontend
-/frontend/node_modules
-/frontend/dist
-/frontend/.env.local
-/sse-chat-ui/node_modules
-/sse-chat-ui/dist
-
-# Archived legacy code and documentation
-/archive/
-
-# Artifacts (keep in repo but ignore old reports)
-# artifacts/crt_stress_report.*.md
-
-# Temporary files
-*.tmp
-.tmp/
-temp_*
-debug_*
+# Keep real test files tracked, but ignore loose scratch tests.
 test_*.py
 !tests/**/test_*.py
 !groundcheck/**/test_*.py
@@ -109,37 +94,82 @@ test_*.py
 !packages/**/test_*.py
 !personal_agent/**/test_*.py
 !compression_lab/test_*.py
+!labs/**/test_*.py
+!aether-core/tests/test_*.py
+
+# Databases and local runtime state
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+memory_dumps/
+nonexistent.db
+thread_sessions.db
+crt_facts.db
+test_ledger.db
+test_memory.db
+demo_facts.db
+
+# Generated eval/lab outputs
+/artifacts/
+/data/
+output_index/
+eval_results_smoke/
+eval_results*/
+integration_test_output/
+contradiction_stress_test_output/
+labs/**/__pycache__/
+labs/**/results/
+belief_variance_experiment/results/
+compression_lab/*results*.json
+compression_lab/*.log
+
+# Generated stress-test artifacts
+artifacts/*.jsonl
+artifacts/*.db
+artifacts/adversarial_challenge_*.json
+artifacts/crt_stress_*
+artifacts/stress_test_*.md
+artifacts/TEST_RESULTS_*.md
+
+# Cache
+.sse_cache.json
+.sse_multi_cache.json
+
+# Archived legacy code and documentation
+/archive/
 
 # Belief revision generated data
 belief_revision/data/synthetic_belief_updates.json
 belief_revision/data/raw_*.json
 belief_revision/data/potential_belief_updates.json
 belief_revision/data/extraction_report.md
-*.safetensors
 belief_revision/models/bert_belief_classifier/
 
-# White paper (private)
-docs/CRT_WHITE_PAPER.md
-/artifacts
-
-
-# DNNT training checkpoints (large files)
+# Model/checkpoint artifacts
+*.safetensors
+models/**/*.pt
+models/**/*.bin
+models/**/*.safetensors
+models/**/*.gguf
+models/**/*.onnx
+models/**/checkpoint*/
+models/**/best_lora/
+models/**/final_lora/
 models/*/checkpoint_*.pt
 models/*/checkpoint_final.pt
-# VILT/LoRA model checkpoints (large, reproducible)
 models/vilt_*/
 models/dnnt_*/
 models/phi3-crt-adapter-v2/
 
-/electron/node_modules
-# ChatGPT export — bulk data shared via Drive, only stub tracked
+# Private/bulk data
+docs/CRT_WHITE_PAPER.md
+training_data/chat_logs/
 /data/chatgpt_export/*
 !/data/chatgpt_export/README.md
-/.claude/worktrees/
-/tools/tts_lab_output
-/workbench/node_modules
-/workbench/release
-/workbench/release-coder
-/workbench/release-fixed
-/workbench/release-reflect
-/workbench/release-conversations
+
+# Tool/vendor/generated folders
+/tools/Rufus/
+/tools/tts_lab_output/
