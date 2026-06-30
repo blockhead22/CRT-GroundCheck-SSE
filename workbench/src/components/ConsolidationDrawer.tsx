@@ -65,6 +65,31 @@ function draftHandoff(item: ConsolidationCandidate): ReviewDraftHandoff | undefi
   }
 }
 
+function firstReceipt(item: ConsolidationCandidate) {
+  return item.evidence[0]?.summary || 'No trace receipt attached to this candidate.'
+}
+
+function reviewBoundary(item: ConsolidationCandidate) {
+  const flags = []
+  flags.push(item.review_required ? 'review required' : 'review not required')
+  flags.push(item.memory_write_allowed ? 'memory write allowed' : 'memory write blocked')
+  flags.push(item.confirmed_fact ? 'confirmed fact' : 'not confirmed fact')
+  return flags.join(' / ')
+}
+
+function reviewDestination(item: ConsolidationCandidate) {
+  const action = item.review_route?.action || 'review'
+  const surface = surfaceLabel(item.review_route?.surface || 'unknown')
+  return `${action} -> ${surface}`
+}
+
+function evidenceMeta(evidence: ConsolidationCandidate['evidence'][number]) {
+  const parts = [evidence.evidence_type]
+  if (evidence.reference_id) parts.push(evidence.reference_id)
+  if (evidence.source_authority) parts.push(evidence.source_authority)
+  return parts.join(' / ')
+}
+
 export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawerProps) {
   const [preview, setPreview] = useState<ConsolidationPreview | null>(null)
   const [error, setError] = useState('')
@@ -217,6 +242,20 @@ export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawer
               <label>Risk boundary</label>
               <p>{item.risk}</p>
             </div>
+            <div className="consolidation-why" aria-label={`Why ${item.candidate_id} exists`}>
+              <div>
+                <label>Receipt</label>
+                <p>{firstReceipt(item)}</p>
+              </div>
+              <div>
+                <label>Boundary</label>
+                <p>{reviewBoundary(item)}</p>
+              </div>
+              <div>
+                <label>Review</label>
+                <p>{reviewDestination(item)}</p>
+              </div>
+            </div>
             <div className="reflection-meta">
               <span>{item.candidate_kind}</span>
               <span>{item.review_required ? 'review required' : 'no review'}</span>
@@ -261,7 +300,7 @@ export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawer
                 {item.evidence.map((evidence, index) => (
                   <div key={`${item.candidate_id}-${evidence.reference_id || index}`}>
                     <span>{evidence.summary}</span>
-                    <small>{evidence.evidence_type}</small>
+                    <small>{evidenceMeta(evidence)}</small>
                   </div>
                 ))}
               </div>

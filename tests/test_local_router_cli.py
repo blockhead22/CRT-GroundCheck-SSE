@@ -78,10 +78,13 @@ def test_personal_synthesis_policy_requires_receipts_before_identity_claims():
 
     assert "concrete receipts before identity claims" in policy["must_use"]
     assert "a request for two or three concrete receipts when only generic receipt anchors are available" in policy["must_use"]
+    assert any("evidence boundary instead of a founder or identity pattern" in item for item in policy["must_use"])
     assert "generic founder comparison without evidence" in policy["must_avoid"]
+    assert any("founder archetype, typical founder, founder journey, or founder milestone language" in item for item in policy["must_avoid"])
     assert "naming specific founders or comparing the user to founders when concrete anchors are missing" in policy["must_avoid"]
     assert "identity claims when the only anchors are receipts or evidence" in policy["must_avoid"]
     assert "packet is not enough to compare the user to founders" in policy["rewrite_rule"]
+    assert "do not describe generic founder patterns" in policy["rewrite_rule"]
 
 
 def test_architecture_process_policy_blocks_banned_limit_phrasing():

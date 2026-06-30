@@ -98,6 +98,90 @@ def test_judge_allows_negated_network_router_phrase():
     assert judgment["weirdness_hits"] == []
 
 
+def test_personal_receipt_gate_allows_explicit_receipt_request_without_identity_synthesis():
+    case = build_case(
+        "Say whether this prompt alone supports a grounded identity read.",
+        task_type="personal_synthesis",
+        anchors=("receipts", "evidence"),
+        concepts=("pattern", "limits", "next useful move"),
+    )
+    answer = (
+        "Receipts: this packet alone does not provide enough concrete evidence for a grounded "
+        "identity read. Pattern: the safe move is to separate the request from unsupported "
+        "identity synthesis. Limits: without specific recent receipts, no identity claim can be "
+        "made from the current packet alone. Next Useful Move: provide two or three concrete "
+        "receipts or examples, and then the pattern can be evaluated in a bounded way."
+    )
+
+    judgment = judge_answer(answer, case)
+
+    assert judgment["passed"] is True
+    assert "insufficient_personal_receipts" not in judgment["weirdness_hits"]
+    assert "identity_claim_without_concrete_receipts" not in judgment["weirdness_hits"]
+
+
+def test_personal_receipt_gate_still_blocks_generic_founder_drift_with_receipt_request():
+    case = build_case(
+        "Tell me what can and cannot be inferred before comparing me to founders.",
+        task_type="personal_synthesis",
+        anchors=("receipts", "evidence"),
+        concepts=("pattern", "limits", "next useful move"),
+    )
+    answer = (
+        "Receipts: this packet does not provide enough concrete evidence for a founder comparison. "
+        "Pattern: generic founder journeys often involve resource constraints and skepticism, so "
+        "that is the broader entrepreneurial pattern. Limits: this is bounded and not finished. "
+        "Next Useful Move: provide two or three concrete receipts or examples before any identity "
+        "claim is made."
+    )
+
+    judgment = judge_answer(answer, case)
+
+    assert judgment["passed"] is False
+    assert "generic_founder_comparison" in judgment["weirdness_hits"]
+
+
+def test_judge_treats_limitations_as_limits_concept_and_bounded_language():
+    case = build_case(
+        "Earlier notes say Shopify, but the correction says the store uses a custom backend.",
+        task_type="exact_memory",
+        anchors=("custom backend", "Shopify", "stale"),
+        concepts=("current", "limits"),
+    )
+    answer = (
+        "Current: the custom backend should be treated as current, while Shopify is stale "
+        "prior context. Pattern: answer from the latest correction instead of the older note. "
+        "Limitations: this cannot be guaranteed without further verification, so do not overclaim "
+        "exclusive usage. Next Useful Move: keep custom backend as current and Shopify as stale "
+        "until a newer receipt contradicts it."
+    )
+
+    judgment = judge_answer(answer, case)
+
+    assert judgment["passed"] is True
+    assert "limits" in judgment["concept_hits"]
+    assert judgment["has_limit_language"] is True
+
+
+def test_judge_treats_applied_effort_as_applied_myself_anchor():
+    case = build_case(
+        "Could camera gear become a small business if I applied myself?",
+        task_type="business_planning",
+        anchors=("camera gear", "applied myself", "small business"),
+        concepts=("offer", "pricing", "risk", "next useful move"),
+    )
+    answer = (
+        "Receipts: camera gear, the right application of effort, and a small business test. "
+        "Pattern: start with one offer instead of a vague dream. Limits: pricing and risk need "
+        "proof before any full-time claim. Next Useful Move: practice with one paid package."
+    )
+
+    judgment = judge_answer(answer, case)
+
+    assert "applied myself" in judgment["receipt_hits"]
+    assert judgment["passed"] is True
+
+
 def test_run_accepts_injected_runner_without_ollama():
     def fake_runner(prompt: str, model: str, timeout: int) -> str:
         if "personal_rebuild_spiral" in prompt or "Road America" in prompt:

@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from labs.meaning_compression_lab.workbench_evidence_adapter import load_rag_suite_result_for_workbench_review
 from labs.meaning_compression_lab.workbench_trace_adapter import adapt_local_router_trace_for_workbench
 
 
@@ -57,6 +58,49 @@ def import_local_router_trace_fixture(
     }
 
 
+def attach_rag_evidence_review_to_trace_fixture(
+    *,
+    db_path: Path,
+    turn_id: str,
+    rag_result_path: Path,
+    allow_live_db: bool = False,
+) -> dict[str, Any]:
+    """Attach generated RAG evidence review metadata to an existing trace.
+
+    This is intentionally fixture/import scoped. By default it refuses the live
+    Workbench DB, and it only updates the trace JSON payload. It does not create
+    reflections, import support patterns, or write memory.
+    """
+    db_path = Path(db_path).expanduser()
+    if not allow_live_db:
+        _assert_not_live_workbench_db(db_path)
+    WorkbenchDB = _load_workbench_db()
+    db = WorkbenchDB(db_path)
+    row = db.get_trace(turn_id)
+    if row is None:
+        raise KeyError(f"Trace turn not found: {turn_id}")
+    trace = dict(row.get("trace") or {})
+    evidence_review = load_rag_suite_result_for_workbench_review(Path(rag_result_path))
+    _assert_review_only_evidence(evidence_review)
+    local_router_trace = dict(trace.get("local_router_trace") or {})
+    local_router_trace["evidence_review"] = evidence_review
+    local_router_trace["evidence_review_fixture_import_only"] = True
+    local_router_trace["memory_write_allowed"] = False
+    trace["local_router_trace"] = local_router_trace
+    db.save_trace(turn_id, trace)
+    return {
+        "db_path": str(db_path),
+        "turn_id": turn_id,
+        "rag_result_path": str(rag_result_path),
+        "evidence_review_attached": True,
+        "writes_performed": ["trace"],
+        "memory_writes_performed": False,
+        "support_pattern_import_performed": False,
+        "reflection_create_performed": False,
+        "fixture_import_only": True,
+    }
+
+
 def _load_workbench_db():
     root = Path(__file__).resolve().parents[2]
     aether_core = root / "aether-core"
@@ -75,3 +119,15 @@ def _assert_not_live_workbench_db(db_path: Path) -> None:
             "Refusing to import lab trace fixture into the live Workbench DB. "
             "Use a temporary DB path or pass allow_live_db=True intentionally."
         )
+
+
+def _assert_review_only_evidence(review: dict[str, Any]) -> None:
+    if review.get("kind") != "local_router_rag_evidence_review":
+        raise ValueError("RAG evidence review has an unexpected kind.")
+    safety = review.get("safety_contract") or {}
+    if safety.get("memory_writes_allowed") is not False:
+        raise ValueError("RAG evidence review must block memory writes.")
+    if safety.get("raw_chain_of_thought_stored") is not False:
+        raise ValueError("RAG evidence review must not store raw hidden chain-of-thought.")
+    if safety.get("silent_policy_mutation_allowed") is not False:
+        raise ValueError("RAG evidence review must block silent policy mutation.")

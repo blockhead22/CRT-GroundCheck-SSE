@@ -117,6 +117,43 @@ export interface Trace {
   }>
 }
 
+export interface LocalRouterRagEvidenceReview {
+  kind: 'local_router_rag_evidence_review'
+  source: 'local_router_rag_suite' | string
+  pack?: string
+  pack_path?: string
+  result_path?: string
+  case_count: number
+  baseline_to_beat: 'scaffolded_rag' | string
+  baselines: Record<string, {
+    answer_pass_count: number
+    answer_pass_rate: number
+    answer_avg_score: number | null
+    trace_pass_count: number
+    trace_pass_rate: number
+    trace_avg_score: number | null
+    repair_count: number
+    fallback_count: number
+    failure_count: number
+    failures_by_task_type: Record<string, number>
+  }>
+  governed_delta_vs_scaffolded_rag: {
+    answer_pass_delta: number
+    answer_avg_score_delta: number | null
+    trace_complete: boolean
+  }
+  review_flags: string[]
+  failure_summary: Record<string, Record<string, number>>
+  safety_contract: {
+    promotion_status: 'review_only' | string
+    memory_writes_allowed: boolean
+    raw_chain_of_thought_stored: boolean
+    silent_policy_mutation_allowed: boolean
+    review_required_before_promotion: boolean
+  }
+  next_review: string
+}
+
 export interface RouteCandidate {
   route: string
   confidence: number
@@ -321,6 +358,8 @@ export interface ConsolidationCandidate {
     evidence_type: string
     reference_id: string
     summary: string
+    observed_at?: number | null
+    source_authority?: string | null
   }>
 }
 
@@ -336,6 +375,8 @@ export interface ReviewDraftHandoff {
     evidence_type: string
     reference_id: string
     summary: string
+    observed_at?: number | null
+    source_authority?: string | null
   }>
 }
 

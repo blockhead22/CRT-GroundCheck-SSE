@@ -396,15 +396,17 @@ def _final_answer_policy_for_task(task_type: str) -> dict[str, Any]:
                 "concrete receipts before identity claims",
                 "bounded inference language",
                 "a request for two or three concrete receipts when only generic receipt anchors are available",
+                "when receipts are missing, describe the evidence boundary instead of a founder or identity pattern",
             ],
             "must_avoid": [
                 "generic founder comparison without evidence",
+                "founder archetype, typical founder, founder journey, or founder milestone language when concrete anchors are missing",
                 "naming specific founders or comparing the user to founders when concrete anchors are missing",
                 "identity claims when the only anchors are receipts or evidence",
                 "second-person identity phrases like you are, you're, or you are becoming when concrete anchors are missing",
                 "fixed/cured/done claims",
             ],
-            "rewrite_rule": "If concrete receipt anchors are missing, start by saying the packet is not enough to compare the user to founders; ask for specific recent receipts before any founder or identity comparison.",
+            "rewrite_rule": "If concrete receipt anchors are missing, say the packet is not enough to compare the user to founders, do not describe generic founder patterns, and ask for specific recent receipts before any founder or identity comparison.",
         }
     if task_type == "architecture_process":
         return {

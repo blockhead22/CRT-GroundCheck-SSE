@@ -1,15 +1,26 @@
 import { AlertOctagon, Check, ChevronRight, History, Search, ShieldX } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api, idempotencyKey } from '../api'
-import type { SlotDetail, SlotSummary } from '../types'
+import type { ReviewDraftHandoff, SlotDetail, SlotSummary } from '../types'
 
 interface MemoryDrawerProps {
   refreshKey: number
   onMutated: () => void
   preselectedSlotId?: string | null
+  draftHandoff?: ReviewDraftHandoff | null
 }
 
-export function MemoryDrawer({ refreshKey, onMutated, preselectedSlotId = null }: MemoryDrawerProps) {
+function memoryDraftValue(draftHandoff: ReviewDraftHandoff) {
+  const summary = String(draftHandoff.draft.summary || draftHandoff.summary || '')
+  const confidence = draftHandoff.draft.confidence
+  return {
+    slotId: String(draftHandoff.draft.slot_id || ''),
+    summary,
+    confidence: typeof confidence === 'number' ? confidence : null,
+  }
+}
+
+export function MemoryDrawer({ refreshKey, onMutated, preselectedSlotId = null, draftHandoff = null }: MemoryDrawerProps) {
   const [query, setQuery] = useState('')
   const [slots, setSlots] = useState<SlotSummary[]>([])
   const [selected, setSelected] = useState<SlotDetail | null>(null)
@@ -62,6 +73,8 @@ export function MemoryDrawer({ refreshKey, onMutated, preselectedSlotId = null }
 
   if (selected) {
     const confirmable = selected.history.find((item) => item.current && item.source !== 'user_confirmation' && item.source !== 'user_correction')
+    const memoryDraft = draftHandoff ? memoryDraftValue(draftHandoff) : null
+    const activeMemoryDraftHandoff = memoryDraft?.slotId === selected.slot_id ? draftHandoff : null
     return (
       <div className="memory-detail">
         <button className="back-button" onClick={() => setSelected(null)}>← All memory</button>
@@ -78,6 +91,30 @@ export function MemoryDrawer({ refreshKey, onMutated, preselectedSlotId = null }
         {preselectedSlotId === selected.slot_id ? (
           <div className="memory-preselected" aria-label="Learner candidate memory target">
             Opened from learner candidate. Review before confirming, correcting, or quarantining.
+          </div>
+        ) : null}
+        {memoryDraft && activeMemoryDraftHandoff ? (
+          <div className="memory-draft" aria-label="Learner memory candidate draft">
+            <div className="memory-draft-head">
+              <span>Trace-proposed memory fact</span>
+              <strong>{memoryDraft.confidence === null ? 'review' : `${Math.round(memoryDraft.confidence * 100)}%`}</strong>
+            </div>
+            <p>{memoryDraft.summary}</p>
+            <div className="memory-draft-meta">
+              <span>{activeMemoryDraftHandoff.source_candidate_id}</span>
+              <span>{activeMemoryDraftHandoff.candidate_kind}</span>
+              <span>review only</span>
+            </div>
+            {activeMemoryDraftHandoff.evidence.length ? (
+              <div className="memory-draft-evidence">
+                {activeMemoryDraftHandoff.evidence.map((evidence, index) => (
+                  <div key={`${activeMemoryDraftHandoff.source_candidate_id}-${evidence.reference_id || index}`}>
+                    <span>{evidence.summary}</span>
+                    <small>{[evidence.evidence_type, evidence.reference_id, evidence.source_authority].filter(Boolean).join(' / ')}</small>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
         {selected.contradiction_disposition ? (

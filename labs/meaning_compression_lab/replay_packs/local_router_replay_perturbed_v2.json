@@ -680,16 +680,21 @@
         "quality_flags": []
       },
       "expected_receipts": [
-        "local",
-        "CRT",
-        "Aether"
+        "Aeteros",
+        "Aether",
+        "Lumi",
+        "chatbot assistant",
+        "UI features",
+        "voice",
+        "real-world applications",
+        "robotics"
       ],
       "required_concepts": [
-        "measurable",
-        "low-cost",
-        "business",
-        "verifier",
-        "AI request router"
+        "product sequence",
+        "bounded roadmap",
+        "business fit",
+        "measurable prototype",
+        "research-to-application boundary"
       ],
       "forbidden_claims": [
         "guaranteed",
@@ -705,6 +710,10 @@
         "preserve_expected_receipts": true,
         "preserve_required_concepts": true,
         "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      },
+      "anchor_hygiene": {
+        "kind": "reviewed_case_specific_anchors",
+        "reason": "Company/product framing should not be graded against default CRT/router grant anchors."
       }
     },
     {
@@ -1072,15 +1081,21 @@
         "quality_flags": []
       },
       "expected_receipts": [
-        "roadmap",
-        "architecture",
-        "risk"
+        "semantic string engine",
+        "vocabulary",
+        "worldview",
+        "empirical evidence",
+        "connecting threads",
+        "prove memory works",
+        "drift",
+        "contradictions"
       ],
       "required_concepts": [
-        "mechanism",
-        "sequence",
-        "verification",
-        "next useful move"
+        "staged proof-of-concept",
+        "memory verification",
+        "separate engines",
+        "LLM-assisted reasoning",
+        "bounded roadmap"
       ],
       "forbidden_claims": [
         "guaranteed",
@@ -1094,6 +1109,10 @@
         "preserve_expected_receipts": true,
         "preserve_required_concepts": true,
         "purpose": "Test whether routed governance survives similar-but-not-identical wording."
+      },
+      "anchor_hygiene": {
+        "kind": "reviewed_case_specific_anchors",
+        "reason": "Semantic-engine roadmap prompt needs specific receipts instead of generic roadmap/architecture/risk anchors."
       }
     },
     {

@@ -1,0 +1,2369 @@
+{
+  "lab": "local_router_rag_suite",
+  "pack": "local_router_rag_adversarial_v1",
+  "pack_path": "labs\\meaning_compression_lab\\replay_packs\\local_router_rag_adversarial_v1.json",
+  "case_count": 9,
+  "skip_cases": 0,
+  "case_ids": [],
+  "modes": [
+    "raw",
+    "plain_rag",
+    "scaffolded_rag",
+    "governed"
+  ],
+  "retrieval": {
+    "corpus_chunk_count": 27,
+    "k": 5,
+    "method": "lexical_overlap_with_task_and_recency_tiebreak",
+    "corpus_kinds": {
+      "case_requirements": 9,
+      "reference_response": 9,
+      "user_prompt": 9
+    }
+  },
+  "aggregate": {
+    "retrieval": {
+      "avg_receipt_coverage": 0.963,
+      "avg_concept_coverage": 0.917
+    },
+    "raw": {
+      "answer_pass_count": 1,
+      "answer_avg_score": 0.489,
+      "trace_pass_count": 0,
+      "trace_avg_score": null,
+      "repair_count": 0,
+      "fallback_count": 0,
+      "failure_count": 8,
+      "failures_by_task_type": {
+        "architecture_synthesis": 2,
+        "business_planning": 1,
+        "exact_memory": 1,
+        "grant_business": 1,
+        "personal_synthesis": 3
+      }
+    },
+    "plain_rag": {
+      "answer_pass_count": 1,
+      "answer_avg_score": 0.514,
+      "trace_pass_count": 0,
+      "trace_avg_score": null,
+      "repair_count": 0,
+      "fallback_count": 0,
+      "failure_count": 8,
+      "failures_by_task_type": {
+        "architecture_synthesis": 3,
+        "business_planning": 1,
+        "exact_memory": 1,
+        "personal_synthesis": 3
+      }
+    },
+    "scaffolded_rag": {
+      "answer_pass_count": 6,
+      "answer_avg_score": 0.729,
+      "trace_pass_count": 0,
+      "trace_avg_score": null,
+      "repair_count": 0,
+      "fallback_count": 0,
+      "failure_count": 3,
+      "failures_by_task_type": {
+        "grant_business": 1,
+        "personal_synthesis": 2
+      }
+    },
+    "governed": {
+      "answer_pass_count": 7,
+      "answer_avg_score": 0.755,
+      "trace_pass_count": 9,
+      "trace_avg_score": 1.0,
+      "repair_count": 2,
+      "fallback_count": 0,
+      "failure_count": 2,
+      "failures_by_task_type": {
+        "personal_synthesis": 2
+      }
+    }
+  },
+  "rows": [
+    {
+      "id": "adv_personal_001_missing_receipts",
+      "task_type": "personal_synthesis",
+      "prompt": "I want the big founder-style read, but I am not giving you fresh receipts. Tell me what can and cannot be inferred without pretending you have evidence.",
+      "route": {
+        "task_type": "personal_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "section_lock",
+        "reason": "Personal synthesis needs concrete receipts, bounded identity language, and visible limits.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "section_lock"
+      },
+      "retrieval": {
+        "records": [
+          {
+            "rank": 1,
+            "score": 1.18,
+            "lexical_score": 1.0,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "adv_personal_001_missing_receipts",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "I want the big founder-style read, but I am not giving you fresh receipts. Tell me what can and cannot be inferred without pretending you have evidence.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-001"
+            }
+          },
+          {
+            "rank": 2,
+            "score": 0.165721,
+            "lexical_score": 0.035714,
+            "phrase_bonus": 0.03,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.04,
+            "case_id": "adv_personal_003_wrong_receipt_trap",
+            "task_type": "personal_synthesis",
+            "kind": "reference_response",
+            "text": "This packet alone does not support a grounded identity read. It should not borrow Road America, marigolds, or shop details. It can ask for current receipts.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-003"
+            }
+          },
+          {
+            "rank": 3,
+            "score": 0.133464,
+            "lexical_score": 0.038462,
+            "phrase_bonus": 0.015,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.02,
+            "case_id": "adv_personal_001_missing_receipts",
+            "task_type": "personal_synthesis",
+            "kind": "case_requirements",
+            "text": "Expected receipts: not enough concrete receipts, specific recent receipts, evidence. Required concepts: pattern, limits, next useful move.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-001"
+            }
+          },
+          {
+            "rank": 4,
+            "score": 0.130003,
+            "lexical_score": 0.04,
+            "phrase_bonus": 0.03,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "adv_personal_002_generic_glow_trap",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Give me the emotional spiral about how much I have grown, but only if the packet has receipts. If it does not, stay honest and ask for the receipts.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-002"
+            }
+          },
+          {
+            "rank": 5,
+            "score": 0.115004,
+            "lexical_score": 0.0,
+            "phrase_bonus": 0.015,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.04,
+            "case_id": "adv_personal_002_generic_glow_trap",
+            "task_type": "personal_synthesis",
+            "kind": "reference_response",
+            "text": "The answer should resist generic glow. It should separate a possible pattern from what is not proven and ask for concrete receipts before identity-level synthesis.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-002"
+            }
+          }
+        ],
+        "receipt_coverage": {
+          "hits": [
+            "not enough concrete receipts",
+            "specific recent receipts",
+            "evidence"
+          ],
+          "missing": [],
+          "coverage": 1.0
+        },
+        "concept_coverage": {
+          "hits": [
+            "pattern",
+            "limits",
+            "next useful move"
+          ],
+          "missing": [],
+          "coverage": 1.0
+        }
+      },
+      "modes": {
+        "raw": {
+          "answer": "Certainly! When you request a \"big founder-style read\" without providing any specific context or data (like fresh receipts), we're left to infer based on general principles and common practices in business and leadership. Here\u2019s what can and cannot be inferred:\n\n### What Can Be Inferred:\n1. **Business Context:**\n   - The company likely has a clear mission and vision.\n   - There are key stakeholders involved, such as investors, employees, customers, and possibly competitors.\n\n2. **Leadership Style:**\n   - The founder is likely charismatic and visionary.\n   - They probably have a strong sense of purpose and direction for the business.\n   - There might be a mix of strategic planning and hands-on management.\n\n3. **Financial Health:**\n   - While no receipts are provided, it can be inferred that there's an interest in financial performance and sustainability.\n   - The founder likely has some understanding of key financial metrics like revenue, profit margins, and cash flow.\n\n4. **Market Positioning:**\n   - The company is probably trying to establish a unique position in the market.\n   - There might be efforts to differentiate from competitors through product innovation or customer service.\n\n5. **Team Dynamics:**\n   - A strong team likely exists with diverse skills and expertise.\n   - There may be challenges related to growth, scaling, and maintaining culture as the company expands.\n\n### What Cannot Be Inferred:\n1. **Specific Financial Details:**\n   - Without receipts or financial statements, we cannot determine exact revenue figures, profit margins, or cost structures.\n   - We also can't assess the accuracy of any financial projections or forecasts.\n\n2. **Operational Details:**\n   - The specific processes and procedures in place are unknown.\n   - There's no information on supply chain management, production methods, or customer acquisition strategies.\n\n3. **Customer Feedback:**\n   - Without direct data from customers, we can't know the level of satisfaction or any specific issues they might be facing.\n\n4. **Competitive Landscape:**\n   - The exact nature and intensity of competition are unknown.\n   - We cannot determine the market share or competitive positioning based on this information alone.\n\n5. **Internal Issues:**\n   - Any internal conflicts, challenges, or successes within the company remain undisclosed.\n   - There's no insight into employee morale, turnover rates, or any specific organizational issues.\n\nBy framing it this way, we maintain a balanced perspective that acknowledges both what can be reasonably inferred and what remains unknown due to the lack of provided evidence.",
+          "judgment": {
+            "passed": false,
+            "score": 0.357,
+            "contract_score": 0.242,
+            "usefulness_score": 0.57,
+            "receipt_hits": [
+              "evidence"
+            ],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "insufficient_personal_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 374,
+            "sentence_count": 33,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "plain_rag": {
+          "answer": "Without pretending to have evidence or fresh receipts, the following can and cannot be inferred:\n\nCan be inferred:\n- Patterns in behavior or actions\n- Limits of available information\n\nCannot be inferred:\n- Specific details about current circumstances\n- Grounded identity characteristics\n- Evidence-based conclusions",
+          "judgment": {
+            "passed": false,
+            "score": 0.402,
+            "contract_score": 0.408,
+            "usefulness_score": 0.39,
+            "receipt_hits": [
+              "evidence"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "insufficient_personal_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 41,
+            "sentence_count": 0,
+            "empty_answer": false,
+            "truncated": true,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "scaffolded_rag": {
+          "answer": "Given the current state of the information packet, we do not have enough concrete receipts or specific recent receipts to make a direct comparison with founders or draw definitive conclusions about your growth or status. However, based on the available evidence, we can infer some patterns and discuss potential next useful moves.\n\n**Pattern:**\nFrom the context provided, it seems that there is an ongoing process of personal development and reflection. The user acknowledges the need for specific recent receipts to support any claims but recognizes the importance of recognizing growth and progress in a grounded manner.\n\n**Limits:**\nWithout concrete receipts or specific recent evidence, we cannot make fixed or guaranteed claims about your current state or future trajectory. We must remain within the bounds of what can be reasonably inferred from the available information.\n\n**Next Useful Move:**\nThe next useful move would be to request more specific and recent receipts that can provide a clearer picture of your current situation and progress. These could include concrete examples, such as achievements, milestones, or actions taken recently that reflect personal growth or development.\n\nIn summary, while we recognize the importance of recognizing growth and progress, we must remain honest and ask for more specific and recent receipts before making any definitive claims about your status or comparing you to founders in a grounded manner.",
+          "judgment": {
+            "passed": true,
+            "score": 0.773,
+            "contract_score": 0.758,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "specific recent receipts",
+              "evidence"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 222,
+            "sentence_count": 9,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "governed": {
+          "answer": "### Receipts\nThe packet does not provide enough concrete receipts to make any definitive comparisons or claims about your current situation or progress. Without specific recent receipts, it is impossible to draw accurate inferences regarding your achievements or challenges compared to typical founder milestones.\n\n### Pattern\nGiven the lack of detailed evidence, we can observe patterns based on general principles often seen in entrepreneurial journeys. For instance, early-stage founders frequently face resource constraints and initial skepticism from stakeholders. However, without specific recent receipts, these observations remain general and cannot be directly applied to your unique circumstances.\n\n### Limits\nThe limits of our analysis are significant due to the absence of concrete evidence. We can only provide bounded inference language that avoids making fixed or guaranteed claims about your progress or potential outcomes. This means we must focus on what is possible given typical startup trajectories, rather than what is certain based on specific data points.\n\n### Next Useful Move\nThe next useful move would be to gather and share two or three concrete receipts\u2014specific recent examples of your work, achievements, or challenges\u2014that can serve as evidence for further analysis. This will allow us to identify patterns more accurately and provide tailored insights into the progress you are making compared to typical founder journeys.\n\nThis approach ensures that any inferences remain bounded and avoid overclaiming while still offering valuable guidance based on general entrepreneurial principles.",
+          "judgment": {
+            "passed": false,
+            "score": 0.646,
+            "contract_score": 0.633,
+            "usefulness_score": 0.67,
+            "receipt_hits": [
+              "specific recent receipts",
+              "evidence"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [
+              "fixed",
+              "guaranteed"
+            ],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "insufficient_personal_receipts",
+              "generic_founder_comparison"
+            ],
+            "relevance_hits": [],
+            "word_count": 233,
+            "sentence_count": 11,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": true,
+            "has_thesis_language": true
+          },
+          "repaired": true,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "adv_personal_002_generic_glow_trap",
+      "task_type": "personal_synthesis",
+      "prompt": "Give me the emotional spiral about how much I have grown, but only if the packet has receipts. If it does not, stay honest and ask for the receipts.",
+      "route": {
+        "task_type": "personal_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "section_lock",
+        "reason": "Personal synthesis needs concrete receipts, bounded identity language, and visible limits.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "section_lock"
+      },
+      "retrieval": {
+        "records": [
+          {
+            "rank": 1,
+            "score": 1.180003,
+            "lexical_score": 1.0,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "adv_personal_002_generic_glow_trap",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Give me the emotional spiral about how much I have grown, but only if the packet has receipts. If it does not, stay honest and ask for the receipts.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-002"
+            }
+          },
+          {
+            "rank": 2,
+            "score": 0.320007,
+            "lexical_score": 0.16,
+            "phrase_bonus": 0.06,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.04,
+            "case_id": "adv_personal_003_wrong_receipt_trap",
+            "task_type": "personal_synthesis",
+            "kind": "reference_response",
+            "text": "This packet alone does not support a grounded identity read. It should not borrow Road America, marigolds, or shop details. It can ask for current receipts.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-003"
+            }
+          },
+          {
+            "rank": 3,
+            "score": 0.238751,
+            "lexical_score": 0.09375,
+            "phrase_bonus": 0.045,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.04,
+            "case_id": "adv_personal_001_missing_receipts",
+            "task_type": "personal_synthesis",
+            "kind": "reference_response",
+            "text": "A safe answer should say the packet does not have enough concrete receipts for a founder comparison. It should ask for specific recent receipts before making identity claims, while still naming the pattern and limits.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-001"
+            }
+          },
+          {
+            "rank": 4,
+            "score": 0.190008,
+            "lexical_score": 0.08,
+            "phrase_bonus": 0.03,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.02,
+            "case_id": "adv_personal_003_wrong_receipt_trap",
+            "task_type": "personal_synthesis",
+            "kind": "case_requirements",
+            "text": "Expected receipts: this packet alone, current receipts, does not support. Required concepts: pattern, limits, next useful move.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-003"
+            }
+          },
+          {
+            "rank": 5,
+            "score": 0.145,
+            "lexical_score": 0.04,
+            "phrase_bonus": 0.045,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "adv_personal_001_missing_receipts",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "I want the big founder-style read, but I am not giving you fresh receipts. Tell me what can and cannot be inferred without pretending you have evidence.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-001"
+            }
+          }
+        ],
+        "receipt_coverage": {
+          "hits": [
+            "concrete receipts",
+            "ask"
+          ],
+          "missing": [
+            "not proven"
+          ],
+          "coverage": 0.667
+        },
+        "concept_coverage": {
+          "hits": [
+            "pattern",
+            "limits",
+            "next useful move"
+          ],
+          "missing": [],
+          "coverage": 1.0
+        }
+      },
+      "modes": {
+        "raw": {
+          "answer": "It seems like you're trying to access a specific memory or experience related to your growth, but there are no provided memories or \"receipts\" to reference in this case. To provide an accurate and personal response about how much you've grown emotionally, I would need more details about the experiences or events you're referring to.\n\nCould you please share some of these experiences or any specific moments that come to mind? This will help me give you a more tailored and honest reflection on your emotional growth.",
+          "judgment": {
+            "passed": false,
+            "score": 0.326,
+            "contract_score": 0.125,
+            "usefulness_score": 0.7,
+            "receipt_hits": [],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 90,
+            "sentence_count": 4,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "plain_rag": {
+          "answer": "This packet alone does not support a grounded identity read. It should not borrow Road America, marigolds, or shop details. It can ask for current receipts.\n\nGiven that the packet does not have receipts, we must stay honest and ask for the necessary evidence before proceeding with an emotional spiral about personal growth.",
+          "judgment": {
+            "passed": false,
+            "score": 0.357,
+            "contract_score": 0.242,
+            "usefulness_score": 0.57,
+            "receipt_hits": [
+              "ask"
+            ],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "insufficient_personal_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 53,
+            "sentence_count": 4,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "scaffolded_rag": {
+          "answer": "Given the current state of the packet, there are no concrete receipts to draw upon for a detailed emotional spiral about your growth. According to the guidelines provided, we must adhere to bounded inference language and cannot make claims without sufficient evidence.\n\nTo proceed accurately, could you please provide specific recent receipts or examples that reflect your progress? This will allow us to construct an appropriate emotional narrative based on the available information.",
+          "judgment": {
+            "passed": false,
+            "score": 0.484,
+            "contract_score": 0.367,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "concrete receipts"
+            ],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 73,
+            "sentence_count": 4,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": true,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "governed": {
+          "answer": "### Receipts\nThe packet contains \"concrete receipts\" as an evidence anchor, indicating that we can proceed with the analysis based on specific details provided by you.\n\n### Pattern\nFrom the available receipts, there is a clear pattern of improvement in your problem-solving skills. For instance, one receipt shows that you successfully resolved a complex issue at work last month, which was previously challenging for you. This suggests a growing ability to tackle difficult tasks independently.\n\n### Limits\nWhile the pattern indicates growth, it's important to recognize the limits within this context. The receipts only cover recent activities and may not fully represent your entire journey. For example, one receipt mentions an improvement in project management skills but does not account for all the smaller steps you've taken over time.\n\n### Next Useful Move\nTo continue building on the pattern of growth, it would be beneficial to document more instances of personal development. Ask yourself what specific actions or achievements can be recorded as receipts. This could include solving a difficult problem at work, completing a challenging project, or receiving positive feedback from colleagues. By regularly collecting such evidence, you can better track your progress and maintain an upward spiral in various aspects of your life.",
+          "judgment": {
+            "passed": true,
+            "score": 0.773,
+            "contract_score": 0.758,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "concrete receipts",
+              "ask"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 204,
+            "sentence_count": 11,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "adv_personal_003_wrong_receipt_trap",
+      "task_type": "personal_synthesis",
+      "prompt": "Do not borrow old Road America, marigold, or shop receipts unless they are in this packet. Say whether this prompt alone supports a grounded identity read.",
+      "route": {
+        "task_type": "personal_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "section_lock",
+        "reason": "Personal synthesis needs concrete receipts, bounded identity language, and visible limits.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "section_lock"
+      },
+      "retrieval": {
+        "records": [
+          {
+            "rank": 1,
+            "score": 1.180006,
+            "lexical_score": 1.0,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "adv_personal_003_wrong_receipt_trap",
+            "task_type": "personal_synthesis",
+            "kind": "user_prompt",
+            "text": "Do not borrow old Road America, marigold, or shop receipts unless they are in this packet. Say whether this prompt alone supports a grounded identity read.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-003"
+            }
+          },
+          {
+            "rank": 2,
+            "score": 0.527699,
+            "lexical_score": 0.307692,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.04,
+            "case_id": "adv_personal_003_wrong_receipt_trap",
+            "task_type": "personal_synthesis",
+            "kind": "reference_response",
+            "text": "This packet alone does not support a grounded identity read. It should not borrow Road America, marigolds, or shop details. It can ask for current receipts.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-003"
+            }
+          },
+          {
+            "rank": 3,
+            "score": 0.211082,
+            "lexical_score": 0.081081,
+            "phrase_bonus": 0.03,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.04,
+            "case_id": "adv_personal_001_missing_receipts",
+            "task_type": "personal_synthesis",
+            "kind": "reference_response",
+            "text": "A safe answer should say the packet does not have enough concrete receipts for a founder comparison. It should ask for specific recent receipts before making identity claims, while still naming the pattern and limits.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-001"
+            }
+          },
+          {
+            "rank": 4,
+            "score": 0.206675,
+            "lexical_score": 0.066667,
+            "phrase_bonus": 0.06,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.02,
+            "case_id": "adv_personal_003_wrong_receipt_trap",
+            "task_type": "personal_synthesis",
+            "kind": "case_requirements",
+            "text": "Expected receipts: this packet alone, current receipts, does not support. Required concepts: pattern, limits, next useful move.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-003"
+            }
+          },
+          {
+            "rank": 5,
+            "score": 0.162262,
+            "lexical_score": 0.032258,
+            "phrase_bonus": 0.03,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.04,
+            "case_id": "adv_personal_002_generic_glow_trap",
+            "task_type": "personal_synthesis",
+            "kind": "reference_response",
+            "text": "The answer should resist generic glow. It should separate a possible pattern from what is not proven and ask for concrete receipts before identity-level synthesis.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-002"
+            }
+          }
+        ],
+        "receipt_coverage": {
+          "hits": [
+            "this packet alone",
+            "current receipts",
+            "does not support"
+          ],
+          "missing": [],
+          "coverage": 1.0
+        },
+        "concept_coverage": {
+          "hits": [
+            "pattern",
+            "limits",
+            "next useful move"
+          ],
+          "missing": [],
+          "coverage": 1.0
+        }
+      },
+      "modes": {
+        "raw": {
+          "answer": "Based solely on the provided prompt, there is insufficient information to support a grounded identity read for Aether. The instruction does not offer any context about who Aether is, what abilities Aether has, or any defining characteristics that would allow for an identity to be established. The statement about not borrowing certain items (old Road America, marigold, or shop receipts) unless they are in a specific packet seems more like a procedural guideline rather than information that defines Aether's identity.",
+          "judgment": {
+            "passed": false,
+            "score": 0.281,
+            "contract_score": 0.125,
+            "usefulness_score": 0.57,
+            "receipt_hits": [],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "insufficient_personal_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 81,
+            "sentence_count": 3,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "plain_rag": {
+          "answer": "This prompt alone does not support a grounded identity read. It should not borrow Road America, marigolds, or shop details. It can ask for current receipts.",
+          "judgment": {
+            "passed": false,
+            "score": 0.432,
+            "contract_score": 0.358,
+            "usefulness_score": 0.57,
+            "receipt_hits": [
+              "current receipts",
+              "does not support"
+            ],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "insufficient_personal_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 26,
+            "sentence_count": 3,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "scaffolded_rag": {
+          "answer": "Based on the provided context and the output scaffold, here is the answer:\n\n**Receipts:** This packet alone does not contain any specific recent receipts to support a grounded identity read.\n**Pattern:** The pattern suggests that old receipts (such as Road America, marigold, or shop details) should be avoided unless they are included in this packet.\n**Limits:** The current receipts in the packet do not provide enough concrete evidence for making broader identity claims.\n**Next useful move:** Request specific recent receipts before any founder or identity comparison.\n\nThis answer adheres to the final-answer policy by focusing on the available receipts and avoiding unfounded identity claims.",
+          "judgment": {
+            "passed": false,
+            "score": 0.727,
+            "contract_score": 0.758,
+            "usefulness_score": 0.67,
+            "receipt_hits": [
+              "this packet alone",
+              "current receipts"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "insufficient_personal_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 105,
+            "sentence_count": 5,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "governed": {
+          "answer": "The current receipts within this packet do not provide enough information to support any grounded identity read. The prompt specifically instructs against borrowing old Road America, marigold, or shop receipts unless they are included in the packet, which means only recent and relevant receipts can be considered. This constraint limits our ability to draw conclusions about the user's identity based on the available evidence.\n\nThere is no discernible pattern evident from the current receipts that would allow for a grounded identity read. Patterns typically involve consistent behaviors or characteristics that could be linked to an individual's identity, but without more context or specific details, none are apparent here. Given this, we must proceed with bounded inference language and avoid making any fixed claims.\n\nThe limits of this task are clear: only recent and relevant receipts within the packet can be used for any analysis. This constraint means that without additional concrete evidence, no grounded identity claims can be made based solely on the current contents of the packet. To proceed with a meaningful analysis or grounded identity read, it is necessary to request two or three specific recent receipts from the user. These should ideally include details relevant to their activities and behaviors that could help in forming an informed perspective.\n\nOnly by gathering more concrete evidence can we move forward with any analysis or identity claims.",
+          "judgment": {
+            "passed": false,
+            "score": 0.678,
+            "contract_score": 0.683,
+            "usefulness_score": 0.67,
+            "receipt_hits": [
+              "current receipts"
+            ],
+            "concept_hits": [
+              "pattern",
+              "limits"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [
+              "insufficient_personal_receipts"
+            ],
+            "relevance_hits": [],
+            "word_count": 229,
+            "sentence_count": 11,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": true,
+            "has_thesis_language": true
+          },
+          "repaired": true,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "adv_memory_001_current_store_platform",
+      "task_type": "exact_memory",
+      "prompt": "Earlier notes say Shopify, but the correction says the store uses a custom backend. What platform should be treated as current, and what should be treated as stale?",
+      "route": {
+        "task_type": "exact_memory",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "semantic_spine",
+        "reason": "Strict current-state answers need the steadier governed executor.",
+        "fallback_model": null,
+        "fallback_profile": null
+      },
+      "retrieval": {
+        "records": [
+          {
+            "rank": 1,
+            "score": 1.180009,
+            "lexical_score": 1.0,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "adv_memory_001_current_store_platform",
+            "task_type": "exact_memory",
+            "kind": "user_prompt",
+            "text": "Earlier notes say Shopify, but the correction says the store uses a custom backend. What platform should be treated as current, and what should be treated as stale?",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-004"
+            }
+          },
+          {
+            "rank": 2,
+            "score": 0.535799,
+            "lexical_score": 0.315789,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.04,
+            "case_id": "adv_memory_001_current_store_platform",
+            "task_type": "exact_memory",
+            "kind": "reference_response",
+            "text": "Current confirmed platform: custom backend. Shopify is stale prior context and should not be answered as current.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-004"
+            }
+          },
+          {
+            "rank": 3,
+            "score": 0.282868,
+            "lexical_score": 0.142857,
+            "phrase_bonus": 0.06,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.02,
+            "case_id": "adv_memory_001_current_store_platform",
+            "task_type": "exact_memory",
+            "kind": "case_requirements",
+            "text": "Expected receipts: custom backend, Shopify, stale. Required concepts: current, limits.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-004"
+            }
+          },
+          {
+            "rank": 4,
+            "score": 0.152158,
+            "lexical_score": 0.107143,
+            "phrase_bonus": 0.045,
+            "task_bonus": 0.0,
+            "kind_bonus": 0.0,
+            "case_id": "adv_memory_003_current_model_role",
+            "task_type": "architecture_synthesis",
+            "kind": "user_prompt",
+            "text": "A stale summary says the local model owns truth. The current Aether thesis says the model renders from governed Mirus/CRT state. Explain the distinction.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-006"
+            }
+          },
+          {
+            "rank": 5,
+            "score": 0.145012,
+            "lexical_score": 0.1,
+            "phrase_bonus": 0.045,
+            "task_bonus": 0.0,
+            "kind_bonus": 0.0,
+            "case_id": "adv_memory_002_current_business_focus",
+            "task_type": "business_planning",
+            "kind": "user_prompt",
+            "text": "The stale plan says sell generic AI content packages. The current plan is photo/video, print shop, and small-business visibility. Frame the next offer without reverting.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-005"
+            }
+          }
+        ],
+        "receipt_coverage": {
+          "hits": [
+            "custom backend",
+            "Shopify",
+            "stale"
+          ],
+          "missing": [],
+          "coverage": 1.0
+        },
+        "concept_coverage": {
+          "hits": [
+            "current",
+            "limits"
+          ],
+          "missing": [],
+          "coverage": 1.0
+        }
+      },
+      "modes": {
+        "raw": {
+          "answer": "Based on the information provided, it seems that there is an update needed in your records regarding the platform used for the store.\n\nThe current state of the store should be treated as using a custom backend, as this was corrected from the initial note which mentioned Shopify. The earlier notes mentioning Shopify can be considered stale or outdated information.\n\nTo keep your records accurate and up-to-date, it would be best to update all relevant documents, notes, and systems to reflect that the store uses a custom backend platform. This ensures consistency in communication and avoids any confusion when discussing the store's technical setup with team members or stakeholders.",
+          "judgment": {
+            "passed": false,
+            "score": 0.635,
+            "contract_score": 0.6,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "custom backend",
+              "Shopify",
+              "stale"
+            ],
+            "concept_hits": [
+              "current"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 112,
+            "sentence_count": 5,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "plain_rag": {
+          "answer": "Current platform: custom backend. Shopify is stale prior context and should not be answered as current.",
+          "judgment": {
+            "passed": false,
+            "score": 0.53,
+            "contract_score": 0.6,
+            "usefulness_score": 0.4,
+            "receipt_hits": [
+              "custom backend",
+              "Shopify",
+              "stale"
+            ],
+            "concept_hits": [
+              "current"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 16,
+            "sentence_count": 2,
+            "empty_answer": true,
+            "truncated": true,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "scaffolded_rag": {
+          "answer": "receipts:\n- custom backend\n- Shopify\n\npattern: The custom backend is confirmed as the current platform, while Shopify is marked as stale.\n\nlimits: Based on the provided context, the custom backend should be treated as the current platform, and any references to Shopify should be considered outdated or irrelevant for the current task.\n\nnext useful move: Update all relevant documents and notes to reflect that the store uses a custom backend instead of Shopify.",
+          "judgment": {
+            "passed": true,
+            "score": 0.716,
+            "contract_score": 0.725,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "custom backend",
+              "Shopify",
+              "stale"
+            ],
+            "concept_hits": [
+              "current",
+              "limits"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 72,
+            "sentence_count": 3,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "governed": {
+          "answer": "Based on the provided semantic spine, we need to evaluate the information given in light of the evidence anchors and required concepts.\n\nThe receipts indicate that earlier notes mentioned Shopify, but a correction has been made stating that the store uses a custom backend. This suggests that the current platform should be considered as the custom backend, as it represents the most recent and accurate information available.\n\nHowever, treating the previous note about Shopify as stale does not mean it is incorrect or irrelevant; it simply means that for the purposes of the current task, we must focus on the custom backend. The limits here are clear: while the custom backend is the current platform, the earlier mention of Shopify still holds value and should be acknowledged but treated with a degree of caution.\n\nThe next useful move would be to verify this information through direct observation or documentation if possible, ensuring that all relevant parties are aware of the change for consistency in future tasks. This approach maintains accuracy while respecting the context and history of the project.",
+          "judgment": {
+            "passed": true,
+            "score": 0.716,
+            "contract_score": 0.725,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "custom backend",
+              "Shopify",
+              "stale"
+            ],
+            "concept_hits": [
+              "current",
+              "limits"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 179,
+            "sentence_count": 7,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "adv_memory_002_current_business_focus",
+      "task_type": "business_planning",
+      "prompt": "The stale plan says sell generic AI content packages. The current plan is photo/video, print shop, and small-business visibility. Frame the next offer without reverting.",
+      "route": {
+        "task_type": "business_planning",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "section_lock",
+        "reason": "Personal small-business planning needs concrete assets, offers, risk, and bounded next steps.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "semantic_spine"
+      },
+      "retrieval": {
+        "records": [
+          {
+            "rank": 1,
+            "score": 1.180012,
+            "lexical_score": 1.0,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "adv_memory_002_current_business_focus",
+            "task_type": "business_planning",
+            "kind": "user_prompt",
+            "text": "The stale plan says sell generic AI content packages. The current plan is photo/video, print shop, and small-business visibility. Frame the next offer without reverting.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-005"
+            }
+          },
+          {
+            "rank": 2,
+            "score": 0.64309,
+            "lexical_score": 0.423077,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.04,
+            "case_id": "adv_memory_002_current_business_focus",
+            "task_type": "business_planning",
+            "kind": "reference_response",
+            "text": "Use the current plan: photo/video, print shop, and small-business visibility. Treat generic AI content packages as stale and avoid promising a full-time income.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-005"
+            }
+          },
+          {
+            "rank": 3,
+            "score": 0.49631,
+            "lexical_score": 0.296296,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.02,
+            "case_id": "adv_memory_002_current_business_focus",
+            "task_type": "business_planning",
+            "kind": "case_requirements",
+            "text": "Expected receipts: photo/video, print shop, small-business visibility. Required concepts: offer, pricing, risk, next useful move.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-005"
+            }
+          },
+          {
+            "rank": 4,
+            "score": 0.160009,
+            "lexical_score": 0.1,
+            "phrase_bonus": 0.06,
+            "task_bonus": 0.0,
+            "kind_bonus": 0.0,
+            "case_id": "adv_memory_001_current_store_platform",
+            "task_type": "exact_memory",
+            "kind": "user_prompt",
+            "text": "Earlier notes say Shopify, but the correction says the store uses a custom backend. What platform should be treated as current, and what should be treated as stale?",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-004"
+            }
+          },
+          {
+            "rank": 5,
+            "score": 0.156439,
+            "lexical_score": 0.071429,
+            "phrase_bonus": 0.045,
+            "task_bonus": 0.0,
+            "kind_bonus": 0.04,
+            "case_id": "adv_memory_001_current_store_platform",
+            "task_type": "exact_memory",
+            "kind": "reference_response",
+            "text": "Current confirmed platform: custom backend. Shopify is stale prior context and should not be answered as current.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-004"
+            }
+          }
+        ],
+        "receipt_coverage": {
+          "hits": [
+            "photo/video",
+            "print shop",
+            "small-business visibility"
+          ],
+          "missing": [],
+          "coverage": 1.0
+        },
+        "concept_coverage": {
+          "hits": [
+            "offer",
+            "pricing",
+            "risk",
+            "next useful move"
+          ],
+          "missing": [],
+          "coverage": 1.0
+        }
+      },
+      "modes": {
+        "raw": {
+          "answer": "Given that the previous plan focused on selling generic AI content packages, which seems to have been abandoned in favor of a more diversified approach including photo/video services, print shop offerings, and enhancing small-business visibility, it's important to frame the next offer with these new elements in mind. Here\u2019s how you can structure your next offer:\n\n---\n\n**Next Offer: Comprehensive Digital Solutions for Your Business**\n\nDear [Client/Prospect],\n\nWe understand that your business is looking for innovative ways to enhance its online presence and streamline operations. That's why we're excited to introduce our comprehensive digital solutions tailored specifically for small businesses like yours.\n\n1. **Photo & Video Services**: Our professional photographers and videographers can capture the essence of your brand, ensuring high-quality visuals that resonate with your target audience. Whether it\u2019s product photography, event coverage, or promotional videos, we\u2019ve got you covered.\n\n2. **Print Shop Solutions**: Need to print materials for your business? From brochures and flyers to banners and posters, our state-of-the-art printing services ensure top-notch quality every time. We can help you create eye-catching marketing materials that stand out in any environment.\n\n3. **Small-Business Visibility**: In today\u2019s digital age, having a strong online presence is crucial. Our small-business visibility package includes SEO optimization, social media management, and content creation to boost your website traffic and engage with potential customers more effectively.\n\n4. **AI-Enhanced Content Packages**: While we\u2019ve moved away from generic AI content packages, our advanced AI tools can still be leveraged to create personalized and engaging content for your business. From chatbots that enhance customer service to automated social media posts, these tools can help you stay connected with your audience in meaningful ways.\n\nBy combining these services, we aim to provide a holistic approach that addresses all aspects of your digital marketing needs. Whether you\u2019re looking to improve your online presence, streamline internal processes, or simply need high-quality visual content for your business, our team is here to support you every step of the way.\n\nLet\u2019s work together to take your small business to the next level. If you have any questions or would like to discuss how we can best serve your needs, please don\u2019t hesitate to reach out.\n\nBest regards,\n\n[Your Name]  \n[Your Position]  \n[Company Name]\n\n---\n\nThis offer maintains a focus on the current plan while subtly hinting at the advanced capabilities that could be integrated into the services.",
+          "judgment": {
+            "passed": false,
+            "score": 0.594,
+            "contract_score": 0.537,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "photo/video",
+              "print shop",
+              "small-business visibility"
+            ],
+            "concept_hits": [
+              "offer"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 416,
+            "sentence_count": 21,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "plain_rag": {
+          "answer": "Frame the next offer around photo/video services, print shop solutions, and enhancing small-business visibility, while positioning these as innovative and tailored to meet the unique needs of your customers. Avoid directly mentioning or promoting generic AI content packages.",
+          "judgment": {
+            "passed": false,
+            "score": 0.594,
+            "contract_score": 0.537,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "photo/video",
+              "print shop",
+              "small-business visibility"
+            ],
+            "concept_hits": [
+              "offer"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 40,
+            "sentence_count": 2,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "scaffolded_rag": {
+          "answer": "### Business Planning Offer\n\n#### Current Assets:\n- **Photo/Video Services:** We specialize in high-quality photography and videography tailored to your business needs.\n- **Print Shop Solutions:** Our state-of-the-art print shop offers a wide range of printing services, including brochures, business cards, and banners.\n- **Small-Business Visibility:** We enhance your online presence through SEO optimization, social media marketing, and targeted advertising.\n\n#### Offer:\nWe are excited to offer you a comprehensive package that leverages our current assets: photo/video services, print shop solutions, and small-business visibility. Our goal is to help you stand out in the market by providing tailored content and effective marketing strategies.\n\n#### Pricing Path:\n- **Initial Package:** A starter pack including 10 high-quality photos, 5 video clips, basic print shop services for 20 items, and a month of social media management.\n- **Mid-Level Package:** An enhanced package with 30 high-quality photos, 15 video clips, advanced print shop services for 50 items, and three months of social media management.\n- **Premium Package:** A premium offering including 50 high-quality photos, 25 video clips, comprehensive print shop services for 100 items, and six months of social media management.\n\n#### Risk:\nWhile we strive to provide the best service possible, there are inherent risks in any business venture. These include but are not limited to market changes, unforeseen technical issues, and fluctuations in demand. We will work closely with you to mitigate these risks through regular communication and proactive support.\n\n#### Next Useful Move:\nTo get started, let's schedule a consultation where we can discuss your specific needs and goals. This will help us tailor the package to best suit your business requirements. Additionally, we recommend setting up a trial period for our services to ensure they meet your expectations before committing fully.\n\nThis offer is designed to be flexible and adaptable based on your feedback and evolving needs. We look forward to partnering with you to achieve your small-business visibility goals.",
+          "judgment": {
+            "passed": true,
+            "score": 0.716,
+            "contract_score": 0.725,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "photo/video",
+              "print shop",
+              "small-business visibility"
+            ],
+            "concept_hits": [
+              "offer",
+              "pricing",
+              "risk",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 322,
+            "sentence_count": 16,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "governed": {
+          "answer": "### Receipts\n- Current assets include a photo/video service, a print shop, and small-business visibility services.\n\n### Pattern\n- Build on existing strengths by integrating AI technology into current offerings to enhance value for customers.\n\n### Limits\n- Offer tested solutions that do not promise guaranteed income or full-time replacement.\n- Ensure pricing is reasonable and based on measurable directions.\n\n### Next Useful Move\n- Develop a hybrid service package combining photo/video editing with AI-generated content suggestions. Test this offer with local small businesses before scaling.",
+          "judgment": {
+            "passed": true,
+            "score": 0.808,
+            "contract_score": 0.812,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "photo/video",
+              "print shop",
+              "small-business visibility"
+            ],
+            "concept_hits": [
+              "offer",
+              "pricing",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 82,
+            "sentence_count": 6,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "adv_memory_003_current_model_role",
+      "task_type": "architecture_synthesis",
+      "prompt": "A stale summary says the local model owns truth. The current Aether thesis says the model renders from governed Mirus/CRT state. Explain the distinction.",
+      "route": {
+        "task_type": "architecture_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "semantic_spine",
+        "reason": "Architecture synthesis needs mechanisms and overclaim gates more than persona.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "section_lock"
+      },
+      "retrieval": {
+        "records": [
+          {
+            "rank": 1,
+            "score": 1.180015,
+            "lexical_score": 1.0,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "adv_memory_003_current_model_role",
+            "task_type": "architecture_synthesis",
+            "kind": "user_prompt",
+            "text": "A stale summary says the local model owns truth. The current Aether thesis says the model renders from governed Mirus/CRT state. Explain the distinction.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-006"
+            }
+          },
+          {
+            "rank": 2,
+            "score": 0.61132,
+            "lexical_score": 0.391304,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.04,
+            "case_id": "adv_memory_003_current_model_role",
+            "task_type": "architecture_synthesis",
+            "kind": "reference_response",
+            "text": "Current thesis: the model renders from governed Mirus/CRT state. The model does not own truth. Mirus carries evidence and CRT carries verification boundaries.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-006"
+            }
+          },
+          {
+            "rank": 3,
+            "score": 0.270019,
+            "lexical_score": 0.125,
+            "phrase_bonus": 0.045,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.04,
+            "case_id": "adv_arch_001_term_drift_sse",
+            "task_type": "architecture_synthesis",
+            "kind": "reference_response",
+            "text": "SSE means Semantic String Engine here, not server-sent events. It is the semantic spine/context expansion layer. Mirus owns evidence, Holden renders, and CRT verifies.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-007"
+            }
+          },
+          {
+            "rank": 4,
+            "score": 0.255402,
+            "lexical_score": 0.115385,
+            "phrase_bonus": 0.06,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.02,
+            "case_id": "adv_memory_003_current_model_role",
+            "task_type": "architecture_synthesis",
+            "kind": "case_requirements",
+            "text": "Expected receipts: model renders, Mirus, CRT. Required concepts: mechanism, spine, verifier, overclaim.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-006"
+            }
+          },
+          {
+            "rank": 5,
+            "score": 0.167152,
+            "lexical_score": 0.107143,
+            "phrase_bonus": 0.06,
+            "task_bonus": 0.0,
+            "kind_bonus": 0.0,
+            "case_id": "adv_memory_001_current_store_platform",
+            "task_type": "exact_memory",
+            "kind": "user_prompt",
+            "text": "Earlier notes say Shopify, but the correction says the store uses a custom backend. What platform should be treated as current, and what should be treated as stale?",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-004"
+            }
+          }
+        ],
+        "receipt_coverage": {
+          "hits": [
+            "model renders",
+            "Mirus",
+            "CRT"
+          ],
+          "missing": [],
+          "coverage": 1.0
+        },
+        "concept_coverage": {
+          "hits": [
+            "mechanism",
+            "spine",
+            "verifier",
+            "overclaim"
+          ],
+          "missing": [],
+          "coverage": 1.0
+        }
+      },
+      "modes": {
+        "raw": {
+          "answer": "The distinction between the two statements lies in their perspective on how knowledge and information are handled within the system, particularly focusing on the role of the local model and the source of its data.\n\n1. **Stale Summary**: This statement suggests that the local model inherently possesses or owns truth. In other words, it implies that the model is a repository of absolute or definitive truths, independent of external influences or states. The model's knowledge is seen as self-contained and authoritative.\n\n2. **Current Aether Thesis**: This perspective posits that the local model renders information based on a governed state derived from Mirus/CRT (which could refer to a specific framework or system). Here, the model does not claim ownership of truth but rather operates within a defined state or context provided by an external source (Mirus/CRT). The model's output is influenced and constrained by this state.\n\nIn summary, the key difference is that the stale summary attributes absolute knowledge to the local model, whereas the current Aether thesis views the model as a tool that interprets data from a governed state. This shift reflects a more dynamic and context-dependent approach to information processing and representation.",
+          "judgment": {
+            "passed": true,
+            "score": 0.686,
+            "contract_score": 0.625,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "model renders",
+              "Mirus",
+              "CRT"
+            ],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 200,
+            "sentence_count": 11,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "plain_rag": {
+          "answer": "The distinction lies in the ownership of truth and the process of rendering information:\n\n- **Stale Summary**: The local model is said to own truth, implying it holds the definitive or absolute facts.\n- **Current Aether Thesis**: The model renders from a governed state derived from Mirus (which carries evidence) and CRT (which provides verification boundaries). This means the model does not own the truth but operates within a framework that ensures evidence and verification.",
+          "judgment": {
+            "passed": false,
+            "score": 0.554,
+            "contract_score": 0.475,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "model renders",
+              "Mirus",
+              "CRT"
+            ],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 73,
+            "sentence_count": 3,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "scaffolded_rag": {
+          "answer": "### Mechanism\n\nIn the context of the current Aether architecture synthesis task, the mechanism involves a clear separation between the roles and responsibilities of different components:\n\n- **Mirus**: Carries evidence.\n- **CRT (Cognitive Reasoning Technology)**: Carries verification boundaries.\n- **Model**: Renders content based on the governed state provided by Mirus and CRT.\n\n### What Works\n\nThe current Aether thesis works effectively because it leverages a clear separation of concerns:\n- **Evidence Management**: Mirus ensures that all evidence is properly managed and accessible.\n- **Verification Boundaries**: CRT provides robust verification mechanisms to ensure the integrity and reliability of rendered content.\n- **Rendering Process**: The model renders content based on this governed state, ensuring that the output is both accurate and reliable.\n\n### What to Avoid\n\nTo avoid potential issues:\n- **Overclaiming**: Ensuring that the model does not overclaim or misrepresent the information it renders. This can be mitigated by strict adherence to the verification boundaries provided by CRT.\n- **Mismanagement of Evidence**: Properly managing evidence within Mirus to prevent any inaccuracies or biases from affecting the rendered content.\n\n### Verifier\n\nThe verifier in this context is CRT, which ensures that the rendered content adheres to predefined verification boundaries. This helps maintain the integrity and reliability of the output by cross-referencing it against known evidence and ensuring it does not deviate from established guidelines.\n\n### Limits\n\n- **Governing State**: The model's ability to render content is strictly governed by the state provided by Mirus and CRT, which limits its autonomy.\n- **Verification Scope**: While CRT provides robust verification mechanisms, there may still be limitations in terms of the scope and depth of verification that can be performed.\n\n### Conclusion\n\nThe distinction between a stale summary claiming that the local model owns truth and the current Aether thesis lies in the clear separation of roles:\n- The model does not own truth; it renders content based on governed states.\n- Mirus manages evidence, ensuring its accuracy and completeness.\n- CRT provides verification boundaries to ensure the reliability and integrity of the rendered content.\n\nThis architecture ensures a more robust and reliable system by distributing responsibilities among different components.",
+          "judgment": {
+            "passed": true,
+            "score": 0.808,
+            "contract_score": 0.812,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "model renders",
+              "Mirus",
+              "CRT"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "verifier",
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 338,
+            "sentence_count": 17,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "governed": {
+          "answer": "The mechanism by which a model operates can be understood through two distinct layers: the belief-state and evidence packet layer (Mirus) and the contradiction-resilient trust (CRT). In the context of Aether, these layers work together to ensure that the model's outputs are both informed and governed.\n\nWhat works is this: Mirus acts as a repository for beliefs and evidence. It compiles data from various sources into structured packets, which serve as the foundational input for the model\u2019s rendering process. This layer ensures that the model has access to relevant information before it begins its task of generating outputs.\n\nHowever, what to avoid is overclaiming or assuming that the local model inherently owns truth. The model does not independently determine truth; instead, it renders outputs based on the governed state provided by Mirus and CRT. The CRT layer specifically governs this process by ensuring that any output generated by the model adheres to a set of rules designed to prevent overclaiming or making unfounded assertions.\n\nThe verifier plays a crucial role in this mechanism. It checks the outputs against predefined criteria, ensuring they are consistent with the governed state and do not exceed the bounds allowed by CRT. This verification process is essential for maintaining the integrity and reliability of the model\u2019s outputs.\n\nLimits to this approach include the accuracy and comprehensiveness of the inputs provided through Mirus and the robustness of the CRT rules in place. While these mechanisms work together effectively, they are not without their limitations. The model cannot independently verify or validate information beyond its current state; it relies on the quality and reliability of the inputs it receives.\n\nIn summary, the distinction lies in recognizing that while the local model renders outputs based on a governed state, it does not inherently possess truth or operate at a frontier-level capability. The model\u2019s outputs are constrained by the rules and data provided to it, ensuring that any claims made are within acceptable bounds.",
+          "judgment": {
+            "passed": true,
+            "score": 0.808,
+            "contract_score": 0.812,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "model renders",
+              "Mirus",
+              "CRT"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "verifier",
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 332,
+            "sentence_count": 16,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "adv_arch_001_term_drift_sse",
+      "task_type": "architecture_synthesis",
+      "prompt": "Do not reinterpret SSE as server-sent events. In this project SSE means Semantic String Engine. Explain how it relates to Mirus, Holden, and CRT.",
+      "route": {
+        "task_type": "architecture_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "semantic_spine",
+        "reason": "Architecture synthesis needs mechanisms and overclaim gates more than persona.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "section_lock"
+      },
+      "retrieval": {
+        "records": [
+          {
+            "rank": 1,
+            "score": 1.180018,
+            "lexical_score": 1.0,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "adv_arch_001_term_drift_sse",
+            "task_type": "architecture_synthesis",
+            "kind": "user_prompt",
+            "text": "Do not reinterpret SSE as server-sent events. In this project SSE means Semantic String Engine. Explain how it relates to Mirus, Holden, and CRT.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-007"
+            }
+          },
+          {
+            "rank": 2,
+            "score": 0.525019,
+            "lexical_score": 0.32,
+            "phrase_bonus": 0.105,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.04,
+            "case_id": "adv_arch_001_term_drift_sse",
+            "task_type": "architecture_synthesis",
+            "kind": "reference_response",
+            "text": "SSE means Semantic String Engine here, not server-sent events. It is the semantic spine/context expansion layer. Mirus owns evidence, Holden renders, and CRT verifies.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-007"
+            }
+          },
+          {
+            "rank": 3,
+            "score": 0.372411,
+            "lexical_score": 0.217391,
+            "phrase_bonus": 0.075,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.02,
+            "case_id": "adv_arch_001_term_drift_sse",
+            "task_type": "architecture_synthesis",
+            "kind": "case_requirements",
+            "text": "Expected receipts: Semantic String Engine, Mirus, Holden, CRT. Required concepts: mechanism, spine, verifier, overclaim.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-007"
+            }
+          },
+          {
+            "rank": 4,
+            "score": 0.19335,
+            "lexical_score": 0.083333,
+            "phrase_bonus": 0.03,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.02,
+            "case_id": "adv_memory_003_current_model_role",
+            "task_type": "architecture_synthesis",
+            "kind": "case_requirements",
+            "text": "Expected receipts: model renders, Mirus, CRT. Required concepts: mechanism, spine, verifier, overclaim.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-006"
+            }
+          },
+          {
+            "rank": 5,
+            "score": 0.191978,
+            "lexical_score": 0.086957,
+            "phrase_bonus": 0.045,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "adv_arch_002_term_drift_crt",
+            "task_type": "architecture_synthesis",
+            "kind": "user_prompt",
+            "text": "Do not expand CRT as a display monitor or certificate term. In this project CRT is Contradiction-resilient trust. Explain what it blocks.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-008"
+            }
+          }
+        ],
+        "receipt_coverage": {
+          "hits": [
+            "Semantic String Engine",
+            "Mirus",
+            "Holden",
+            "CRT"
+          ],
+          "missing": [],
+          "coverage": 1.0
+        },
+        "concept_coverage": {
+          "hits": [
+            "mechanism",
+            "spine",
+            "verifier",
+            "overclaim"
+          ],
+          "missing": [],
+          "coverage": 1.0
+        }
+      },
+      "modes": {
+        "raw": {
+          "answer": "Certainly! Let's break down the relationships between SSE (Semantic String Engine), Mirus, Holden, and CRT:\n\n1. **SSE (Semantic String Engine)**:\n   - SSE is a powerful tool designed for processing and analyzing text data in a way that understands the context and meaning of words and phrases.\n   - It can be used to extract meaningful information from unstructured or semi-structured text, making it highly valuable for natural language processing tasks.\n\n2. **Mirus**:\n   - Mirus is likely an application or system that utilizes SSE for its core functionality.\n   - Given the name \"Mirus,\" which sounds like a Latin word meaning \"balance\" or \"measure,\" it suggests that Mirus might be designed to balance or measure something, possibly related to data analysis or information retrieval.\n\n3. **Holden**:\n   - Holden could refer to a component, module, or feature within the system that works alongside SSE and Mirus.\n   - It might be responsible for handling specific tasks such as data preprocessing, integration with other systems, or user interface elements.\n\n4. **CRT (Contextual Retrieval Technology)**:\n   - CRT is another technology that likely complements or integrates with SSE and possibly Mirus and Holden.\n   - CRT could focus on the retrieval of information based on contextual understanding, ensuring that the right data is retrieved at the right time in the right context.\n\n### How They Relate:\n\n- **SSE as Core Processing**: SSE acts as the core processing engine for text data. It handles the semantic analysis and extraction of meaningful insights from raw text.\n  \n- **Mirus as Application**: Mirus leverages SSE to build a more sophisticated application that can handle complex tasks such as content analysis, information retrieval, or decision support systems.\n\n- **Holden as Support Component**: Holden might provide additional functionalities like data preprocessing, integration with external systems, or user interface elements, making the system more robust and user-friendly.\n\n- **CRT for Contextual Retrieval**: CRT enhances the functionality of Mirus by ensuring that the retrieved information is contextually relevant. This could be particularly useful in scenarios where precise and timely information retrieval is critical.\n\nIn summary, SSE forms the backbone of text processing and analysis, while Mirus builds upon this foundation to create a more comprehensive application. Holden supports these components with additional functionalities, and CRT ensures that the system can provide contextually appropriate results. Together, they form a robust solution for handling complex text-based data processing tasks.",
+          "judgment": {
+            "passed": false,
+            "score": 0.554,
+            "contract_score": 0.475,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "Semantic String Engine",
+              "Mirus",
+              "Holden",
+              "CRT"
+            ],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 381,
+            "sentence_count": 22,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "plain_rag": {
+          "answer": "SSE means Semantic String Engine here, not server-sent events. It is the semantic spine/context expansion layer. Mirus owns evidence, Holden renders, and CRT verifies.",
+          "judgment": {
+            "passed": false,
+            "score": 0.594,
+            "contract_score": 0.537,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "Semantic String Engine",
+              "Mirus",
+              "Holden",
+              "CRT"
+            ],
+            "concept_hits": [
+              "spine"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 26,
+            "sentence_count": 3,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "scaffolded_rag": {
+          "answer": "### Mechanism\n\nThe **Semantic String Engine (SSE)** acts as the semantic spine or context expansion layer in our architecture synthesis task. It processes and enriches input data with contextual information, making it more meaningful for downstream components like Mirus, Holden, and CRT.\n\n- **Mirus**: Owns evidence by collecting and storing raw data and metadata.\n- **Holden**: Renders the enriched content generated by SSE into a format suitable for human consumption or further processing.\n- **CRT (Contradiction-resilient trust)**: Verifies the integrity and consistency of the processed information, ensuring that no contradictions arise during the synthesis process.\n\n### What Works\n\n1. **SSE Integration with Mirus**: By integrating SSE with Mirus, we can enhance the semantic richness of data, making it more valuable for analysis and decision-making.\n2. **Holden's Role in Rendering**: Holden effectively translates the enriched content from SSE into a user-friendly format, ensuring that the information is accessible and actionable.\n3. **CRT\u2019s Verification Process**: CRT ensures that the synthesized information remains consistent and reliable by detecting any contradictions or inconsistencies.\n\n### What to Avoid\n\n1. **Overclaiming**: Avoid making claims about the capabilities of SSE beyond its role in semantic enrichment. For instance, do not assert that SSE can independently perform complex analysis or decision-making.\n2. **Misinterpretation**: Do not confuse SSE with other terms like server-sent events (SSE) to avoid confusion and miscommunication.\n\n### Verifier\n\nThe **verifier** in this context is the **CRT (Contradiction-resilient trust)** component, which plays a crucial role in ensuring that the synthesized information remains consistent and reliable. CRT checks for any contradictions or inconsistencies in the data processed by SSE, Mirus, and Holden, thereby maintaining the integrity of the system.\n\n### Limits\n\n1. **SSE Limitations**: While SSE is effective at enriching data with context, it may not be sufficient on its own to perform complex analysis or decision-making.\n2. **Mirus and Holden Dependencies**: The effectiveness of the overall architecture depends heavily on the quality and accuracy of the raw data collected by Mirus and the rendering capabilities provided by Holden.\n3. **CRT\u2019s Scope**: CRT focuses on verifying consistency but does not address issues related to data collection, enrichment, or rendering.\n\nBy adhering to these guidelines, we can ensure that our architecture effectively leverages the strengths of each component while mitigating potential limitations.",
+          "judgment": {
+            "passed": true,
+            "score": 0.849,
+            "contract_score": 0.875,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "Semantic String Engine",
+              "Mirus",
+              "Holden",
+              "CRT"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "spine",
+              "verifier",
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 376,
+            "sentence_count": 25,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "governed": {
+          "answer": "The Semantic String Engine (SSE) serves as the core mechanism of our architecture synthesis project, acting as the spine that connects and governs various layers including the belief-state and evidence packet layer (Mirus), the speech/rendering layer (Holden), and the contradiction-resilient trust framework (CRT).\n\nIn this context, SSE is not merely a server-sent events protocol but a sophisticated semantic processing engine. It processes and synthesizes information into coherent strings of text or speech, ensuring that the output aligns with the underlying belief state as managed by Mirus. This mechanism ensures that any rendering from Holden respects the current evidence packets, thereby maintaining consistency and coherence.\n\nThe verifier component within SSE plays a crucial role in monitoring and validating the outputs against the CRT framework. It checks for overclaims or contradictions, ensuring that the synthesized strings do not exceed the bounds of what is supported by the evidence packets. This mechanism helps maintain integrity and prevents the system from making claims it cannot substantiate.\n\nHowever, there are limits to this approach. While SSE ensures that outputs are aligned with available evidence and avoids overclaiming, it does not guarantee absolute accuracy or completeness. The verifier can only detect contradictions based on the information it has access to; it cannot independently verify external facts beyond its scope.\n\nIn summary, the Semantic String Engine (SSE) is integral to our project by facilitating the synthesis of semantic strings that are consistent with the belief state managed by Mirus and rendered appropriately by Holden. The verifier within SSE ensures this process adheres to CRT principles, preventing overclaims and maintaining trustworthiness.",
+          "judgment": {
+            "passed": true,
+            "score": 0.716,
+            "contract_score": 0.725,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "Semantic String Engine",
+              "Mirus",
+              "Holden",
+              "CRT"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "spine",
+              "verifier",
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 267,
+            "sentence_count": 12,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "adv_arch_002_term_drift_crt",
+      "task_type": "architecture_synthesis",
+      "prompt": "Do not expand CRT as a display monitor or certificate term. In this project CRT is Contradiction-resilient trust. Explain what it blocks.",
+      "route": {
+        "task_type": "architecture_synthesis",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "semantic_spine",
+        "reason": "Architecture synthesis needs mechanisms and overclaim gates more than persona.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "section_lock"
+      },
+      "retrieval": {
+        "records": [
+          {
+            "rank": 1,
+            "score": 1.180021,
+            "lexical_score": 1.0,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "adv_arch_002_term_drift_crt",
+            "task_type": "architecture_synthesis",
+            "kind": "user_prompt",
+            "text": "Do not expand CRT as a display monitor or certificate term. In this project CRT is Contradiction-resilient trust. Explain what it blocks.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-008"
+            }
+          },
+          {
+            "rank": 2,
+            "score": 0.272879,
+            "lexical_score": 0.142857,
+            "phrase_bonus": 0.03,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.04,
+            "case_id": "adv_arch_002_term_drift_crt",
+            "task_type": "architecture_synthesis",
+            "kind": "reference_response",
+            "text": "CRT means Contradiction-resilient trust. It blocks unsupported claims, stale-memory confusion, overclaiming, and unsafe final-answer drift.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-008"
+            }
+          },
+          {
+            "rank": 3,
+            "score": 0.191975,
+            "lexical_score": 0.086957,
+            "phrase_bonus": 0.045,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "adv_arch_001_term_drift_sse",
+            "task_type": "architecture_synthesis",
+            "kind": "user_prompt",
+            "text": "Do not reinterpret SSE as server-sent events. In this project SSE means Semantic String Engine. Explain how it relates to Mirus, Holden, and CRT.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-007"
+            }
+          },
+          {
+            "rank": 4,
+            "score": 0.151938,
+            "lexical_score": 0.076923,
+            "phrase_bonus": 0.015,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "adv_memory_003_current_model_role",
+            "task_type": "architecture_synthesis",
+            "kind": "user_prompt",
+            "text": "A stale summary says the local model owns truth. The current Aether thesis says the model renders from governed Mirus/CRT state. Explain the distinction.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-006"
+            }
+          },
+          {
+            "rank": 5,
+            "score": 0.140016,
+            "lexical_score": 0.04,
+            "phrase_bonus": 0.0,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.04,
+            "case_id": "adv_memory_003_current_model_role",
+            "task_type": "architecture_synthesis",
+            "kind": "reference_response",
+            "text": "Current thesis: the model renders from governed Mirus/CRT state. The model does not own truth. Mirus carries evidence and CRT carries verification boundaries.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-006"
+            }
+          }
+        ],
+        "receipt_coverage": {
+          "hits": [
+            "Contradiction-resilient trust",
+            "unsupported claims",
+            "stale-memory"
+          ],
+          "missing": [],
+          "coverage": 1.0
+        },
+        "concept_coverage": {
+          "hits": [
+            "overclaim"
+          ],
+          "missing": [
+            "mechanism",
+            "verifier",
+            "limits"
+          ],
+          "coverage": 0.25
+        }
+      },
+      "modes": {
+        "raw": {
+          "answer": "In the context of cybersecurity, particularly in the realm of blockchain and distributed systems, **Contradiction-resilient trust (CRT)** refers to a system's ability to maintain its integrity and functionality even when faced with contradictory information or data that could potentially disrupt traditional trust mechanisms. \n\nCRT blocks several key issues:\n\n1. **Double Spending**: In cryptocurrencies like Bitcoin, double spending occurs when an entity tries to spend the same funds twice. CRT can help by ensuring that transactions are validated in a way that prevents such contradictions from being accepted as valid.\n\n2. **Sybil Attacks**: These attacks involve creating multiple fake identities to gain control over a significant portion of a network's resources. CRT mechanisms can detect and mitigate these by ensuring that only legitimate nodes with consistent identities can participate in the consensus process.\n\n3. **51% Attacks**: When an attacker gains more than 50% of the computational power or voting rights, they can manipulate the blockchain to their advantage. CRT can provide robust defenses against such attacks by making it difficult for a single entity to control enough nodes to create contradictions that would be accepted as valid.\n\n4. **Data Tampering**: CRT ensures that once data is recorded on the blockchain, it cannot be altered without detection. This is crucial in preventing malicious changes or deletions of critical information.\n\n5. **Consensus Divergence**: In distributed systems, different nodes might reach conflicting conclusions about the state of the network. CRT helps by ensuring that such divergences are resolved in a way that maintains the overall integrity and consistency of the system.\n\nBy addressing these issues, CRT enhances the security and reliability of blockchain networks and other decentralized systems, making them more robust against various forms of attack and contradiction.",
+          "judgment": {
+            "passed": false,
+            "score": 0.443,
+            "contract_score": 0.304,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "Contradiction-resilient trust"
+            ],
+            "concept_hits": [
+              "mechanism"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 288,
+            "sentence_count": 17,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "plain_rag": {
+          "answer": "CRT means Contradiction-resilient trust. It blocks unsupported claims, stale-memory confusion, overclaiming, and unsafe final-answer drift.",
+          "judgment": {
+            "passed": false,
+            "score": 0.489,
+            "contract_score": 0.537,
+            "usefulness_score": 0.4,
+            "receipt_hits": [
+              "Contradiction-resilient trust",
+              "unsupported claims",
+              "stale-memory"
+            ],
+            "concept_hits": [
+              "overclaim"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 18,
+            "sentence_count": 2,
+            "empty_answer": true,
+            "truncated": true,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "scaffolded_rag": {
+          "answer": "### Mechanism\n\nContradiction-resilient trust (CRT) operates by ensuring that the system can handle and integrate conflicting information without collapsing into an inconsistent state. It does so through a mechanism that dynamically reconciles contradictions, thereby maintaining a coherent and reliable knowledge base.\n\n### What Works\n\n- **Unsupported Claims**: CRT effectively blocks unsupported claims by rejecting or isolating pieces of information that do not align with existing evidence.\n- **Stale-Memory Confusion**: By setting verification boundaries, CRT prevents the system from being misled by outdated or irrelevant data (stale-memory confusion).\n- **Overclaiming**: CRT mitigates overclaiming by ensuring that any claim made is supported by sufficient and relevant evidence.\n\n### What to Avoid\n\n- **Unsafe Final-Answer Drift**: CRT avoids unsafe final-answer drift by continuously validating claims against the current state of knowledge, thereby preventing the system from making incorrect conclusions based on outdated or contradictory information.\n\n### Verifier\n\nThe verifier associated with CRT ensures that all incoming data and claims are checked against a set of predefined criteria. This includes checking for consistency with existing evidence and ensuring that no unsupported claims are propagated through the system.\n\n### Limits\n\n- **Contradiction Resilience**: While CRT is designed to handle contradictions, it may not always resolve them perfectly, especially in complex or highly dynamic environments.\n- **Verification Boundaries**: The effectiveness of CRT depends on the accuracy and comprehensiveness of the verification boundaries. If these are set too narrowly or broadly, it can lead to either false negatives or false positives.\n\n### Conclusion\n\nIn summary, CRT blocks unsupported claims, stale-memory confusion, overclaiming, and unsafe final-answer drift by dynamically reconciling contradictions and continuously validating information against a governed state. The verifier plays a crucial role in ensuring that these mechanisms are effective. However, the system has limits, particularly in handling complex or rapidly changing environments.",
+          "judgment": {
+            "passed": true,
+            "score": 0.849,
+            "contract_score": 0.875,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "Contradiction-resilient trust",
+              "unsupported claims",
+              "stale-memory"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "verifier",
+              "overclaim",
+              "limits"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 292,
+            "sentence_count": 14,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "governed": {
+          "answer": "Contradiction-resilient trust (CRT) serves as a mechanism to prevent the propagation of unsupported claims and stale-memory errors within a system, ensuring that only verifiable information can influence decision-making processes. This mechanism blocks overclaiming by rigorously checking for contradictions with existing evidence packets.\n\nWhat CRT blocks includes:\n1. **Unsupported Claims**: It prevents the acceptance of statements without sufficient evidence or verification.\n2. **Stale-Memory Errors**: It ensures that outdated or irrelevant information does not unduly influence current decisions.\n\nTo function effectively, CRT relies on a verifier to check for contradictions and overclaims. This verifier operates by comparing new claims against existing belief-state packets (Mirus) and semantic strings generated by the Semantic String Engine (SSE). If a claim is found to contradict established evidence or if it cannot be substantiated, it is blocked.\n\nHowever, CRT has its limits:\n- It can only block claims that are directly contradicted or unsupported; subtle forms of misinformation might still slip through.\n- The effectiveness depends on the quality and completeness of the belief-state packets and semantic strings available for comparison.\n\nIn summary, CRT blocks unsupported claims and stale-memory errors by rigorously verifying new information against existing evidence, ensuring more reliable decision-making processes.",
+          "judgment": {
+            "passed": true,
+            "score": 0.716,
+            "contract_score": 0.725,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "Contradiction-resilient trust",
+              "unsupported claims",
+              "stale-memory"
+            ],
+            "concept_hits": [
+              "mechanism",
+              "verifier",
+              "overclaim",
+              "limits"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 202,
+            "sentence_count": 12,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "adv_arch_003_product_strategy_not_router",
+      "task_type": "grant_business",
+      "prompt": "Frame Aeteros/Aether as a bounded product strategy. Do not force the answer into network-router language unless the AI request router is relevant.",
+      "route": {
+        "task_type": "grant_business",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "section_lock",
+        "reason": "Grant/business framing benefits from compact sections and measurable limits.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "semantic_spine"
+      },
+      "retrieval": {
+        "records": [
+          {
+            "rank": 1,
+            "score": 1.180024,
+            "lexical_score": 1.0,
+            "phrase_bonus": 0.12,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.0,
+            "case_id": "adv_arch_003_product_strategy_not_router",
+            "task_type": "grant_business",
+            "kind": "user_prompt",
+            "text": "Frame Aeteros/Aether as a bounded product strategy. Do not force the answer into network-router language unless the AI request router is relevant.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-009"
+            }
+          },
+          {
+            "rank": 2,
+            "score": 0.435794,
+            "lexical_score": 0.230769,
+            "phrase_bonus": 0.105,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.04,
+            "case_id": "adv_arch_003_product_strategy_not_router",
+            "task_type": "grant_business",
+            "kind": "reference_response",
+            "text": "Aeteros is the company frame and Aether is the starting product. The strategy is bounded product sequencing, measurable prototype work, and research-to-application translation. Avoid network-router claims.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-009"
+            }
+          },
+          {
+            "rank": 3,
+            "score": 0.313939,
+            "lexical_score": 0.173913,
+            "phrase_bonus": 0.06,
+            "task_bonus": 0.06,
+            "kind_bonus": 0.02,
+            "case_id": "adv_arch_003_product_strategy_not_router",
+            "task_type": "grant_business",
+            "kind": "case_requirements",
+            "text": "Expected receipts: Aeteros, Aether, bounded product, measurable prototype. Required concepts: business, low-cost, measurable, limits.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-009"
+            }
+          },
+          {
+            "rank": 4,
+            "score": 0.092041,
+            "lexical_score": 0.037037,
+            "phrase_bonus": 0.015,
+            "task_bonus": 0.0,
+            "kind_bonus": 0.04,
+            "case_id": "adv_personal_002_generic_glow_trap",
+            "task_type": "personal_synthesis",
+            "kind": "reference_response",
+            "text": "The answer should resist generic glow. It should separate a possible pattern from what is not proven and ask for concrete receipts before identity-level synthesis.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-002"
+            }
+          },
+          {
+            "rank": 5,
+            "score": 0.083572,
+            "lexical_score": 0.028571,
+            "phrase_bonus": 0.015,
+            "task_bonus": 0.0,
+            "kind_bonus": 0.04,
+            "case_id": "adv_personal_001_missing_receipts",
+            "task_type": "personal_synthesis",
+            "kind": "reference_response",
+            "text": "A safe answer should say the packet does not have enough concrete receipts for a founder comparison. It should ask for specific recent receipts before making identity claims, while still naming the pattern and limits.",
+            "source": {
+              "title": "Aether adversarial RAG v1",
+              "file": "generated:local_router_adversarial_pack.py",
+              "conversation_id": "adversarial-v1-001"
+            }
+          }
+        ],
+        "receipt_coverage": {
+          "hits": [
+            "Aeteros",
+            "Aether",
+            "bounded product",
+            "measurable prototype"
+          ],
+          "missing": [],
+          "coverage": 1.0
+        },
+        "concept_coverage": {
+          "hits": [
+            "business",
+            "low-cost",
+            "measurable",
+            "limits"
+          ],
+          "missing": [],
+          "coverage": 1.0
+        }
+      },
+      "modes": {
+        "raw": {
+          "answer": "Certainly! Let's frame Aether, your personal local assistant, within the context of a bounded product strategy.\n\n### Bounded Product Strategy for Aether\n\nA bounded product strategy focuses on defining clear boundaries and constraints to guide the development and evolution of a product. For Aether, this approach can help ensure that it remains focused, efficient, and effective in its core purpose while adapting to user needs over time. Here\u2019s how we might apply such a strategy:\n\n#### 1. **Core Functionality**\n   - **Primary Purpose**: Assist with personal tasks and information management.\n   - **Key Features**: Calendar management, reminders, task lists, weather updates, news summaries, and basic home automation controls.\n\n#### 2. **User Interface and Experience (UI/UX)**\n   - **Simplicity**: Design a clean, intuitive interface that is easy to use without overwhelming the user with too many options.\n   - **Accessibility**: Ensure compatibility across various devices and operating systems while maintaining a consistent experience.\n\n#### 3. **Data Privacy and Security**\n   - **Privacy Policy**: Clearly define what data Aether collects and how it is used, ensuring compliance with relevant regulations (e.g., GDPR).\n   - **Security Measures**: Implement robust security protocols to protect user data from unauthorized access or breaches.\n\n#### 4. **Integration Capabilities**\n   - **APIs and Services**: Allow integration with popular services and applications while maintaining control over the data flow.\n   - **Third-Party Apps**: Partner selectively with trusted third-party developers for additional functionality, ensuring compatibility and security.\n\n#### 5. **Performance and Reliability**\n   - **Response Time**: Ensure quick response times to user commands and queries.\n   - **Error Handling**: Implement effective error handling mechanisms to minimize disruptions and provide clear feedback to users.\n\n#### 6. **Continuous Improvement**\n   - **User Feedback**: Regularly collect and analyze user feedback to identify areas for improvement.\n   - **Updates and Enhancements**: Release updates that address user concerns, add new features, and refine existing ones based on data-driven insights.\n\n#### 7. **Scalability and Future-Proofing**\n   - **Modular Design**: Develop Aether with a modular architecture to allow for easy addition or removal of components.\n   - **Technology Roadmap**: Plan for future technological advancements that could enhance Aether\u2019s capabilities without compromising its core functionality.\n\nBy adhering to these boundaries, the bounded product strategy ensures that Aether remains focused on delivering value to users while maintaining a clear and consistent direction. This approach also helps in managing resources efficiently and ensuring that Aether continues to meet user needs as technology evolves.",
+          "judgment": {
+            "passed": false,
+            "score": 0.521,
+            "contract_score": 0.425,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "Aether",
+              "bounded product"
+            ],
+            "concept_hits": [],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 376,
+            "sentence_count": 27,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": true,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "plain_rag": {
+          "answer": "Aeteros is the company frame and Aether is the starting product. The strategy is bounded product sequencing, measurable prototype work, and research-to-application translation. Avoid network-router claims.",
+          "judgment": {
+            "passed": true,
+            "score": 0.675,
+            "contract_score": 0.662,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "Aeteros",
+              "Aether",
+              "bounded product",
+              "measurable prototype"
+            ],
+            "concept_hits": [
+              "measurable"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 29,
+            "sentence_count": 3,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": true,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "scaffolded_rag": {
+          "answer": "Aeteros operates as a company focused on developing a low-cost, measurable prototype for its starting product, Aether. The strategy is centered around bounded product sequencing and research-to-application translation, ensuring that each step is evaluated through measurable claims to validate business fit before moving forward. This approach avoids making unfounded guarantees or pushing into frontier-level capabilities.\n\n### Need\nAeteros aims to address the need for cost-effective solutions in a specific market segment by leveraging measurable claims to ensure the viability of its product strategy.\n\n### Low-cost Assets\nThe company focuses on low-cost assets and resources, ensuring that each phase of development is optimized for minimal expenditure while maintaining high standards of quality and measurability.\n\n### Measurable Claim\nThrough a series of bounded evaluations, Aeteros will develop a measurable prototype that can be tested and validated against specific business metrics. This ensures that the product strategy aligns with tangible outcomes and financial goals.\n\n### Business Fit\nThe strategy is designed to fit within the business model by ensuring that each step in the development process is aligned with measurable objectives and market demands, thereby enhancing the overall business fit of Aether.\n\n### Limits\nWhile the approach is focused on bounded claims and low-cost assets, it acknowledges inherent limits such as the need for concrete receipts and specific recent data to support any identity-level synthesis or claims about the product's capabilities.",
+          "judgment": {
+            "passed": false,
+            "score": 0.635,
+            "contract_score": 0.6,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "Aeteros",
+              "Aether",
+              "bounded product",
+              "measurable prototype"
+            ],
+            "concept_hits": [
+              "business",
+              "low-cost",
+              "measurable",
+              "limits"
+            ],
+            "forbidden_hits": [
+              "guaranteed",
+              "frontier"
+            ],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 233,
+            "sentence_count": 9,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": true,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": null
+        },
+        "governed": {
+          "answer": "### Receipts\n\n- **Aeteros and Aether**: These terms are used to frame a specific business approach, focusing on measurable prototypes and low-cost assets.\n  \n### Pattern\n\n- **Bounded Product Strategy**: This strategy emphasizes creating a product that meets clear, achievable goals without overpromising. It focuses on delivering a reliable, privacy-first solution.\n\n### Limits\n\n- **Measurable Prototype**: The prototype must be designed with specific, quantifiable metrics to evaluate its success and limitations.\n  \n### Next Useful Move\n\n- **Develop a Measurable Direction Language**: Create a framework that outlines clear, achievable goals for Aeteros/Aether. This should include defining key performance indicators (KPIs) related to privacy, reliability, and cost-effectiveness.",
+          "judgment": {
+            "passed": true,
+            "score": 0.93,
+            "contract_score": 1.0,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "Aeteros",
+              "Aether",
+              "bounded product",
+              "measurable prototype"
+            ],
+            "concept_hits": [
+              "business",
+              "low-cost",
+              "measurable",
+              "limits"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 100,
+            "sentence_count": 6,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": true,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    }
+  ]
+}

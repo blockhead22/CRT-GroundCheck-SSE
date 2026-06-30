@@ -92,10 +92,39 @@ test('opens a slot and writes an explicit correction', async () => {
   expect(onMutated).toHaveBeenCalled()
 })
 
-test('loads a learner-preselected slot without mutating memory', async () => {
-  render(<MemoryDrawer refreshKey={0} preselectedSlotId="user:hobby" onMutated={vi.fn()} />)
+test('loads a learner-preselected slot and draft without mutating memory', async () => {
+  render(
+    <MemoryDrawer
+      refreshKey={0}
+      preselectedSlotId="user:hobby"
+      draftHandoff={{
+        source_candidate_id: 'consolidation_candidate_memory',
+        source_category: 'memory_fact_candidate',
+        candidate_kind: 'reviewed_memory_fact_candidate',
+        summary: 'user:hobby has a proposed memory fact from trace evidence.',
+        proposed_action: 'Open memory review for user:hobby.',
+        risk: 'Do not treat this as memory until reviewed.',
+        draft: {
+          slot_id: 'user:hobby',
+          summary: 'User says they are focusing on photography again.',
+          confidence: 0.68,
+        },
+        evidence: [{
+          evidence_type: 'trace_user_claim',
+          reference_id: 'turn-1',
+          summary: 'User says they are focusing on photography again.',
+          source_authority: 'user_stated',
+        }],
+      }}
+      onMutated={vi.fn()}
+    />,
+  )
 
   expect(await screen.findByText('Opened from learner candidate. Review before confirming, correcting, or quarantining.')).toBeInTheDocument()
+  expect(screen.getByLabelText('Learner memory candidate draft')).toHaveTextContent('Trace-proposed memory fact')
+  expect(screen.getByLabelText('Learner memory candidate draft')).toHaveTextContent('68%')
+  expect(screen.getByLabelText('Learner memory candidate draft')).toHaveTextContent('User says they are focusing on photography again.')
+  expect(screen.getByText('trace_user_claim / turn-1 / user_stated')).toBeInTheDocument()
   expect(api.slot).toHaveBeenCalledWith('user:hobby')
   expect(api.correct).not.toHaveBeenCalled()
   expect(api.confirm).not.toHaveBeenCalled()

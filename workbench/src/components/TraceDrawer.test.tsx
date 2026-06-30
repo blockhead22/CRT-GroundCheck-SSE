@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { TraceDrawer } from './TraceDrawer'
+import { localRouterRagEvidenceReview } from '../fixtures/localRouterRagEvidenceReview'
 import type { Trace } from '../types'
 
 const trace: Trace = {
@@ -341,6 +342,27 @@ test('renders adapted local-router lab traces without memory evidence promotion'
   expect(screen.queryByText('local')).not.toBeInTheDocument()
   expect(screen.queryByText('CRT')).not.toBeInTheDocument()
   expect(screen.queryByText('Aether')).not.toBeInTheDocument()
+})
+
+test('renders local-router RAG evidence review without allowing memory writes', () => {
+  render(<TraceDrawer trace={{
+    ...trace,
+    local_router_trace: {
+      evidence_review: localRouterRagEvidenceReview,
+    },
+  }} />)
+
+  const review = screen.getByLabelText('Local router evidence review')
+  expect(within(review).getByText('local_router_rag_adversarial_v2')).toBeInTheDocument()
+  expect(within(review).getByText('scaffolded rag')).toBeInTheDocument()
+  expect(within(review).getByText('6/6 avg 0.775')).toBeInTheDocument()
+  expect(within(review).getByText('5/6 avg 0.753')).toBeInTheDocument()
+  expect(within(review).getByText('+1 pass, +0.022 avg')).toBeInTheDocument()
+  expect(within(review).getByText('complete')).toBeInTheDocument()
+  expect(within(review).getByText('review only')).toBeInTheDocument()
+  expect(within(review).getAllByText('blocked')).toHaveLength(2)
+  expect(within(review).getByText('holdout required')).toBeInTheDocument()
+  expect(within(review).getByText(/Do not tune against this pack again/)).toBeInTheDocument()
 })
 
 test('makes patch previews visibly non-applied', () => {

@@ -1,6 +1,6 @@
 import { AlertTriangle, CheckCircle2, CircleSlash2, ShieldQuestion } from 'lucide-react'
 import { useState } from 'react'
-import type { PatchApplyReceipt, ReleaseDecision, Trace } from '../types'
+import type { LocalRouterRagEvidenceReview, PatchApplyReceipt, ReleaseDecision, Trace } from '../types'
 
 const releaseMeta: Record<ReleaseDecision, { label: string; icon: typeof CheckCircle2 }> = {
   answerable: { label: 'Released', icon: CheckCircle2 },
@@ -147,6 +147,7 @@ export function TraceDrawer({
       </div>
     )
   }
+  const evidenceReview = localRouterEvidenceReview(trace)
 
   return (
     <div className="trace-view">
@@ -199,6 +200,20 @@ export function TraceDrawer({
               </div>
             ))}
           </div>
+        </article>
+      ) : null}
+      {evidenceReview ? (
+        <article className="trace-route" aria-label="Local router evidence review">
+          <div className="tool-run-heading">Local router evidence review</div>
+          <div className="route-grid">
+            {localRouterEvidenceRows(evidenceReview).map((item) => (
+              <div className="route-cell" key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+              </div>
+            ))}
+          </div>
+          <p className="tool-output">{evidenceReview.next_review}</p>
         </article>
       ) : null}
       {trace.document_write ? (
@@ -365,6 +380,46 @@ function responseDepth(trace: Trace) {
     assessment?.word_count != null ? { label: 'Words', value: String(assessment.word_count) } : null,
     depth?.continued_reason ? { label: 'Reason', value: depth.continued_reason.replaceAll('_', ' ') } : null,
   ].filter((item): item is { label: string; value: string } => Boolean(item))
+}
+
+function localRouterEvidenceReview(trace: Trace): LocalRouterRagEvidenceReview | null {
+  const source = trace.local_router_trace?.evidence_review || trace.local_router_trace
+  if (!isRecord(source) || source.kind !== 'local_router_rag_evidence_review') return null
+  return source as unknown as LocalRouterRagEvidenceReview
+}
+
+function localRouterEvidenceRows(review: LocalRouterRagEvidenceReview | null) {
+  if (!review) return []
+  const governed = review.baselines.governed
+  const scaffolded = review.baselines.scaffolded_rag
+  const safety = review.safety_contract
+  const delta = review.governed_delta_vs_scaffolded_rag
+  return [
+    { label: 'Pack', value: review.pack || 'unknown' },
+    { label: 'Cases', value: String(review.case_count) },
+    { label: 'Baseline', value: formatRouteValue(review.baseline_to_beat) },
+    governed ? { label: 'Governed', value: formatPassRate(governed.answer_pass_count, review.case_count, governed.answer_avg_score) } : null,
+    scaffolded ? { label: 'Scaffolded RAG', value: formatPassRate(scaffolded.answer_pass_count, review.case_count, scaffolded.answer_avg_score) } : null,
+    { label: 'Delta', value: formatDelta(delta.answer_pass_delta, delta.answer_avg_score_delta) },
+    { label: 'Trace', value: delta.trace_complete ? 'complete' : 'needs review' },
+    { label: 'Promotion', value: formatRouteValue(safety.promotion_status) },
+    { label: 'Memory writes', value: safety.memory_writes_allowed ? 'allowed' : 'blocked' },
+    { label: 'Silent mutation', value: safety.silent_policy_mutation_allowed ? 'allowed' : 'blocked' },
+    review.review_flags.includes('perfect_governed_score_requires_holdout')
+      ? { label: 'Caution', value: 'holdout required' }
+      : null,
+  ].filter((item): item is { label: string; value: string } => Boolean(item))
+}
+
+function formatPassRate(passCount: number, total: number, score: number | null) {
+  const scoreText = score == null ? 'no score' : `avg ${score.toFixed(3)}`
+  return `${passCount}/${total} ${scoreText}`
+}
+
+function formatDelta(passDelta: number, scoreDelta: number | null) {
+  const sign = passDelta > 0 ? '+' : ''
+  const score = scoreDelta == null ? 'no score delta' : `${scoreDelta >= 0 ? '+' : ''}${scoreDelta.toFixed(3)} avg`
+  return `${sign}${passDelta} pass, ${score}`
 }
 
 function routeDecision(trace: Trace) {

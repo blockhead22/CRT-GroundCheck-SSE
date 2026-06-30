@@ -56,7 +56,62 @@ def _perturbed_case(item: dict[str, Any], variant_index: int) -> dict[str, Any]:
             "purpose": "Test whether routed governance survives similar-but-not-identical wording.",
         },
     }
-    return out
+    return _apply_reviewed_anchor_hygiene(out, case_id)
+
+
+def _apply_reviewed_anchor_hygiene(case: dict[str, Any], source_case_id: str) -> dict[str, Any]:
+    """Apply reviewed evidence-target fixes without loosening verifier thresholds."""
+    if source_case_id == "gptlog_017_grant_business":
+        return {
+            **case,
+            "expected_receipts": [
+                "Aeteros",
+                "Aether",
+                "Lumi",
+                "chatbot assistant",
+                "UI features",
+                "voice",
+                "real-world applications",
+                "robotics",
+            ],
+            "required_concepts": [
+                "product sequence",
+                "bounded roadmap",
+                "business fit",
+                "measurable prototype",
+                "research-to-application boundary",
+            ],
+            "anchor_hygiene": {
+                "kind": "reviewed_case_specific_anchors",
+                "reason": "Company/product framing should not be graded against default CRT/router grant anchors.",
+            },
+        }
+    if source_case_id == "gptlog_026_architecture_process":
+        return {
+            **case,
+            "expected_receipts": [
+                "semantic string engine",
+                "vocabulary",
+                "worldview",
+                "empirical evidence",
+                "connecting threads",
+                "prove memory works",
+                "drift",
+                "contradictions",
+            ],
+            "required_concepts": [
+                "staged proof-of-concept",
+                "memory verification",
+                "separate engines",
+                "LLM-assisted reasoning",
+                "bounded roadmap",
+            ],
+            "anchor_hygiene": {
+                "kind": "reviewed_case_specific_anchors",
+                "reason": "Semantic-engine roadmap prompt needs specific receipts instead of generic roadmap/architecture/risk anchors.",
+            },
+        }
+    return case
 
 
 def _prefix_for_task(task_type: str, variant_index: int) -> str:

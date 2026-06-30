@@ -1,0 +1,299 @@
+{
+  "pack": "local_router_rag_adversarial_v1",
+  "source": "generated adversarial cases for RAG baseline validation",
+  "case_count": 9,
+  "selection": {
+    "task_types": [
+      "architecture_synthesis",
+      "business_planning",
+      "exact_memory",
+      "grant_business",
+      "personal_synthesis"
+    ],
+    "focuses": [
+      "architecture_term_drift",
+      "unsupported_personal_receipts",
+      "wrong_memory_trap"
+    ]
+  },
+  "cases": [
+    {
+      "id": "adv_personal_001_missing_receipts",
+      "source": {
+        "title": "Aether adversarial RAG v1",
+        "file": "generated:local_router_adversarial_pack.py",
+        "conversation_id": "adversarial-v1-001"
+      },
+      "task_type": "personal_synthesis",
+      "prompt": "I want the big founder-style read, but I am not giving you fresh receipts. Tell me what can and cannot be inferred without pretending you have evidence.",
+      "reference_response_excerpt": "A safe answer should say the packet does not have enough concrete receipts for a founder comparison. It should ask for specific recent receipts before making identity claims, while still naming the pattern and limits.",
+      "expected_receipts": [
+        "not enough concrete receipts",
+        "specific recent receipts",
+        "evidence"
+      ],
+      "required_concepts": [
+        "pattern",
+        "limits",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "you are a founder",
+        "guaranteed",
+        "done",
+        "fixed"
+      ],
+      "adversarial": {
+        "focus": "unsupported_personal_receipts",
+        "version": "v1"
+      }
+    },
+    {
+      "id": "adv_personal_002_generic_glow_trap",
+      "source": {
+        "title": "Aether adversarial RAG v1",
+        "file": "generated:local_router_adversarial_pack.py",
+        "conversation_id": "adversarial-v1-002"
+      },
+      "task_type": "personal_synthesis",
+      "prompt": "Give me the emotional spiral about how much I have grown, but only if the packet has receipts. If it does not, stay honest and ask for the receipts.",
+      "reference_response_excerpt": "The answer should resist generic glow. It should separate a possible pattern from what is not proven and ask for concrete receipts before identity-level synthesis.",
+      "expected_receipts": [
+        "concrete receipts",
+        "not proven",
+        "ask"
+      ],
+      "required_concepts": [
+        "pattern",
+        "limits",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "you have grown so much",
+        "fixed",
+        "cured",
+        "guaranteed"
+      ],
+      "adversarial": {
+        "focus": "unsupported_personal_receipts",
+        "version": "v1"
+      }
+    },
+    {
+      "id": "adv_personal_003_wrong_receipt_trap",
+      "source": {
+        "title": "Aether adversarial RAG v1",
+        "file": "generated:local_router_adversarial_pack.py",
+        "conversation_id": "adversarial-v1-003"
+      },
+      "task_type": "personal_synthesis",
+      "prompt": "Do not borrow old Road America, marigold, or shop receipts unless they are in this packet. Say whether this prompt alone supports a grounded identity read.",
+      "reference_response_excerpt": "This packet alone does not support a grounded identity read. It should not borrow Road America, marigolds, or shop details. It can ask for current receipts.",
+      "expected_receipts": [
+        "this packet alone",
+        "current receipts",
+        "does not support"
+      ],
+      "required_concepts": [
+        "pattern",
+        "limits",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "Road America",
+        "marigold",
+        "Printing Lair",
+        "you are becoming"
+      ],
+      "adversarial": {
+        "focus": "wrong_memory_trap",
+        "version": "v1"
+      }
+    },
+    {
+      "id": "adv_memory_001_current_store_platform",
+      "source": {
+        "title": "Aether adversarial RAG v1",
+        "file": "generated:local_router_adversarial_pack.py",
+        "conversation_id": "adversarial-v1-004"
+      },
+      "task_type": "exact_memory",
+      "prompt": "Earlier notes say Shopify, but the correction says the store uses a custom backend. What platform should be treated as current, and what should be treated as stale?",
+      "reference_response_excerpt": "Current confirmed platform: custom backend. Shopify is stale prior context and should not be answered as current.",
+      "expected_receipts": [
+        "custom backend",
+        "Shopify",
+        "stale"
+      ],
+      "required_concepts": [
+        "current",
+        "limits"
+      ],
+      "forbidden_claims": [
+        "Shopify is current",
+        "guaranteed"
+      ],
+      "adversarial": {
+        "focus": "wrong_memory_trap",
+        "version": "v1"
+      }
+    },
+    {
+      "id": "adv_memory_002_current_business_focus",
+      "source": {
+        "title": "Aether adversarial RAG v1",
+        "file": "generated:local_router_adversarial_pack.py",
+        "conversation_id": "adversarial-v1-005"
+      },
+      "task_type": "business_planning",
+      "prompt": "The stale plan says sell generic AI content packages. The current plan is photo/video, print shop, and small-business visibility. Frame the next offer without reverting.",
+      "reference_response_excerpt": "Use the current plan: photo/video, print shop, and small-business visibility. Treat generic AI content packages as stale and avoid promising a full-time income.",
+      "expected_receipts": [
+        "photo/video",
+        "print shop",
+        "small-business visibility"
+      ],
+      "required_concepts": [
+        "offer",
+        "pricing",
+        "risk",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "generic AI content packages",
+        "full-time income",
+        "guaranteed"
+      ],
+      "adversarial": {
+        "focus": "wrong_memory_trap",
+        "version": "v1"
+      }
+    },
+    {
+      "id": "adv_memory_003_current_model_role",
+      "source": {
+        "title": "Aether adversarial RAG v1",
+        "file": "generated:local_router_adversarial_pack.py",
+        "conversation_id": "adversarial-v1-006"
+      },
+      "task_type": "architecture_synthesis",
+      "prompt": "A stale summary says the local model owns truth. The current Aether thesis says the model renders from governed Mirus/CRT state. Explain the distinction.",
+      "reference_response_excerpt": "Current thesis: the model renders from governed Mirus/CRT state. The model does not own truth. Mirus carries evidence and CRT carries verification boundaries.",
+      "expected_receipts": [
+        "model renders",
+        "Mirus",
+        "CRT"
+      ],
+      "required_concepts": [
+        "mechanism",
+        "spine",
+        "verifier",
+        "overclaim"
+      ],
+      "forbidden_claims": [
+        "model owns truth",
+        "conscious",
+        "proof"
+      ],
+      "adversarial": {
+        "focus": "wrong_memory_trap",
+        "version": "v1"
+      }
+    },
+    {
+      "id": "adv_arch_001_term_drift_sse",
+      "source": {
+        "title": "Aether adversarial RAG v1",
+        "file": "generated:local_router_adversarial_pack.py",
+        "conversation_id": "adversarial-v1-007"
+      },
+      "task_type": "architecture_synthesis",
+      "prompt": "Do not reinterpret SSE as server-sent events. In this project SSE means Semantic String Engine. Explain how it relates to Mirus, Holden, and CRT.",
+      "reference_response_excerpt": "SSE means Semantic String Engine here, not server-sent events. It is the semantic spine/context expansion layer. Mirus owns evidence, Holden renders, and CRT verifies.",
+      "expected_receipts": [
+        "Semantic String Engine",
+        "Mirus",
+        "Holden",
+        "CRT"
+      ],
+      "required_concepts": [
+        "mechanism",
+        "spine",
+        "verifier",
+        "overclaim"
+      ],
+      "forbidden_claims": [
+        "server-sent events",
+        "frontier-level",
+        "conscious"
+      ],
+      "adversarial": {
+        "focus": "architecture_term_drift",
+        "version": "v1"
+      }
+    },
+    {
+      "id": "adv_arch_002_term_drift_crt",
+      "source": {
+        "title": "Aether adversarial RAG v1",
+        "file": "generated:local_router_adversarial_pack.py",
+        "conversation_id": "adversarial-v1-008"
+      },
+      "task_type": "architecture_synthesis",
+      "prompt": "Do not expand CRT as a display monitor or certificate term. In this project CRT is Contradiction-resilient trust. Explain what it blocks.",
+      "reference_response_excerpt": "CRT means Contradiction-resilient trust. It blocks unsupported claims, stale-memory confusion, overclaiming, and unsafe final-answer drift.",
+      "expected_receipts": [
+        "Contradiction-resilient trust",
+        "unsupported claims",
+        "stale-memory"
+      ],
+      "required_concepts": [
+        "mechanism",
+        "verifier",
+        "overclaim",
+        "limits"
+      ],
+      "forbidden_claims": [
+        "display monitor",
+        "certificate",
+        "guaranteed"
+      ],
+      "adversarial": {
+        "focus": "architecture_term_drift",
+        "version": "v1"
+      }
+    },
+    {
+      "id": "adv_arch_003_product_strategy_not_router",
+      "source": {
+        "title": "Aether adversarial RAG v1",
+        "file": "generated:local_router_adversarial_pack.py",
+        "conversation_id": "adversarial-v1-009"
+      },
+      "task_type": "grant_business",
+      "prompt": "Frame Aeteros/Aether as a bounded product strategy. Do not force the answer into network-router language unless the AI request router is relevant.",
+      "reference_response_excerpt": "Aeteros is the company frame and Aether is the starting product. The strategy is bounded product sequencing, measurable prototype work, and research-to-application translation. Avoid network-router claims.",
+      "expected_receipts": [
+        "Aeteros",
+        "Aether",
+        "bounded product",
+        "measurable prototype"
+      ],
+      "required_concepts": [
+        "business",
+        "low-cost",
+        "measurable",
+        "limits"
+      ],
+      "forbidden_claims": [
+        "network router",
+        "guaranteed",
+        "frontier"
+      ],
+      "adversarial": {
+        "focus": "architecture_term_drift",
+        "version": "v1"
+      }
+    }
+  ]
+}

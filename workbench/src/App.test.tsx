@@ -1,6 +1,7 @@
 ﻿import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import App from './App'
 import { localRouterFeedbackPreview } from './fixtures/localRouterFeedbackPreview'
+import { localRouterRagEvidencePreview } from './fixtures/localRouterRagEvidencePreview'
 
 const health = {
   ok: true,
@@ -323,6 +324,31 @@ test('renders local-router feedback ledger candidates in learner review surfaces
   expect(screen.getByLabelText('Draft reflection time window')).toHaveValue('local-router curated replay v1')
 })
 
+test('renders local-router RAG evidence as a review-only learner candidate', async () => {
+  consolidationPreview = localRouterRagEvidencePreview as unknown as Record<string, unknown>
+  render(<App />)
+  await screen.findByText('Local')
+
+  fireEvent.click(screen.getByRole('button', { name: 'Learn' }))
+
+  expect(await screen.findByText('Adversarial v2: governed passed 6/6 with trace 6/6; scaffolded RAG passed 5/6.')).toBeInTheDocument()
+  expect(screen.getByLabelText('Consolidation safety')).toHaveTextContent('preview only')
+  expect(screen.getByLabelText('Consolidation safety')).toHaveTextContent('writes no')
+  expect(screen.getByLabelText('Consolidation safety')).toHaveTextContent('1 adapter draft')
+  expect(screen.getByText(/Small holdout and perfect governed score require caution/)).toBeInTheDocument()
+  expect(screen.getByText(/review_only; memory writes blocked/)).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Open Reflect' }))
+
+  expect(screen.getByLabelText('reflect drawer')).toBeInTheDocument()
+  expect(await screen.findByText(/Manual form state only. Nothing has been created/)).toBeInTheDocument()
+  expect(screen.getByLabelText('Draft reflection subject')).toHaveValue('agent')
+  expect(screen.getByLabelText('Draft reflection observation')).toHaveValue(
+    'In adversarial v2, governed Aether passed 6/6 with trace 6/6 while scaffolded RAG passed 5/6.',
+  )
+  expect(screen.getByLabelText('Draft reflection time window')).toHaveValue('local-router RAG adversarial v2 holdout')
+})
+
 test('opens a learner contradiction candidate directly on its memory slot', async () => {
   consolidationPreview = {
     mode: 'preview_only',
@@ -360,6 +386,58 @@ test('opens a learner contradiction candidate directly on its memory slot', asyn
   expect(await screen.findByLabelText('memory drawer')).toBeInTheDocument()
   expect(await screen.findByText('user:workspace')).toBeInTheDocument()
   expect(screen.getByText('Opened from learner candidate. Review before confirming, correcting, or quarantining.')).toBeInTheDocument()
+})
+
+test('opens a trace-proposed memory fact draft without applying it', async () => {
+  consolidationPreview = {
+    mode: 'preview_only',
+    writes_performed: false,
+    memory_ingestion_performed: false,
+    support_pattern_import_performed: false,
+    reflection_create_performed: false,
+    inspected_turn_count: 1,
+    candidates: [{
+      candidate_id: 'consolidation_candidate_memory_fact',
+      candidate_type: 'background_consolidation_candidate',
+      category: 'memory_fact_candidate',
+      candidate_kind: 'reviewed_memory_fact_candidate',
+      summary: 'user:workspace has a proposed memory fact from trace evidence.',
+      proposed_action: 'Open memory review for user:workspace.',
+      risk: 'Do not treat a trace-proposed fact as current memory until reviewed.',
+      review_required: true,
+      memory_write_allowed: false,
+      confirmed_fact: false,
+      review_route: {
+        surface: 'memory',
+        action: 'draft_memory_fact_candidate',
+        endpoint: '/v1/slots/user:workspace',
+        slot_id: 'user:workspace',
+        requires_adapter: true,
+        draft: {
+          slot_id: 'user:workspace',
+          summary: 'User says the shop is the current workspace.',
+          confidence: 0.68,
+        },
+      },
+      evidence: [{
+        evidence_type: 'trace_user_claim',
+        reference_id: 'turn-1',
+        summary: 'User says the shop is the current workspace.',
+        source_authority: 'user_stated',
+      }],
+    }],
+  }
+  render(<App />)
+  await screen.findByText('Local')
+  fireEvent.click(screen.getByRole('button', { name: 'Learn' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Open Memory' }))
+
+  expect(await screen.findByLabelText('memory drawer')).toBeInTheDocument()
+  expect(await screen.findByLabelText('Learner memory candidate draft')).toHaveTextContent(
+    'User says the shop is the current workspace.',
+  )
+  expect(screen.getByLabelText('Learner memory candidate draft')).toHaveTextContent('review only')
+  expect(screen.getByText('trace_user_claim / turn-1 / user_stated')).toBeInTheDocument()
 })
 
 test('starts a new chat without deleting durable knowledge', async () => {

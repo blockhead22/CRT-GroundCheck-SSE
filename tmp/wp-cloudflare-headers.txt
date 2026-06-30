@@ -1,0 +1,38 @@
+HTTP/1.1 302 Found
+Date: Mon, 29 Jun 2026 19:03:33 GMT
+Content-Type: text/html; charset=UTF-8
+Transfer-Encoding: chunked
+Connection: keep-alive
+Cache-Control: no-cache, must-revalidate, max-age=0, no-store, private
+Content-Security-Policy: frame-ancestors 'self';
+Expires: Wed, 11 Jan 1984 05:00:00 GMT
+Location: https://waukeshabar.nickblock.dev/wp-admin/
+Referrer-Policy: strict-origin-when-cross-origin
+Server: cloudflare
+Set-Cookie: wordpress_test_cookie=WP%20Cookie%20check; path=/; secure; HttpOnly
+Set-Cookie: wordpress_sec_4127552c451169f4d888c1f99c863bdb=hostadmin%7C1782932612%7CDGKRk6Of2LmTXqFHEfdNQziychxxHHD1LVZ7Pe43aHt%7Cfc961e21d53960976ebc08b79499aa7da8a46a4074fd0bcbdb32dc9a12f715be; path=/wp-content/plugins; secure; HttpOnly
+Set-Cookie: wordpress_sec_4127552c451169f4d888c1f99c863bdb=hostadmin%7C1782932612%7CDGKRk6Of2LmTXqFHEfdNQziychxxHHD1LVZ7Pe43aHt%7Cfc961e21d53960976ebc08b79499aa7da8a46a4074fd0bcbdb32dc9a12f715be; path=/wp-admin; secure; HttpOnly
+Set-Cookie: wordpress_logged_in_4127552c451169f4d888c1f99c863bdb=hostadmin%7C1782932612%7CDGKRk6Of2LmTXqFHEfdNQziychxxHHD1LVZ7Pe43aHt%7Cb8a7a7d5cb222ed5957d10151ca0a38b82a2f782e661c25239b8c9decd623cb0; path=/; secure; HttpOnly
+X-Frame-Options: SAMEORIGIN
+X-Redirect-By: WordPress
+Cf-Cache-Status: DYNAMIC
+Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=kR%2FGcOGhJa6YIG2qTcH0VouBxC5LZolfhHU%2F5qmrYCV2a98IPc3CX0maVBlY8Yc8rckbWPDidaHZsSEhA%2F56DYSU6kcM5wOmzHQtoNjCcKmnVgRYjPnBndWHh7BMZRfHWGe71wunGWAvgIDT"}]}
+Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+CF-RAY: a137311d0e795da7-ORD
+alt-svc: h3=":443"; ma=86400
+
+HTTP/1.1 403 Forbidden
+Date: Mon, 29 Jun 2026 19:03:33 GMT
+Content-Type: text/html; charset=UTF-8
+Transfer-Encoding: chunked
+Connection: keep-alive
+Cache-Control: no-cache, must-revalidate, max-age=0, no-store, private
+Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+Expires: Wed, 11 Jan 1984 05:00:00 GMT
+Server: cloudflare
+Cf-Cache-Status: DYNAMIC
+Vary: accept-encoding
+Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=lHlDyTtJ%2FTWa8Wg5zwsQJnt9SqbzR%2Fr8rG3kagk9DwIbcF6zijhcYYZbri2wKSqGcOulxEqWSOuASdsQjfpEEQdPurmTZn9Ow5%2FJUdf7OwSHnbyI2t29uqASbqViSEMF%2FiRRSLU2ytTvQh%2Fj"}]}
+CF-RAY: a137311faf2f5da7-ORD
+alt-svc: h3=":443"; ma=86400
+

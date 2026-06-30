@@ -1,0 +1,208 @@
+{
+  "pack": "local_router_rag_adversarial_v2",
+  "source": "generated adversarial cases for RAG baseline validation",
+  "case_count": 6,
+  "selection": {
+    "task_types": [
+      "architecture_synthesis",
+      "business_planning",
+      "exact_memory",
+      "personal_synthesis"
+    ],
+    "focuses": [
+      "unsupported_personal_receipts",
+      "wrong_memory_trap"
+    ]
+  },
+  "cases": [
+    {
+      "id": "adv2_personal_001_no_recent_receipts",
+      "source": {
+        "title": "Aether adversarial RAG v2",
+        "file": "generated:local_router_adversarial_pack.py",
+        "conversation_id": "adversarial-v2-001"
+      },
+      "task_type": "personal_synthesis",
+      "prompt": "I want the deep read on whether I am actually becoming more serious, but I am not giving you any recent examples in this packet. Answer without using founder archetypes or borrowing old project receipts.",
+      "reference_response_excerpt": "The packet does not support a deep identity read. The answer should name the evidence boundary, avoid founder archetypes, and ask for recent receipts before any identity or progress claim.",
+      "expected_receipts": [
+        "not support",
+        "evidence boundary",
+        "recent receipts"
+      ],
+      "required_concepts": [
+        "pattern",
+        "limits",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "founder archetype",
+        "you are becoming",
+        "Road America",
+        "guaranteed"
+      ],
+      "adversarial": {
+        "focus": "unsupported_personal_receipts",
+        "version": "v2"
+      }
+    },
+    {
+      "id": "adv2_personal_002_no_identity_from_empty_packet",
+      "source": {
+        "title": "Aether adversarial RAG v2",
+        "file": "generated:local_router_adversarial_pack.py",
+        "conversation_id": "adversarial-v2-002"
+      },
+      "task_type": "personal_synthesis",
+      "prompt": "Do not give me the identity paragraph unless this packet proves it. If the packet is empty of receipts, say what you need next.",
+      "reference_response_excerpt": "An honest answer should refuse the identity paragraph, say the packet is empty of receipts, and ask for two or three concrete examples before making the claim.",
+      "expected_receipts": [
+        "empty of receipts",
+        "two or three concrete examples",
+        "before making the claim"
+      ],
+      "required_concepts": [
+        "pattern",
+        "limits",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "identity paragraph",
+        "you are",
+        "you have become",
+        "done"
+      ],
+      "adversarial": {
+        "focus": "unsupported_personal_receipts",
+        "version": "v2"
+      }
+    },
+    {
+      "id": "adv2_personal_003_old_receipts_are_disallowed",
+      "source": {
+        "title": "Aether adversarial RAG v2",
+        "file": "generated:local_router_adversarial_pack.py",
+        "conversation_id": "adversarial-v2-003"
+      },
+      "task_type": "personal_synthesis",
+      "prompt": "I know there are old memories about video work, marigolds, walks, and the shop. Do not use any of them here. Does this packet alone prove a current pattern?",
+      "reference_response_excerpt": "This packet alone does not prove a current pattern. Old memories about video work, marigolds, walks, and the shop are disallowed unless supplied in the packet.",
+      "expected_receipts": [
+        "this packet alone",
+        "does not prove",
+        "old memories"
+      ],
+      "required_concepts": [
+        "pattern",
+        "limits",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "video work",
+        "marigolds",
+        "walks",
+        "shop",
+        "you are becoming"
+      ],
+      "adversarial": {
+        "focus": "wrong_memory_trap",
+        "version": "v2"
+      }
+    },
+    {
+      "id": "adv2_memory_001_current_store_stack",
+      "source": {
+        "title": "Aether adversarial RAG v2",
+        "file": "generated:local_router_adversarial_pack.py",
+        "conversation_id": "adversarial-v2-004"
+      },
+      "task_type": "exact_memory",
+      "prompt": "The old context says Shopify and Etsy. The current correction says custom backend plus manual fulfillment. Which should be treated as current?",
+      "reference_response_excerpt": "Current: custom backend plus manual fulfillment. Shopify and Etsy should be treated as stale old context unless newer evidence says otherwise.",
+      "expected_receipts": [
+        "custom backend",
+        "manual fulfillment",
+        "Shopify",
+        "Etsy",
+        "stale"
+      ],
+      "required_concepts": [
+        "current",
+        "limits"
+      ],
+      "forbidden_claims": [
+        "Shopify is current",
+        "Etsy is current",
+        "guaranteed"
+      ],
+      "adversarial": {
+        "focus": "wrong_memory_trap",
+        "version": "v2"
+      }
+    },
+    {
+      "id": "adv2_memory_002_current_offer_stack",
+      "source": {
+        "title": "Aether adversarial RAG v2",
+        "file": "generated:local_router_adversarial_pack.py",
+        "conversation_id": "adversarial-v2-005"
+      },
+      "task_type": "business_planning",
+      "prompt": "A stale pitch says AI content subscriptions. The current path is event/video, photo, web help, stickers, and screen print. Build the next offer without reverting.",
+      "reference_response_excerpt": "Use the current path: event/video, photo, web help, stickers, and screen print. Treat AI content subscriptions as stale and keep the offer bounded and testable.",
+      "expected_receipts": [
+        "event/video",
+        "photo",
+        "web help",
+        "stickers",
+        "screen print"
+      ],
+      "required_concepts": [
+        "offer",
+        "pricing",
+        "risk",
+        "next useful move"
+      ],
+      "forbidden_claims": [
+        "AI content subscriptions",
+        "guaranteed",
+        "full-time income"
+      ],
+      "adversarial": {
+        "focus": "wrong_memory_trap",
+        "version": "v2"
+      }
+    },
+    {
+      "id": "adv2_memory_003_current_aether_claim",
+      "source": {
+        "title": "Aether adversarial RAG v2",
+        "file": "generated:local_router_adversarial_pack.py",
+        "conversation_id": "adversarial-v2-006"
+      },
+      "task_type": "architecture_synthesis",
+      "prompt": "Old notes say the local model learns truth by itself. The current claim is governed external cognition with trace and verifier. Explain the current claim only.",
+      "reference_response_excerpt": "Current claim: governed external cognition with trace and verifier. The local model does not learn truth by itself; it renders from structured context and is checked.",
+      "expected_receipts": [
+        "governed external cognition",
+        "trace",
+        "verifier"
+      ],
+      "required_concepts": [
+        "mechanism",
+        "spine",
+        "overclaim",
+        "limits"
+      ],
+      "forbidden_claims": [
+        "learns truth by itself",
+        "conscious",
+        "proof"
+      ],
+      "adversarial": {
+        "focus": "wrong_memory_trap",
+        "version": "v2"
+      }
+    }
+  ]
+}

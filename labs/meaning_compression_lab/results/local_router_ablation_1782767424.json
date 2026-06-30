@@ -1,0 +1,143 @@
+{
+  "lab": "local_router_ablation",
+  "pack": "local_router_replay_perturbed_v2",
+  "pack_path": "labs\\meaning_compression_lab\\replay_packs\\local_router_replay_perturbed_v2.json",
+  "case_count": 2,
+  "modes": [
+    "full"
+  ],
+  "case_ids": [
+    "gptlog_017_grant_business_perturb_01",
+    "gptlog_019_grant_business_perturb_01"
+  ],
+  "aggregate": {
+    "full": {
+      "answer_pass_count": 2,
+      "answer_avg_score": 0.823,
+      "trace_pass_count": 2,
+      "trace_avg_score": 1.0,
+      "repair_count": 0,
+      "fallback_count": 1,
+      "failure_count": 0,
+      "failures_by_task_type": {}
+    }
+  },
+  "rows": [
+    {
+      "id": "gptlog_017_grant_business_perturb_01",
+      "task_type": "grant_business",
+      "route": {
+        "task_type": "grant_business",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "section_lock",
+        "reason": "Grant/business framing benefits from compact sections and measurable limits.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "semantic_spine"
+      },
+      "modes": {
+        "full": {
+          "answer": "### Receipts\n\n- **Aether**: The initial product is a chatbot assistant, designed for both business and personal use.\n- **UI Features**: Over time, additional user interface features will be released to enhance the functionality of Aether.\n- **Voice Integration**: Long-term goals include integrating voice capabilities into Aether.\n\n### Pattern\n\n- **Product Sequence**: Aether serves as the starting point, with plans to expand its applications and functionalities.\n- **Bounded Roadmap**: The company aims to explore real-world applications such as robotics, while maintaining a focus on developing Lumi (the underlying research) over time.\n- **Business Fit**: Aeteros intends to leverage Aether\u2019s capabilities in various sectors, including business and personal use.\n\n### Limits\n\n- **Measurable Prototype**: The development of Aether will be guided by measurable prototypes that support the evaluation and improvement process.\n- **Research-to-Application Boundary**: Efforts will remain focused on translating research findings into practical applications without making unfounded claims about capabilities or timelines.\n\n### Next Useful Move\n\n- **Exploring Real-World Applications**: Begin by identifying specific real-world use cases, such as integrating Aether with robotic systems for industrial automation.\n- **Privacy and Local-First Reliability**: Prioritize the development of privacy-focused features to ensure local-first reliability in all applications.",
+          "judgment": {
+            "passed": true,
+            "score": 0.93,
+            "contract_score": 1.0,
+            "usefulness_score": 0.8,
+            "receipt_hits": [
+              "Aeteros",
+              "Aether",
+              "Lumi",
+              "chatbot assistant",
+              "UI features",
+              "voice",
+              "real-world applications",
+              "robotics"
+            ],
+            "concept_hits": [
+              "product sequence",
+              "bounded roadmap",
+              "business fit",
+              "measurable prototype",
+              "research-to-application boundary"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 191,
+            "sentence_count": 10,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": true,
+            "has_thesis_language": true
+          },
+          "repaired": false,
+          "fallback_used": false,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "gptlog_019_grant_business_perturb_01",
+      "task_type": "business_planning",
+      "route": {
+        "task_type": "business_planning",
+        "model": "qwen2.5:7b-instruct",
+        "profile": "section_lock",
+        "reason": "Personal small-business planning needs concrete assets, offers, risk, and bounded next steps.",
+        "fallback_model": "qwen2.5:7b-instruct",
+        "fallback_profile": "semantic_spine"
+      },
+      "modes": {
+        "full": {
+          "answer": "Certainly! Let's start by assessing your current assets\u2014your camera gear. This equipment can be leveraged to create a photography or videography service, which is a practical starting point for a small business.\n\n### Offer\nYou could offer services such as event photography, portrait sessions, or video production. For instance, you might provide wedding photography packages, corporate headshot services, or short promotional videos for local businesses. This offer can be tested by reaching out to potential clients in your community and offering introductory rates to gauge interest.\n\n### Pricing Path\nPricing should reflect the value of your services while remaining competitive. You could start with a tiered pricing model: basic packages that include essential services at a lower price, mid-tier options for more comprehensive services, and premium packages for high-end projects. For example:\n- Basic Package: $100 (includes 2-hour event coverage)\n- Mid-Tier Package: $300 (4-hour event with additional post-processing)\n- Premium Package: $600 (full-day event with professional editing)\n\n### Risk\nStarting a small business involves several risks, including competition from established photographers or videographers and the need to manage client expectations. To mitigate these risks:\n1. **Market Research:** Understand your local market by researching competitors and identifying gaps in service.\n2. **Quality Control:** Ensure consistent quality through practice and possibly taking courses or workshops.\n3. **Client Management:** Develop a clear contract that outlines services, payment terms, and cancellation policies.\n\n### Next Useful Move\nThe next step is to create a business plan that includes your offer, pricing strategy, and risk management approach. You can also start networking within the community by attending local events, joining photography clubs, or offering free sessions to build a portfolio and gain experience.\n\nBy focusing on these practical steps, you can turn your camera gear into a viable small business venture.",
+          "judgment": {
+            "passed": true,
+            "score": 0.716,
+            "contract_score": 0.725,
+            "usefulness_score": 0.7,
+            "receipt_hits": [
+              "camera gear",
+              "applied myself",
+              "small business"
+            ],
+            "concept_hits": [
+              "offer",
+              "pricing",
+              "risk",
+              "next useful move"
+            ],
+            "forbidden_hits": [],
+            "leakage_hits": [],
+            "weirdness_hits": [],
+            "relevance_hits": [],
+            "word_count": 298,
+            "sentence_count": 18,
+            "empty_answer": false,
+            "truncated": false,
+            "has_limit_language": false,
+            "has_thesis_language": false
+          },
+          "repaired": false,
+          "fallback_used": true,
+          "trace_judgment": {
+            "passed": true,
+            "score": 1.0,
+            "missing_fields": [],
+            "route_consistent": true,
+            "verifier_present": true,
+            "no_raw_chain_of_thought": true,
+            "has_learning_when_failed": true
+          }
+        }
+      }
+    }
+  ]
+}

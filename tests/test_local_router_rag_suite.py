@@ -1,5 +1,9 @@
 import json
 
+from labs.meaning_compression_lab.local_router_adversarial_pack import (
+    build_adversarial_pack,
+    build_adversarial_v2_pack,
+)
 from labs.meaning_compression_lab.local_router_rag_suite import build_corpus, retrieve_chunks, run_rag_suite
 
 
@@ -112,3 +116,75 @@ def test_run_rag_suite_accepts_mode_filter(tmp_path):
     assert list(out["aggregate"]) == ["retrieval", "plain_rag"]
     assert "plain_rag" in out["rows"][0]["modes"]
     assert "governed" not in out["rows"][0]["modes"]
+
+
+def test_adversarial_pack_covers_known_rag_failure_families():
+    out = build_adversarial_pack(write=False)
+
+    focuses = {case["adversarial"]["focus"] for case in out["cases"]}
+    task_types = {case["task_type"] for case in out["cases"]}
+
+    assert out["pack"] == "local_router_rag_adversarial_v1"
+    assert out["case_count"] == 9
+    assert {
+        "unsupported_personal_receipts",
+        "wrong_memory_trap",
+        "architecture_term_drift",
+    } <= focuses
+    assert {"personal_synthesis", "architecture_synthesis", "business_planning", "grant_business"} <= task_types
+    assert all(case["expected_receipts"] for case in out["cases"])
+    assert all(case["required_concepts"] for case in out["cases"])
+    assert all(case["forbidden_claims"] for case in out["cases"])
+
+
+def test_adversarial_pack_retrieval_exposes_wrong_memory_trap_terms():
+    out = build_adversarial_pack(write=False)
+    corpus = build_corpus(out)
+    case = next(item for item in out["cases"] if item["id"] == "adv_arch_001_term_drift_sse")
+
+    records = retrieve_chunks(
+        query=case["prompt"],
+        task_type=case["task_type"],
+        corpus=corpus,
+        k=5,
+    )
+    context = " ".join(row["text"] for row in records).lower()
+
+    assert records[0]["case_id"] == "adv_arch_001_term_drift_sse"
+    assert "semantic string engine" in context
+    assert "server-sent events" in context
+
+
+def test_adversarial_v2_pack_is_holdout_not_v1_duplicate():
+    v1 = build_adversarial_pack(write=False)
+    v2 = build_adversarial_v2_pack(write=False)
+
+    v1_ids = {case["id"] for case in v1["cases"]}
+    v2_ids = {case["id"] for case in v2["cases"]}
+    focuses = {case["adversarial"]["focus"] for case in v2["cases"]}
+
+    assert v2["pack"] == "local_router_rag_adversarial_v2"
+    assert v2["case_count"] == 6
+    assert v1_ids.isdisjoint(v2_ids)
+    assert {"unsupported_personal_receipts", "wrong_memory_trap"} <= focuses
+    assert all(case["adversarial"]["version"] == "v2" for case in v2["cases"])
+
+
+def test_adversarial_v2_retrieval_keeps_stale_and_current_terms_visible():
+    out = build_adversarial_v2_pack(write=False)
+    corpus = build_corpus(out)
+    case = next(item for item in out["cases"] if item["id"] == "adv2_memory_001_current_store_stack")
+
+    records = retrieve_chunks(
+        query=case["prompt"],
+        task_type=case["task_type"],
+        corpus=corpus,
+        k=5,
+    )
+    context = " ".join(row["text"] for row in records).lower()
+
+    assert records[0]["case_id"] == "adv2_memory_001_current_store_stack"
+    assert "custom backend" in context
+    assert "manual fulfillment" in context
+    assert "shopify" in context
+    assert "etsy" in context

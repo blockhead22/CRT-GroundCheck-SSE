@@ -41,6 +41,7 @@ const preview = {
       evidence_type: 'trace_packet',
       reference_id: 'turn-1',
       summary: 'user:workspace: contextual; values_may_depend_on_context',
+      source_authority: 'trace_conflict',
     }],
   }, {
     candidate_id: 'consolidation_candidate_2',
@@ -85,6 +86,16 @@ test('renders preview-only consolidation candidates and safety flags', async () 
   expect(screen.getByLabelText('Consolidation safety')).toHaveTextContent('session review only')
   expect(screen.getAllByText('no memory write').length).toBeGreaterThan(0)
   expect(screen.getAllByText('not a fact').length).toBeGreaterThan(0)
+  expect(screen.getByLabelText('Why consolidation_candidate_1 exists')).toHaveTextContent(
+    'user:workspace: contextual; values_may_depend_on_context',
+  )
+  expect(screen.getByLabelText('Why consolidation_candidate_1 exists')).toHaveTextContent(
+    'memory write blocked',
+  )
+  expect(screen.getByLabelText('Why consolidation_candidate_1 exists')).toHaveTextContent(
+    'open_slot_review -> memory',
+  )
+  expect(screen.getByText('trace_packet / turn-1 / trace_conflict')).toBeInTheDocument()
   expect(screen.getByText(/open_slot_review via \/v1\/slots\/user:workspace/i)).toBeInTheDocument()
   expect(screen.getByText('adapter required before applying')).toBeInTheDocument()
   expect(screen.getByText('Draft payload')).toBeInTheDocument()
@@ -93,7 +104,8 @@ test('renders preview-only consolidation candidates and safety flags', async () 
 })
 
 test('filters and triages learner candidates in session only', async () => {
-  render(<ConsolidationDrawer />)
+  const onOpenReviewSurface = vi.fn()
+  render(<ConsolidationDrawer onOpenReviewSurface={onOpenReviewSurface} />)
 
   expect(await screen.findByText(preview.candidates[0].summary)).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: /^Support\s+1$/ }))
@@ -103,14 +115,17 @@ test('filters and triages learner candidates in session only', async () => {
 
   fireEvent.click(screen.getByRole('button', { name: 'Defer Session' }))
   expect(screen.getByText('deferred this session')).toBeInTheDocument()
+  expect(onOpenReviewSurface).not.toHaveBeenCalled()
 
   fireEvent.click(screen.getByRole('button', { name: 'Hide Session' }))
   expect(screen.queryByText(preview.candidates[1].summary)).not.toBeInTheDocument()
   expect(screen.getByText('No active learner candidates match this route filter.')).toBeInTheDocument()
+  expect(onOpenReviewSurface).not.toHaveBeenCalled()
 
   fireEvent.click(screen.getByRole('button', { name: /^Restore hidden\s+1$/ }))
   expect(screen.getByText(preview.candidates[1].summary)).toBeInTheDocument()
   expect(screen.getByText('active this session')).toBeInTheDocument()
+  expect(api.consolidationCandidates).toHaveBeenCalledTimes(1)
 })
 
 test('refreshes consolidation preview on demand', async () => {
