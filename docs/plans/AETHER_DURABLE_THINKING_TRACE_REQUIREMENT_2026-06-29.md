@@ -6,9 +6,17 @@ Aether needs durable, inspectable thinking traces for CRT/Aether reasoning. This
 applies to current turns and historical messages. After restart, the system
 should be able to reopen a message and reference the trace that produced it.
 
-This should not store raw hidden chain-of-thought as the source of truth. The
-trace should be a structured audit object that explains system behavior without
-depending on private model internals.
+This should not store private hidden scratchpad as the source of truth. The
+trace should be a structured audit object plus a user-facing thinking/process
+drawer that explains system behavior without depending on private model
+internals.
+
+The product goal is still a visible thinking-trace experience. Aether should be
+able to show how an answer was formed in a dropdown/drawer for current and
+historical messages. The displayed trace may include deterministic governance
+steps and a bounded public model-authored rationale, but it must be labeled as
+public rationale and checked against governed evidence before it is treated as
+evidence.
 
 ## Trace Object
 
@@ -37,6 +45,10 @@ final_confidence
 contradiction_notes
 learning_candidates
 promotion_status
+public_rationale_lines
+tool_consideration_steps
+governance_step_events
+ui_sections
 ```
 
 ## Why It Matters
@@ -55,7 +67,7 @@ everything.
 
 ## UI Pattern
 
-The target pattern is similar to an Activity panel:
+The target pattern is similar to an Activity panel / expandable thinking trace:
 
 ```text
 Thinking
@@ -63,6 +75,7 @@ Thinking
 - Retrieved 3 memory anchors and 1 past chat
 - Built Mirus packet from verified project facts
 - Routed to qwen2.5:7b-instruct / section_lock
+- Public rationale: "I need to answer this as funding exploration, not medical advice."
 - Repaired once for unsupported guarantee language
 
 Memory
@@ -77,6 +90,21 @@ Verifier
 
 Learning Candidates
 - "Grant/business prompts need stricter outcome-promise language"
+```
+
+Workbench UI target:
+
+```text
+Each assistant message gets a compact "Thinking" affordance.
+Opening it shows:
+
+1. Thinking / Process
+2. Memory checked
+3. Tools considered or used
+4. Verifier and repair/fallback
+5. Learning candidates
+
+Historical messages should load the same trace after restart.
 ```
 
 ## Roadmap Placement
@@ -100,7 +128,10 @@ Success criteria:
 2. Replay eval can grade both answer quality and trace quality. DONE in lab.
 3. A historical run can reload answer + trace after process restart.
 4. Learning candidates remain pending until promoted, rejected, or merged.
-5. The UI can show a compact trace without exposing raw hidden reasoning.
+5. The UI can show a compact trace without exposing private hidden scratchpad.
+6. The UI can optionally show model-authored public rationale lines when they
+   are intentionally generated for display and verified against the governance
+   trace.
 ```
 
 ## Decision

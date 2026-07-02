@@ -1,6 +1,14 @@
 import { AlertTriangle, CheckCircle2, CircleSlash2, ShieldQuestion } from 'lucide-react'
 import { useState } from 'react'
-import type { LocalRouterRagEvidenceReview, PatchApplyReceipt, ReleaseDecision, Trace } from '../types'
+import type {
+  GovernanceAnswerSpine,
+  GovernanceSpineCompliance,
+  LocalRouterRagEvidenceReview,
+  PatchApplyReceipt,
+  PublicGovernanceStep,
+  ReleaseDecision,
+  Trace,
+} from '../types'
 
 const releaseMeta: Record<ReleaseDecision, { label: string; icon: typeof CheckCircle2 }> = {
   answerable: { label: 'Released', icon: CheckCircle2 },
@@ -148,6 +156,7 @@ export function TraceDrawer({
     )
   }
   const evidenceReview = localRouterEvidenceReview(trace)
+  const governanceReview = governanceSpineReview(trace)
 
   return (
     <div className="trace-view">
@@ -197,6 +206,43 @@ export function TraceDrawer({
               <div className="route-cell" key={item.label}>
                 <span>{item.label}</span>
                 <strong>{item.value}</strong>
+              </div>
+            ))}
+          </div>
+        </article>
+      ) : null}
+      {governanceReview ? (
+        <article className="trace-route" aria-label="Governance spine">
+          <div className="tool-run-heading">Governance spine</div>
+          <div className="route-grid">
+            {governanceSpineRows(governanceReview.spine, governanceReview.compliance).map((item) => (
+              <div className="route-cell" key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+              </div>
+            ))}
+          </div>
+          {governanceReview.compliance?.flags?.length ? (
+            <div className="tool-notice" role="status">
+              Flags: {governanceReview.compliance.flags.map(formatRouteValue).join(', ')}
+            </div>
+          ) : null}
+          {governanceReview.spine.render_contract?.length ? (
+            <p className="tool-output">
+              {governanceReview.spine.render_contract.slice(0, 2).join(' · ')}
+            </p>
+          ) : null}
+        </article>
+      ) : null}
+      {trace.public_governance_steps?.length ? (
+        <article className="trace-route" aria-label="Public governance steps">
+          <div className="tool-run-heading">Public governance steps</div>
+          <div className="governance-step-list">
+            {trace.public_governance_steps.map((step) => (
+              <div className="governance-step-row" key={step.step_id}>
+                <span>{formatStepStatus(step)}</span>
+                <strong>{step.summary}</strong>
+                <p>{step.detail}</p>
               </div>
             ))}
           </div>
@@ -386,6 +432,79 @@ function localRouterEvidenceReview(trace: Trace): LocalRouterRagEvidenceReview |
   const source = trace.local_router_trace?.evidence_review || trace.local_router_trace
   if (!isRecord(source) || source.kind !== 'local_router_rag_evidence_review') return null
   return source as unknown as LocalRouterRagEvidenceReview
+}
+
+function governanceSpineReview(trace: Trace): {
+  spine: GovernanceAnswerSpine
+  compliance?: GovernanceSpineCompliance
+} | null {
+  if (!trace.governance_answer_spine) return null
+  return {
+    spine: trace.governance_answer_spine,
+    compliance: trace.completion?.governance_spine_compliance,
+  }
+}
+
+function governanceSpineRows(
+  spine: GovernanceAnswerSpine,
+  compliance?: GovernanceSpineCompliance,
+) {
+  const scope = spine.context_scope || {}
+  const route = spine.route || {}
+  const safety = spine.safety_contract || {}
+  return [
+    { label: 'Render', value: formatRouteValue(spine.render_mode || 'unknown') },
+    spine.deterministic_source ? {
+      label: 'Deterministic',
+      value: formatRouteValue(spine.deterministic_source),
+    } : null,
+    route.selected_route ? {
+      label: 'Route',
+      value: formatRouteValue(route.selected_route),
+    } : null,
+    route.selected_model_policy ? {
+      label: 'Model policy',
+      value: formatRouteValue(route.selected_model_policy),
+    } : null,
+    {
+      label: 'Answerable',
+      value: String(scope.answerable_packet_count ?? spine.answerable?.length ?? 0),
+    },
+    {
+      label: 'Restricted',
+      value: String(scope.restricted_packet_count ?? spine.restricted?.length ?? 0),
+    },
+    { label: 'Guidance', value: scope.has_answer_guidance ? 'yes' : 'no' },
+    { label: 'Context bridge', value: scope.has_context_bridge ? 'yes' : 'no' },
+    compliance ? {
+      label: 'Compliance',
+      value: compliance.passed ? 'passed' : 'flagged',
+    } : { label: 'Compliance', value: 'pending' },
+    compliance ? {
+      label: 'Flags',
+      value: String(compliance.flags?.length ?? 0),
+    } : null,
+    compliance ? {
+      label: 'Restricted leak',
+      value: compliance.restricted_value_leak ? 'yes' : 'no',
+    } : null,
+    compliance ? {
+      label: 'Memory claim',
+      value: compliance.unauthorized_memory_write_claim ? 'yes' : 'no',
+    } : null,
+    {
+      label: 'Memory writes',
+      value: safety.memory_writes_allowed ? 'allowed' : 'blocked',
+    },
+    {
+      label: 'Raw CoT',
+      value: safety.raw_chain_of_thought_stored ? 'stored' : 'not stored',
+    },
+  ].filter((item): item is { label: string; value: string } => Boolean(item))
+}
+
+function formatStepStatus(step: PublicGovernanceStep) {
+  return formatRouteValue(step.status || 'done')
 }
 
 function localRouterEvidenceRows(review: LocalRouterRagEvidenceReview | null) {

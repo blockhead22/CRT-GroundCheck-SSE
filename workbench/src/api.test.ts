@@ -1,4 +1,4 @@
-import { api } from './api'
+import { api, streamChat } from './api'
 
 beforeEach(() => {
   vi.restoreAllMocks()
@@ -65,6 +65,57 @@ test('creates reflection draft payloads through the proposed reflection endpoint
     expect.objectContaining({
       method: 'POST',
       body: JSON.stringify(reflection),
+    }),
+  )
+})
+
+test('streamChat dispatches public governance steps before answer tokens', async () => {
+  const encoder = new TextEncoder()
+  const body = [
+    'event: turn\ndata: {"turn_id":"turn-1","conversation_id":"conv-1"}\n\n',
+    'event: trace\ndata: {"turn_id":"turn-1","public_governance_steps":[]}\n\n',
+    'event: governance_step\ndata: {"schema":"aether.public_governance_step.v0","step_id":"gov-step-01-memory_check","index":1,"phase":"memory_check","status":"done","summary":"Checked governed memory","detail":"1 released packet.","public":true,"raw_chain_of_thought":false}\n\n',
+    'event: token\ndata: {"text":"Hello"}\n\n',
+    'event: done\ndata: {"answer":"Hello","needs_stronger_model":false}\n\n',
+  ]
+  const fetchMock = vi.fn(async () => new Response(new ReadableStream({
+    start(controller) {
+      for (const chunk of body) controller.enqueue(encoder.encode(chunk))
+      controller.close()
+    },
+  }), { status: 200 }))
+  vi.stubGlobal('fetch', fetchMock)
+
+  const events: string[] = []
+  await streamChat(
+    { message: 'hi', model: 'qwen2.5:7b-instruct', voice_profile: 'alive' },
+    {
+      onTurn: () => events.push('turn'),
+      onTrace: () => events.push('trace'),
+      onGovernanceStep: (step) => {
+        events.push(`governance:${step.phase}:${step.raw_chain_of_thought}`)
+      },
+      onToken: (text) => events.push(`token:${text}`),
+      onDone: () => events.push('done'),
+      onError: (message) => events.push(`error:${message}`),
+    },
+  )
+
+  expect(events).toEqual([
+    'turn',
+    'trace',
+    'governance:memory_check:false',
+    'token:Hello',
+    'done',
+  ])
+  expect(fetchMock).toHaveBeenCalledWith(
+    expect.stringContaining('/v1/chat/stream'),
+    expect.objectContaining({
+      body: JSON.stringify({
+        message: 'hi',
+        model: 'qwen2.5:7b-instruct',
+        voice_profile: 'alive',
+      }),
     }),
   )
 })

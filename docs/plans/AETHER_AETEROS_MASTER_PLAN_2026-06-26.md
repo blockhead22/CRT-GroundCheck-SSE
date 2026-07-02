@@ -136,10 +136,24 @@ classify request
 ```
 
 The durable trace requirement is now product-relevant. Aether should preserve
-structured thinking traces for current and historical messages so a restarted
-system can show what it remembered, inferred, refused to claim, repaired, and
-flagged for possible learning. This is not raw hidden chain-of-thought storage;
-it is an inspectable audit object.
+structured thinking/process traces for current and historical messages so a
+restarted system can show what it remembered, inferred, refused to claim,
+repaired, and flagged for possible learning.
+
+This should become a first-class Workbench UI affordance, similar to an
+expandable Activity / Thinking drawer on each assistant answer:
+
+```text
+Thinking / Process
+Memory checked
+Tools considered or used
+Verifier and repair/fallback
+Learning candidates
+```
+
+This is not private hidden scratchpad storage as durable truth. It is an
+inspectable audit object plus optional public model-authored rationale lines
+generated specifically for display and checked against the governance trace.
 
 Current lab evidence:
 
@@ -168,12 +182,14 @@ Next product-critical work:
 1. Make learner candidates visible and reviewable in Workbench.
 2. Unify Memory, Support, Reflection, and Contradiction review affordances.
 3. Make trace evidence explain why each candidate exists.
-4. Add evals proving rejected candidates do not affect behavior.
-5. Start extracting shared schemas into an Aeteros Core boundary inside the
+4. Add answer-level expandable Thinking/Process trace UI for current and
+   historical messages.
+5. Add evals proving rejected candidates do not affect behavior.
+6. Start extracting shared schemas into an Aeteros Core boundary inside the
    current repo, without a separate repo yet.
-6. Add durable structured trace JSON to the local router CLI.
-7. Extend replay evals to grade trace quality as well as answer quality.
-8. Prove answer + trace reload after restart before wiring the lab router into
+7. Add durable structured trace JSON to the local router CLI.
+8. Extend replay evals to grade trace quality as well as answer quality.
+9. Prove answer + trace reload after restart before wiring the lab router into
    Workbench UI.
 
 ## Endgame Direction

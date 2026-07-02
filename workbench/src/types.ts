@@ -60,6 +60,7 @@ export interface Trace {
   conversation_id: string
   model: string
   generation_model?: string
+  voice_profile?: string
   meta_answer?: { source?: string; intents?: Record<string, boolean> }
   direct_answer?: { source?: string; slot?: string }
   self_description_answer?: { source?: string }
@@ -70,11 +71,14 @@ export interface Trace {
     needs_stronger_model?: boolean
   }
   route_decision?: RouteDecision
+  governance_answer_spine?: GovernanceAnswerSpine
+  public_governance_steps?: PublicGovernanceStep[]
   completion?: {
     source?: string
     needs_stronger_model: boolean
     generation_model?: string
     route_decision?: RouteDecision
+    governance_spine_compliance?: GovernanceSpineCompliance
     guidance_kind?: string
     guidance_repaired?: boolean | null
     guidance_repair_failed?: boolean | null
@@ -102,6 +106,22 @@ export interface Trace {
     created: boolean
     authority: string
   }>
+  memory_candidates?: Array<{
+    schema?: string
+    slot_id: string
+    proposed_value?: string
+    summary?: string
+    claim_summary?: string
+    candidate_kind?: string
+    confidence?: number
+    source?: string
+    reference_id?: string
+    semantic_signal?: string
+    authority?: string
+    review_required?: boolean
+    memory_write_allowed?: boolean
+    confirmed_fact?: boolean
+  }>
   document_write?: {
     document_id: string
     title: string
@@ -115,6 +135,70 @@ export interface Trace {
     output: Record<string, unknown>
     status: string
   }>
+  tool_considerations?: Array<{
+    tool: string
+    status: string
+    reason: string
+    source?: string
+  }>
+}
+
+export interface PublicGovernanceStep {
+  schema: string
+  step_id: string
+  index: number
+  phase: string
+  status: 'done' | 'skipped' | 'started' | 'failed' | string
+  summary: string
+  detail: string
+  public: boolean
+  raw_chain_of_thought: boolean
+}
+
+export interface GovernanceAnswerSpine {
+  spine_schema: string
+  source: string
+  question_summary: string
+  render_mode: string
+  deterministic_source?: string | null
+  route?: {
+    selected_route?: string
+    selected_model_policy?: string
+    risk_level?: string
+    memory_write_allowed?: boolean
+    silent_escalation_allowed?: boolean
+  }
+  context_scope?: {
+    answerable_packet_count?: number
+    restricted_packet_count?: number
+    has_context_bridge?: boolean
+    has_answer_guidance?: boolean
+  }
+  answerable?: Array<Record<string, unknown>>
+  restricted?: Array<Record<string, unknown>>
+  render_contract?: string[]
+  safety_contract?: {
+    memory_writes_allowed?: boolean
+    support_pattern_import_allowed?: boolean
+    reflection_create_allowed?: boolean
+    raw_chain_of_thought_stored?: boolean
+    silent_policy_mutation_allowed?: boolean
+    review_required_before_promotion?: boolean
+  }
+}
+
+export interface GovernanceSpineCompliance {
+  schema: string
+  checked: boolean
+  passed: boolean
+  flags: string[]
+  restricted_clause_count: number
+  restricted_value_leak: boolean
+  missing_restricted_boundary: boolean
+  unauthorized_memory_write_claim: boolean
+  answer_length: number
+  stored_restricted_values: boolean
+  raw_chain_of_thought_stored: boolean
 }
 
 export interface LocalRouterRagEvidenceReview {
@@ -345,6 +429,7 @@ export interface ConsolidationCandidate {
   review_required: boolean
   memory_write_allowed: boolean
   confirmed_fact: boolean
+  review_only?: boolean
   review_route: {
     surface: 'memory' | 'support_patterns' | 'reflections' | string
     action: string
@@ -392,6 +477,7 @@ export interface ConsolidationPreview {
 export interface ChatEvents {
   onTurn: (data: { turn_id: string; conversation_id: string }) => void
   onTrace: (trace: Trace) => void
+  onGovernanceStep?: (step: PublicGovernanceStep) => void
   onToken: (text: string) => void
   onDone: (data: {
     answer: string

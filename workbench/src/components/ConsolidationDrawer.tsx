@@ -66,15 +66,24 @@ function draftHandoff(item: ConsolidationCandidate): ReviewDraftHandoff | undefi
 }
 
 function firstReceipt(item: ConsolidationCandidate) {
-  return item.evidence[0]?.summary || 'No trace receipt attached to this candidate.'
+  return item.evidence[0]?.summary ? compactText(item.evidence[0].summary) : 'No trace receipt attached to this candidate.'
 }
 
 function reviewBoundary(item: ConsolidationCandidate) {
   const flags = []
+  if (isReviewOnly(item)) flags.push('review only')
   flags.push(item.review_required ? 'review required' : 'review not required')
   flags.push(item.memory_write_allowed ? 'memory write allowed' : 'memory write blocked')
   flags.push(item.confirmed_fact ? 'confirmed fact' : 'not confirmed fact')
   return flags.join(' / ')
+}
+
+function isReviewOnly(item: ConsolidationCandidate) {
+  return item.review_only ?? (
+    item.review_required
+    && item.memory_write_allowed === false
+    && item.confirmed_fact === false
+  )
 }
 
 function reviewDestination(item: ConsolidationCandidate) {
@@ -88,6 +97,12 @@ function evidenceMeta(evidence: ConsolidationCandidate['evidence'][number]) {
   if (evidence.reference_id) parts.push(evidence.reference_id)
   if (evidence.source_authority) parts.push(evidence.source_authority)
   return parts.join(' / ')
+}
+
+function compactText(value: string, maxLength = 180) {
+  const normalized = value.replace(/\s+/g, ' ').trim()
+  if (normalized.length <= maxLength) return normalized
+  return `${normalized.slice(0, maxLength - 1).trimEnd()}...`
 }
 
 export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawerProps) {
@@ -258,6 +273,7 @@ export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawer
             </div>
             <div className="reflection-meta">
               <span>{item.candidate_kind}</span>
+              {isReviewOnly(item) ? <span>review only</span> : null}
               <span>{item.review_required ? 'review required' : 'no review'}</span>
               <span>{item.memory_write_allowed ? 'memory write allowed' : 'no memory write'}</span>
               <span>{item.confirmed_fact ? 'confirmed fact' : 'not a fact'}</span>
@@ -288,21 +304,32 @@ export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawer
               </div>
             </div>
             {draft ? (
-              <div className="consolidation-draft">
-                <label>Draft payload</label>
+              <details className="consolidation-draft">
+                <summary>Draft payload</summary>
                 <p>Preview only. The review drawer still has to adapt and submit this manually.</p>
                 <pre>{draft}</pre>
-              </div>
+              </details>
             ) : null}
             {item.evidence.length ? (
               <div className="reflection-evidence">
                 <label>Evidence</label>
-                {item.evidence.map((evidence, index) => (
-                  <div key={`${item.candidate_id}-${evidence.reference_id || index}`}>
-                    <span>{evidence.summary}</span>
-                    <small>{evidenceMeta(evidence)}</small>
-                  </div>
-                ))}
+                {item.evidence.map((evidence, index) => {
+                  const compactSummary = compactText(evidence.summary)
+                  const isLongSummary = compactSummary !== evidence.summary
+                  return (
+                    <div key={`${item.candidate_id}-${evidence.reference_id || index}`}>
+                      {isLongSummary ? (
+                        <details className="reflection-evidence-detail">
+                          <summary>{compactSummary}</summary>
+                          <p>{evidence.summary}</p>
+                        </details>
+                      ) : (
+                        <span>{compactSummary}</span>
+                      )}
+                      <small>{evidenceMeta(evidence)}</small>
+                    </div>
+                  )
+                })}
               </div>
             ) : null}
             <div className="consolidation-review-actions" aria-label={`Learner review controls for ${item.candidate_id}`}>

@@ -3,8 +3,15 @@ import { FormEvent, useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { api, streamChat } from '../api'
-import type { Conversation, Trace, Turn } from '../types'
+import type { Conversation, PublicGovernanceStep, Trace, Turn } from '../types'
 import { ModelPolicySummary } from './ModelPolicySummary'
+
+const VOICE_STORAGE_KEY = 'aether.voiceProfile'
+const VOICE_OPTIONS = [
+  { value: 'grounded', label: 'Grounded' },
+  { value: 'warm', label: 'Warm' },
+  { value: 'alive', label: 'Alive' },
+]
 
 interface ChatPanelProps {
   model: string
@@ -37,12 +44,20 @@ export function ChatPanel({
 }: ChatPanelProps) {
   const [message, setMessage] = useState('')
   const [streaming, setStreaming] = useState('')
+  const [governanceSteps, setGovernanceSteps] = useState<PublicGovernanceStep[]>([])
+  const [thinkingTraceCache, setThinkingTraceCache] = useState<Record<string, Trace>>({})
+  const [openThinkingTurn, setOpenThinkingTurn] = useState<string | null>(null)
+  const [thinkingLoadingTurn, setThinkingLoadingTurn] = useState<string | null>(null)
   const [pendingTurn, setPendingTurn] = useState<string | null>(null)
   const [pendingUser, setPendingUser] = useState('')
   const [needsStronger, setNeedsStronger] = useState(false)
   const [escalating, setEscalating] = useState(false)
   const [frontierAnswer, setFrontierAnswer] = useState('')
   const [error, setError] = useState('')
+  const [voiceProfile, setVoiceProfile] = useState(() => {
+    const stored = window.localStorage.getItem(VOICE_STORAGE_KEY)
+    return VOICE_OPTIONS.some((option) => option.value === stored) ? stored || 'warm' : 'warm'
+  })
   const scrollRef = useRef<HTMLDivElement>(null)
   const activeConversationRef = useRef(conversationId)
   const activeTraceRef = useRef<Trace | null>(null)
@@ -53,7 +68,11 @@ export function ChatPanel({
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-  }, [turns, streaming, frontierAnswer])
+  }, [turns, streaming, frontierAnswer, governanceSteps])
+
+  useEffect(() => {
+    window.localStorage.setItem(VOICE_STORAGE_KEY, voiceProfile)
+  }, [voiceProfile])
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -62,13 +81,14 @@ export function ChatPanel({
     setMessage('')
     setPendingUser(text)
     setStreaming('')
+    setGovernanceSteps([])
     setFrontierAnswer('')
     setNeedsStronger(false)
     setError('')
 
     try {
       await streamChat(
-        { message: text, conversation_id: conversationId || undefined, model },
+        { message: text, conversation_id: conversationId || undefined, model, voice_profile: voiceProfile },
         {
           onTurn: ({ turn_id, conversation_id }) => {
             setPendingTurn(turn_id)
@@ -78,6 +98,12 @@ export function ChatPanel({
           onTrace: (trace) => {
             activeTraceRef.current = trace
             onTrace(trace)
+          },
+          onGovernanceStep: (step) => {
+            setGovernanceSteps((current) => {
+              if (current.some((item) => item.step_id === step.step_id)) return current
+              return [...current, step]
+            })
           },
           onToken: (token) => setStreaming((current) => current + token),
           onDone: async (done) => {
@@ -109,6 +135,7 @@ export function ChatPanel({
               setPendingTurn(null)
               setPendingUser('')
               setStreaming('')
+              setGovernanceSteps([])
             }
           },
           onError: async (reason) => {
@@ -120,6 +147,7 @@ export function ChatPanel({
               setPendingTurn(null)
               setPendingUser('')
               setStreaming('')
+              setGovernanceSteps([])
             }
           },
         },
@@ -129,6 +157,7 @@ export function ChatPanel({
       setPendingTurn(null)
       setPendingUser('')
       setStreaming('')
+      setGovernanceSteps([])
     }
   }
 
@@ -150,6 +179,26 @@ export function ChatPanel({
       setError(reason instanceof Error ? reason.message : 'Codex escalation failed.')
     } finally {
       setEscalating(false)
+    }
+  }
+
+  async function toggleThinkingTrace(turnId: string) {
+    if (openThinkingTurn === turnId) {
+      setOpenThinkingTurn(null)
+      return
+    }
+    setOpenThinkingTurn(turnId)
+    const activeTrace = trace?.turn_id === turnId ? trace : thinkingTraceCache[turnId]
+    if (activeTrace) return
+    setThinkingLoadingTurn(turnId)
+    try {
+      const result = await api.trace(turnId)
+      setThinkingTraceCache((current) => ({ ...current, [turnId]: result.trace }))
+      onTrace(result.trace)
+    } catch (reason) {
+      setError(reason instanceof Error ? `Thinking trace failed: ${reason.message}` : 'Thinking trace failed.')
+    } finally {
+      setThinkingLoadingTurn(null)
     }
   }
 
@@ -178,6 +227,16 @@ export function ChatPanel({
             <option value={conversation.conversation_id} key={conversation.conversation_id}>
               {conversation.title}
             </option>
+          ))}
+        </select>
+        <select
+          aria-label="Aether voice"
+          value={voiceProfile}
+          onChange={(event) => setVoiceProfile(event.target.value)}
+          title="Aether voice"
+        >
+          {VOICE_OPTIONS.map((option) => (
+            <option value={option.value} key={option.value}>{option.label}</option>
           ))}
         </select>
         <button aria-label="New chat" onClick={onNewConversation}>
@@ -209,16 +268,33 @@ export function ChatPanel({
             <div className="assistant-message">
               <div className="assistant-head">
                 <div className="assistant-label"><span className="tiny-mark">Æ</span> Local answer</div>
-                <button
-                  className="turn-trace-button"
-                  aria-label={`Open trace for turn ${turn.turn_id}`}
-                  title="Open trace"
-                  onClick={() => onOpenTrace(turn.turn_id)}
-                >
-                  <ShieldCheck size={13} />
-                </button>
+                <div className="assistant-actions">
+                  <button
+                    className="turn-thinking-button"
+                    aria-label={`Toggle thinking trace for turn ${turn.turn_id}`}
+                    title="Thinking trace"
+                    onClick={() => void toggleThinkingTrace(turn.turn_id)}
+                  >
+                    <BrainCircuit size={13} />
+                    <span>Thinking</span>
+                  </button>
+                  <button
+                    className="turn-trace-button"
+                    aria-label={`Open trace for turn ${turn.turn_id}`}
+                    title="Open trace"
+                    onClick={() => onOpenTrace(turn.turn_id)}
+                  >
+                    <ShieldCheck size={13} />
+                  </button>
+                </div>
               </div>
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{turn.local_answer}</ReactMarkdown>
+              <AnswerMarkdown>{turn.local_answer}</AnswerMarkdown>
+              {openThinkingTurn === turn.turn_id ? (
+                <AnswerThinkingTrace
+                  loading={thinkingLoadingTurn === turn.turn_id}
+                  trace={trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id]}
+                />
+              ) : null}
               <div className="answer-meta">
                 <span>Local</span><span>Governed</span><span>Checked</span>
               </div>
@@ -230,14 +306,24 @@ export function ChatPanel({
             <div className="user-message">{pendingUser}</div>
             <div className="assistant-message streaming">
               <div className="assistant-label"><LoaderCircle className="spin" size={14} /> Governing response</div>
-              {streaming ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{streaming}</ReactMarkdown> : <span className="thinking-line" />}
+              {governanceSteps.length ? (
+                <div className="governance-live-trace" aria-label="Live governance trace">
+                  {governanceSteps.map((step) => (
+                    <div className={`governance-live-step ${step.status}`} key={step.step_id}>
+                      <ShieldCheck size={12} />
+                      <span>{step.summary}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {streaming ? <AnswerMarkdown>{streaming}</AnswerMarkdown> : <span className="thinking-line" />}
             </div>
           </div>
         ) : null}
         {frontierAnswer ? (
           <div className="frontier-message">
             <div className="assistant-label"><ExternalLink size={14} /> Codex escalation</div>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{frontierAnswer}</ReactMarkdown>
+            <AnswerMarkdown>{frontierAnswer}</AnswerMarkdown>
           </div>
         ) : null}
         {error ? <div className="chat-error">{error}</div> : null}
@@ -277,10 +363,172 @@ export function ChatPanel({
   )
 }
 
+function AnswerMarkdown({ children }: { children: string }) {
+  return (
+    <div className="answer-markdown">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: ({ ...props }) => <h2 className="answer-heading answer-heading-lg" {...props} />,
+          h2: ({ ...props }) => <h3 className="answer-heading answer-heading-md" {...props} />,
+          h3: ({ ...props }) => <h4 className="answer-heading answer-heading-sm" {...props} />,
+          blockquote: ({ ...props }) => <blockquote className="answer-callout" {...props} />,
+          table: ({ ...props }) => (
+            <div className="answer-table-scroll">
+              <table {...props} />
+            </div>
+          ),
+        }}
+      >
+        {children}
+      </ReactMarkdown>
+    </div>
+  )
+}
+
 function inferTraceSource(trace: Trace) {
   return trace.meta_answer?.source
     || trace.direct_answer?.source
     || trace.self_description_answer?.source
     || trace.character_answer?.source
     || ''
+}
+
+function AnswerThinkingTrace({
+  trace,
+  loading,
+}: {
+  trace?: Trace
+  loading: boolean
+}) {
+  if (loading && !trace) {
+    return (
+      <div className="answer-thinking-panel" aria-label="Answer thinking trace">
+        <div className="answer-thinking-loading">
+          <LoaderCircle className="spin" size={13} /> Loading thinking trace
+        </div>
+      </div>
+    )
+  }
+  if (!trace) {
+    return (
+      <div className="answer-thinking-panel" aria-label="Answer thinking trace">
+        <div className="answer-thinking-loading">No thinking trace is available for this turn yet.</div>
+      </div>
+    )
+  }
+
+  const sections = answerThinkingSections(trace)
+  return (
+    <div className="answer-thinking-panel" aria-label="Answer thinking trace">
+      <div className="answer-thinking-heading">How this answer formed</div>
+      <div className="answer-thinking-sections">
+        {sections.map((section) => (
+          <section className="answer-thinking-section" key={section.label}>
+            <h4>{section.label}</h4>
+            {section.items.length ? (
+              <ul>
+                {section.items.slice(0, 8).map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            ) : (
+              <p>{section.empty}</p>
+            )}
+          </section>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function answerThinkingSections(trace: Trace) {
+  const route = trace.completion?.route_decision || trace.route_decision
+  const compliance = trace.completion?.governance_spine_compliance
+  const process = cleanItems([
+    ...(trace.public_governance_steps || []).map((step) => `${step.summary}: ${step.detail}`),
+    ...(trace.memory_candidates || []).map((candidate) => (
+      `Mirus candidate: ${formatTraceLabel(candidate.semantic_signal || candidate.candidate_kind || 'review required')}`
+    )),
+    route?.selected_route ? `Selected route: ${formatTraceLabel(route.selected_route)}` : '',
+    route?.selected_model_policy ? `Model policy: ${formatTraceLabel(route.selected_model_policy)}` : '',
+    trace.voice_profile ? `Voice profile: ${formatTraceLabel(trace.voice_profile)}` : '',
+    route?.repair_policy ? `Repair policy: ${formatTraceLabel(route.repair_policy)}` : '',
+    route?.model_recommendation?.recommended_model ? (
+      `Recommended model: ${route.model_recommendation.recommended_model} (${route.model_recommendation.confidence})`
+    ) : '',
+    route?.model_recommendation?.fallback_model && route.model_recommendation.fallback_model !== 'none' ? (
+      `Fallback model: ${route.model_recommendation.fallback_model}`
+    ) : '',
+    trace.governance_answer_spine?.render_mode ? `Render mode: ${formatTraceLabel(trace.governance_answer_spine.render_mode)}` : '',
+  ])
+
+  const memory = (trace.packets || []).map((packet) => {
+    const evidenceCount = packet.evidence?.length ?? 0
+    return `${formatTraceLabel(packet.release)} ${packet.slot_id || packet.planner_slot}: ${evidenceCount} receipt(s)`
+  })
+  memory.push(...(trace.memory_writes || []).map((write) => (
+    `${write.created ? 'Stored' : 'Updated'} ${write.slot_id}: ${write.authority}`
+  )))
+  memory.push(...(trace.memory_candidates || []).map((candidate) => (
+    `Review-only memory candidate ${candidate.slot_id}: ${candidate.summary || candidate.claim_summary || candidate.candidate_kind || 'needs review'}`
+  )))
+
+  const tools = (trace.tool_runs || []).map((tool) => (
+    `${formatTraceLabel(tool.tool)}: ${formatTraceLabel(tool.status)}`
+  ))
+  tools.push(...(trace.tool_considerations || []).map((item) => (
+    `${formatTraceLabel(item.tool)} ${formatTraceLabel(item.status)}: ${item.reason}`
+  )))
+
+  const verifier = cleanItems([
+    compliance ? `Governance compliance: ${compliance.passed ? 'passed' : 'flagged'}` : '',
+    compliance?.flags?.length ? `Flags: ${compliance.flags.map(formatTraceLabel).join(', ')}` : '',
+    safetyBoundaryLine(
+      'Memory writes',
+      trace.governance_answer_spine?.safety_contract?.memory_writes_allowed ?? route?.memory_write_allowed,
+    ),
+    safetyBoundaryLine(
+      'Silent escalation',
+      route?.silent_escalation_allowed,
+    ),
+    trace.governance_answer_spine?.safety_contract?.raw_chain_of_thought_stored === false
+      ? 'Raw hidden chain-of-thought not stored'
+      : '',
+    trace.governance_answer_spine?.safety_contract?.review_required_before_promotion
+      ? 'Promotion requires review before behavior changes'
+      : '',
+    trace.completion?.guidance_repaired ? 'Repair applied before final answer' : '',
+    trace.completion?.guidance_repair_failed ? 'Repair failed; boundary should be reviewed' : '',
+  ])
+
+  const learning = cleanItems([
+    compliance && !compliance.passed ? 'Potential learning event: answer violated the governance spine.' : '',
+    ...(trace.memory_candidates || []).map((candidate) => (
+      `Review candidate: ${candidate.slot_id} (${candidate.authority || 'unconfirmed'}, ${candidate.review_required === false ? 'review optional' : 'review required'}, ${candidate.memory_write_allowed === false ? 'write blocked' : 'write policy unknown'})`
+    )),
+    route?.model_recommendation?.observational_only ? 'Model recommendation stayed observational; no automatic switch.' : '',
+    trace.governance_answer_spine?.safety_contract?.review_required_before_promotion ? 'Promotion requires review before behavior changes.' : '',
+  ])
+
+  return [
+    { label: 'Thinking / Process', items: process, empty: 'No public process steps were stored for this turn.' },
+    { label: 'Memory', items: memory, empty: 'No governed memory packets were released for this turn.' },
+    { label: 'Tools', items: tools, empty: 'No semantic tool considerations were stored.' },
+    { label: 'Verifier', items: verifier, empty: 'No post-render verifier flags were stored.' },
+    { label: 'Learning', items: learning, empty: 'No review candidate was raised from this trace.' },
+  ]
+}
+
+function cleanItems(items: string[]) {
+  return items.filter((item) => item.trim())
+}
+
+function formatTraceLabel(value: string) {
+  return value.replace(/_/g, ' ').trim()
+}
+
+function safetyBoundaryLine(label: string, allowed?: boolean) {
+  if (allowed == null) return ''
+  return `${label}: ${allowed ? 'allowed' : 'blocked'}`
 }

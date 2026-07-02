@@ -134,13 +134,14 @@ function dispatchEvent(block: string, events: ChatEvents) {
   const payload = JSON.parse(data)
   if (eventName === 'turn') events.onTurn(payload)
   else if (eventName === 'trace') events.onTrace(payload)
+  else if (eventName === 'governance_step') events.onGovernanceStep?.(payload)
   else if (eventName === 'token') events.onToken(payload.text)
   else if (eventName === 'done') events.onDone(payload)
   else if (eventName === 'error') events.onError(payload.message)
 }
 
 export async function streamChat(
-  body: { message: string; conversation_id?: string; model: string },
+  body: { message: string; conversation_id?: string; model: string; voice_profile?: string },
   events: ChatEvents,
 ) {
   const response = await fetch(`${API_BASE}/v1/chat/stream`, {

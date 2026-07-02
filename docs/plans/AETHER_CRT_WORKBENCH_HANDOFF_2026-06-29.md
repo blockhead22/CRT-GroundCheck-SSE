@@ -28,10 +28,24 @@ Current rule:
 This lab is worth continuing only if it becomes Aether/Core infrastructure.
 Prompt tuning alone is not enough.
 
-No raw hidden chain-of-thought as truth. Store structured trace artifacts:
+No private hidden scratchpad as durable truth. Store structured trace artifacts:
 classification, retrieval, Mirus packet, scaffold, model route, verifier flags,
 repair/fallback decisions, contradiction notes, confidence, and learning
 candidates.
+
+Product UI requirement:
+
+```text
+Workbench should expose an answer-level expandable Thinking / Process drawer.
+It should feel like the GPT Activity / thinking trace pattern while remaining
+governed: show memory checks, tool consideration/results, route/model/scaffold,
+public rationale lines, verifier/repair/fallback, and learning candidates.
+```
+
+Model-authored thinking/rationale may be displayed only when it is intentionally
+generated as public rationale, labeled that way, and checked against the
+deterministic governance trace. Do not treat private model internals as evidence
+or let them silently mutate memory/policy.
 ```
 
 ## Read These First
@@ -1663,6 +1677,78 @@ review-only learning candidates
 restart-safe historical trace reload
 ```
 
+## 2026-06-30 Phase 2 Checkpoint
+
+The roadmap-return lane is now past the local-router lab and into product
+dogfooding of governed learning.
+
+Completed since the lab graduation:
+
+```text
+Code/tool routing:
+- prompts like "make the smallest safe change", "add or update a test",
+  "actual files", and "do not invent paths" now route to code_tool;
+- code/edit/test requests trigger workspace_search before synthesis when no
+  exact file path is supplied;
+- regression tests cover the Aether dogfood failure where a code prompt was
+  previously answered as general local chat with plausible fake paths.
+
+Thinking / Process trace:
+- Workbench answer bubbles expose Thinking, Memory, Tools, Verifier, and
+  Learning sections from public_governance_steps, route metadata, tool runs,
+  verifier/compliance data, memory writes, and review-only candidates;
+- the drawer shows route/model/repair policy and learning authority without
+  storing private hidden scratchpad as durable truth.
+
+Mirus memory-candidate path:
+- direct facts such as favorite flower still persist only through governed
+  explicit fact capture;
+- soft signals such as "I like iced coffee a lot" become review-only
+  candidates unless the user later gives a narrow contextual confirmation;
+- unresolved favorite-category questions can create trace-only memory_intents
+  for self-discovered slots such as user:favorite_sports_team; later related
+  evidence can become a review-only candidate for that slot, and a short
+  confirmation can promote it to confirmed governed memory;
+- GPT-log / ChatGPT-archive / old-chat wording now routes through document
+  search and Context Bridge as bounded historical evidence, not confirmed
+  memory or automatic support/reflection behavior;
+- archive document_search hits can surface as review-only
+  archive_evidence_candidate items in consolidation preview, routed to Reflect
+  as workflow review drafts with no writes performed;
+- Workbench answer-level Thinking traces now have fixture coverage for archive
+  document_search completion and the public route reason, and the full Trace
+  drawer renders the same bounded archive hit without treating it as memory;
+- "They are both orange" creates no memory by itself;
+- after recent marigolds/orange context, "They are both orange" can create a
+  review-only user:favorite_flower_reason candidate with:
+  authority=unconfirmed, review_required=true,
+  memory_write_allowed=false, confirmed_fact=false.
+
+Learner queue:
+- the marigold/orange path is smoke-tested from trace -> consolidation
+  candidate -> Memory review draft;
+- Learn -> Memory draft handoff shows proposed value, semantic signal,
+  unconfirmed authority, review-only boundary, and receipt;
+- repeated Memory review candidates dedupe by category, candidate kind, slot,
+  and proposed value so repeated traces do not spam the queue;
+- mixed Memory/Support/Reflection learner queue coverage verifies route
+  filters, session-only hide/defer, preview-only safety labels, draft payloads,
+  evidence receipts, and review-surface handoffs.
+```
+
+Current next work:
+
+```text
+1. Pause scheduled learner-queue polishing unless live Workbench dogfooding
+   reveals a concrete issue.
+2. If dogfooding finds one, fix only concrete review-queue regressions or
+   confusing UX.
+3. Keep ReviewDecision extraction paused until Memory has a durable
+   candidate/decision adapter need across live call sites.
+4. Treat generative governance as public answer-spine/rationale work, not
+   hidden chain-of-thought storage.
+```
+
 ## Restart Prompt
 
 Use this prompt for a new clean thread:
@@ -1682,13 +1768,13 @@ RAG-baseline lab is graduated as validation infrastructure. Do not reset or
 clean the dirty worktree. Preserve untracked lab files and docs.
 
 Current task direction:
-1. Return to Phase 2 governed learner heartbeat.
-2. Make Memory, Support, Reflection, Contradiction, and Evidence candidates
-   reviewable from recent traces/turns.
-3. Show why each candidate exists from trace evidence.
-4. Preserve the reject/defer non-effect boundary while adding learner surfaces.
-5. Use the schema-candidate note to choose the first reusable Aeteros Core
-   extraction only when it reduces duplication across live call sites.
+1. Continue Phase 2 learner queue polish, not local-router lab tuning.
+2. Keep mixed Memory/Support/Reflection learner queue coverage as the current
+   checkpoint; do not add more surfaces without a dogfood regression.
+3. Fix only concrete review-queue clarity, duplicate, or routing regressions.
+4. Preserve reject/defer non-effect and review-only memory boundaries.
+5. Keep ReviewDecision, TracePacket, and ContradictionMarker extraction paused
+   until a real two-call-site duplication appears.
 6. Keep local-router/RAG evidence as Research/Product Evidence, not daily
    tuning work. Scaffolded_rag remains the serious baseline for any future
    blind/adversarial evidence.
@@ -1703,6 +1789,7 @@ mutation.
 
 ## One-Line Status
 
-Aether has enough lab evidence to stop tuning the local-router lane and return
-to the main roadmap: trace-backed learner review, explicit human approval, and
-reusable Aeteros Core schemas.
+Aether is back on the main roadmap: trace-backed learner review is visible in
+Workbench, code/tool routing is workspace-grounded, Mirus candidates stay
+review-only, mixed learner queue review has Memory/Support/Reflection coverage,
+and this lane is parked until live dogfooding produces a concrete issue.

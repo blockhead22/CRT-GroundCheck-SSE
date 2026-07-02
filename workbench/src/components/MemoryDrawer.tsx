@@ -12,10 +12,16 @@ interface MemoryDrawerProps {
 
 function memoryDraftValue(draftHandoff: ReviewDraftHandoff) {
   const summary = String(draftHandoff.draft.summary || draftHandoff.summary || '')
+  const proposedValue = String(draftHandoff.draft.proposed_value || '')
+  const semanticSignal = String(draftHandoff.draft.semantic_signal || '')
+  const authority = String(draftHandoff.draft.authority || 'unconfirmed')
   const confidence = draftHandoff.draft.confidence
   return {
     slotId: String(draftHandoff.draft.slot_id || ''),
+    proposedValue,
     summary,
+    semanticSignal,
+    authority,
     confidence: typeof confidence === 'number' ? confidence : null,
   }
 }
@@ -71,6 +77,17 @@ export function MemoryDrawer({ refreshKey, onMutated, preselectedSlotId = null, 
     }
   }
 
+  function correctionSourceText(value: string, draft: ReviewDraftHandoff | null) {
+    const cleanValue = value.trim()
+    if (!draft) return `Workbench correction: ${cleanValue}`
+    const receipt = draft.evidence[0]
+    const receiptRef = receipt?.reference_id ? ` receipt=${receipt.reference_id}` : ''
+    return (
+      `Workbench correction from Mirus candidate ${draft.source_candidate_id}`
+      + `${receiptRef}: ${cleanValue}`
+    )
+  }
+
   if (selected) {
     const confirmable = selected.history.find((item) => item.current && item.source !== 'user_confirmation' && item.source !== 'user_correction')
     const memoryDraft = draftHandoff ? memoryDraftValue(draftHandoff) : null
@@ -100,9 +117,23 @@ export function MemoryDrawer({ refreshKey, onMutated, preselectedSlotId = null, 
               <strong>{memoryDraft.confidence === null ? 'review' : `${Math.round(memoryDraft.confidence * 100)}%`}</strong>
             </div>
             <p>{memoryDraft.summary}</p>
+            {memoryDraft.proposedValue ? (
+              <div className="memory-draft-proposed">
+                <label>Proposed value</label>
+                <strong>{memoryDraft.proposedValue}</strong>
+                <button
+                  disabled={busy}
+                  onClick={() => setCorrection(memoryDraft.proposedValue)}
+                >
+                  Use proposed value
+                </button>
+              </div>
+            ) : null}
             <div className="memory-draft-meta">
               <span>{activeMemoryDraftHandoff.source_candidate_id}</span>
               <span>{activeMemoryDraftHandoff.candidate_kind}</span>
+              {memoryDraft.semanticSignal ? <span>{memoryDraft.semanticSignal.replaceAll('_', ' ')}</span> : null}
+              <span>{memoryDraft.authority}</span>
               <span>review only</span>
             </div>
             {activeMemoryDraftHandoff.evidence.length ? (
@@ -144,7 +175,10 @@ export function MemoryDrawer({ refreshKey, onMutated, preselectedSlotId = null, 
                 value: correction.trim(),
                 revision_hash: selected.revision_hash,
                 idempotency_key: idempotencyKey('correct'),
-                correction_text: `Workbench correction: ${correction.trim()}`,
+                correction_text: correctionSourceText(
+                  correction,
+                  activeMemoryDraftHandoff || null,
+                ),
               }),
               selected.slot_id,
             )}

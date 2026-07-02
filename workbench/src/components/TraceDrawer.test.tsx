@@ -168,6 +168,158 @@ test('renders clause-level governance decisions', () => {
   expect(within(depth).getByText('answer too short for requested depth')).toBeInTheDocument()
 })
 
+test('renders governance answer spine and compliance summary', () => {
+  render(<TraceDrawer trace={{
+    ...trace,
+    governance_answer_spine: {
+      spine_schema: 'aether.governance_answer_spine.v0',
+      source: 'aether_governance',
+      question_summary: 'Where do I work?',
+      render_mode: 'model_render',
+      route: {
+        selected_route: 'memory_review',
+        selected_model_policy: 'local_default',
+        risk_level: 'medium',
+        memory_write_allowed: false,
+        silent_escalation_allowed: false,
+      },
+      context_scope: {
+        answerable_packet_count: 1,
+        restricted_packet_count: 1,
+        has_context_bridge: true,
+        has_answer_guidance: false,
+      },
+      render_contract: [
+        'answer from released evidence and current user request only',
+        'do not store raw hidden chain-of-thought',
+      ],
+      safety_contract: {
+        memory_writes_allowed: false,
+        support_pattern_import_allowed: false,
+        reflection_create_allowed: false,
+        raw_chain_of_thought_stored: false,
+        silent_policy_mutation_allowed: false,
+        review_required_before_promotion: true,
+      },
+    },
+    completion: {
+      ...trace.completion!,
+      governance_spine_compliance: {
+        schema: 'aether.governance_spine_compliance.v0',
+        checked: true,
+        passed: true,
+        flags: [],
+        restricted_clause_count: 1,
+        restricted_value_leak: false,
+        missing_restricted_boundary: false,
+        unauthorized_memory_write_claim: false,
+        answer_length: 92,
+        stored_restricted_values: false,
+        raw_chain_of_thought_stored: false,
+      },
+    },
+  }} />)
+
+  const spine = screen.getByLabelText('Governance spine')
+  expect(within(spine).getByText('model render')).toBeInTheDocument()
+  expect(within(spine).getByText('memory review')).toBeInTheDocument()
+  expect(within(spine).getByText('local default')).toBeInTheDocument()
+  expect(within(spine).getAllByText('1')).toHaveLength(2)
+  expect(within(spine).getByText('passed')).toBeInTheDocument()
+  expect(within(spine).getByText('blocked')).toBeInTheDocument()
+  expect(within(spine).getByText('not stored')).toBeInTheDocument()
+  expect(within(spine).getByText(/answer from released evidence/)).toBeInTheDocument()
+})
+
+test('surfaces governance compliance flags without exposing restricted values', () => {
+  render(<TraceDrawer trace={{
+    ...trace,
+    governance_answer_spine: {
+      spine_schema: 'aether.governance_answer_spine.v0',
+      source: 'aether_governance',
+      question_summary: 'Where do I work?',
+      render_mode: 'model_render',
+      context_scope: {
+        answerable_packet_count: 0,
+        restricted_packet_count: 1,
+        has_context_bridge: false,
+        has_answer_guidance: false,
+      },
+      restricted: [{
+        slot_id: 'user:employer',
+        reason: 'distinct_current_values',
+      }],
+      safety_contract: {
+        memory_writes_allowed: false,
+        raw_chain_of_thought_stored: false,
+        silent_policy_mutation_allowed: false,
+        review_required_before_promotion: true,
+      },
+    },
+    completion: {
+      ...trace.completion!,
+      governance_spine_compliance: {
+        schema: 'aether.governance_spine_compliance.v0',
+        checked: true,
+        passed: false,
+        flags: ['restricted_value_leak', 'unauthorized_memory_write_claim'],
+        restricted_clause_count: 1,
+        restricted_value_leak: true,
+        missing_restricted_boundary: false,
+        unauthorized_memory_write_claim: true,
+        answer_length: 42,
+        stored_restricted_values: false,
+        raw_chain_of_thought_stored: false,
+      },
+    },
+  }} />)
+
+  const spine = screen.getByLabelText('Governance spine')
+  expect(within(spine).getByText('flagged')).toBeInTheDocument()
+  expect(within(spine).getByRole('status')).toHaveTextContent('restricted value leak')
+  expect(within(spine).getByRole('status')).toHaveTextContent('unauthorized memory write claim')
+  expect(within(spine).getAllByText('yes')).toHaveLength(2)
+  expect(spine).not.toHaveTextContent('Microsoft')
+  expect(spine).not.toHaveTextContent('Amazon')
+})
+
+test('renders public governance steps without exposing restricted evidence values', () => {
+  render(<TraceDrawer trace={{
+    ...trace,
+    public_governance_steps: [
+      {
+        schema: 'aether.public_governance_step.v0',
+        step_id: 'gov-step-01-memory_check',
+        index: 1,
+        phase: 'memory_check',
+        status: 'done',
+        summary: 'Checked governed memory',
+        detail: '0 released packet(s), 1 held/restricted, 0 missing-evidence clause(s).',
+        public: true,
+        raw_chain_of_thought: false,
+      },
+      {
+        schema: 'aether.public_governance_step.v0',
+        step_id: 'gov-step-02-answer_spine',
+        index: 2,
+        phase: 'answer_spine',
+        status: 'done',
+        summary: 'Built answer spine',
+        detail: 'Model render. The local model renders from the governed answer spine.',
+        public: true,
+        raw_chain_of_thought: false,
+      },
+    ],
+  }} />)
+
+  const steps = screen.getByLabelText('Public governance steps')
+  expect(within(steps).getByText('Checked governed memory')).toBeInTheDocument()
+  expect(within(steps).getByText('Built answer spine')).toBeInTheDocument()
+  expect(within(steps).getAllByText('done')).toHaveLength(2)
+  expect(steps).not.toHaveTextContent('Microsoft')
+  expect(steps).not.toHaveTextContent('Amazon')
+})
+
 test('renders route decisions from initial trace metadata for historical traces without completion', () => {
   render(<TraceDrawer trace={{
     ...trace,

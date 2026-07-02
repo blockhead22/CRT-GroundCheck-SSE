@@ -22,7 +22,7 @@ const conversations = [
 ]
 
 const trace = {
-  query: 'old question',
+  query: 'aether, use the gpt logs to fill in the gaps',
   status: 'needs_clarification',
   turn_id: 'turn-old',
   conversation_id: 'conv-1',
@@ -77,6 +77,59 @@ const trace = {
     ],
   },
   packets: [],
+  tool_runs: [{
+    tool_run_id: 'tool_archive_1',
+    tool: 'document_search',
+    input: { query: 'gpt logs fill gaps' },
+    output: {
+      results: [{
+        title: 'ChatGPT archive - grounded support',
+        source_kind: 'chatgpt_archive',
+        score: 0.88,
+        excerpts: [{
+          line: 12,
+          text: 'Historical archive hit; bounded evidence, not confirmed memory.',
+        }],
+      }],
+    },
+    status: 'completed',
+    result_count: 1,
+    reason: 'The query asked for saved context, archive logs, or document-backed memory.',
+    source: 'deterministic_semantic_tool_router',
+  }],
+  tool_considerations: [{
+    tool: 'document_search',
+    status: 'used',
+    reason: 'The query asked for saved context, archive logs, or document-backed memory.',
+    source: 'deterministic_semantic_tool_router',
+  }],
+  memory_writes: [{
+    slot_id: 'user:favorite_flower',
+    state_id: 'state-flower',
+    value: 'marigolds',
+    created: true,
+    authority: 'confirmed',
+  }],
+  memory_candidates: [{
+    slot_id: 'user:favorite_drink',
+    summary: 'Favorite drink was mentioned but needs operator review.',
+    candidate_kind: 'reviewed_memory_fact_candidate',
+    semantic_signal: 'high_ranked_favorite_not_confirmed_single_fact',
+    authority: 'unconfirmed',
+    review_required: true,
+    memory_write_allowed: false,
+    confirmed_fact: false,
+  }, {
+    slot_id: 'user:favorite_flower_reason',
+    proposed_value: 'Marigolds may matter because they are orange.',
+    summary: 'User connected the favorite flower thread to orange; review before storing this as the durable reason marigolds matter.',
+    candidate_kind: 'mirus_contextual_favorite_reason_candidate',
+    semantic_signal: 'contextual_reason_for_existing_favorite_not_confirmed_fact',
+    authority: 'unconfirmed',
+    review_required: true,
+    memory_write_allowed: false,
+    confirmed_fact: false,
+  }],
 }
 
 const turns = [
@@ -160,6 +213,7 @@ test('keeps the empty-chat composer in its grid row when no policy summary is ac
   expect(container.querySelector('.model-policy-summary-placeholder')).toBeInTheDocument()
   expect(screen.queryByLabelText('Model policy recommendation')).not.toBeInTheDocument()
   expect(screen.getByLabelText('Message Aether')).toBeInTheDocument()
+  expect(screen.getByLabelText('Aether voice')).toHaveValue('warm')
   expect(screen.getByText('Talk to your governed memory.')).toBeInTheDocument()
 })
 
@@ -480,6 +534,41 @@ test('opens a historical turn trace from the assistant answer', async () => {
   const route = screen.getByLabelText('Response route')
   expect(route).toHaveTextContent('aether meta')
   expect(route).toHaveTextContent('deterministic')
+})
+
+test('opens an inline thinking trace from a historical assistant answer', async () => {
+  localStorage.setItem('aether.currentConversation', 'conv-1')
+  const fetchMock = vi.mocked(fetch)
+  render(<App />)
+  await screen.findByText('old answer')
+
+  fireEvent.click(screen.getByRole('button', { name: 'Toggle thinking trace for turn turn-old' }))
+
+  const thinking = await screen.findByLabelText('Answer thinking trace')
+  expect(thinking).toHaveTextContent('How this answer formed')
+  expect(thinking).toHaveTextContent('Thinking / Process')
+  expect(thinking).toHaveTextContent('Mirus candidate: high ranked favorite not confirmed single fact')
+  expect(thinking).toHaveTextContent('Selected route: context bridge broad')
+  expect(thinking).toHaveTextContent('Model policy: local with context bridge')
+  expect(thinking).toHaveTextContent('Repair policy: context anchor repair then fallback')
+  expect(thinking).toHaveTextContent('Recommended model: qwen2.5:7b-instruct (medium)')
+  expect(thinking).toHaveTextContent('Fallback model: qwen3:14b')
+  expect(thinking).toHaveTextContent('Stored user:favorite_flower: confirmed')
+  expect(thinking).toHaveTextContent('Review-only memory candidate user:favorite_drink')
+  expect(thinking).toHaveTextContent('Review-only memory candidate user:favorite_flower_reason')
+  expect(thinking).toHaveTextContent('document search: completed')
+  expect(thinking).toHaveTextContent('document search used: The query asked for saved context, archive logs, or document-backed memory.')
+  expect(thinking).toHaveTextContent('Verifier')
+  expect(thinking).toHaveTextContent('Memory writes: blocked')
+  expect(thinking).toHaveTextContent('Silent escalation: blocked')
+  expect(thinking).toHaveTextContent('Learning')
+  expect(thinking).toHaveTextContent('Review candidate: user:favorite_drink (unconfirmed, review required, write blocked)')
+  expect(thinking).toHaveTextContent('Review candidate: user:favorite_flower_reason (unconfirmed, review required, write blocked)')
+  expect(thinking).toHaveTextContent('Model recommendation stayed observational')
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+    expect.stringContaining('/v1/traces/turn-old'),
+    expect.anything(),
+  ))
 })
 
 test('shows model recommendation summary after opening a trace', async () => {
