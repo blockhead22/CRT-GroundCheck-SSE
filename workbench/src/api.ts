@@ -18,6 +18,7 @@ const API_BASE = import.meta.env.VITE_AETHER_API_BASE || 'http://127.0.0.1:8765'
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...init?.headers,
@@ -146,6 +147,7 @@ export async function streamChat(
 ) {
   const response = await fetch(`${API_BASE}/v1/chat/stream`, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })

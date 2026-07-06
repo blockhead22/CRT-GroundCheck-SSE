@@ -61,6 +61,7 @@ export function ChatPanel({
   const scrollRef = useRef<HTMLDivElement>(null)
   const activeConversationRef = useRef(conversationId)
   const activeTraceRef = useRef<Trace | null>(null)
+  const dispatchedMapActionsRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     activeConversationRef.current = conversationId
@@ -98,6 +99,7 @@ export function ChatPanel({
           onTrace: (trace) => {
             activeTraceRef.current = trace
             onTrace(trace)
+            dispatchWisconsinMapActions(trace, dispatchedMapActionsRef.current)
           },
           onGovernanceStep: (step) => {
             setGovernanceSteps((current) => {
@@ -123,6 +125,7 @@ export function ChatPanel({
               }
               activeTraceRef.current = completedTrace
               onTrace(completedTrace)
+              dispatchWisconsinMapActions(completedTrace, dispatchedMapActionsRef.current)
             }
             try {
               const activeConversation = activeConversationRef.current
@@ -518,6 +521,33 @@ function answerThinkingSections(trace: Trace) {
     { label: 'Verifier', items: verifier, empty: 'No post-render verifier flags were stored.' },
     { label: 'Learning', items: learning, empty: 'No review candidate was raised from this trace.' },
   ]
+}
+
+function dispatchWisconsinMapActions(trace: Trace, dispatched: Set<string>) {
+  if (window.parent === window) return
+  const runs = trace.tool_runs || []
+  for (const run of runs) {
+    if (run.tool !== 'wisconsin_map_control' || run.status !== 'completed') continue
+    const key = `${trace.turn_id}:${run.tool_run_id || JSON.stringify(run.input)}`
+    if (dispatched.has(key)) continue
+    const output = run.output as {
+      schema?: string
+      actions?: Array<Record<string, unknown>>
+      summary?: string
+      target?: string
+    }
+    if (output.schema !== 'wisconsin_map_control.v1' || !Array.isArray(output.actions)) continue
+    dispatched.add(key)
+    window.parent.postMessage({
+      source: 'aether-workbench',
+      type: 'wisconsin-map-control',
+      version: 1,
+      turnId: trace.turn_id,
+      target: output.target || 'wisconsin_state_parks_map',
+      summary: output.summary || '',
+      actions: output.actions,
+    }, '*')
+  }
 }
 
 function cleanItems(items: string[]) {
