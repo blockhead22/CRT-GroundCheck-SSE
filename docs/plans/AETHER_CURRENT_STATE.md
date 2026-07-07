@@ -1,6 +1,6 @@
 # Aether Current State
 
-Last updated: 2026-07-01
+Last updated: 2026-07-07
 
 Start new Codex threads here:
 
@@ -25,6 +25,7 @@ tuning, model shopping, or repeated adversarial v1/v2 tuning.
 
 ```text
 D:\AI_round2\docs\plans\AETHER_CRT_WORKBENCH_HANDOFF_2026-06-29.md
+D:\AI_round2\docs\plans\AETHER_GOVERNED_SYNTHESIS_SIDEROADMAP_2026-07-07.md
 D:\AI_round2\docs\plans\AETHER_ARCHIVE_PROMPT_MINING_PASS_2026-07-01.md
 D:\AI_round2\docs\plans\AETHER_ARCHIVE_PROMPT_PACK_RUNPLAN_2026-07-01.md
 D:\AI_round2\docs\plans\AETHER_LOCAL_ROUTER_LAB_GRADUATION_2026-06-30.md
@@ -65,6 +66,49 @@ intent/task classification
 ```
 
 ## Latest Implementation State
+
+Governed synthesis side-roadmap:
+
+```text
+The current quality lane is replacing canned conceptual answers with governed
+synthesis where appropriate. The rule is: deterministic about truth boundaries,
+generative about human-facing synthesis.
+
+The lab now compares canned deterministic answers, raw model-style answers, a
+governed deterministic renderer, and qwen2.5:7b-instruct rendering from a
+Mirus-style answer spine with CRT verification/repair. Latest lab artifact:
+labs\meaning_compression_lab\results\governed_synthesis_lab_qwen25_repair_v0.json
+
+Result: qwen2.5:7b-instruct passed 6/8 initial governed-spine renders and
+repair closed the remaining 2/2, for 8/8 final, with no memory/support/
+reflection writes and no raw hidden chain-of-thought storage.
+
+First Workbench-facing product slice is implemented: CRT / epistemic integrity /
+CORE architecture prompts now use character generative guidance plus repair
+checks instead of a deterministic canned final-answer card. Direct memory
+lookups and crisp safety/tool boundaries remain deterministic.
+
+The first old-concept import is also labbed: Tension Packet / Workspace Spine
+v0 is implemented in the governed synthesis lab. It adds TensionSide,
+TensionPacket, AnswerSpine.tension_packet, a spine_only baseline, and a
+held_tension_score. Latest artifact:
+labs\meaning_compression_lab\results\governed_synthesis_lab_tension_packet_v0.json
+
+Result: 12-case lab passed. Four held-tension cases now compare plain spine
+rendering against packet-aware governed rendering. Plain spine renders preserve
+some evidence but only score 0.45 on held_tension_score; packet-aware governed
+renders score 1.0. This is the first concrete bridge from old belief-map /
+structural-tension concepts into the Aether/J-space convergence target.
+
+Follow-up local-model render artifact:
+labs\meaning_compression_lab\results\governed_synthesis_lab_qwen25_tension_packet_v1.json
+
+Result: qwen2.5:7b-instruct passed 12/12 model renders after the tension packet
+prompt was tightened to require a public Held Tension section with exact labels:
+Side A, Side B, Allowed synthesis, Forbidden collapse, and Trace preview. The
+key lesson is that the small model can preserve held tension when the external
+workspace packet is explicit enough; hidden chain-of-thought is not required.
+```
 
 Phase 2 learner/review loop:
 
