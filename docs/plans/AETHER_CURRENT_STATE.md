@@ -114,6 +114,14 @@ in the inline "How this answer formed" trace and in the full Trace drawer under
 Governance spine. This is fixture-backed preview only, not broad runtime routing.
 The UI shows Side A, Side B, Allowed synthesis, Forbidden collapse, and Trace
 preview when a packet exists.
+
+First live reflective-tension route: prompts that challenge Aether's epistemic
+governance, cannedness, deterministic-vs-epistemic governance, or internal
+tension now route through character generative guidance with a public
+governance_answer_spine.tension_packet. The verifier/repair path rejects both
+fake feeling and the flat "I cannot feel, so nothing interesting exists"
+collapse. This is narrow runtime wiring for the convergence case only; broad
+conceptual routing still waits on live dogfood.
 ```
 
 Phase 2 learner/review loop:

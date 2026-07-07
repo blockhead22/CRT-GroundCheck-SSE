@@ -220,6 +220,49 @@ That keeps governance deterministic where truth boundaries matter while allowing
 the model to synthesize where the user is asking for concepts to be related.
 ```
 
+## Reflective Tension Runtime Slice - Implemented
+
+Implemented one narrow live route for the dogfood failure shape:
+
+```text
+"If this system's goal is epistemic integrity, what do you think it lacks?"
+"Do you lack internal tension?"
+"Why do canned responses signal deterministic governance more than epistemic governance?"
+```
+
+Change:
+
+```text
+Reflective governance/tension prompts now route through character
+`generative_guidance` with a public `tension_packet` attached to
+governance_answer_spine. The packet carries Side A, Side B, Allowed synthesis,
+Forbidden collapse, and Trace preview material for Workbench Thinking/Trace UI.
+```
+
+Guarded boundary:
+
+```text
+Aether must not claim subjective feeling, private inner experience, or hidden
+authority. It may represent tension as visible governance state: evidence,
+uncertainty, contradiction, risk, route pressure, review boundaries, and
+over-governance/cannedness pressure.
+```
+
+Verification:
+
+```text
+python -m pytest aether-core\tests\test_sidecar_character_answer.py aether-core\tests\test_governance_spine.py aether-core\tests\test_sidecar_quality_dogfood.py -q
+47 passed
+```
+
+Boundary:
+
+```text
+This is not broad runtime wiring for every conceptual answer. It is the first
+product-facing convergence case where the lab's Tension Packet / Workspace
+Spine shape becomes trace metadata and answer guidance for a live route.
+```
+
 ## Anti-Goals
 
 - Do not remove safety boundaries.
