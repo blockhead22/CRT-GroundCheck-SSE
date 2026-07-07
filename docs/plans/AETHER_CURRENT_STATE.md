@@ -122,6 +122,16 @@ governance_answer_spine.tension_packet. The verifier/repair path rejects both
 fake feeling and the flat "I cannot feel, so nothing interesting exists"
 collapse. This is narrow runtime wiring for the convergence case only; broad
 conceptual routing still waits on live dogfood.
+
+Learned Mirus scorer lab: a tiny one-hidden-layer NumPy MLP now tests whether
+Mirus-style learning should be a route/action/risk scorer rather than a memory
+writer. Artifact:
+labs\mirus_router_harness_lab\results\learned_mirus_scorer_1783418822.json
+Result: learned scorer 7/7 holdout vs brittle baseline 3/7, with safety
+contract 7/7. Candidate payload construction, review_required,
+memory_write_allowed=false, confirmed_fact=false, and any durable promotion
+remain deterministic. Next step is trace-derived/blind examples before any
+sidecar advisory signal.
 ```
 
 Phase 2 learner/review loop:
