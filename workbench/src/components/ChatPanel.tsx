@@ -514,14 +514,32 @@ function answerThinkingSections(trace: Trace) {
     route?.model_recommendation?.observational_only ? 'Model recommendation stayed observational; no automatic switch.' : '',
     trace.governance_answer_spine?.safety_contract?.review_required_before_promotion ? 'Promotion requires review before behavior changes.' : '',
   ])
+  const heldTension = tensionPacketLines(trace)
 
   return [
     { label: 'Thinking / Process', items: process, empty: 'No public process steps were stored for this turn.' },
+    ...(heldTension.length
+      ? [{ label: 'Held Tension', items: heldTension, empty: 'No tension packet was stored for this turn.' }]
+      : []),
     { label: 'Memory', items: memory, empty: 'No governed memory packets were released for this turn.' },
     { label: 'Tools', items: tools, empty: 'No semantic tool considerations were stored.' },
     { label: 'Verifier', items: verifier, empty: 'No post-render verifier flags were stored.' },
     { label: 'Learning', items: learning, empty: 'No review candidate was raised from this trace.' },
   ]
+}
+
+function tensionPacketLines(trace: Trace) {
+  const packet = trace.governance_answer_spine?.tension_packet
+  if (!packet) return []
+  const [sideA, sideB] = packet.sides || []
+  return cleanItems([
+    packet.tension_type ? `Packet type: ${formatTraceLabel(packet.tension_type)}` : '',
+    sideA ? `Side A: ${sideA.label} - ${sideA.claim}` : '',
+    sideB ? `Side B: ${sideB.label} - ${sideB.claim}` : '',
+    packet.allowed_synthesis ? `Allowed synthesis: ${packet.allowed_synthesis}` : '',
+    packet.forbidden_collapse ? `Forbidden collapse: ${packet.forbidden_collapse}` : '',
+    packet.trace_summary ? `Trace preview: ${packet.trace_summary}` : '',
+  ])
 }
 
 function mirusLogicGraphLines(trace: Trace) {

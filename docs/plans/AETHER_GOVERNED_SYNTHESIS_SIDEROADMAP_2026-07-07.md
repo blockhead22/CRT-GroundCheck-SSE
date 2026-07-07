@@ -527,3 +527,44 @@ Do not wire broad runtime behavior yet. Add a narrow Workbench Thinking-trace
 preview shape for tension/workspace packets, or route one focused conceptual
 prompt through this shape behind a test fixture first.
 ```
+
+## Workbench Preview Checkpoint - Tension Packet Trace
+
+Implemented the narrow preview shape without broad runtime wiring:
+
+```text
+D:\AI_round2\workbench\src\types.ts
+D:\AI_round2\workbench\src\components\ChatPanel.tsx
+D:\AI_round2\workbench\src\components\TraceDrawer.tsx
+D:\AI_round2\workbench\src\App.test.tsx
+D:\AI_round2\workbench\src\components\TraceDrawer.test.tsx
+```
+
+What changed:
+
+```text
+GovernanceAnswerSpine now accepts an optional tension_packet.
+Inline "How this answer formed" shows a Held Tension section only when a packet
+exists.
+The full Trace drawer shows the packet under Governance spine with Side A,
+Side B, Allowed synthesis, Forbidden collapse, and Trace preview.
+```
+
+Verification:
+
+```text
+cd D:\AI_round2\workbench
+npm run test:ui -- --run src\App.test.tsx src\components\TraceDrawer.test.tsx
+35 passed
+
+npm run build
+passed
+```
+
+Boundary:
+
+```text
+This is a fixture-backed Workbench preview surface. It does not automatically
+route live answers through tension packets, write memory, promote support or
+reflection candidates, or mutate policy.
+```

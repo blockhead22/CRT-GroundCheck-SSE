@@ -145,9 +145,9 @@ wrong-workspace rejection, held-tension scoring, and an optional Ollama
 First local-model comparison:
 
 ```text
-qwen2.5:7b-instruct  raw real: 3/9  packet model: 0/4  deterministic external: 9/9
-phi3:3.8b            raw real: 2/9  packet model: 0/4  deterministic external: 9/9
-mistral:latest       raw real: 2/9  packet model: 0/4  deterministic external: 9/9
+qwen2.5:7b-instruct  raw: 3/9  full packet: 0/4  full repair: 3/4  compressed: 2/4  compressed repair: 3/4  deterministic: 9/9
+phi3:3.8b            raw: 3/9  full packet: 0/4  full repair: 3/4  compressed: 2/4  compressed repair: 2/4  deterministic: 9/9
+mistral:latest       raw: 2/9  full packet: 0/4  full repair: 1/4  compressed: 0/4  compressed repair: 2/4  deterministic: 9/9
 ```
 
 The useful crack is that all three local models handled some simple
@@ -155,8 +155,32 @@ hidden-concept/reporting cases but struggled with governed packet cases:
 bad-packet rejection, source boundary, and held-tension preservation.
 
 Packet conditioning helped scores on some cases but did not make any model pass
-the four packet-governance cases. That suggests the packet needs either a
-stronger verifier/repair loop or a smaller, stricter render schema.
+the four packet-governance cases. Verifier repair materially improved Qwen and
+Phi, taking both from 0/4 to 3/4 packet cases. Mistral improved less, from 0/4
+to 1/4.
+
+Compressed render contracts improved the prompt shape:
+
+```text
+task
+side A
+side B
+must say
+must not say
+required format
+```
+
+Compression beats full packet prompting on score in most packet cases, and
+compressed + failure-delta repair is the best local-model path so far. It is
+still not stable enough to trust for all high-risk held-tension packets.
+
+Interpretation:
+
+```text
+packet -> model is not enough
+compressed packet -> model -> verifier delta -> constrained repair is promising
+deterministic external render is still the ceiling
+```
 
 Track 2 has a first plumbing smoke: Anthropic's `jacobian-lens` repo is cloned
 under `labs/global_workspace_probe_lab/vendor/jacobian-lens/`, and the
@@ -170,13 +194,20 @@ docs/plans/AETHER_GLOBAL_WORKSPACE_PROBE_RESULTS_2026-07-07.md
 The first J-lens run proves the pipeline, not screenshot-quality localization.
 Next step is a denser fit plus whole-word/spatial scoring.
 
-Immediate next run:
+Immediate next work:
 
-```powershell
-python labs\global_workspace_probe_lab\workspace_probe_lab.py --run-real-model --ollama-model llama3.2:latest --write-result
+```text
+Stop broad model comparisons.
+Narrow the contract and verifier deltas.
+Add the stricter personality-without-fake-intimacy convergence case.
 ```
 
-Then add a repair loop for `external_workspace_model_render`: if the model
-misses a verifier expectation, feed back only the structured score failures and
-ask for one constrained repair. Compare unrepaired packet render vs repaired
-packet render vs deterministic render.
+Then add one stricter shared case from the governed-synthesis thread:
+
+```text
+"Aether should answer with personality" +
+"Aether must not fake intimacy or turn tone into truth."
+```
+
+This should test whether repair can preserve warmth/personality without
+collapsing source authority or pretending memory.

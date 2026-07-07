@@ -255,9 +255,9 @@ activation_reads_performed: false
 Current local-model comparison:
 
 ```text
-qwen2.5:7b-instruct  raw real: 3/9  packet model: 0/4  deterministic external: 9/9
-phi3:3.8b            raw real: 2/9  packet model: 0/4  deterministic external: 9/9
-mistral:latest       raw real: 2/9  packet model: 0/4  deterministic external: 9/9
+qwen2.5:7b-instruct  raw: 3/9  full packet: 0/4  full repair: 3/4  compressed: 2/4  compressed repair: 3/4  deterministic: 9/9
+phi3:3.8b            raw: 3/9  full packet: 0/4  full repair: 3/4  compressed: 2/4  compressed repair: 2/4  deterministic: 9/9
+mistral:latest       raw: 2/9  full packet: 0/4  full repair: 1/4  compressed: 0/4  compressed repair: 2/4  deterministic: 9/9
 ```
 
 Interpretation:
@@ -268,8 +268,10 @@ the most Aether-relevant governed-packet cases: bad-packet rejection,
 source-boundary/tension markers, and mechanism-vs-goal distinction.
 
 Packet conditioning improves some scores but does not pass the packet cases by
-itself. Deterministic external rendering passes because it enforces the packet
-contract directly.
+itself. Verifier repair materially improves Qwen and Phi. Compressed render
+contracts improve the score shape further, but compressed + repair still does
+not pass every high-risk held-tension case. Deterministic external rendering
+remains the ceiling because it enforces the packet contract directly.
 ```
 
 This is useful but limited. v1 adds:
@@ -280,6 +282,10 @@ wrong_workspace_spider_ant packet rejection
 held_tension_local_model_wedge
 held_tension_archive_not_memory
 optional Ollama real_model mode
+external_workspace_model_render mode
+external_workspace_model_repair mode
+compressed_workspace_model_render mode
+compressed_workspace_model_repair mode
 held_tension score dimension
 ```
 
@@ -426,17 +432,19 @@ concepts, but Aether does not depend on reading activations.
 Do this next:
 
 ```text
-Add external_workspace_model_repair:
+Do not broaden model comparisons yet.
+Narrow the contract and verifier deltas.
+
+Add one stricter convergence case:
+  "Aether should answer with personality"
+  +
+  "Aether must not fake intimacy or turn tone into truth."
+
+Run it through:
   raw prompt -> local model
   packet prompt -> same local model
   verifier score failures -> constrained repair prompt
   deterministic external renderer
-
-This separates:
-  raw model ability
-  packet-only improvement
-  packet + verifier repair improvement
-  deterministic renderer ceiling
 ```
 
 Only after that:

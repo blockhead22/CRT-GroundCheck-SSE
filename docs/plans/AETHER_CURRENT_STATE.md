@@ -108,6 +108,12 @@ prompt was tightened to require a public Held Tension section with exact labels:
 Side A, Side B, Allowed synthesis, Forbidden collapse, and Trace preview. The
 key lesson is that the small model can preserve held tension when the external
 workspace packet is explicit enough; hidden chain-of-thought is not required.
+
+Workbench preview: optional governance_answer_spine.tension_packet now renders
+in the inline "How this answer formed" trace and in the full Trace drawer under
+Governance spine. This is fixture-backed preview only, not broad runtime routing.
+The UI shows Side A, Side B, Allowed synthesis, Forbidden collapse, and Trace
+preview when a packet exists.
 ```
 
 Phase 2 learner/review loop:

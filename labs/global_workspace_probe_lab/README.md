@@ -10,11 +10,17 @@ interpretability.
 activations and does not require HuggingFace or Anthropic's `jacobian-lens`
 package.
 
-It compares three modes:
+It compares five modes:
 
 - `raw_shadow`: a fluent but workspace-weak small-model baseline.
 - `real_model`: an optional Ollama-backed local model adapter.
 - `external_workspace_model_render`: the same local model, but packet-conditioned.
+- `external_workspace_model_repair`: packet-conditioned model render plus
+  verifier failure feedback and constrained public repair.
+- `compressed_workspace_model_render`: the same local model with a tiny render
+  contract: task, side A, side B, must say, must not say, required format.
+- `compressed_workspace_model_repair`: compressed render plus failure-delta
+  repair.
 - `external_workspace`: an Aether-style external workspace that makes the
   intermediate concept, boundary, or evidence spine explicit.
 
@@ -81,13 +87,18 @@ Current pattern:
 ```text
 raw local models pass 2-3/9
 packet-conditioned local models pass 0/4 packet cases
+packet + verifier repair passes 1-3/4 packet cases
+compressed packets pass 0-2/4 packet cases
+compressed + repair passes 2-3/4 packet cases
 deterministic external workspace passes 9/9
 ```
 
-So the next useful experiment is not "add more prompt text." It is:
+So the useful result is:
 
 ```text
-packet-conditioned local model + verifier feedback + constrained repair
+packet alone is not enough; compression helps; compression + verifier repair is
+the best local-model path so far, but high-risk held-tension structure still
+needs deterministic render or stronger model routing
 ```
 
 ## How We Compare To Anthropic's Repo

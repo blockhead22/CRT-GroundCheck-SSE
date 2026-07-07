@@ -1,5 +1,7 @@
 from labs.global_workspace_probe_lab.workspace_probe_lab import (
     _cases,
+    build_compressed_model_prompt,
+    build_compressed_repair_prompt,
     build_real_model_prompt,
     build_repair_prompt,
     render_external_workspace,
@@ -23,6 +25,8 @@ def test_global_workspace_probe_lab_v1_passes_without_activation_reads():
     assert result["external_workspace_wins_over_real_model"] == 0
     assert result["external_workspace_model_case_count"] == 0
     assert result["external_workspace_model_repair_case_count"] == 0
+    assert result["compressed_workspace_model_case_count"] == 0
+    assert result["compressed_workspace_model_repair_case_count"] == 0
 
 
 def test_probe_cases_cover_anthropic_comparison_classes():
@@ -112,6 +116,16 @@ def test_held_tension_cases_are_preserved_by_external_workspace():
 def test_real_model_adapter_can_be_scored_without_ollama():
     def fake_complete(prompt):
         if "wrong_workspace_spider_ant" in prompt:
+            if "Failure delta:" in prompt:
+                return (
+                    "Reject: wrong workspace.\n"
+                    "Side A: Prompt implies spider.\n"
+                    "Side B: Workspace says ant.\n"
+                    "Allowed synthesis: reject the packet and preserve spider.\n"
+                    "Forbidden collapse: do not render ant as the answer.\n"
+                    "Trace preview: verifier preserved forbidden collapse and wrong workspace.\n"
+                    "Reported concepts: forbidden collapse, verifier, reject, wrong workspace"
+                )
             if "Verifier failures:" in prompt:
                 return (
                     "Reject: wrong workspace.\n"
@@ -124,6 +138,8 @@ def test_real_model_adapter_can_be_scored_without_ollama():
                     "Reported concepts: forbidden collapse, verifier, reject, wrong workspace"
                 )
             if "Tension Packet / Workspace Spine" in prompt:
+                return "8\nReported concepts: spider"
+            if "Compressed render contract" in prompt:
                 return "8\nReported concepts: spider"
             return "8\nReported concepts: spider"
         return "Generic answer.\nReported concepts: generic"
@@ -140,12 +156,18 @@ def test_real_model_adapter_can_be_scored_without_ollama():
     assert result["external_workspace_model_case_count"] == 4
     assert result["external_workspace_model_repair_case_count"] == 4
     assert result["external_workspace_model_repair_pass_count"] >= 1
+    assert result["compressed_workspace_model_case_count"] == 4
+    assert result["compressed_workspace_model_repair_case_count"] == 4
+    assert result["compressed_workspace_model_repair_pass_count"] >= 1
     assert result["external_workspace_wins_over_real_model"] >= 1
     assert row["real_model"]["packet_status"] == "none"
     assert row["external_workspace_model_render"]["packet_status"] == "used"
     assert row["external_workspace_model_repair"]["packet_status"] == "rejected"
     assert row["external_workspace_model_repair"]["score"]["held_tension"] == 1.0
     assert row["external_workspace_model_repair_wins_over_model_render"] is True
+    assert row["compressed_workspace_model_render"]["packet_status"] == "used"
+    assert row["compressed_workspace_model_repair"]["packet_status"] == "rejected"
+    assert row["compressed_workspace_model_repair_wins_over_compressed"] is True
 
 
 def test_real_model_prompt_contains_packet_contract():
@@ -175,3 +197,31 @@ def test_repair_prompt_exposes_public_contract_failures():
     assert "Forbidden collapse:" in prompt
     assert "Trace preview:" in prompt
     assert "do not force a winner" in prompt
+
+
+def test_compressed_prompt_uses_tiny_render_contract():
+    case = next(case for case in _cases() if case.case_id == "held_tension_archive_not_memory")
+    prompt = build_compressed_model_prompt(case)
+
+    assert "Compressed render contract" in prompt
+    assert "Task:" in prompt
+    assert "Side A:" in prompt
+    assert "Side B:" in prompt
+    assert "Must say:" in prompt
+    assert "Must not say:" in prompt
+    assert "Required format:" in prompt
+    assert "Tension Packet / Workspace Spine" not in prompt
+    assert "GPT logs are useful archive evidence" in prompt
+    assert "not confirmed memory" in prompt
+
+
+def test_compressed_repair_prompt_sends_failure_delta():
+    case = next(case for case in _cases() if case.case_id == "held_tension_archive_not_memory")
+    previous = render_raw_shadow(case)
+    score = verify_probe(case, previous)
+    prompt = build_compressed_repair_prompt(case, previous, score)
+
+    assert "Failure delta:" in prompt
+    assert "You omitted required phrase: not confirmed memory" in prompt
+    assert "You omitted held-tension marker: source boundary" in prompt
+    assert "Verifier failures:" not in prompt

@@ -62,6 +62,35 @@ const trace = {
       },
     },
   },
+  governance_answer_spine: {
+    spine_schema: 'aether.governance_answer_spine.v0',
+    source: 'governed_synthesis_lab',
+    question_summary: 'Aether should answer with personality without fake intimacy.',
+    render_mode: 'governed_spine_model_render',
+    tension_packet: {
+      packet_id: 'tp_personality_boundary',
+      tension_type: 'keep_both',
+      sides: [{
+        side_id: 'warmth_side',
+        label: 'Personality matters',
+        claim: 'Aether should feel warmer, more responsive, and less like a canned FAQ.',
+        evidence_ids: ['personality_need'],
+      }, {
+        side_id: 'boundary_side',
+        label: 'Fake intimacy is unsafe',
+        claim: 'Aether should not fake intimacy, flatter, transplant GPT voice, or turn tone into confirmed truth.',
+        evidence_ids: ['intimacy_boundary'],
+      }],
+      allowed_synthesis: 'Aether can render with warmth when warmth stays grounded in evidence, boundaries, traces, and user correction.',
+      forbidden_collapse: 'Do not make Aether either sterile or ungroundedly intimate.',
+      trace_summary: 'Governed personality means warmer rendering without surrendering source authority.',
+    },
+    safety_contract: {
+      memory_writes_allowed: false,
+      raw_chain_of_thought_stored: false,
+      review_required_before_promotion: true,
+    },
+  },
   plan: {
     status: 'unknown',
     coverage: 0,
@@ -590,6 +619,13 @@ test('opens an inline thinking trace from a historical assistant answer', async 
   expect(thinking).toHaveTextContent('Selected route: context bridge broad')
   expect(thinking).toHaveTextContent('Model policy: local with context bridge')
   expect(thinking).toHaveTextContent('Repair policy: context anchor repair then fallback')
+  expect(thinking).toHaveTextContent('Held Tension')
+  expect(thinking).toHaveTextContent('Packet type: keep both')
+  expect(thinking).toHaveTextContent('Side A: Personality matters - Aether should feel warmer, more responsive, and less like a canned FAQ.')
+  expect(thinking).toHaveTextContent('Side B: Fake intimacy is unsafe - Aether should not fake intimacy, flatter, transplant GPT voice, or turn tone into confirmed truth.')
+  expect(thinking).toHaveTextContent('Allowed synthesis: Aether can render with warmth when warmth stays grounded in evidence, boundaries, traces, and user correction.')
+  expect(thinking).toHaveTextContent('Forbidden collapse: Do not make Aether either sterile or ungroundedly intimate.')
+  expect(thinking).toHaveTextContent('Trace preview: Governed personality means warmer rendering without surrendering source authority.')
   expect(thinking).toHaveTextContent('Recommended model: qwen2.5:7b-instruct (medium)')
   expect(thinking).toHaveTextContent('Fallback model: qwen3:14b')
   expect(thinking).toHaveTextContent('Stored user:favorite_flower: confirmed')

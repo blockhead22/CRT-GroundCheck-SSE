@@ -231,6 +231,48 @@ test('renders governance answer spine and compliance summary', () => {
   expect(within(spine).getByText(/answer from released evidence/)).toBeInTheDocument()
 })
 
+test('renders tension packet preview inside governance spine', () => {
+  render(<TraceDrawer trace={{
+    ...trace,
+    governance_answer_spine: {
+      spine_schema: 'aether.governance_answer_spine.v0',
+      source: 'governed_synthesis_lab',
+      question_summary: 'Aether should answer with personality without fake intimacy.',
+      render_mode: 'governed_spine_model_render',
+      tension_packet: {
+        packet_id: 'tp_personality_boundary',
+        tension_type: 'keep_both',
+        sides: [{
+          side_id: 'warmth_side',
+          label: 'Personality matters',
+          claim: 'Aether should feel warmer, more responsive, and less like a canned FAQ.',
+          evidence_ids: ['personality_need'],
+        }, {
+          side_id: 'boundary_side',
+          label: 'Fake intimacy is unsafe',
+          claim: 'Aether should not fake intimacy, flatter, transplant GPT voice, or turn tone into confirmed truth.',
+          evidence_ids: ['intimacy_boundary'],
+        }],
+        allowed_synthesis: 'Aether can render with warmth when warmth stays grounded in evidence, boundaries, traces, and user correction.',
+        forbidden_collapse: 'Do not make Aether either sterile or ungroundedly intimate.',
+        trace_summary: 'Governed personality means warmer rendering without surrendering source authority.',
+      },
+      safety_contract: {
+        memory_writes_allowed: false,
+        raw_chain_of_thought_stored: false,
+      },
+    },
+  }} />)
+
+  const packet = screen.getByLabelText('Tension packet')
+  expect(within(packet).getByText('keep both')).toBeInTheDocument()
+  expect(within(packet).getByText(/Personality matters: Aether should feel warmer/)).toBeInTheDocument()
+  expect(within(packet).getByText(/Fake intimacy is unsafe: Aether should not fake intimacy/)).toBeInTheDocument()
+  expect(within(packet).getByText(/Aether can render with warmth/)).toBeInTheDocument()
+  expect(within(packet).getByText(/Do not make Aether either sterile/)).toBeInTheDocument()
+  expect(within(packet).getByText(/Governed personality means warmer rendering/)).toBeInTheDocument()
+})
+
 test('surfaces governance compliance flags without exposing restricted values', () => {
   render(<TraceDrawer trace={{
     ...trace,

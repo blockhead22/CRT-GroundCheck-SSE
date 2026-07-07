@@ -205,6 +205,19 @@ export interface GovernanceAnswerSpine {
   }
   answerable?: Array<Record<string, unknown>>
   restricted?: Array<Record<string, unknown>>
+  tension_packet?: {
+    packet_id: string
+    tension_type: string
+    sides: Array<{
+      side_id: string
+      label: string
+      claim: string
+      evidence_ids?: string[]
+    }>
+    allowed_synthesis: string
+    forbidden_collapse: string
+    trace_summary: string
+  } | null
   render_contract?: string[]
   safety_contract?: {
     memory_writes_allowed?: boolean

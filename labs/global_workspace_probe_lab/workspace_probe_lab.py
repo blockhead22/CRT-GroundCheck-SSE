@@ -22,6 +22,8 @@ Mode = Literal[
     "real_model",
     "external_workspace_model_render",
     "external_workspace_model_repair",
+    "compressed_workspace_model_render",
+    "compressed_workspace_model_repair",
     "external_workspace",
 ]
 
@@ -571,6 +573,69 @@ def _packet_prompt(packet: TensionPacket) -> str:
     )
 
 
+def _packet_sides(packet: TensionPacket) -> tuple[str, str]:
+    if packet.unresolved_tensions:
+        edge = packet.unresolved_tensions[0]
+        return edge.side_a, edge.side_b
+    if len(packet.evidence_nodes) >= 2:
+        return packet.evidence_nodes[0].text, packet.evidence_nodes[1].text
+    if packet.evidence_nodes:
+        return packet.evidence_nodes[0].text, "No second side supplied."
+    return packet.workspace_concept, "No second side supplied."
+
+
+def _required_format(packet: TensionPacket) -> str:
+    if packet.safety_status == "reject":
+        first_line = "Reject: wrong workspace"
+    else:
+        first_line = "Held Tension:"
+    return (
+        f"{first_line}\n"
+        "Side A:\n"
+        "Side B:\n"
+        "Allowed synthesis:\n"
+        "Forbidden collapse:\n"
+        "Trace preview:\n"
+        "Reported concepts:"
+    )
+
+
+def _compressed_packet_prompt(case: ProbeCase) -> str:
+    if not case.packet:
+        raise ValueError("compressed packet prompts require a packet case")
+    side_a, side_b = _packet_sides(case.packet)
+    must_say = "\n".join(
+        f"- {item}"
+        for item in (
+            *case.expected_outputs,
+            *case.expected_internal_markers,
+            *case.expected_tension_markers,
+        )
+    )
+    must_not_say = "\n".join(
+        f"- {item}" for item in (*case.forbidden_outputs, *case.packet.forbidden_collapses)
+    ) or "- none"
+    return (
+        "Compressed render contract. Do not reveal hidden chain of thought. "
+        "Render only the public answer in the required format.\n\n"
+        f"Probe id: {case.case_id}\n\n"
+        f"Task:\n{case.prompt}\n\n"
+        f"Side A:\n{side_a}\n\n"
+        f"Side B:\n{side_b}\n\n"
+        "Must say:\n"
+        f"{must_say}\n\n"
+        "Must not say:\n"
+        f"{must_not_say}\n\n"
+        "Required format:\n"
+        f"{_required_format(case.packet)}\n\n"
+        "Public answer:"
+    )
+
+
+def build_compressed_model_prompt(case: ProbeCase) -> str:
+    return _compressed_packet_prompt(case)
+
+
 def build_real_model_prompt(case: ProbeCase, *, include_packet: bool = False) -> str:
     packet_section = (
         _packet_prompt(case.packet)
@@ -598,6 +663,21 @@ def _format_score_failures(score: ProbeScore) -> str:
         "forbidden_present": score.forbidden_present,
     }
     return json.dumps(failures, indent=2)
+
+
+def _failure_delta(case: ProbeCase, score: ProbeScore) -> tuple[str, ...]:
+    deltas: list[str] = []
+    for item in score.missing_outputs:
+        deltas.append(f"You omitted required phrase: {item}")
+    for item in score.missing_internal_markers:
+        deltas.append(f"You omitted required marker: {item}")
+    for item in score.missing_tension_markers:
+        deltas.append(f"You omitted held-tension marker: {item}")
+    for item in score.forbidden_present:
+        deltas.append(f"You included forbidden phrase: {item}")
+    if case.packet and case.packet.safety_status == "reject" and not score.passed:
+        deltas.append("If the packet is unsafe, begin with: Reject: wrong workspace")
+    return tuple(deltas)
 
 
 def build_repair_prompt(
@@ -636,6 +716,28 @@ def build_repair_prompt(
         "- If the packet is unsafe, begin with 'Reject: wrong workspace'.\n"
         "- If tension is unresolved, include 'unresolved' and 'do not force a winner'.\n"
         "- If source authority is limited, include 'source boundary' and 'review'.\n\n"
+        "Repaired public answer:"
+    )
+
+
+def build_compressed_repair_prompt(
+    case: ProbeCase,
+    previous_answer: ProbeAnswer,
+    previous_score: ProbeScore,
+) -> str:
+    if not case.packet:
+        raise ValueError("compressed repair prompts require a packet case")
+    delta = "\n".join(f"- {item}" for item in _failure_delta(case, previous_score))
+    if not delta:
+        delta = "- No verifier failures. Preserve the answer."
+    return (
+        "Repair the public answer to the same compressed contract. Use only the "
+        "failure delta below; do not add new facts or hidden reasoning.\n\n"
+        f"{_compressed_packet_prompt(case)}\n\n"
+        "Previous public answer:\n"
+        f"{previous_answer.text}\n\n"
+        "Failure delta:\n"
+        f"{delta}\n\n"
         "Repaired public answer:"
     )
 
@@ -686,6 +788,20 @@ def render_real_model(
     )
 
 
+def render_compressed_workspace_model(
+    case: ProbeCase,
+    complete: Callable[[str], str],
+) -> ProbeAnswer:
+    text = complete(_compressed_packet_prompt(case))
+    return _answer_from_model_text(
+        case=case,
+        text=text,
+        mode="compressed_workspace_model_render",
+        include_packet=True,
+        note="ollama/local model compressed packet adapter",
+    )
+
+
 def _answer_from_model_text(
     *,
     case: ProbeCase,
@@ -694,6 +810,8 @@ def _answer_from_model_text(
         "real_model",
         "external_workspace_model_render",
         "external_workspace_model_repair",
+        "compressed_workspace_model_render",
+        "compressed_workspace_model_repair",
     ],
     include_packet: bool,
     note: str,
@@ -736,6 +854,22 @@ def render_external_workspace_model_repair(
         mode="external_workspace_model_repair",
         include_packet=True,
         note="ollama/local model repair adapter",
+    )
+
+
+def render_compressed_workspace_model_repair(
+    case: ProbeCase,
+    complete: Callable[[str], str],
+    previous_answer: ProbeAnswer,
+    previous_score: ProbeScore,
+) -> ProbeAnswer:
+    text = complete(build_compressed_repair_prompt(case, previous_answer, previous_score))
+    return _answer_from_model_text(
+        case=case,
+        text=text,
+        mode="compressed_workspace_model_repair",
+        include_packet=True,
+        note="ollama/local model compressed repair adapter",
     )
 
 
@@ -811,6 +945,12 @@ def run_lab(
     external_workspace_model_repair_passes = 0
     external_workspace_model_repair_cases = 0
     external_workspace_model_repair_wins_over_model_render = 0
+    compressed_workspace_model_passes = 0
+    compressed_workspace_model_cases = 0
+    compressed_workspace_model_wins_over_full_packet = 0
+    compressed_workspace_model_repair_passes = 0
+    compressed_workspace_model_repair_cases = 0
+    compressed_workspace_model_repair_wins_over_compressed = 0
     external_passes = 0
 
     for case in cases:
@@ -857,6 +997,36 @@ def run_lab(
             if external_workspace_model_repair_answer
             else None
         )
+        compressed_workspace_model_answer = (
+            render_compressed_workspace_model(case, real_model_complete)
+            if real_model_complete and case.packet
+            else None
+        )
+        compressed_workspace_model_score = (
+            verify_probe(case, compressed_workspace_model_answer)
+            if compressed_workspace_model_answer
+            else None
+        )
+        compressed_workspace_model_repair_answer = (
+            render_compressed_workspace_model_repair(
+                case,
+                real_model_complete,
+                compressed_workspace_model_answer,
+                compressed_workspace_model_score,
+            )
+            if (
+                real_model_complete
+                and case.packet
+                and compressed_workspace_model_answer
+                and compressed_workspace_model_score
+            )
+            else None
+        )
+        compressed_workspace_model_repair_score = (
+            verify_probe(case, compressed_workspace_model_repair_answer)
+            if compressed_workspace_model_repair_answer
+            else None
+        )
         external_answer = render_external_workspace(case)
         external_score = verify_probe(case, external_answer)
         if raw_score.passed:
@@ -879,6 +1049,26 @@ def run_lab(
                 > external_workspace_model_score.total
             ):
                 external_workspace_model_repair_wins_over_model_render += 1
+        if compressed_workspace_model_score:
+            compressed_workspace_model_cases += 1
+            if compressed_workspace_model_score.passed:
+                compressed_workspace_model_passes += 1
+            if (
+                external_workspace_model_score
+                and compressed_workspace_model_score.total
+                > external_workspace_model_score.total
+            ):
+                compressed_workspace_model_wins_over_full_packet += 1
+        if compressed_workspace_model_repair_score:
+            compressed_workspace_model_repair_cases += 1
+            if compressed_workspace_model_repair_score.passed:
+                compressed_workspace_model_repair_passes += 1
+            if (
+                compressed_workspace_model_score
+                and compressed_workspace_model_repair_score.total
+                > compressed_workspace_model_score.total
+            ):
+                compressed_workspace_model_repair_wins_over_compressed += 1
         if external_score.passed:
             external_passes += 1
         if external_score.total > raw_score.total:
@@ -942,6 +1132,37 @@ def run_lab(
                 and external_workspace_model_repair_score.total
                 > external_workspace_model_score.total
             )
+        if compressed_workspace_model_answer and compressed_workspace_model_score:
+            row["compressed_workspace_model_render"] = {
+                "text": compressed_workspace_model_answer.text,
+                "reported_concepts": list(
+                    compressed_workspace_model_answer.reported_concepts
+                ),
+                "packet_status": compressed_workspace_model_answer.packet_status,
+                "score": compressed_workspace_model_score.__dict__,
+            }
+            row["compressed_workspace_model_render_wins_over_full_packet"] = (
+                external_workspace_model_score is not None
+                and compressed_workspace_model_score.total
+                > external_workspace_model_score.total
+            )
+        if (
+            compressed_workspace_model_repair_answer
+            and compressed_workspace_model_repair_score
+        ):
+            row["compressed_workspace_model_repair"] = {
+                "text": compressed_workspace_model_repair_answer.text,
+                "reported_concepts": list(
+                    compressed_workspace_model_repair_answer.reported_concepts
+                ),
+                "packet_status": compressed_workspace_model_repair_answer.packet_status,
+                "score": compressed_workspace_model_repair_score.__dict__,
+            }
+            row["compressed_workspace_model_repair_wins_over_compressed"] = (
+                compressed_workspace_model_score is not None
+                and compressed_workspace_model_repair_score.total
+                > compressed_workspace_model_score.total
+            )
         rows.append(row)
 
     return {
@@ -967,6 +1188,20 @@ def run_lab(
         ),
         "external_workspace_model_repair_wins_over_model_render": (
             external_workspace_model_repair_wins_over_model_render
+        ),
+        "compressed_workspace_model_case_count": compressed_workspace_model_cases,
+        "compressed_workspace_model_pass_count": compressed_workspace_model_passes,
+        "compressed_workspace_model_wins_over_full_packet": (
+            compressed_workspace_model_wins_over_full_packet
+        ),
+        "compressed_workspace_model_repair_case_count": (
+            compressed_workspace_model_repair_cases
+        ),
+        "compressed_workspace_model_repair_pass_count": (
+            compressed_workspace_model_repair_passes
+        ),
+        "compressed_workspace_model_repair_wins_over_compressed": (
+            compressed_workspace_model_repair_wins_over_compressed
         ),
         "external_workspace_pass_count": external_passes,
         "external_workspace_wins": external_wins,

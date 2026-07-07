@@ -232,6 +232,16 @@ export function TraceDrawer({
               {governanceReview.spine.render_contract.slice(0, 2).join(' · ')}
             </p>
           ) : null}
+          {governanceReview.spine.tension_packet ? (
+            <div className="tool-meta-grid" aria-label="Tension packet">
+              {tensionPacketRows(governanceReview.spine).map((item) => (
+                <div className="tool-meta-cell" key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </article>
       ) : null}
       {trace.public_governance_steps?.length ? (
@@ -501,6 +511,20 @@ function governanceSpineRows(
       value: safety.raw_chain_of_thought_stored ? 'stored' : 'not stored',
     },
   ].filter((item): item is { label: string; value: string } => Boolean(item))
+}
+
+function tensionPacketRows(spine: GovernanceAnswerSpine) {
+  const packet = spine.tension_packet
+  if (!packet) return []
+  const [sideA, sideB] = packet.sides || []
+  return [
+    { label: 'Packet', value: formatRouteValue(packet.tension_type || packet.packet_id) },
+    sideA ? { label: 'Side A', value: `${sideA.label}: ${sideA.claim}` } : null,
+    sideB ? { label: 'Side B', value: `${sideB.label}: ${sideB.claim}` } : null,
+    { label: 'Allowed synthesis', value: packet.allowed_synthesis },
+    { label: 'Forbidden collapse', value: packet.forbidden_collapse },
+    { label: 'Trace preview', value: packet.trace_summary },
+  ].filter((item): item is { label: string; value: string } => Boolean(item?.value))
 }
 
 function formatStepStatus(step: PublicGovernanceStep) {

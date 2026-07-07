@@ -49,7 +49,7 @@ python labs\global_workspace_probe_lab\workspace_probe_lab.py `
   --write-result
 ```
 
-## v1 Qwen Local-Model Run
+## v1 Local-Model Repair Run
 
 Artifact:
 
@@ -62,9 +62,9 @@ labs/global_workspace_probe_lab/results/workspace_probe_v1_real_mistral_latest.j
 Model comparison:
 
 ```text
-qwen2.5:7b-instruct  raw real: 3/9  packet model: 0/4  deterministic external: 9/9
-phi3:3.8b            raw real: 2/9  packet model: 0/4  deterministic external: 9/9
-mistral:latest       raw real: 2/9  packet model: 0/4  deterministic external: 9/9
+qwen2.5:7b-instruct  raw: 3/9  full packet: 0/4  full repair: 3/4  compressed: 2/4  compressed repair: 3/4  deterministic: 9/9
+phi3:3.8b            raw: 3/9  full packet: 0/4  full repair: 3/4  compressed: 2/4  compressed repair: 2/4  deterministic: 9/9
+mistral:latest       raw: 2/9  full packet: 0/4  full repair: 1/4  compressed: 0/4  compressed repair: 2/4  deterministic: 9/9
 ```
 
 Packet-conditioned model comparison:
@@ -73,6 +73,22 @@ Packet-conditioned model comparison:
 qwen2.5:7b-instruct  packet_model_wins_over_raw_real: 3/4
 phi3:3.8b            packet_model_wins_over_raw_real: 1/4
 mistral:latest       packet_model_wins_over_raw_real: 3/4
+```
+
+Verifier-repair comparison:
+
+```text
+qwen2.5:7b-instruct  repair_wins_over_packet_model: 4/4
+phi3:3.8b            repair_wins_over_packet_model: 4/4
+mistral:latest       repair_wins_over_packet_model: 3/4
+```
+
+Compression comparison:
+
+```text
+qwen2.5:7b-instruct  compressed_wins_over_full_packet: 4/4  compressed_repair_wins_over_compressed: 3/4
+phi3:3.8b            compressed_wins_over_full_packet: 4/4  compressed_repair_wins_over_compressed: 2/4
+mistral:latest       compressed_wins_over_full_packet: 3/4  compressed_repair_wins_over_compressed: 3/4
 ```
 
 Qwen passed the easier workspace-like cases:
@@ -120,8 +136,52 @@ The more precise v1 split is:
 Raw local model: sometimes solves easy hidden-concept tasks.
 Packet-conditioned local model: often improves scores but still fails all
 packet-governance pass thresholds.
+Packet + verifier repair: closes much of the gap for Qwen and Phi, but remains
+model-sensitive.
+Compressed packet: beats the full packet prompt on score in most packet cases,
+but does not eliminate failures.
+Compressed packet + failure-delta repair: the best local-model path so far, but
+still not reliable enough to replace deterministic governance on high-risk
+held-tension cases.
 Deterministic external renderer: passes the packet contract because it enforces
 rejection, boundary, and held-tension rules directly.
+```
+
+Repair result detail:
+
+```text
+Qwen repair passes wrong-workspace rejection, local-model held tension, and
+archive/source-boundary tension. It still misses the exact
+"epistemic governance is the goal" wording.
+
+Phi repair passes the same three packet cases. It still misses the governance
+mechanism-vs-goal distinction.
+
+Mistral repair passes only the governance distinction. It rejects the wrong
+workspace but omits verifier/reportability markers, and it still drops
+held-tension/source-boundary markers.
+
+Compressed repair changes the failure shape:
+
+Qwen compressed repair passes governance distinction, wrong-workspace rejection,
+and local-model held tension, but still misses the archive/source-boundary case.
+
+Phi compressed repair passes wrong-workspace rejection and archive/source-boundary
+tension, but loses the local-model held-tension case that full repair passed.
+
+Mistral compressed repair improves from one packet pass to two, passing
+governance distinction and archive/source-boundary tension, but still fails
+wrong-workspace reportability and local-model held tension.
+```
+
+Decision:
+
+```text
+Do not broaden model comparisons yet. Keep narrowing the contract.
+Compression + verifier repair is promising, but not stable enough to trust for
+all held-tension packets. The current product implication is hybrid routing:
+deterministic render or stronger model for high-risk structure; local model
+render only when verifier repair passes.
 ```
 
 This is the first real evidence artifact for the Aether thesis:
