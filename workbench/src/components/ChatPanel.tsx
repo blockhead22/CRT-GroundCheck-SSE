@@ -431,7 +431,7 @@ function AnswerThinkingTrace({
             <h4>{section.label}</h4>
             {section.items.length ? (
               <ul>
-                {section.items.slice(0, 8).map((item) => (
+                {section.items.slice(0, 12).map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
@@ -450,6 +450,7 @@ function answerThinkingSections(trace: Trace) {
   const compliance = trace.completion?.governance_spine_compliance
   const process = cleanItems([
     ...(trace.public_governance_steps || []).map((step) => `${step.summary}: ${step.detail}`),
+    ...mirusLogicGraphLines(trace),
     ...(trace.memory_candidates || []).map((candidate) => (
       `Mirus candidate: ${formatTraceLabel(candidate.semantic_signal || candidate.candidate_kind || 'review required')}`
     )),
@@ -521,6 +522,23 @@ function answerThinkingSections(trace: Trace) {
     { label: 'Verifier', items: verifier, empty: 'No post-render verifier flags were stored.' },
     { label: 'Learning', items: learning, empty: 'No review candidate was raised from this trace.' },
   ]
+}
+
+function mirusLogicGraphLines(trace: Trace) {
+  const discovery = trace.mirus_governed_discovery
+  if (!discovery?.enabled) return []
+  const front = discovery.front_packet
+  const nodes = discovery.logic_graph?.nodes || []
+  const edges = discovery.logic_graph?.edges || []
+  const graphPath = nodes.length
+    ? nodes.map((node) => node.id).join(' -> ')
+    : edges.map((edge) => `${edge.from} -> ${edge.to}`).join(', ')
+  return cleanItems([
+    front?.preferred_intent ? `Mirus front packet: ${formatTraceLabel(front.preferred_intent)}` : '',
+    front?.candidate_hints?.length ? `Candidate hints: ${front.candidate_hints.join(', ')}` : '',
+    graphPath ? `Logic graph: ${graphPath}` : '',
+    discovery.repairs?.length ? `CRT repair: ${discovery.repairs.map(formatTraceLabel).join(', ')}` : '',
+  ])
 }
 
 function dispatchWisconsinMapActions(trace: Trace, dispatched: Set<string>) {

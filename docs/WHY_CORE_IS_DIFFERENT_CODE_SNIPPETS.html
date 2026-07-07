@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Why CORE/Aether Is Different, Shown In Code</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #10131a;
+      --panel: #171b24;
+      --panel-2: #1f2530;
+      --text: #eef2f7;
+      --muted: #aeb8c7;
+      --line: #313949;
+      --accent: #76d6c4;
+      --accent-2: #f0c86a;
+      --code: #0b0e14;
+      --shadow: rgba(0, 0, 0, 0.28);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.65 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(1120px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 56px 0 72px;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 32px;
+      padding-bottom: 28px;
+    }
+
+    h1,
+    h2 {
+      line-height: 1.14;
+      letter-spacing: 0;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(2.15rem, 4vw, 4rem);
+      max-width: 900px;
+    }
+
+    h2 {
+      font-size: 1.45rem;
+      margin-top: 42px;
+    }
+
+    p {
+      color: var(--muted);
+      margin: 14px 0 0;
+      max-width: 880px;
+    }
+
+    ul {
+      color: var(--muted);
+      margin: 14px 0 0;
+      padding-left: 22px;
+    }
+
+    li + li {
+      margin-top: 6px;
+    }
+
+    code {
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 16px 0 0;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--code);
+      box-shadow: 0 18px 45px var(--shadow);
+    }
+
+    pre code {
+      color: #e9eef7;
+      display: block;
+      font-size: 0.88rem;
+      line-height: 1.55;
+      white-space: pre;
+    }
+
+    .lede {
+      color: #d6dde8;
+      font-size: 1.08rem;
+      max-width: 820px;
+    }
+
+    .summary {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin: 28px 0 34px;
+      padding: 22px 24px;
+    }
+
+    .section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-top: 22px;
+      padding: 26px;
+    }
+
+    .source {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--accent);
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      margin-top: 16px;
+      padding: 5px 11px;
+      font-size: 0.86rem;
+      font-weight: 650;
+    }
+
+    .why {
+      border-left: 3px solid var(--accent-2);
+      margin-top: 16px;
+      padding-left: 14px;
+    }
+
+    .why strong {
+      color: var(--accent-2);
+    }
+
+    .final {
+      background: var(--panel-2);
+      border-color: #455064;
+    }
+
+    @media (max-width: 720px) {
+      main {
+        width: min(100% - 28px, 1120px);
+        padding-top: 36px;
+      }
+
+      .section,
+      .summary {
+        padding: 18px;
+      }
+
+      pre {
+        padding: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Why CORE/Aether Is Different, Shown In Code</h1>
+      <p class="lede">A compact technical tour of the system's unusual parts. Each section points to the source location and includes a focused excerpt so the claims are inspectable.</p>
+    </header>
+
+    <section class="summary">
+      <h2>The Short Version</h2>
+      <p>Most agent memory systems behave like "retrieve a note, generate an answer." CORE/Aether is built as a local epistemic control plane around generation:</p>
+      <ul>
+        <li>LLM output is treated as speech, not automatically as belief.</li>
+        <li>Memories carry provenance, authority, source kind, trust, and uncertainty.</li>
+        <li>Contradictions are recorded and surfaced instead of silently overwritten.</li>
+        <li>External channels and model output are capped or gated before they affect belief.</li>
+        <li>The system can answer with explicit uncertainty when the belief state is not clean enough.</li>
+        <li>Cloud models are optional generation engines; governance and local-only policy are separate runtime controls.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>1. Memory Is Not Just Text</h2>
+      <div class="source">Source: <code>personal_agent/crt_memory.py:264</code></div>
+      <p>The core memory record separates fixed creation-time confidence from evolving trust, stores provenance, keeps temporal validity, tracks compression state, and keeps contradiction/use counts.</p>
+      <pre><code class="language-python">@dataclass
+class MemoryItem:
+    """
+    A single memory item in CRT.
+
+    Stores:
+    - Semantic vector (meaning signature)
+    - Trust score (evolves over time)
+    - Confidence score (fixed at creation)
+    - Source (user/system/fallback/etc)
+    - SSE mode (L/C/H)
+    - Metadata
+    """
+    memory_id: str
+    vector: np.ndarray
+    text: str
+    timestamp: float
+    confidence: float          # [0,1] How certain at creation
+    trust: float               # [0,1] How validated over time
+    source: MemorySource
+    sse_mode: SSEMode
+
+    temporal_status: str = "active"
+    valid_from: Optional[float] = None
+    valid_until: Optional[float] = None
+    domain_tags: Optional[List[str]] = None
+    authority: str = "confirmed"
+    channel: str = "unknown"
+    origin: Optional[str] = None
+    kind: str = "observation"
+    user_id: Optional[str] = None
+
+    source_kind: str = "principal"
+    model_id: Optional[str] = None
+    run_id: Optional[str] = None
+
+    sigma: Optional[np.ndarray] = None
+    belnap_state: str = "true"
+    memory_type: str = "observation"
+
+    compression_tier: int = 2
+    contradiction_count: int = 0
+    access_count: int = 0</code></pre>
+      <p class="why"><strong>Why it matters:</strong> a memory is an evidence object with state, origin, authority, and lifecycle. The runtime can distinguish "the user said this," "a model guessed this," "a tool observed this," and "this used to be true but is now contested."</p>
+    </section>
+
+    <section class="section">
+      <h2>2. Trust Has Uncertainty, Not Just A Score</h2>
+      <div class="source">Source: <code>personal_agent/crt_core.py:69</code></div>
+      <p>The math layer models trust as a Beta distribution, so trust can have a mean and a variance.</p>
+      <pre><code class="language-python">@dataclass
+class BetaTrust:
+    """Beta distribution trust representation.
+
+    Instead of scalar trust, model trust as Beta(alpha, beta_param).
+    - mean = alpha / (alpha + beta_param) = trust score
+    - variance = alpha*beta / ((alpha+beta)^2 * (alpha+beta+1)) = uncertainty
+    - confidence = alpha + beta_param (total pseudo-observations)
+
+    New memories start at Beta(2, 2) -&gt; mean=0.5, high variance.
+    Confirmed memories accumulate alpha -&gt; high mean, low variance.
+    """
+    alpha: float = 2.0
+    beta_param: float = 2.0
+
+    @property
+    def mean(self) -&gt; float:
+        total = self.alpha + self.beta_param
+        return self.alpha / total if total &gt; 0 else 0.5
+
+    @property
+    def variance(self) -&gt; float:
+        a, b = self.alpha, self.beta_param
+        total = a + b
+        if total &lt;= 0:
+            return 0.25
+        return (a * b) / (total * total * (total + 1.0))</code></pre>
+      <p class="why"><strong>Why it matters:</strong> most systems flatten memory quality to "exists" or "similarity." CORE keeps a separate notion of earned belief confidence.</p>
+    </section>
+
+    <section class="section">
+      <h2>3. Trust Evolution Is Configured As Governance</h2>
+      <div class="source">Source: <code>personal_agent/crt_core.py:138</code></div>
+      <p>Trust movement is asymmetric: aligned evidence and contradicting evidence have separate rates. Retrieval also weights trust directly.</p>
+      <pre><code class="language-python">@dataclass
+class CRTConfig:
+    """CRT system configuration parameters."""
+
+    # Trust evolution rates
+    eta_pos: float = 0.1
+    eta_reinforce: float = 0.05
+    eta_neg: float = 0.15
+
+    # Thresholds
+    theta_align: float = 0.15
+    theta_contra: float = 0.28
+    theta_min: float = 0.30
+    theta_drop: float = 0.30
+    theta_fallback: float = 0.42
+
+    # Reconstruction gates
+    theta_intent: float = 0.5
+    theta_mem: float = 0.38
+
+    # Retrieval
+    lambda_time: float = 86400.0
+    alpha_trust: float = 0.7
+
+    # Trust bounds
+    tau_base: float = 0.7
+    tau_fallback_cap: float = 0.3
+    tau_train_min: float = 0.6</code></pre>
+      <p class="why"><strong>Why it matters:</strong> retrieval is not just nearest-neighbor similarity. A high-similarity memory with weak trust should not outweigh a slightly less similar but more validated belief.</p>
+    </section>
+
+    <section class="section">
+      <h2>4. External Inputs Cannot Become High-Trust Belief By Default</h2>
+      <div class="source">Source: <code>personal_agent/crt_memory.py:73</code></div>
+      <p>CORE caps trust by source channel. Direct user memory is treated differently from file ingest, MCP, social channels, ambient vision, or raw API input.</p>
+      <pre><code class="language-python"># External / untrusted channels get capped trust. Channels not listed here
+# (including 'webchat' and None - direct user input) have NO ceiling.
+CHANNEL_TRUST_CEILINGS: Dict[str, float] = {
+    "mcp_client": 0.6,      # external MCP tools can't store above 0.6
+    "file_ingest": 0.7,     # file content starts lower - could be adversarial
+    "telegram": 0.5,        # messaging channels are less trusted
+    "discord": 0.5,
+    "ambient": 0.4,         # vision observations are low trust
+    "api": 0.7,             # direct API calls
+}</code></pre>
+      <div class="source">Source: <code>personal_agent/crt_memory.py:90</code></div>
+      <p>Retrieved memory is sanitized before it enters a prompt. Stored text is treated as data, not instructions.</p>
+      <pre><code class="language-python">_INJECTION_ROLE_MARKERS_RE = re.compile(
+    r"(?:"
+    r"(?:^|\n)\s*(?:System|Assistant|Human)\s*:"
+    r"|\[/?INST\]"
+    r"|&lt;&lt;?/?SYS&gt;&gt;"
+    r"|&lt;\|/?(?:system|user|assistant|im_start|im_end)\|&gt;"
+    r")",
+    re.IGNORECASE,
+)
+
+def sanitize_memory_for_prompt(text: str) -&gt; str:
+    """Strip / neutralize prompt-injection patterns from memory text.
+
+    This is applied at *retrieval time*, right before memory text enters an
+    LLM system prompt.
+    """</code></pre>
+      <p class="why"><strong>Why it matters:</strong> memory systems can become prompt-injection amplifiers. CORE stores and retrieves memory through a governance boundary.</p>
+    </section>
+
+    <section class="section">
+      <h2>5. Contradictions Become Ledger Events, Not Silent Overwrites</h2>
+      <div class="source">Source: <code>personal_agent/crt_memory.py:1646</code></div>
+      <p>The write path explicitly stores a new memory with source, authority, channel, origin, kind, source kind, model ID, run ID, and user scope.</p>
+      <pre><code class="language-python">def store_memory(
+    self,
+    text: str,
+    confidence: float,
+    source: MemorySource,
+    context: Optional[Dict] = None,
+    user_marked_important: bool = False,
+    contradiction_signal: float = 0.0,
+    thread_id: Optional[str] = None,
+    authority: Optional[str] = None,
+    channel: Optional[str] = None,
+    origin: Optional[str] = None,
+    kind: Optional[str] = None,
+    source_kind: Optional[str] = None,
+    model_id: Optional[str] = None,
+    run_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+) -&gt; MemoryItem:
+    """
+    Store new memory with CRT principles.
+
+    Process:
+    1. Encode to vector
+    2. Compute significance -&gt; select SSE mode
+    3. Assign initial trust (based on source)
+    4. Store with metadata
+    """</code></pre>
+      <div class="source">Source: <code>personal_agent/crt_memory.py:2277</code></div>
+      <p>When slot conflicts are found on write, the system deduplicates them and records a contradiction instead of deleting the old memory.</p>
+      <pre><code class="language-python"># --- Write-path contradiction ledger: record any slot conflicts found earlier ---
+if _write_path_contradictions:
+    _deduped: Dict[str, dict] = {}
+    for _wpc in _write_path_contradictions:
+        _sk = _wpc["slot"]
+        if _sk not in _deduped or _wpc["old_trust"] &gt; _deduped[_sk]["old_trust"]:
+            _deduped[_sk] = _wpc
+    _write_path_contradictions = list(_deduped.values())
+
+if _write_path_contradictions and self._contradiction_ledger is not None:
+    for _wpc in _write_path_contradictions:
+        existing = self._contradiction_ledger.get_contradiction_for_pair(
+            _wpc["old_memory_id"], memory.memory_id,
+        )
+        if existing is not None:
+            continue
+        self._contradiction_ledger.record_contradiction(
+            old_memory_id=_wpc["old_memory_id"],
+            new_memory_id=memory.memory_id,
+            drift_mean=0.0,
+            confidence_delta=_wpc["old_trust"] - float(trust),
+            summary=f"Write-path slot contradiction ({_wpc['slot']}): "
+                    f"'{_wpc['old_value']}' -&gt; '{_wpc['new_value']}'",
+            new_text=text,
+            contradiction_type="slot_reversal",
+            thread_id=resolved_thread_id,
+        )</code></pre>
+      <p class="why"><strong>Why it matters:</strong> last-write-wins memory is easy, but it destroys history. CORE keeps the conflict alive until resolution is earned or supplied by the user.</p>
+    </section>
+
+    <section class="section">
+      <h2>6. Uncertainty Is A First-Class Response State</h2>
+      <div class="source">Source: <code>personal_agent/trust/evolution.py:160</code></div>
+      <p>The system has explicit logic for when it should admit uncertainty instead of forcing a confident answer.</p>
+      <pre><code class="language-python">def should_express_uncertainty(
+    retrieved: List[Tuple[MemoryItem, float]],
+    contradictions_count: int = 0,
+    gates_passed: bool = False,
+) -&gt; Tuple[bool, str]:
+    """
+    Determine if system should express explicit uncertainty.
+
+    Express uncertainty when:
+    1. Multiple high-trust memories conflict (unresolved contradictions)
+    2. Trust scores are too close (no clear winner) - DISABLED
+    3. Gates failed AND unresolved contradictions exist
+    4. Max trust below threshold (no confident belief)
+    """
+    if not retrieved:
+        return False, ""
+
+    if contradictions_count &gt; 0:
+        return True, f"I have {contradictions_count} unresolved contradictions about this"
+
+    max_trust = max(mem.trust for mem, _ in retrieved)
+    if max_trust &lt; 0.6:
+        return True, f"My confidence in this information is low (trust={max_trust:.2f})"
+
+    if not gates_passed and contradictions_count &gt; 0:
+        return True, "I cannot confidently reconstruct a coherent answer from my memories"
+
+    return False, ""</code></pre>
+      <p class="why"><strong>Why it matters:</strong> when the belief substrate is conflicted, the system should disclose that conflict rather than smoothing it over with confident language.</p>
+    </section>
+
+    <section class="section">
+      <h2>7. Structure Emerges From Contradiction Patterns</h2>
+      <div class="source">Source: <code>personal_agent/slot_discovery.py:1</code></div>
+      <p>The system does not assume every fact slot has the same update policy. Some facts are exclusive, some accumulate, some are temporal, and some are hierarchical.</p>
+      <pre><code class="language-python">"""Dynamic Slot Discovery for CRT/Aether.
+
+Sprint 6: Replace hardcoded EXCLUSIVE_SLOTS with a learned model that discovers
+slot behavior from contradiction patterns and memory data.
+
+Design Law 3: "Structure should emerge, not be hardcoded."
+"""
+
+class SlotType(Enum):
+    EXCLUSIVE = "exclusive"        # Only one value true at a time
+    ADDITIVE = "additive"          # Multiple values coexist
+    TEMPORAL = "temporal"          # Value changes over time, history matters
+    HIERARCHICAL = "hierarchical"  # Values have parent/child structure
+    UNKNOWN = "unknown"            # Not enough data to classify yet
+
+@dataclass
+class SlotProfile:
+    slot_name: str
+    discovered_type: SlotType
+    confidence: float = 0.0
+    evidence_count: int = 0
+    resolution_pattern: str = ""
+    unique_values_seen: int = 0
+    contradiction_count: int = 0</code></pre>
+      <p class="why"><strong>Why it matters:</strong> "favorite color changed" and "legal name changed" should not have the same resolution semantics.</p>
+    </section>
+
+    <section class="section">
+      <h2>8. GroundCheck Facts Are Bridged With Provenance</h2>
+      <div class="source">Source: <code>personal_agent/memory_subsystem/bridge.py:224</code></div>
+      <p>GroundCheck is not simply dumped into the memory table. The bridge selects canonical rows, filters narrative facts, keeps original IDs, stores provenance, and applies source trust.</p>
+      <pre><code class="language-python">def sync_groundcheck_to_memory(
+    *,
+    memory_system: Any,
+    thread_id: str,
+    min_trust: float = 0.2,
+    raw_limit: int = 400,
+    narrative_limit: int = 30,
+    allowed_sources: Optional[Sequence[str]] = None,
+) -&gt; Dict[str, Any]:
+    """Import canonical GroundCheck facts into CRT memory for this thread."""
+    rows = _read_groundcheck_rows(
+        min_trust=min_trust,
+        limit=raw_limit,
+        allowed_sources=allowed_sources,
+    )
+
+    imported_ids, imported_texts = _collect_existing_bridge_state(memory_system, thread_id)
+    slot_rows = _choose_slot_canonical_rows(rows)
+    narrative_rows = _choose_narrative_rows(rows, limit=max(0, int(narrative_limit)))
+    candidates = slot_rows + narrative_rows
+
+    for row in candidates:
+        target_trust = _clamp01(row.get("trust"), default=0.7)
+        context = {
+            "type": "groundcheck_bridge",
+            "thread_id": thread_id,
+            "groundcheck": {
+                "id": gc_id,
+                "thread_id": row.get("thread_id"),
+                "namespace": row.get("namespace"),
+                "source": row.get("source"),
+                "timestamp": row.get("timestamp"),
+            },
+            "provenance": {
+                "tool": "groundcheck_mcp",
+                "retrieved_at": now_iso,
+                "source": f"groundcheck://memories/{gc_id}",
+                "query": "bridge_sync_profile",
+            },
+        }
+
+        mem = memory_system.store_memory(
+            text=text,
+            confidence=confidence,
+            source=MemorySource.EXTERNAL,
+            context=context,
+            thread_id=thread_id,
+        )
+        memory_system._update_memory_trust(mem.memory_id, target_trust)</code></pre>
+      <p class="why"><strong>Why it matters:</strong> imported knowledge remains traceable. The system can explain not only what it knows, but where that knowledge crossed into active belief.</p>
+    </section>
+
+    <section class="section">
+      <h2>9. The Control Plane Can Stay Local</h2>
+      <div class="source">Source: <code>personal_agent/local_only_policy.py:6</code></div>
+      <p>Local-only mode is a governance decision, not just a model selection preference.</p>
+      <pre><code class="language-python">def is_strict_local_only_mode(
+    uid: Optional[int] = 1,
+    generation_mode: Optional[str] = None,
+) -&gt; bool:
+    """Return whether runtime policy should forbid cloud generation/governance."""
+    try:
+        import auth as _auth_local
+
+        _routing_mode = str(
+            _auth_local.get_user_setting(_uid_local, "routing_mode", "") or ""
+        ).strip().lower()
+        _cloud_escalation = str(
+            _auth_local.get_user_setting(
+                _uid_local, "cloud_escalation_policy", "conservative"
+            )
+            or "conservative"
+        ).strip().lower()
+        _effective_generation = str(
+            generation_mode
+            or _auth_local.get_user_setting(_uid_local, "generation_mode", "")
+            or ""
+        ).strip().lower()
+        if _effective_generation == "local_network":
+            _effective_generation = "local"
+        return _routing_mode == "local_only" or (
+            _effective_generation in ("local", "local_network", "local_only")
+            and _cloud_escalation == "local_only"
+        )
+    except Exception:
+        return False</code></pre>
+      <div class="source">Source: <code>personal_agent/model_router.py:90</code></div>
+      <p>Cloud escalation requires a specific product mode and route policy. The default mode is local-only.</p>
+      <pre><code class="language-python">self.product_mode = str(
+    (product_cfg or {}).get("mode") or os.getenv("CRT_PRODUCT_MODE") or "local_only"
+).strip().lower() or "local_only"
+self.cloud_enabled = bool(cloud_cfg.get("enabled", False))
+
+def _routed_local(self, *, route: str, reason: str, allow_cloud: bool = False) -&gt; RoutedModel:
+    model = str(self.models.get(route) or self.models.get("default") or "").strip()
+    if (
+        allow_cloud
+        and self.product_mode == "hybrid_verified"
+        and self.cloud_enabled
+        and self.cloud_model
+        and route in self.cloud_routes
+    ):
+        return RoutedModel(
+            route=route,
+            model=f"cloud:{self.cloud_model}",
+            reason=f"{reason}; escalated to cloud generation",
+            provider="cloud",
+            escalation=True,
+            product_mode=self.product_mode,
+        )</code></pre>
+      <p class="why"><strong>Why it matters:</strong> Aether can use different generation engines without letting the generation engine own the belief system. Local governance is the invariant.</p>
+    </section>
+
+    <section class="section">
+      <h2>10. Post-Generation Fidelity Is Measured</h2>
+      <div class="source">Source: <code>routes/chat_orchestrator_runner.py:778</code></div>
+      <p>The orchestrator path checks whether an answer faithfully represents the belief state and request. Generated text is inspected after generation.</p>
+      <pre><code class="language-python"># -- Fidelity Mirror (breathing loop) --
+# Check if the orchestrator's response faithfully represents beliefs.
+_fidelity_meta = {}
+try:
+    from personal_agent.fidelity_mirror import check_fidelity
+    _fm_results = orch_engine.memory.retrieve_memories(original_msg[:500], k=8)
+    _fm_memories = [
+        {"text": m.text[:300], "trust": m.trust, "memory_id": m.memory_id}
+        for m, _ in _fm_results
+    ]
+    _fidelity = check_fidelity(
+        response=accumulated_answer,
+        query=original_msg,
+        memories=_fm_memories,
+    )
+    _fidelity_meta = {
+        "belief_fidelity": _fidelity.belief_fidelity,
+        "request_alignment": _fidelity.request_alignment,
+        "factual_grounding": _fidelity.factual_grounding,
+        "composite": _fidelity.composite,
+        "passed": _fidelity.passed,
+        "latency_ms": _fidelity.latency_ms,
+    }</code></pre>
+      <p class="why"><strong>Why it matters:</strong> this is the mouth/self boundary in runtime form: speech is checked against belief.</p>
+    </section>
+
+    <section class="section final">
+      <h2>What This Adds Up To</h2>
+      <p>CORE/Aether is different because it treats memory as governed belief rather than context stuffing. The system has provenance-aware memory writes, trust and uncertainty dynamics, contradiction preservation, source authority limits, explicit uncertainty responses, local-only governance controls, and post-generation fidelity checks.</p>
+      <p>That means the agent is not just "an LLM plus tools." It is an LLM operating inside a truth-preserving runtime that can disagree with, constrain, or qualify the model's speech.</p>
+    </section>
+  </main>
+</body>
+</html>

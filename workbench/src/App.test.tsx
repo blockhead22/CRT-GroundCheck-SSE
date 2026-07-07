@@ -130,6 +130,41 @@ const trace = {
     memory_write_allowed: false,
     confirmed_fact: false,
   }],
+  mirus_governed_discovery: {
+    schema: 'aether.mirus.governed_discovery.v0',
+    enabled: true,
+    mode: 'mirus_front_existing_intake_crt_back',
+    front_packet: {
+      preferred_intent: 'mirus_extract_candidates',
+      pending_slot: '',
+      candidate_hints: ['user:favorite_drink', 'user:favorite_flower_reason'],
+      reasons: ['detected candidate slots: user:favorite_drink, user:favorite_flower_reason'],
+    },
+    repairs: [
+      'added_review_candidate:user:favorite_flower_reason',
+    ],
+    quality_flags: [],
+    logic_graph: {
+      nodes: [
+        { id: 'input', kind: 'user_turn', label: 'They are both orange. lmao' },
+        { id: 'mirus_front', kind: 'front_packet', label: 'mirus_extract_candidates' },
+        { id: 'holden_current_intake', kind: 'existing_intake', label: '1 base candidate(s)' },
+        { id: 'crt_validator', kind: 'validator', label: 'repair' },
+        { id: 'final', kind: 'result', label: '2 review-only candidate(s)' },
+      ],
+      edges: [
+        { from: 'input', to: 'mirus_front', label: 'compress task shape' },
+        { from: 'mirus_front', to: 'holden_current_intake', label: 'existing Mirus intake' },
+        { from: 'holden_current_intake', to: 'crt_validator', label: 'validate boundaries' },
+        { from: 'crt_validator', to: 'final', label: 'release review-only candidates' },
+      ],
+    },
+    safety: {
+      memory_write_allowed: false,
+      raw_hidden_chain_of_thought_stored: false,
+      review_required_before_promotion: true,
+    },
+  },
 }
 
 const turns = [
@@ -547,6 +582,10 @@ test('opens an inline thinking trace from a historical assistant answer', async 
   const thinking = await screen.findByLabelText('Answer thinking trace')
   expect(thinking).toHaveTextContent('How this answer formed')
   expect(thinking).toHaveTextContent('Thinking / Process')
+  expect(thinking).toHaveTextContent('Mirus front packet: mirus extract candidates')
+  expect(thinking).toHaveTextContent('Candidate hints: user:favorite_drink, user:favorite_flower_reason')
+  expect(thinking).toHaveTextContent('Logic graph: input -> mirus_front -> holden_current_intake -> crt_validator -> final')
+  expect(thinking).toHaveTextContent('CRT repair: added review candidate:user:favorite flower reason')
   expect(thinking).toHaveTextContent('Mirus candidate: high ranked favorite not confirmed single fact')
   expect(thinking).toHaveTextContent('Selected route: context bridge broad')
   expect(thinking).toHaveTextContent('Model policy: local with context bridge')

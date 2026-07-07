@@ -1,0 +1,105 @@
+[
+  {
+    "case_id": "multi_drink_two_favorites",
+    "prompt": "My favorite drinks are iced coffee and Dr. Pepper.",
+    "expected_intent": "mirus_extract_candidates",
+    "min_candidates": 2,
+    "required_candidate_slots": ["user:favorite_drink"],
+    "require_review_only": true
+  },
+  {
+    "case_id": "drink_health_relation",
+    "prompt": "Iced coffee is probably my favorite drink, but I worry about it health-wise.",
+    "expected_intent": "mirus_extract_candidates",
+    "min_candidates": 2,
+    "required_candidate_slots": ["user:favorite_drink", "user:favorite_drink_concern"],
+    "require_review_only": true
+  },
+  {
+    "case_id": "marigolds_orange_leukemia_relation",
+    "prompt": "Marigolds are my favorite flower because they are orange, and orange matters because of leukemia awareness.",
+    "expected_intent": "mirus_extract_candidates",
+    "min_candidates": 3,
+    "required_candidate_slots": ["user:favorite_flower", "user:favorite_flower_reason", "user:favorite_color_reason"],
+    "require_review_only": true
+  },
+  {
+    "case_id": "sports_team_brewers_bucks_secondary",
+    "prompt": "I like the Milwaukee Brewers most. I still follow the Bucks, but the Brewers are my team.",
+    "expected_intent": "mirus_extract_candidates",
+    "min_candidates": 2,
+    "required_candidate_slots": ["user:favorite_sports_team", "user:sports_interest"],
+    "require_review_only": true
+  },
+  {
+    "case_id": "short_confirmation_yeah_brewers",
+    "prompt": "yeah, the Brewers",
+    "expected_intent": "mirus_extract_candidates",
+    "history": [
+      {"role": "user", "content": "What is my favorite sports team?"},
+      {"role": "assistant", "content": "I need confirmation of your favorite sports team."}
+    ],
+    "min_candidates": 1,
+    "required_candidate_slots": ["user:favorite_sports_team"],
+    "require_review_only": true
+  },
+  {
+    "case_id": "correction_drink_not_dr_pepper",
+    "prompt": "Actually not Dr. Pepper as the main favorite. Iced coffee is the real favorite drink.",
+    "expected_intent": "mirus_extract_candidates",
+    "min_candidates": 2,
+    "required_candidate_slots": ["user:favorite_drink", "user:favorite_drink_correction"],
+    "require_review_only": true
+  },
+  {
+    "case_id": "archive_boundary_medical_history",
+    "prompt": "Search my GPT logs for my medical history. Source-bound archive hits only; do not treat them as confirmed memory.",
+    "expected_intent": "gpt_log_search"
+  },
+  {
+    "case_id": "archive_vs_confirmed_memory",
+    "prompt": "Using GPT logs as historical evidence, what might hold me back? Do not treat it as confirmed memory.",
+    "expected_intent": "gpt_log_search"
+  },
+  {
+    "case_id": "state_parks_project_identity",
+    "prompt": "What is my Wisconsin state parks project?",
+    "expected_intent": "project_context_search"
+  },
+  {
+    "case_id": "state_parks_mill_bluff_glaciation",
+    "prompt": "Why is Mill Bluff important to the glaciation story in my state parks project?",
+    "expected_intent": "project_context_search"
+  },
+  {
+    "case_id": "code_tool_self_edit",
+    "prompt": "Look through this project and find where the chat answer Thinking / Process drawer is rendered.",
+    "expected_intent": "project_context_search"
+  },
+  {
+    "case_id": "casual_no_tool",
+    "prompt": "hi aether",
+    "expected_intent": "conversational"
+  },
+  {
+    "case_id": "concept_question_no_archive",
+    "prompt": "Is this system still valid? Explain without using GPT logs.",
+    "expected_intent": "conversational"
+  },
+  {
+    "case_id": "multi_personal_and_project",
+    "prompt": "I want Aether to remember that marigolds are orange, and also use Mill Bluff as a glaciation example.",
+    "expected_intent": "multi_step",
+    "min_candidates": 1,
+    "required_candidate_slots": ["user:favorite_flower_reason"],
+    "require_review_only": true
+  },
+  {
+    "case_id": "favorite_color_reason",
+    "prompt": "Orange is my favorite color because it connects to leukemia awareness.",
+    "expected_intent": "mirus_extract_candidates",
+    "min_candidates": 2,
+    "required_candidate_slots": ["user:favorite_color", "user:favorite_color_reason"],
+    "require_review_only": true
+  }
+]

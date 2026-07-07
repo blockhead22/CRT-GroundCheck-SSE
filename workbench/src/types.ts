@@ -73,6 +73,7 @@ export interface Trace {
   route_decision?: RouteDecision
   governance_answer_spine?: GovernanceAnswerSpine
   public_governance_steps?: PublicGovernanceStep[]
+  mirus_governed_discovery?: MirusGovernedDiscovery | null
   completion?: {
     source?: string
     needs_stronger_model: boolean
@@ -141,6 +142,34 @@ export interface Trace {
     reason: string
     source?: string
   }>
+}
+
+export interface MirusGovernedDiscovery {
+  schema: string
+  enabled: boolean
+  mode: string
+  front_packet?: {
+    preferred_intent?: string
+    pending_slot?: string
+    candidate_hints?: string[]
+    reasons?: string[]
+  }
+  repairs?: string[]
+  quality_flags?: string[]
+  logic_graph?: {
+    nodes?: Array<{
+      id: string
+      kind?: string
+      label?: string
+      data?: Record<string, unknown>
+    }>
+    edges?: Array<{
+      from: string
+      to: string
+      label?: string
+    }>
+  }
+  safety?: Record<string, unknown>
 }
 
 export interface PublicGovernanceStep {
