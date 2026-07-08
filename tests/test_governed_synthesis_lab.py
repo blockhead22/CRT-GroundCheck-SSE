@@ -1,9 +1,11 @@
 from labs.meaning_compression_lab.governed_synthesis_lab import (
     _cases,
+    build_hybrid_model_render_prompt,
     build_model_render_prompt,
     repair_model_answer,
     render_canned_answer,
     render_governed_answer,
+    render_model_hybrid_answer,
     render_model_answer,
     render_raw_answer,
     render_spine_only_answer,
@@ -123,6 +125,111 @@ def test_model_render_prompt_carries_tension_packet_when_present():
     assert "include a short Held Tension section" in prompt
 
 
+def test_hybrid_model_prompt_preserves_compact_evidence_and_trace_skeleton():
+    spine = next(
+        case for case in _cases()
+        if case.case_id == "tension_mempalace_meaning_weight"
+    )
+
+    prompt = build_hybrid_model_render_prompt(spine)
+
+    assert "hybrid contract" in prompt
+    assert "compact evidence" in prompt
+    assert "no hidden chain-of-thought" in prompt
+    assert "Answer:" in prompt
+    assert "Evidence Used:" in prompt
+    assert "Held Tension:" in prompt
+    assert "Boundary:" in prompt
+    assert "Allowed synthesis" in prompt
+    assert "Forbidden collapse" in prompt
+    assert "Trace preview" in prompt
+    assert "Mempalace" in prompt
+
+
+def test_hybrid_model_renderer_can_pass_when_it_obeys_spine():
+    spine = next(
+        case for case in _cases()
+        if case.case_id == "tension_local_models_frontier_wedge"
+    )
+
+    rendered = render_model_hybrid_answer(
+        spine,
+        complete=lambda _prompt: (
+            "Answer:\n"
+            "Frontier models have more parameters, inference compute, training, "
+            "routing, and broad capability. Still, a small local model wrapped "
+            "in governed memory, routing, verifier, repair, and trace can become "
+            "more inspectable and personally continuous because Aether can hold "
+            "evidence, scaffold, and rules outside the model. The wedge is not "
+            "raw intelligence; it is externalized governance, continuity, "
+            "inspection, and bounded synthesis.\n\n"
+            "Evidence Used:\n"
+            "- Frontier-model limit\n"
+            "- Local-governance wedge\n"
+            "- External workspace thesis\n\n"
+            "Held Tension:\n"
+            "- Side A: Local models are limited compared with frontier models.\n"
+            "- Side B: A small local model wrapped in governed memory, routing, "
+            "verifier, repair, and trace can be useful in narrower "
+            "personal-continuity workflows.\n"
+            "- Allowed synthesis: The wedge is not raw intelligence; it is "
+            "externalized governance, continuity, inspection, and bounded synthesis.\n"
+            "- Forbidden collapse: Do not flatten this into either frontier "
+            "defeatism or local-model hype.\n"
+            "- Trace preview: Hold both sides: frontier capability is real, "
+            "local governed continuity can still be useful.\n\n"
+            "Boundary:\n"
+            "Do not claim local governance makes a small model globally frontier-level."
+        ),
+    )
+    result = verify_render(spine, rendered)
+
+    assert rendered.mode == "model_hybrid"
+    assert rendered.render_mode == "hybrid_governed_spine_model_render"
+    assert result.passed is True
+
+
+def test_verifier_accepts_evidence_ids_as_receipts():
+    spine = next(
+        case for case in _cases()
+        if case.case_id == "tension_personality_without_fake_intimacy"
+    )
+    rendered = render_model_hybrid_answer(
+        spine,
+        complete=lambda _prompt: (
+            "Answer:\n"
+            "Aether should feel warmer, more responsive, and less like a canned "
+            "FAQ while not faking intimacy, flattering, transplanting GPT voice, "
+            "or turning tone into confirmed truth. Personality should be "
+            "grounded by evidence, source boundaries, review traces, and "
+            "correction loops.\n\n"
+            "Evidence Used:\n"
+            "- personality_need\n"
+            "- intimacy_boundary\n"
+            "- trace_need\n\n"
+            "Held Tension:\n"
+            "- Side A: Personality matters.\n"
+            "- Side B: Fake intimacy is unsafe.\n"
+            "- Allowed synthesis: Aether can render with warmth when the warmth "
+            "stays grounded in evidence, boundaries, traces, and user correction.\n"
+            "- Forbidden collapse: Do not make Aether either sterile or "
+            "ungroundedly intimate.\n"
+            "- Trace preview: Governed personality means warmer rendering without "
+            "surrendering source authority.\n\n"
+            "Boundary:\n"
+            "Do not solve stiffness by allowing fake intimacy or unreviewed voice transplant."
+        ),
+    )
+    result = verify_render(spine, rendered)
+
+    assert set(result.evidence_ids_used) == {
+        "personality_need",
+        "intimacy_boundary",
+        "trace_need",
+    }
+    assert result.passed is True
+
+
 def test_model_renderer_can_pass_when_it_obeys_the_spine():
     spine = next(case for case in _cases() if case.case_id == "crt_epistemic_integrity")
 
@@ -207,6 +314,28 @@ def test_run_lab_can_include_model_adapter_results_without_writes():
     assert result["model_name"] == "fake-small-model"
     assert result["model_repair_enabled"] is False
     assert result["model_case_count"] == 13
+    assert result["model_pass_count"] == 0
+    assert result["writes_performed"] is False
+    assert result["raw_chain_of_thought_stored"] is False
+    assert result["passed"] is True
+
+
+def test_run_lab_can_filter_cases_and_use_hybrid_model_adapter():
+    def complete(prompt: str) -> str:
+        assert "hybrid contract" in prompt
+        return "Generic failed hybrid answer."
+
+    result = run_lab(
+        model_complete=complete,
+        model_name="fake-hybrid-model",
+        hybrid_model=True,
+        case_ids={"tension_mempalace_meaning_weight"},
+    )
+
+    assert result["model_name"] == "fake-hybrid-model"
+    assert result["model_hybrid_enabled"] is True
+    assert result["case_count"] == 1
+    assert result["model_case_count"] == 1
     assert result["model_pass_count"] == 0
     assert result["writes_performed"] is False
     assert result["raw_chain_of_thought_stored"] is False

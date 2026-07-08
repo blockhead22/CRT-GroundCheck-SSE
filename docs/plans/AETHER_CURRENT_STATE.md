@@ -205,6 +205,19 @@ semantic 1.0000. Decision: hybrid packet + verifier repair is the current best
 local renderer contract for dense governed synthesis when paired with
 `qwen3:14b`. It does not make qwen2.5 reliable on these dense held-tension /
 source-boundary cases.
+
+The hybrid lesson has now been pulled back into the governed synthesis lab
+itself instead of remaining a separate model-comparison aside. Latest focused
+artifact:
+labs\meaning_compression_lab\results\governed_synthesis_lab_qwen3_hybrid_tension_v1.json
+Result: qwen3:14b hybrid governed-spine render + repair passed 5/5 focused
+tension cases, held_tension_score 1.0 on all cases, with no memory/support/
+reflection writes and no raw hidden chain-of-thought storage. The mempalace /
+meaning-weight case required repair, confirming that verifier-delta repair is
+still part of the useful architecture. Current decision: for dense conceptual
+synthesis, prefer compact evidence plus explicit public held-tension skeleton
+plus verifier repair. Do not replace this with a longer context dump or broad
+runtime wiring.
 ```
 
 Phase 2 learner/review loop:

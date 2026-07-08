@@ -177,6 +177,35 @@ Use that as the current routing lesson: qwen3 is the local dense-synthesis
 renderer; qwen2.5 remains a fast/simple/direct-route model.
 ```
 
+## One-More-Round Result - Side-Roadmap Convergence
+
+The hybrid-packet lesson was pulled back into the governed synthesis side
+roadmap as a focused local-model render test.
+
+Artifact:
+
+```text
+labs\meaning_compression_lab\results\governed_synthesis_lab_qwen3_hybrid_tension_v1.json
+```
+
+Result:
+
+```text
+qwen3:14b hybrid governed-spine render + repair: 5/5
+held_tension_score: 1.0 on all focused cases
+memory/support/reflection writes: false
+raw hidden chain-of-thought stored: false
+```
+
+Decision:
+
+```text
+The useful Workbench-facing pattern is not longer prompts. It is compact
+evidence, an explicit public held-tension skeleton, and verifier-delta repair.
+This should graduate only into routes that already have a tension_packet or
+governed answer spine. Broad conceptual routing still waits for dogfood.
+```
+
 ## Is The Aside Helpful?
 
 Yes, with limits.
@@ -203,8 +232,8 @@ Not helpful if:
    Mirus belief-map `render_belief_preview(...)` output.
 3. If pursuing the aside: promote the hybrid packet shape into the governed
    synthesis side-roadmap and keep qwen3 as the main local renderer for dense
-   synthesis. Do not broaden the model sweep until a new evidence question
-   appears.
+   synthesis. This is now done for the focused lab path; next step is a narrow
+   Workbench route only if live dogfood needs it.
 4. Do not wire reasoning traces into runtime until the lab shows whether they
    improve or destabilize answers.
 

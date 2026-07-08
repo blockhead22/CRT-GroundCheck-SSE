@@ -392,7 +392,11 @@ def verify_render(spine: AnswerSpine, rendered: RenderedAnswer) -> VerificationR
     ]
     evidence_used = [
         node.evidence_id for node in spine.evidence
-        if node.label.lower() in text or node.text.lower()[:42] in text
+        if (
+            node.evidence_id.lower() in text
+            or node.label.lower() in text
+            or node.text.lower()[:42] in text
+        )
     ]
     synthesis_score = _synthesis_score(spine, rendered, evidence_used)
     held_tension_score = _held_tension_score(spine, rendered)

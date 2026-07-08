@@ -745,3 +745,84 @@ cd D:\AI_round2\aether-core
 python -m pytest tests\test_sidecar_character_answer.py tests\test_sidecar_direct_answer.py tests\test_sidecar_depth.py -q
 81 passed
 ```
+
+## Lab Checkpoint - Hybrid Tension Renderer
+
+The dueling-rollercoaster result was pulled back into this side-roadmap as a
+direct governed-synthesis test instead of leaving it as a separate model aside.
+
+Implementation:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\governed_synthesis_lab.py
+```
+
+Added:
+
+```text
+model_hybrid mode
+build_hybrid_model_render_prompt(...)
+render_model_hybrid_answer(...)
+--hybrid-model CLI flag
+--case-ids focused-run filter
+evidence_id receipt matching in the verifier
+```
+
+Hybrid contract:
+
+```text
+compact evidence receipts
+explicit must-say claims
+explicit must-not-say boundaries
+required public sections: Answer, Evidence Used, Held Tension, Boundary
+held-tension skeleton: Side A, Side B, Allowed synthesis, Forbidden collapse,
+Trace preview
+```
+
+Live artifact:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\results\governed_synthesis_lab_qwen3_hybrid_tension_v1.json
+```
+
+Result:
+
+```text
+model: qwen3:14b
+cases: 5 focused tension cases
+hybrid model + repair: 5/5 final pass
+held_tension_score: 1.0 on all cases
+memory/support/reflection writes: false
+raw hidden chain-of-thought stored: false
+```
+
+The mempalace/meaning-weight case required repair, which is useful: it shows
+the verifier-delta loop still matters even with the better packet.
+
+Interpretation:
+
+```text
+The current best local dense-synthesis shape is not:
+"dump more context into the model."
+
+It is:
+compact evidence + explicit public held-tension skeleton + verifier repair.
+```
+
+Routing lesson:
+
+```text
+Use qwen3:14b as the local renderer for dense held-tension conceptual synthesis.
+Keep qwen2.5:7b-instruct for fast/simple/direct routes unless a future lab
+proves a smaller packet it can reliably carry.
+```
+
+Workbench lesson:
+
+```text
+Do not broad-wire all conceptual prompts yet. Promote this shape only for
+routes that already have a tension_packet / governed answer spine, and show the
+public skeleton in Thinking / Trace. Exact memory lookups, write boundaries,
+tool receipts, current-event boundaries, and insufficient-evidence answers
+should stay deterministic.
+```
