@@ -69,6 +69,7 @@ export interface Trace {
     kind?: string
     mode?: string
     needs_stronger_model?: boolean
+    critic_repair_contract?: CharacterCriticRepairContract
   }
   route_decision?: RouteDecision
   governance_answer_spine?: GovernanceAnswerSpine
@@ -83,6 +84,7 @@ export interface Trace {
     guidance_kind?: string
     guidance_repaired?: boolean | null
     guidance_repair_failed?: boolean | null
+    character_critic_repair?: CharacterCriticRepair
     depth?: DepthCompletion
   }
   depth_policy?: DepthPolicy
@@ -142,6 +144,38 @@ export interface Trace {
     reason: string
     source?: string
   }>
+}
+
+export interface CharacterCriticFinding {
+  phase?: string
+  dimension?: string
+  status?: string
+  note?: string
+}
+
+export interface CharacterCriticRepairContract {
+  schema?: string
+  mode?: string
+  review_only?: boolean
+  memory_writes?: boolean
+  support_reflection_writes?: boolean
+  policy_mutation?: boolean
+  kind?: string
+  required_dimensions?: string[]
+  forbidden_patterns?: string[]
+  hard_gates?: string[]
+}
+
+export interface CharacterCriticRepair {
+  schema?: string
+  contract?: CharacterCriticRepairContract
+  pre_repair_findings?: CharacterCriticFinding[]
+  post_repair_findings?: CharacterCriticFinding[]
+  repair_triggered_by?: string[]
+  review_only?: boolean
+  memory_writes?: boolean
+  support_reflection_writes?: boolean
+  policy_mutation?: boolean
 }
 
 export interface MirusGovernedDiscovery {
@@ -530,6 +564,7 @@ export interface ChatEvents {
     guidance_kind?: string
     guidance_repaired?: boolean | null
     guidance_repair_failed?: boolean | null
+    character_critic_repair?: CharacterCriticRepair
     depth?: DepthCompletion
     memory_writes?: Array<{ slot_id: string; value: string }>
     document_write?: { document_id: string; title: string; chunk_count: number } | null

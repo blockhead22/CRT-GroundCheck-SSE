@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, Menu, screen, Tray } = require('electron')
 const path = require('node:path')
 const { SidecarManager } = require('./sidecar.cjs')
 const { configureDevUserData } = require('./dev-config.cjs')
+const { buildSpellcheckContextMenuTemplate } = require('./context-menu.cjs')
 const { dockBounds } = require('./window.cjs')
 
 let window
@@ -33,6 +34,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
+      spellcheck: true,
     },
   })
   if (process.env.NODE_ENV === 'development') {
@@ -70,7 +72,20 @@ function createTray() {
   })
 }
 
+function installContextMenu() {
+  app.on('web-contents-created', (_event, contents) => {
+    contents.on('context-menu', (_menuEvent, params) => {
+      const template = buildSpellcheckContextMenuTemplate(params, contents)
+      if (template.length === 0) return
+      Menu.buildFromTemplate(template).popup({
+        window: BrowserWindow.fromWebContents(contents),
+      })
+    })
+  })
+}
+
 app.whenReady().then(async () => {
+  installContextMenu()
   sidecar = new SidecarManager()
   sidecar.start()
   createWindow()

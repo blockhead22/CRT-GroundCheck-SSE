@@ -50,6 +50,7 @@ class CriticFinding:
     dimension: str
     status: Literal["missing", "weak", "overclaimed", "passed"]
     note: str
+    phase: Literal["pre_repair", "post_repair"] = "pre_repair"
 
 
 @dataclass(frozen=True)
@@ -58,6 +59,8 @@ class LabOutput:
     mode: Mode
     text: str
     findings: tuple[CriticFinding, ...] = ()
+    pre_repair_findings: tuple[CriticFinding, ...] = ()
+    post_repair_findings: tuple[CriticFinding, ...] = ()
 
 
 @dataclass
@@ -65,13 +68,20 @@ class Score:
     passed: bool
     total: float
     answered_question: float = 0.0
+    performed_role: float = 0.0
+    found_required_gaps: float = 0.0
+    repair_relevance: float = 0.0
+    false_positive_rate: float = 1.0
     implementation_boundary: float = 0.0
     truth_status: float = 0.0
     risk_handling: float = 0.0
     useful_example: float = 0.0
     non_generic: float = 0.0
+    case_specificity: float = 0.0
     forbidden_present: list[str] = field(default_factory=list)
+    endorsing_forbidden_present: list[str] = field(default_factory=list)
     missing_dimensions: list[str] = field(default_factory=list)
+    hard_gate_failures: list[str] = field(default_factory=list)
 
 
 RUBRIC_LABELS = {
@@ -302,28 +312,34 @@ def cases() -> tuple[CriticCase, ...]:
     )
 
 
-def critic_findings(case: CriticCase, answer: str) -> tuple[CriticFinding, ...]:
+def critic_findings(
+    case: CriticCase,
+    answer: str,
+    *,
+    phase: Literal["pre_repair", "post_repair"] = "pre_repair",
+) -> tuple[CriticFinding, ...]:
     text = answer.lower()
     findings: list[CriticFinding] = []
     for dimension in case.required_dimensions:
         terms = _dimension_terms(dimension)
         if any(term in text for term in terms):
-            findings.append(CriticFinding(dimension, "passed", "dimension is present"))
+            findings.append(CriticFinding(dimension, "passed", "dimension is present", phase))
         else:
             findings.append(
                 CriticFinding(
                     dimension,
                     "missing",
                     f"missing {RUBRIC_LABELS.get(dimension, dimension)}",
+                    phase,
                 )
             )
-    for pattern in case.forbidden_patterns:
-        if pattern.lower() in text:
+    for pattern in _endorsed_forbidden_patterns(case, text):
             findings.append(
                 CriticFinding(
                     "forbidden_pattern",
                     "overclaimed",
                     f"contains forbidden pattern: {pattern}",
+                    phase,
                 )
             )
     if _is_generic(answer):
@@ -332,6 +348,16 @@ def critic_findings(case: CriticCase, answer: str) -> tuple[CriticFinding, ...]:
                 "non_generic",
                 "weak",
                 "answer reads generic or textbook-like instead of Aether-specific",
+                phase,
+            )
+        )
+    if not _case_specific_application(case, text):
+        findings.append(
+            CriticFinding(
+                "case_specificity",
+                "weak",
+                "answer names governance dimensions without applying them to this case",
+                phase,
             )
         )
     return tuple(findings)
@@ -401,26 +427,30 @@ def render(case: CriticCase, mode: Mode) -> LabOutput:
         )
         return LabOutput(case.case_id, mode, text, findings)
     if mode == "governed_repair":
-        findings = critic_findings(case, case.governed_draft)
+        pre_findings = critic_findings(case, case.governed_draft, phase="pre_repair")
+        repaired = governed_repair(case, case.governed_draft, pre_findings)
+        post_findings = critic_findings(case, repaired, phase="post_repair")
         return LabOutput(
             case.case_id,
             mode,
-            governed_repair(case, case.governed_draft, findings),
-            findings,
+            repaired,
+            pre_findings,
+            pre_findings,
+            post_findings,
         )
     raise ValueError(f"unknown mode: {mode}")
 
 
 def score(case: CriticCase, output: LabOutput) -> Score:
     text = output.text.lower()
-    forbidden = [
-        pattern for pattern in case.forbidden_patterns
-        if pattern.lower() in text
-    ]
+    forbidden = [pattern for pattern in case.forbidden_patterns if pattern.lower() in text]
+    endorsing_forbidden = _endorsed_forbidden_patterns(case, text)
     missing = [
         dimension for dimension in case.required_dimensions
         if not any(term in text for term in _dimension_terms(dimension))
     ]
+    if output.mode == "critic":
+        return _score_critic(case, output, missing, forbidden, endorsing_forbidden)
     answered = 1.0 if _case_topic_present(case, text) else 0.25
     implementation_boundary = 1.0 if not (
         "implemented_vs_conceptual" in case.required_dimensions
@@ -432,6 +462,7 @@ def score(case: CriticCase, output: LabOutput) -> Score:
     risk_handling = 1.0 if any(term in text for term in _dimension_terms("risk_boundary")) else 0.0
     useful_example = 1.0 if any(term in text for term in _dimension_terms("useful_example")) else 0.0
     non_generic = 0.0 if _is_generic(output.text) else 1.0
+    case_specificity = 1.0 if _case_specific_application(case, text) else 0.0
     coverage = (len(case.required_dimensions) - len(missing)) / max(1, len(case.required_dimensions))
     total = round(
         (
@@ -441,22 +472,29 @@ def score(case: CriticCase, output: LabOutput) -> Score:
             + risk_handling
             + useful_example
             + non_generic
+            + case_specificity
             + coverage * 2
-            - min(len(forbidden) * 0.4, 1.2)
-        ) / 8,
+            - min(len(endorsing_forbidden) * 0.5, 1.5)
+            - _template_penalty(case, text)
+        ) / 9,
         4,
     )
+    hard_gate_failures = _hard_gate_failures(case, output, answered, risk_handling, useful_example, case_specificity, missing, endorsing_forbidden)
     return Score(
-        passed=total >= 0.72 and not forbidden and len(missing) <= 1,
+        passed=total >= 0.72 and not hard_gate_failures,
         total=total,
         answered_question=answered,
+        performed_role=1.0,
         implementation_boundary=implementation_boundary,
         truth_status=truth_status,
         risk_handling=risk_handling,
         useful_example=useful_example,
         non_generic=non_generic,
+        case_specificity=case_specificity,
         forbidden_present=forbidden,
+        endorsing_forbidden_present=endorsing_forbidden,
         missing_dimensions=missing,
+        hard_gate_failures=hard_gate_failures,
     )
 
 
@@ -484,7 +522,7 @@ def run_lab() -> dict[str, object]:
         bucket["avg_total"] = round(float(bucket["total"]) / max(1, count), 4)
         del bucket["total"]
     return {
-        "schema": "aether.critic_repair_lab.v1",
+        "schema": "aether.critic_repair_lab.v2",
         "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "question": (
             "Can a local model improve abstract governed synthesis more reliably "
@@ -539,6 +577,151 @@ def _is_generic(answer: str) -> bool:
     return any(term in text for term in generic_terms)
 
 
+def _score_critic(
+    case: CriticCase,
+    output: LabOutput,
+    missing: list[str],
+    forbidden: list[str],
+    endorsing_forbidden: list[str],
+) -> Score:
+    findings = output.findings
+    issue_findings = [
+        finding for finding in findings
+        if finding.status in {"missing", "weak", "overclaimed"}
+    ]
+    passed_findings = [finding for finding in findings if finding.status == "passed"]
+    required_found = {
+        finding.dimension
+        for finding in issue_findings
+        if finding.dimension in case.required_dimensions
+    }
+    performed_role = 1.0 if findings and all(finding.phase == "pre_repair" for finding in findings) else 0.0
+    found_required_gaps = min(1.0, len(required_found) / max(1, len(missing)))
+    repair_relevance = 1.0 if issue_findings and not _is_generic(output.text) else 0.5
+    false_positive_rate = round(
+        len(passed_findings) / max(1, len(findings)),
+        4,
+    )
+    total = round(
+        (
+            performed_role
+            + found_required_gaps
+            + repair_relevance
+            + (1.0 - min(false_positive_rate, 0.75))
+            - min(len(endorsing_forbidden) * 0.5, 1.0)
+        )
+        / 4,
+        4,
+    )
+    hard_gate_failures: list[str] = []
+    if not findings:
+        hard_gate_failures.append("critic produced no findings")
+    if found_required_gaps < 0.5:
+        hard_gate_failures.append("critic did not find enough repair-relevant gaps")
+    return Score(
+        passed=total >= 0.55 and not hard_gate_failures,
+        total=total,
+        performed_role=performed_role,
+        found_required_gaps=found_required_gaps,
+        repair_relevance=repair_relevance,
+        false_positive_rate=false_positive_rate,
+        forbidden_present=forbidden,
+        endorsing_forbidden_present=endorsing_forbidden,
+        missing_dimensions=missing,
+        hard_gate_failures=hard_gate_failures,
+    )
+
+
+def _endorsed_forbidden_patterns(case: CriticCase, text: str) -> list[str]:
+    hits: list[str] = []
+    lowered = text.lower()
+    for pattern in case.forbidden_patterns:
+        pattern_text = pattern.lower()
+        start = lowered.find(pattern_text)
+        while start != -1:
+            window_start = max(0, start - 90)
+            window = lowered[window_start:start]
+            if not _is_negated_or_rejected(window):
+                hits.append(pattern)
+                break
+            start = lowered.find(pattern_text, start + len(pattern_text))
+    return hits
+
+
+def _is_negated_or_rejected(prefix: str) -> bool:
+    reject_terms = (
+        "avoid",
+        "avoids",
+        "blocked",
+        "cannot",
+        "does not",
+        "don't",
+        "instead of",
+        "must not",
+        "no ",
+        "not ",
+        "opposing",
+        "prevent",
+        "prevents",
+        "reject",
+        "should not",
+        "without",
+    )
+    return any(term in prefix for term in reject_terms)
+
+
+def _case_specific_application(case: CriticCase, text: str) -> bool:
+    markers = {
+        "meaning_weight_token_risk": ("token", "score", "truth"),
+        "competing_memories_harm": ("competing", "memories", "harm"),
+        "correctness_vs_integrity": ("wrong", "integrity", "correct"),
+        "archive_personal_history_risk": ("archive", "history", "identity"),
+        "mempalace_contradiction_weight": ("mempalace", "meaning", "weight"),
+        "frontier_model_route_boundary": ("stronger model", "authority", "route"),
+    }[case.case_id]
+    return sum(1 for marker in markers if marker in text) >= 2
+
+
+def _template_penalty(case: CriticCase, text: str) -> float:
+    repeated_labels = (
+        "truth-status: supported, inferred, uncertain, conflicted",
+        "source authority matters",
+        "any learned score or archive-derived claim should create review pressure",
+        "the critic can suggest what is missing, but governance decides",
+    )
+    penalty = 0.0
+    for label in repeated_labels:
+        if label in text and not _case_specific_application(case, text):
+            penalty += 0.35
+    return min(penalty, 1.0)
+
+
+def _hard_gate_failures(
+    case: CriticCase,
+    output: LabOutput,
+    answered: float,
+    risk_handling: float,
+    useful_example: float,
+    case_specificity: float,
+    missing: list[str],
+    endorsing_forbidden: list[str],
+) -> list[str]:
+    failures: list[str] = []
+    if output.mode == "governed_repair" and answered < 0.75:
+        failures.append("repair did not directly answer the user question")
+    if "risk_boundary" in case.required_dimensions and risk_handling == 0.0:
+        failures.append("risk-focused prompt lacks risk handling")
+    if "useful_example" in case.required_dimensions and useful_example == 0.0:
+        failures.append("prompt requires a grounded example")
+    if case_specificity == 0.0:
+        failures.append("answer names dimensions without case-specific application")
+    if endorsing_forbidden:
+        failures.append("forbidden pattern appears in an endorsing stance")
+    if len(missing) > 1:
+        failures.append("too many required dimensions missing")
+    return failures
+
+
 def _case_topic_present(case: CriticCase, text: str) -> bool:
     topic_terms = {
         "meaning_weight_token_risk": ("meaning", "token", "score"),
@@ -579,7 +762,9 @@ def _opening_for(case: CriticCase) -> str:
             "metaphor itself."
         )
     return (
-        "A stronger model can help, but it should not become the authority layer."
+        "Aether should route to a stronger model when the local model cannot "
+        "hold the task, evidence, or risk boundary, but that stronger model "
+        "should not become the authority layer."
     )
 
 

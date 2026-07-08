@@ -1081,6 +1081,98 @@ prompts, add a route-level latency guard or pre-model bounded render path so
 the governance layer can answer responsively when evidence is already enough.
 ```
 
+Critic-repair lab hardening:
+
+```text
+2026-07-08 update:
+
+The critic-repair lab was hardened after review of the GPT critique fodder.
+The first pass showed a real direction but an over-friendly scorer: repaired
+answers could pass while still carrying low directness/risk/example sub-scores,
+critic mode was being judged like an answer writer, forbidden-pattern checks
+were stringy, and pre-repair findings stayed attached to repaired answers in a
+confusing way.
+
+Fix:
+- Critic mode now has role-specific scoring: performed_role,
+  found_required_gaps, repair_relevance, and false_positive_rate.
+- Repaired answers now carry pre_repair_findings and post_repair_findings.
+- Hard gates reject repairs that dodge the direct question, skip required risk
+  handling, skip a required grounded example, remain template-generic, or
+  include forbidden patterns in an endorsing stance.
+- Forbidden-pattern detection is stance-aware enough to distinguish "avoid
+  automatic writes" from endorsing automatic writes.
+- The frontier-route repair was tightened because the stricter gate correctly
+  caught that the old repair spoke about authority without directly answering
+  when to route.
+
+Latest result:
+raw 0/6 avg 0.2083
+governed_draft 0/6 avg 0.3288
+critic 6/6 avg 0.9093
+governed_repair 6/6 avg 0.8519
+
+Artifacts:
+D:\AI_round2\labs\critic_repair_lab\results\critic_repair_lab_v2.json
+D:\AI_round2\docs\plans\AETHER_CRITIC_REPAIR_LAB_RESULTS_2026-07-08.md
+
+Verification:
+python labs\critic_repair_lab\critic_repair_lab.py --output critic_repair_lab_v2.json
+python -m pytest tests\test_critic_repair_lab.py -q
+8 passed
+```
+
+Critic-repair runtime slice:
+
+```text
+2026-07-08 update:
+
+The critic-repair pattern is now wired narrowly into Workbench/Aether runtime
+for abstract governance/epistemic character routes only. This is not a broad
+default answer architecture.
+
+Scope:
+- CRT / epistemic integrity / CORE architecture prompts
+- epistemic integrity truth-trap prompts
+- epistemic tension measurement prompts
+- bounded governance challenge prompts
+- mempalace / meaning-weight prompts
+- meaning-value prompts
+
+Behavior:
+- Character routes can carry a public `critic_repair_contract`.
+- The sidecar checks the drafted answer against public critic dimensions before
+  repair.
+- If the critic finds missing/weak/overclaimed dimensions, the existing
+  character repair pass is triggered.
+- The completion records `character_critic_repair` with contract,
+  pre_repair_findings, post_repair_findings, repair_triggered_by, and review-only
+  safety flags.
+- Workbench inline Thinking now preserves and shows critic contract/repair
+  trigger lines plus non-passing pre/post critic findings.
+
+Boundary:
+The critic contract is public, bounded metadata over the answer draft. It is not
+hidden chain-of-thought, not truth authority, not memory/support/reflection
+write permission, and not silent policy mutation.
+
+Verification:
+cd D:\AI_round2\aether-core
+python -m py_compile aether\sidecar\character_answer.py aether\sidecar\app.py
+python -m pytest tests\test_sidecar_character_answer.py tests\test_sidecar_quality_dogfood.py -q
+51 passed
+
+cd D:\AI_round2
+python -m pytest tests\test_critic_repair_lab.py -q
+8 passed
+
+cd D:\AI_round2\workbench
+npm run test:ui -- --run
+54 passed
+npm run build
+passed
+```
+
 ## Next Work
 
 Shutdown checkpoint:

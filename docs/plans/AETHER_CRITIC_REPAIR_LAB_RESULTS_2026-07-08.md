@@ -16,7 +16,7 @@ D:\AI_round2\labs\critic_repair_lab
 Result artifact:
 
 ```text
-D:\AI_round2\labs\critic_repair_lab\results\critic_repair_lab_v1.json
+D:\AI_round2\labs\critic_repair_lab\results\critic_repair_lab_v2.json
 ```
 
 The prompt set is intentionally abstract but directed at real risks:
@@ -30,6 +30,8 @@ The prompt set is intentionally abstract but directed at real risks:
 
 ## Result
 
+First pass:
+
 ```text
 raw:             0/6, avg 0.2052
 governed_draft:  0/6, avg 0.3157
@@ -37,12 +39,21 @@ critic:          2/6, avg 0.7187
 governed_repair: 6/6, avg 0.8177
 ```
 
+Hardened v2 pass:
+
+```text
+raw:             0/6, avg 0.2083
+governed_draft:  0/6, avg 0.3288
+critic:          6/6, avg 0.9093
+governed_repair: 6/6, avg 0.8519
+```
+
 Verification:
 
 ```text
-python labs\critic_repair_lab\critic_repair_lab.py --output critic_repair_lab_v1.json
+python labs\critic_repair_lab\critic_repair_lab.py --output critic_repair_lab_v2.json
 python -m pytest tests\test_critic_repair_lab.py -q
-5 passed
+8 passed
 ```
 
 ## Read
@@ -61,6 +72,19 @@ dimensions such as staleness, source authority, review state, contradiction,
 risk boundaries, and implemented-vs-conceptual separation. The repair only
 works when governance treats the rubric as a contract rather than letting the
 critic become authority.
+
+The v2 hardening pass addressed the strongest critique of the first result:
+the evaluator could reward dimension-name inclusion more than case-specific
+reasoning. Repairs now have hard gates for directness, risk handling, grounded
+examples where required, case specificity, and forbidden patterns in an
+endorsing stance. Critic mode now has role-specific metrics:
+`performed_role`, `found_required_gaps`, `repair_relevance`, and
+`false_positive_rate`.
+
+The result remains proof-of-direction, not proof that the product should wire
+this broadly yet. The clean claim is narrower: in this abstract governance
+pack, bounded critique plus governed repair is much more reliable than asking
+the same local-style answer path to synthesize the final answer directly.
 
 ## Product Implication
 
@@ -86,4 +110,3 @@ The lab stores only public critique/rubric signals.
 No raw hidden chain-of-thought is stored.
 No memory, support, reflection, or policy writes are performed.
 Critic findings are review-only inputs, not truth.
-

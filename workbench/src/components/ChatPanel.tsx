@@ -121,6 +121,7 @@ export function ChatPanel({
                   guidance_kind: done.guidance_kind || activeTraceRef.current.character_answer?.kind,
                   guidance_repaired: done.guidance_repaired,
                   guidance_repair_failed: done.guidance_repair_failed,
+                  character_critic_repair: done.character_critic_repair,
                 },
               }
               activeTraceRef.current = completedTrace
@@ -489,6 +490,7 @@ function AnswerThinkingTrace({
 function answerThinkingSections(trace: Trace) {
   const route = trace.completion?.route_decision || trace.route_decision
   const compliance = trace.completion?.governance_spine_compliance
+  const criticRepair = trace.completion?.character_critic_repair
   const process = cleanItems([
     ...(trace.public_governance_steps || []).map((step) => `${step.summary}: ${step.detail}`),
     ...mirusLogicGraphLines(trace),
@@ -506,6 +508,12 @@ function answerThinkingSections(trace: Trace) {
       `Fallback model: ${route.model_recommendation.fallback_model}`
     ) : '',
     trace.governance_answer_spine?.render_mode ? `Render mode: ${formatTraceLabel(trace.governance_answer_spine.render_mode)}` : '',
+    trace.character_answer?.critic_repair_contract
+      ? `Critic contract: ${formatTraceLabel(trace.character_answer.critic_repair_contract.kind || 'public bounded critic')}`
+      : '',
+    criticRepair?.repair_triggered_by?.length
+      ? `Critic repair trigger: ${criticRepair.repair_triggered_by.map(formatTraceLabel).join(', ')}`
+      : '',
   ])
 
   const memory = (trace.packets || []).map((packet) => {
@@ -545,6 +553,8 @@ function answerThinkingSections(trace: Trace) {
       : '',
     trace.completion?.guidance_repaired ? 'Repair applied before final answer' : '',
     trace.completion?.guidance_repair_failed ? 'Repair failed; boundary should be reviewed' : '',
+    ...criticFindingLines('Pre-repair critic', criticRepair?.pre_repair_findings),
+    ...criticFindingLines('Post-repair critic', criticRepair?.post_repair_findings),
   ])
 
   const learning = cleanItems([
@@ -567,6 +577,16 @@ function answerThinkingSections(trace: Trace) {
     { label: 'Verifier', items: verifier, empty: 'No post-render verifier flags were stored.' },
     { label: 'Learning', items: learning, empty: 'No review candidate was raised from this trace.' },
   ]
+}
+
+function criticFindingLines(label: string, findings?: Array<{ dimension?: string; status?: string; note?: string }>) {
+  if (!findings?.length) return []
+  return findings
+    .filter((finding) => finding.status && finding.status !== 'passed')
+    .slice(0, 4)
+    .map((finding) => (
+      `${label}: ${formatTraceLabel(finding.dimension || 'finding')} ${formatTraceLabel(finding.status || '')}${finding.note ? ` - ${finding.note}` : ''}`
+    ))
 }
 
 function tensionPacketLines(trace: Trace) {
