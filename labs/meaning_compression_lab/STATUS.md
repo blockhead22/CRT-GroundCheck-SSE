@@ -376,6 +376,12 @@ Meaning scaffold eval with hardening: scaffold 19/19, raw transcript fragments 5
 Meaning scaffold ablation with hardening: full 19/19; no_history 18/19; no_authority 18/19; no_reaction 18/19; no_policies 16/19
 ```
 
+Latest spiral synthesis (hybrid update for sidecar ports):
+- Updated to target hybrid_governed_prompt + narrative_spiral + enriched held/uncertainty candidates.
+- Key cases use exact user prompts (orange+marigolds + leukemia/health/memory + speculate variants).
+- Metrics: natural_weave, held_thread_signals, sections/hedges. Run via PYTHONPATH.
+See spiral_synthesis_eval.py + README update.
+
 Latest scaffold Ollama result:
 
 ```text

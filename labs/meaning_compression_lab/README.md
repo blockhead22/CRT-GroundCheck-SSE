@@ -89,6 +89,22 @@ claims govern user-visible RAG answers:
 python -m pytest tests/test_crt_rag_behavior_bridge.py -q
 ```
 
+### Spiral Synthesis Eval (updated for current sidecar)
+`spiral_synthesis_eval.py` now targets the hybrid governed synthesis path
+(`build_hybrid_governed_prompt` + `narrative_spiral` via tension + enriched
+Mirus candidates carrying `held_disposition`, `uncertainty_geometry`,
+`narrative_hint`, identity anchors). Uses exact recent personal meaning prompts
+(orange/marigolds + leukemia/health/memory variants + "it's okay to speculate").
+Metrics now include natural_weave_score (no sections/lists/heavy hedge),
+held_thread_signals, uncertainty woven. See run output for spine+held enabling
+better living-thread narrative vs raw.
+
+Run:
+```powershell
+$env:PYTHONPATH="D:\AI_round2\aether-core"; python -m labs.meaning_compression_lab.spiral_synthesis_eval --model phi3:3.8b --timeout 90
+```
+(Only edits in lab; sidecar read-only.)
+
 Baseline comparison:
 
 ```bash
@@ -98,6 +114,22 @@ python labs/meaning_compression_lab/baseline_eval.py --include-adversarial --inc
 ```
 
 This compares CRT governed state against latest-only slots, naive summary, and
+
+## Governed Synthesis Lab (updated for Aether sidecar migration)
+
+The `governed_synthesis_lab.py` now validates the recent CRT pre-lab ports into sidecar:
+- Uses current `hybrid_governed_prompt` (pure prose, anti-template, held living thread).
+- Passes/utilizes enriched Mirus candidates (uncertainty_geometry/splat variance/fat/settled, disposition=held/resolvable, held_personal_disposition, narrative_hint, identity_anchor, anchor_boost).
+- Explicit "held" personal cases for orange/marigolds + leukemia awareness + memory.
+- Exact prompts from logs e.g. "Orange is my favorite color and marigolds... Connect what you can."
+- Governance challenge + health/memory variants.
+- Reports natural narrative weave (spiral, held tensions, geometric uncertainty, recurrence) vs canned/hedged/templaty.
+- Integrates emotion-as-signal, contradiction density, identity signals.
+- Keeps eval contract (spines, tension packets, review-only cands, verifier).
+- Run: `python governed_synthesis_lab.py --hybrid-model --ollama-model qwen2.5:7b-instruct --out results/governed_synthesis_lab_migration_vX.json --case-ids personal_held_orange_marigolds_meaning,governance_challenge_orange_marigolds`
+- Only edits in this dir; sidecar read-only via import for contract.
+
+See results/ for updated runs and weave metrics.
 a plain-retrieval-style projection. It is a structural baseline, not a full
 external RAG implementation.
 

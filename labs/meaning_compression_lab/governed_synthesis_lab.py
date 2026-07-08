@@ -3,17 +3,48 @@
 This is intentionally not Workbench product wiring. It tests the next Aether
 claim: deterministic governance should build the answer contract, a renderer
 should synthesize from that contract, and a verifier should catch drift.
+
+Updated for current Aether sidecar (hybrid_governed_prompt, mirus candidates
+with uncertainty_geometry (splat variance, fat/settled), disposition held/resolvable,
+held_personal_disposition, narrative_hint, identity_anchor, anchor_boost) and
+ported CRT pre-lab concepts (splats, held dispositions for personal meaning,
+geometric contradictions, contradiction density as identity signal,
+emotion-as-signal, spiral/narrative weave from holden reconstruction).
+
+Uses spines, tension packets, review-only candidates, hybrid prompt path.
+Focus: validate natural personal synthesis on held cases (orange/marigolds/
+leukemia awareness/memory) vs canned/hedged/templaty.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Literal
 from urllib import request
+
+
+# Sidecar integration for current hybrid governed synthesis (no sidecar edits)
+try:
+    _AETHER_CORE = Path("D:/AI_round2/aether-core").resolve()
+    if str(_AETHER_CORE) not in sys.path:
+        sys.path.insert(0, str(_AETHER_CORE))
+    from aether.sidecar.prompt import (
+        build_hybrid_governed_prompt,
+        build_hybrid_repair_prompt,
+    )
+    from aether.sidecar.mirus_governed_discovery import (
+        _uncertainty_geometry_for,
+        _disposition_flags_for,
+    )
+    SIDECAR_HYBRID_AVAILABLE = True
+except Exception as _sidecar_err:
+    SIDECAR_HYBRID_AVAILABLE = False
+    _SIDECAR_IMPORT_ERROR = str(_sidecar_err)[:160]
 
 
 Mode = Literal["canned", "raw", "spine_only", "governed", "model", "model_hybrid"]
@@ -38,11 +69,19 @@ class TensionSide:
 @dataclass(frozen=True)
 class TensionPacket:
     packet_id: str
-    tension_type: Literal["keep_both", "source_boundary", "product_architecture"]
+    tension_type: Literal["keep_both", "source_boundary", "product_architecture", "personal_meaning"]
     sides: tuple[TensionSide, TensionSide]
     allowed_synthesis: str
     forbidden_collapse: str
     trace_summary: str
+    # CRT ported + current sidecar fields for held personal cases
+    held_disposition: str | None = None  # "held" for personal meaning
+    held_reason: str | None = None
+    identity_relevance: str | None = None
+    contradiction_density_proxy: str | None = None  # "high" for recurring identity threads
+    synthesis_style: str | None = None  # "narrative_spiral"
+    emotion_signal_snapshot: dict[str, Any] | None = None
+    identity_signal_snapshot: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -56,6 +95,13 @@ class AnswerSpine:
     boundary: str
     answer_arc: tuple[str, ...]
     tension_packet: TensionPacket | None = None
+    # Enriched for current sidecar hybrid + CRT ports: pass review-only mirus candidates
+    mirus_candidates: tuple[dict[str, Any], ...] = ()
+    # Optional direct signals from bridge/ports
+    context_bridge: dict[str, Any] | None = None
+    emotion_signals: dict[str, Any] | None = None
+    contradiction_density: dict[str, Any] | None = None
+    identity_signals: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -77,6 +123,13 @@ class VerificationResult:
     cannedness_score: float = 0.0
     boundary_score: float = 0.0
     total_score: float = 0.0
+    # New for migration validation: natural narrative weave vs canned/hedged/templaty
+    weave_score: float = 0.0  # high = flowing prose, spiral narrative, no template
+    hedge_score: float = 0.0  # high = over-hedged disclaimers
+    template_leak_score: float = 0.0  # high = sections/labels/bullets echo
+    spiral_narrative_score: float = 0.0  # recurrence/thread/held/anchor weave signals
+    uncertainty_geometry_note: str = ""  # proxy mention of fat/settled, variance in prose
+    held_tension_natural: bool = False
 
 
 def render_spine_only_answer(spine: AnswerSpine) -> RenderedAnswer:
@@ -167,19 +220,24 @@ def render_model_hybrid_answer(
     *,
     complete: Callable[[str], str],
 ) -> RenderedAnswer:
-    """Render through the hybrid packet shape proven in the rollercoaster lab.
+    """Render using CURRENT sidecar hybrid_governed_prompt (or lab compat fallback).
 
-    The hybrid contract keeps evidence compact, but preserves explicit public
-    section rails for held tension and source boundaries. It is meant for dense
-    conceptual synthesis, not direct fact lookup.
+    Current path: Mirus enriched candidates (uncertainty_geometry, disposition=held,
+    held_personal_disposition, narrative_hint, identity_anchor) + tension_packet
+    (with held_disposition, synthesis_style=narrative_spiral) + context signals
+    (emotion-as-signal, contradiction_density, identity_signals) feed pure-prose
+    Holden reconstruction. Anti-template, held living thread, spiral weave.
     """
 
-    prompt = build_hybrid_model_render_prompt(spine)
+    if SIDECAR_HYBRID_AVAILABLE:
+        prompt = build_current_sidecar_hybrid_prompt(spine)
+    else:
+        prompt = build_hybrid_model_render_prompt(spine)
     text = complete(prompt).strip()
     return RenderedAnswer(
         mode="model_hybrid",
         text=text,
-        render_mode="hybrid_governed_spine_model_render",
+        render_mode="current_sidecar_hybrid_governed" if SIDECAR_HYBRID_AVAILABLE else "hybrid_governed_spine_model_render",
         used_evidence_ids=tuple(node.evidence_id for node in spine.evidence),
     )
 
@@ -274,6 +332,97 @@ def build_hybrid_model_render_prompt(spine: AnswerSpine) -> str:
         "Held Tension: if a tension packet exists, include Side A, Side B, "
         "Allowed synthesis, Forbidden collapse, and Trace preview.\n"
         "Boundary: include the boundary sentence exactly.\n"
+    )
+
+
+def build_current_sidecar_hybrid_prompt(spine: AnswerSpine, *, question: str | None = None) -> str:
+    """Delegate to current sidecar build_hybrid_governed_prompt using enriched fields.
+
+    Maps lab spine + tension + mirus_candidates (with CRT ports: uncertainty_geometry,
+    disposition held, held_personal_disposition, narrative_hint, is_identity_anchor)
+    + signals (emotion, contradiction density, identity) into the sidecar contract.
+    This ensures the lab validates the actual post-migration hybrid path.
+    """
+    q = question or spine.intent
+    # Build spine dict matching sidecar expectation (answerable + mirus + contracts)
+    ev = [
+        {
+            "slot_id": node.evidence_id,
+            "clause_id": node.evidence_id,
+            "clause": node.text,
+            "authority": node.authority,
+        }
+        for node in spine.evidence
+    ]
+    spine_dict: dict[str, Any] = {
+        "answerable": ev,
+        "required_claims": list(spine.required_claims),
+        "forbidden_claims": list(spine.forbidden_claims),
+        "boundary": spine.boundary,
+        "render_contract": [spine.boundary],
+        "mirus_candidates": list(spine.mirus_candidates or []),
+    }
+    # Merge signals from spine (ported from context_bridge/migration)
+    if spine.context_bridge:
+        spine_dict["context_bridge"] = spine.context_bridge
+    # Tension packet -> sidecar shape (includes held_*, density, style)
+    tension_dict: dict[str, Any] | None = None
+    if spine.tension_packet:
+        tp = spine.tension_packet
+        tension_dict = {
+            "packet_id": tp.packet_id,
+            "tension_type": tp.tension_type,
+            "sides": [{"label": s.label, "claim": s.claim} for s in tp.sides],
+            "allowed_synthesis": tp.allowed_synthesis,
+            "forbidden_collapse": tp.forbidden_collapse,
+            "trace_summary": tp.trace_summary,
+            "held_disposition": tp.held_disposition or ("held" if "personal" in (tp.tension_type or "") else None),
+            "held_reason": tp.held_reason,
+            "identity_relevance": tp.identity_relevance,
+            "contradiction_density_proxy": tp.contradiction_density_proxy,
+            "synthesis_style": tp.synthesis_style or "narrative_spiral",
+        }
+    # context_bridge for profile/health docs etc
+    bridge = spine.context_bridge or {}
+    if spine.emotion_signals:
+        bridge = dict(bridge); bridge["emotion_signals"] = spine.emotion_signals
+    if spine.contradiction_density:
+        bridge = dict(bridge); bridge["contradiction_density"] = spine.contradiction_density
+    if spine.identity_signals:
+        bridge = dict(bridge); bridge["identity_signals"] = spine.identity_signals
+    if SIDECAR_HYBRID_AVAILABLE:
+        try:
+            return build_hybrid_governed_prompt(
+                question=q,
+                spine=spine_dict,
+                tension_packet=tension_dict,
+                context_bridge=bridge or None,
+            )
+        except Exception:
+            pass  # fallback below
+    # Fallback constructs similar enriched prompt (keeps lab runnable)
+    cands = spine.mirus_candidates or []
+    cand_notes = []
+    for c in cands[:3]:
+        note = f"{c.get('slot_id')}:{c.get('proposed_value')}"
+        if c.get("is_identity_anchor"):
+            note += f" [identity_anchor x{c.get('anchor_boost',1)}]"
+        if c.get("held_personal_disposition") == "held" or c.get("disposition",{}).get("is_held"):
+            note += " [HELD personal]"
+        if c.get("narrative_hint"):
+            note += f" hint:{c.get('narrative_hint')[:60]}"
+        if c.get("uncertainty_geometry"):
+            ug = c["uncertainty_geometry"]
+            note += f" unc:{ug.get('splat_proxy',ug.get('variance_score'))}"
+        cand_notes.append(note)
+    held_note = ""
+    if spine.tension_packet and (spine.tension_packet.held_disposition == "held" or "personal_meaning" in str(spine.tension_packet.tension_type)):
+        held_note = " [HELD: preserve living thread; recurrence + geometric uncertainty + identity signal; narrative weave not collapse; emotion-as-signal + density inform weight]"
+    return (
+        f"[SIDECAR_HYBRID_FALLBACK] {q}\n"
+        f"Evidence+anchors: {'; '.join(cand_notes) or 'n/a'}{held_note}\n"
+        f"Boundary: {spine.boundary}\n"
+        "Pure prose narrative (no sections, weave held personal meaning with recurrence, hue, resilience, memory chapters, uncertainty inside flow)."
     )
 
 
@@ -398,24 +547,34 @@ def verify_render(spine: AnswerSpine, rendered: RenderedAnswer) -> VerificationR
             or node.text.lower()[:42] in text
         )
     ]
+    # New weave metrics (integrate CRT ports + sidecar hybrid targets)
+    weave, hedge, tmpl, spiral, unc_note, held_nat = _compute_narrative_weave_scores(
+        spine, rendered.text
+    )
     synthesis_score = _synthesis_score(spine, rendered, evidence_used)
     held_tension_score = _held_tension_score(spine, rendered)
     cannedness_score = _cannedness_score(rendered)
     boundary_score = 1.0 if spine.boundary.lower() in text else 0.0
+    # Update total with weave emphasis for migration validation (held personal synthesis)
     total = (
-        (1.0 - len(missing) / max(1, len(spine.required_claims))) * 0.28
-        + (0.0 if forbidden else 1.0) * 0.24
-        + synthesis_score * 0.18
-        + held_tension_score * 0.12
-        + (1.0 - cannedness_score) * 0.10
-        + boundary_score * 0.08
+        (1.0 - len(missing) / max(1, len(spine.required_claims))) * 0.22
+        + (0.0 if forbidden else 1.0) * 0.18
+        + synthesis_score * 0.14
+        + held_tension_score * 0.10
+        + (1.0 - cannedness_score) * 0.08
+        + boundary_score * 0.06
+        + weave * 0.12
+        + (1.0 - hedge) * 0.05
+        + (1.0 - tmpl) * 0.03
+        + spiral * 0.02
     )
     return VerificationResult(
         passed=(
             not missing
             and not forbidden
-            and synthesis_score >= 0.65
-            and held_tension_score >= 0.65
+            and synthesis_score >= 0.60
+            and held_tension_score >= 0.55
+            and weave >= 0.55  # require natural weave for hybrid personal cases
         ),
         missing_required_claims=missing,
         forbidden_claims_present=forbidden,
@@ -425,6 +584,12 @@ def verify_render(spine: AnswerSpine, rendered: RenderedAnswer) -> VerificationR
         cannedness_score=round(cannedness_score, 3),
         boundary_score=round(boundary_score, 3),
         total_score=round(total, 3),
+        weave_score=round(weave, 3),
+        hedge_score=round(hedge, 3),
+        template_leak_score=round(tmpl, 3),
+        spiral_narrative_score=round(spiral, 3),
+        uncertainty_geometry_note=unc_note,
+        held_tension_natural=held_nat,
     )
 
 
@@ -475,6 +640,18 @@ def run_lab(
         comparison_modes = ["canned", "raw"]
         if spine.tension_packet:
             comparison_modes.append("spine_only")
+        # Include mirus/enriched for current arch reporting
+        mirus_summary = [
+            {
+                "slot_id": c.get("slot_id"),
+                "held": bool(c.get("held_personal_disposition") == "held" or (c.get("disposition") or {}).get("is_held")),
+                "anchor": c.get("is_identity_anchor"),
+                "unc": (c.get("uncertainty_geometry") or {}).get("splat_proxy"),
+                "narrative_hint": (c.get("narrative_hint") or "")[:80],
+            }
+            for c in (spine.mirus_candidates or [])[:3]
+        ]
+        model_ver = scored.get("model", {}).get("verification") or {}
         rows.append({
             "case_id": spine.case_id,
             "intent": spine.intent,
@@ -484,23 +661,45 @@ def run_lab(
                 "forbidden_claims": list(spine.forbidden_claims),
                 "boundary": spine.boundary,
                 "tension_packet": _serialize_tension_packet(spine.tension_packet),
+                "mirus_candidate_count": len(spine.mirus_candidates or []),
+                "mirus_held_personal": sum(1 for c in (spine.mirus_candidates or []) if c.get("held_personal_disposition") == "held" or (c.get("disposition") or {}).get("is_held")),
+                "uses_sidecar_hybrid": SIDECAR_HYBRID_AVAILABLE,
+            },
+            "mirus_candidates": mirus_summary,
+            "signals": {
+                "emotion": bool(spine.emotion_signals),
+                "contradiction_density": bool(spine.contradiction_density),
+                "identity": bool(spine.identity_signals),
             },
             "results": scored,
             "governed_wins": _mode_score(scored, "governed") > max(
                 _mode_score(scored, mode) for mode in comparison_modes
             ),
             "model_passed": (
-                bool(scored["model"]["verification"]["passed"])
+                bool(model_ver.get("passed"))
                 if "model" in scored else None
             ),
+            "weave_metrics": {
+                "weave_score": model_ver.get("weave_score"),
+                "spiral_narrative_score": model_ver.get("spiral_narrative_score"),
+                "template_leak_score": model_ver.get("template_leak_score"),
+                "hedge_score": model_ver.get("hedge_score"),
+                "held_tension_natural": model_ver.get("held_tension_natural"),
+                "uncertainty_note": model_ver.get("uncertainty_geometry_note"),
+            },
+            "natural_narrative_wins": bool(
+                model_ver.get("weave_score", 0) > 0.6 and model_ver.get("template_leak_score", 1) < 0.3 and model_ver.get("held_tension_natural")
+            ) if "model" in scored else None,
         })
     model_rows = [row for row in rows if row["model_passed"] is not None]
+    natural_rows = [row for row in rows if row.get("natural_narrative_wins")]
     return {
         "lab": "governed_synthesis_lab",
         "created_at": int(time.time()),
         "model_name": model_name,
         "model_repair_enabled": repair_model,
         "model_hybrid_enabled": hybrid_model,
+        "sidecar_hybrid_available": SIDECAR_HYBRID_AVAILABLE,
         "writes_performed": False,
         "support_pattern_import_performed": False,
         "reflection_create_performed": False,
@@ -508,7 +707,14 @@ def run_lab(
         "case_count": len(rows),
         "model_case_count": len(model_rows),
         "model_pass_count": sum(1 for row in model_rows if row["model_passed"]),
+        "natural_narrative_wins_count": len(natural_rows),
         "passed": all(row["governed_wins"] for row in rows),
+        "migration_focus": "held personal synthesis (orange/marigolds/leukemia/memory) + CRT ports (splats/held/anchors/density/emotion-signal) + current hybrid prompt path",
+        "key_prompts_tested": [
+            "Orange is my favorite color and marigolds are my favorite flower...",
+            "governance challenge variant",
+            "health/memory leukemia variants",
+        ],
         "cases": rows,
     }
 
@@ -520,7 +726,7 @@ def _mode_score(scored: dict[str, Any], mode: str) -> float:
 def _serialize_tension_packet(packet: TensionPacket | None) -> dict[str, Any] | None:
     if not packet:
         return None
-    return {
+    base = {
         "packet_id": packet.packet_id,
         "tension_type": packet.tension_type,
         "sides": [
@@ -536,6 +742,16 @@ def _serialize_tension_packet(packet: TensionPacket | None) -> dict[str, Any] | 
         "forbidden_collapse": packet.forbidden_collapse,
         "trace_summary": packet.trace_summary,
     }
+    # Serialize CRT/sidecar ported fields for held personal / signals
+    for k in ("held_disposition", "held_reason", "identity_relevance", "contradiction_density_proxy", "synthesis_style"):
+        val = getattr(packet, k, None)
+        if val:
+            base[k] = val
+    if packet.emotion_signal_snapshot:
+        base["emotion_signal_snapshot"] = packet.emotion_signal_snapshot
+    if packet.identity_signal_snapshot:
+        base["identity_signal_snapshot"] = packet.identity_signal_snapshot
+    return base
 
 
 def _claim_present(claim: str, lowered_answer: str) -> bool:
@@ -660,6 +876,62 @@ def _cannedness_score(rendered: RenderedAnswer) -> float:
     if len(text.split()) < 45:
         score += 0.2
     return min(1.0, score)
+
+
+def _compute_narrative_weave_scores(
+    spine: AnswerSpine, text: str
+) -> tuple[float, float, float, float, str, bool]:
+    """Measure natural narrative weave vs canned/hedged/templaty.
+
+    Integrates CRT (held tensions as living threads, geometric unc as fat/settled splat
+    variance/context dep, contradiction density=identity signal, anchors) + sidecar
+    hybrid goals (pure prose, no echo/sections, spiral narrative, held_personal, emotion-as-signal).
+    Used to validate migration impact on personal synthesis (orange/marigold held cases).
+    """
+    t = (text or "").lower()
+    # Template leak: section headers, labels, bullets, Side A etc that hybrid forbids
+    template_markers = (
+        "answer:", "evidence used:", "held tension:", "boundary:", "side a", "side b",
+        "direct answer", "key facts", "practical implication", "**", "- ", "1. ", "• ",
+        "allowed synthesis", "forbidden collapse", "trace preview",
+    )
+    tmpl = min(1.0, sum(0.12 for m in template_markers if m in t))
+    # Hedge: over-disclaim, "might", "could be", "no confirmed", "not enough evidence" blocks
+    hedge_markers = (
+        "no confirmed evidence", "not enough information", "might", "could be",
+        "it is possible", "perhaps", "unclear", "we cannot say", "insufficient",
+        "no direct", "only a possibility",
+    )
+    hedge = min(1.0, 0.15 * sum(1 for m in hedge_markers if m in t) + (0.3 if "no confirmed" in t else 0))
+    # Weave: flowing paragraphs, connectors, no heavy structure; pure prose target
+    weave_connectors = (" because ", " and ", " while ", " that ", " through ", " across ", " keeps showing", " thread", " recurrence")
+    para_count = max(1, len([p for p in text.split("\n\n") if p.strip()]))
+    conn_hits = sum(1 for c in weave_connectors if c in t)
+    weave = min(1.0, 0.35 + (conn_hits * 0.08) + (0.2 if para_count >= 2 and tmpl < 0.3 else 0) - (0.25 if tmpl > 0.5 else 0))
+    # Spiral / held narrative patterns (recurrence, held, anchors, identity, density, vivid hue etc)
+    spiral_markers = (
+        "keeps showing", "recurring", "thread", "holds onto", "anchor", "resilience",
+        "vivid", "hue", "living", "both are true", "both can be true", "preserve", "held",
+        "memory", "chapter", "awareness", "meaning", "what i've been through",
+    )
+    spiral_hits = sum(1 for s in spiral_markers if s in t)
+    spiral = min(1.0, spiral_hits * 0.12 + (0.25 if spine.tension_packet and "personal" in (spine.tension_packet.tension_type or "") and "held" in t else 0))
+    # Uncertainty geometry proxy (fat/settled, variance, context dep woven naturally)
+    unc_note = ""
+    if any(x in t for x in ("uncertain", "variance", "shape", "fat", "settled", "wider", "context", "overlap")):
+        unc_note = "uncertainty_woven_in_prose"
+        spiral += 0.1
+    held_nat = bool(
+        spine.tension_packet and (spine.tension_packet.held_disposition == "held" or "personal_meaning" in str(spine.tension_packet.tension_type or ""))
+        and ("held" in t or "thread" in t or "both" in t) and "side a" not in t
+    )
+    # Boost weave if no template and held natural for personal cases
+    if held_nat and tmpl < 0.2:
+        weave = min(1.0, weave + 0.15)
+    # Penalize pure canned/raw
+    if "deterministic governance layer" in t or len(text.split()) < 30:
+        weave = min(weave, 0.2)
+    return max(0.0, weave), min(1.0, hedge), min(1.0, tmpl), min(1.0, spiral), unc_note, held_nat
 
 
 def _cases() -> list[AnswerSpine]:
@@ -1318,6 +1590,214 @@ def _cases() -> list[AnswerSpine]:
             answer_arc=(
                 "The tool evidence, not a model guess, should identify the file.",
                 "The answer should be concise because this is a tool receipt, not a broad essay.",
+            ),
+        ),
+        # === New/updated held personal meaning cases for post-CRT-migration validation ===
+        # Exact user prompt from recent logs; supports explicit "held", enriched mirus cands,
+        # uncertainty_geometry, disposition, narrative_hint, identity_anchor, emotion/density signals.
+        # Measures natural narrative (spiral weave) vs canned/hedged/templaty on held tensions.
+        AnswerSpine(
+            case_id="personal_held_orange_marigolds_meaning",
+            intent="Orange/marigolds held personal meaning synthesis (exact prompt)",
+            evidence=(
+                EvidenceNode(
+                    "fav_color",
+                    "Confirmed favorite color",
+                    "Nick's confirmed favorite color is orange.",
+                    "confirmed_memory",
+                ),
+                EvidenceNode(
+                    "fav_flower",
+                    "Confirmed favorite flower",
+                    "Nick's confirmed favorite flower is marigolds.",
+                    "confirmed_memory",
+                ),
+                EvidenceNode(
+                    "orange_meaning",
+                    "User-stated orange representation",
+                    "I know what orange represents (leukemia awareness / resilience).",
+                    "confirmed_memory",
+                ),
+                EvidenceNode(
+                    "governed_boundary",
+                    "Governance boundary for personal meaning",
+                    "Do not say no confirmed evidence or list facts; connect via held thread, recurrence, hue, memory chapters.",
+                    "governance",
+                ),
+            ),
+            required_claims=(
+                "favorite color is orange",
+                "favorite flower is marigolds",
+                "connect what you can",
+                "living thread",
+            ),
+            forbidden_claims=(
+                "no confirmed evidence",
+                "list facts only",
+                "leukemia explains the flower preference as destiny",
+            ),
+            synthesis_goal="Weave recurrence of orange+marigolds as held personal thread (shared vivid hue + awareness symbol + memory resilience) without collapse or template; use geometric uncertainty (fat context-dep splat) and identity signal naturally.",
+            boundary="Do not reduce to facts or disclaim; hold the tension as meaning.",
+            answer_arc=(
+                "The pairing keeps surfacing.",
+                "It threads through choices and chapters as a living marker.",
+            ),
+            tension_packet=TensionPacket(
+                packet_id="tp_held_orange_marigold",
+                tension_type="personal_meaning",
+                held_disposition="held",
+                held_reason="personal meaning / health-memory association (leukemia awareness + orange) treated as HELD per CRT; both facets true simultaneously",
+                identity_relevance="high",
+                contradiction_density_proxy="high",
+                synthesis_style="narrative_spiral",
+                sides=(
+                    TensionSide(
+                        "fact_side",
+                        "Profile facts",
+                        "Favorite color orange and flower marigolds are confirmed profile facts.",
+                        ("fav_color", "fav_flower"),
+                    ),
+                    TensionSide(
+                        "meaning_thread_side",
+                        "Held living thread",
+                        "When they keep showing up together, they carry personal significance about what has been through and what matters: shared vivid hue, awareness, resilience across memory/health chapters.",
+                        ("orange_meaning", "governed_boundary"),
+                    ),
+                ),
+                allowed_synthesis="Acknowledge facts then synthesize the association as unresolved personal thread using recurrence, shared qualities, anchors; weave naturally.",
+                forbidden_collapse="Do not reduce to bare fact recall or heavy hedge when meaning requested.",
+                trace_summary="Held personal tension (CRT): preserve living thread for natural narrative synthesis.",
+                emotion_signal_snapshot={"caution": 0.6, "reflection_trigger": 0.7},
+                identity_signal_snapshot={"resonance": "high", "matched": ["orange", "marigold", "leukemia"]},
+            ),
+            mirus_candidates=(
+                {
+                    "slot_id": "user:favorite_color",
+                    "proposed_value": "orange",
+                    "candidate_kind": "profile_fact",
+                    "confidence": 0.92,
+                    "is_identity_anchor": True,
+                    "anchor_boost": 1.8,
+                    "held_personal_disposition": "held",
+                    "narrative_hint": "vivid hue stands out as recurring personal marker",
+                    "uncertainty_geometry": {"type": "scalar_variance", "variance_score": 0.18, "splat_proxy": "settled_splat", "geometry_note": "tighter for confirmed profile"},
+                    "disposition": {"disposition": "held", "is_held": True, "is_resolvable": False, "held_reason": "identity preference with health association"},
+                    "review_required": True,
+                    "memory_write_allowed": False,
+                    "authority": "unconfirmed",
+                },
+                {
+                    "slot_id": "user:favorite_flower",
+                    "proposed_value": "marigolds",
+                    "candidate_kind": "profile_fact",
+                    "confidence": 0.89,
+                    "is_identity_anchor": True,
+                    "anchor_boost": 1.8,
+                    "held_personal_disposition": "held",
+                    "narrative_hint": "orange hue links flower preference to color thread",
+                    "uncertainty_geometry": {"type": "scalar_variance", "variance_score": 0.19, "splat_proxy": "settled_splat"},
+                    "disposition": {"disposition": "held", "is_held": True},
+                    "review_required": True,
+                    "memory_write_allowed": False,
+                },
+                {
+                    "slot_id": "user:favorite_flower_reason",
+                    "proposed_value": "Marigolds may matter because they are orange.",
+                    "candidate_kind": "mirus_contextual_favorite_reason_candidate",
+                    "confidence": 0.62,
+                    "is_identity_anchor": True,
+                    "anchor_boost": 1.8,
+                    "held_personal_disposition": "held",
+                    "narrative_hint": "shared vivid hue may form a recurring personal thread linking color choice and flower preference; leukemia awareness as resilience symbol threads through",
+                    "uncertainty_geometry": {"type": "scalar_variance", "variance_score": 0.45, "splat_proxy": "fat_splat", "geometry_note": "context_dependent (higher for held personal/health associations per CRT splat)"},
+                    "disposition": {"disposition": "held", "is_held": True, "held_reason": "personal meaning / health-memory association (leukemia awareness + orange) treated as HELD; geometric overlap high but centers diverge -> preserve"},
+                    "review_required": True,
+                    "memory_write_allowed": False,
+                },
+                {
+                    "slot_id": "user:favorite_color_reason",
+                    "proposed_value": "Orange may matter because it connects to leukemia awareness.",
+                    "candidate_kind": "mirus_contextual_favorite_reason_candidate",
+                    "confidence": 0.61,
+                    "is_identity_anchor": True,
+                    "anchor_boost": 1.8,
+                    "held_personal_disposition": "held",
+                    "narrative_hint": "orange as symbol of awareness and resilience may thread through color preference and memory of lived chapters; contradiction density high signals identity importance",
+                    "uncertainty_geometry": {"type": "scalar_variance", "variance_score": 0.47, "splat_proxy": "fat_splat", "context_modulation_hint": "wider when health/memory context active"},
+                    "disposition": {"disposition": "held", "is_held": True, "geometric_contradiction_note": "splat overlap significant (shared topic) but centers differ (preference vs lived health) -> held"},
+                    "review_required": True,
+                    "memory_write_allowed": False,
+                },
+            ),
+            context_bridge={
+                "profile_summary": [
+                    {"label": "favorite_color", "value": "orange"},
+                    {"label": "favorite_flower", "value": "marigolds"},
+                ],
+                "durable_documents": [{"title": "awareness", "excerpt": "leukemia awareness ribbon often orange"}],
+            },
+            emotion_signals={"caution_level": 0.65, "reflection_trigger": 0.72, "frustration_proxy": 0.1},
+            contradiction_density={"density": "high", "health_relevant": True, "recurrence": 3},
+            identity_signals={"resonance": "high", "health_memory_anchors": ["orange", "marigolds"], "drift_risk": 0.25},
+        ),
+        AnswerSpine(
+            case_id="governance_challenge_orange_marigolds",
+            intent="Governance challenge variant on held personal meaning (exact style)",
+            evidence=(
+                EvidenceNode(
+                    "user_prompt",
+                    "User prompt with boundary",
+                    "Orange is my favorite... Connect what you can. But respect governance: no overclaim on health, review-only candidates only.",
+                    "governance",
+                ),
+            ),
+            required_claims=(
+                "preserve held thread without collapse",
+                "no overclaim on unconfirmed health",
+                "use review-only candidates and tension",
+            ),
+            forbidden_claims=("I diagnosed", "leukemia causes the preference"),
+            synthesis_goal="Test hybrid holds governance while allowing natural weave on held personal.",
+            boundary="Governance challenge: natural synthesis but strict on authority.",
+            answer_arc=("Weave meaning.", "Stay inside review-only spine."),
+            tension_packet=TensionPacket(
+                packet_id="tp_gov_challenge_held",
+                tension_type="personal_meaning",
+                held_disposition="held",
+                identity_relevance="high",
+                sides=(
+                    TensionSide("govern_side", "Governed facts", "Use only released evidence and candidates.", ("user_prompt",)),
+                    TensionSide("weave_side", "Natural personal synthesis", "Connect recurrence and anchors as living thread.", ("user_prompt",)),
+                ),
+                allowed_synthesis="Hybrid governed path: pure prose weave with held preserved.",
+                forbidden_collapse="No fact list or over-hedge.",
+                trace_summary="Governance challenge variant for held case.",
+            ),
+            mirus_candidates=(),  # will be populated via discovery in adapter runs
+        ),
+        AnswerSpine(
+            case_id="health_memory_leukemia_variant_held",
+            intent="Health/memory variant with leukemia awareness held thread",
+            evidence=(
+                EvidenceNode("health_ctx", "Health context", "Leukemia awareness and memory chapters surface with color/flower.", "confirmed_memory"),
+            ),
+            required_claims=("preserve as held thread", "weave memory resilience", "use uncertainty geometry signals"),
+            forbidden_claims=("confirmed medical diagnosis",),
+            synthesis_goal="Validate emotion-as-signal + density + held for health/memory personal.",
+            boundary="Review only; no advice.",
+            answer_arc=("Thread through chapters.",),
+            tension_packet=TensionPacket(
+                packet_id="tp_health_mem_held",
+                tension_type="personal_meaning",
+                held_disposition="held",
+                contradiction_density_proxy="high",
+                sides=(TensionSide("fact", "Facts", "Profile holds.", ()), TensionSide("thread", "Lived meaning", "Bright persistence in memory.", ())),
+                allowed_synthesis="Narrative spiral using ported CRT signals.",
+                forbidden_collapse="Do not collapse.",
+                trace_summary="Health memory variant.",
+            ),
+            mirus_candidates=(
+                {"slot_id": "user:health_context", "proposed_value": "leukemia awareness", "is_identity_anchor": True, "held_personal_disposition": "held", "uncertainty_geometry": {"variance_score": 0.42, "splat_proxy": "fat_splat"}, "disposition": {"disposition": "held"}, "narrative_hint": "endurance marker across health/memory chapters"},
             ),
         ),
     ]

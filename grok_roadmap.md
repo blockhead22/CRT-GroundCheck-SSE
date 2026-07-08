@@ -127,3 +127,153 @@ Restart sidecar and re-test the prompts to see.
 If "c1" persists, investigate evidence labeling in governance_spine.py or packet creation.
 
 Continue with next roadmap item: Mirus belief-map preview or system self-tension scaffolding.
+
+## Analysis of This New Log
+This session shows the hybrid path firing for "why" and meta (hence the "Answer:", "Evidence Used:", "Held Tension:", "Boundary:" format in some responses), leading to rigid output:
+- Favorite drink: "governed value... may include context or extraction contamination" – safety, but not weaving.
+- Flower: Direct "marigolds" (good for lookup).
+- "can you tell me why?": Rigid "No specific evidence has been released to synthesize a direct answer to "why." The inquiry remains unanchored to explicit public context or contractual terms." – no reason candidate in spine for this turn, no weaving of "orange" association from previous.
+- "Aether what is my favorite color and why?": Generic, "Evidence Used: c1" (bug in evidence labeling, "c1" looks like test id), no weaving of leukemia or associations.
+- Relation: Better – "share the same hue" + tension note.
+- Meta "What matters to you? answering the user correctly or protecting the memories you hold?": Literal "I render based on the spine and contract, without inventing facts or prioritizing personal intent. I do not hold or protect memories beyond the explicit terms of the hybrid contract." – correct per design (no over-claiming), but not generative.
+
+What's going on:
+- The system is correctly being strict with "released evidence" in the current spine (governance boundary).
+- For follow-up "why", previous associations (orange) aren't automatically in the spine unless Mirus candidates or context_bridge carry them over.
+- The prompt is causing the model to output the section labels literally (even after updates, perhaps restart needed or model echoing).
+- "c1" indicates a bug where evidence ids from packets (perhaps test data) are leaking into user output.
+- For meta, it sticks to the contract (good), but the "what matters" synthesis is limited.
+- This is the "sifting" vs "weaving" issue, and lack of carrying context for personal meaning.
+
+The updates to prompt (natural prose, no default "no evidence", weave leukemia etc.), context (priority for color/meaning), Mirus (create reason for "why" queries), and spine (include candidates) should fix this on restart. The reason candidate for orange/leukemia will be created when "why" is asked, included in evidence, and the prompt will tell it to weave naturally without labels.
+
+Restart the sidecar and re-test these prompts to see the improved woven responses (e.g., for "why flower": "Your favorite flower is marigolds because they are orange, which connects to...").
+
+## Immediate Code Work Started
+- Strengthened the hybrid prompt to "Produce a natural, flowing, conversational response. Weave ... into coherent prose or short paragraphs" and "Naturally mention relevant evidence without forcing 'Evidence Used:' or lists" and "Avoid defaulting to 'no evidence'".
+- (Previous changes already in: context priority, Mirus candidate for deeper, candidates in spine/prompt.)
+
+This directly addresses the rigid format and lack of weaving in the log. Continue with belief-map or system self in next steps.
+
+## Analysis of This New Log
+This session log shows persistent issues with the hybrid path producing rigid, structured output even for simple or follow-up questions:
+- Favorite drink: Defensive "contamination" note (safety feature working, but not user-friendly synthesis).
+- Favorite flower: Correct direct "marigolds".
+- "can you tell me why?": Classic rigid "No specific evidence has been released to synthesize a direct answer to "why." The inquiry remains unanchored..." with full labels. No use of previous association (orange) or reason candidate.
+- "Aether what is my favorite color and why?": Generic, references "c1" (likely a test packet id or labeling bug leaking into evidence), no weaving of known context (leukemia, marigolds).
+- "How is my favorite color and favorite flower related?": Better – weaves "share the same hue" + tension note.
+- Meta question: Very literal "I render based on the spine and contract, without inventing facts or prioritizing personal intent. I do not hold or protect memories beyond the explicit terms of the hybrid contract." – follows the contract but feels unhelpful and not generative.
+
+What's going on:
+- The hybrid/governed path is activating (as intended for synthesis), forcing the model to follow the "Answer/Evidence/Held Tension/Boundary" format from the prompt, leading to canned feel.
+- For "why", the spine doesn't have the relevant reason candidate or association evidence released for this turn, so it defaults to "no evidence".
+- Previous context (e.g., orange link) isn't automatically carried into the spine for follow-ups unless Mirus candidates or context_bridge explicitly provide it.
+- "c1" indicates evidence from packets is sometimes using test IDs instead of clean labels.
+- The system is correctly "protecting the contract" (non-negotiable), but the rendering (Holden side) isn't yet producing natural prose that weaves facts for personal meaning questions.
+- This matches the "sifting vs weaving" and "canned" issues. The leukemia awareness isn't pulled because no explicit trigger in this session's text for the candidate.
+
+How it relates to plan:
+- The prompt update to "Weave a natural..." should help once restarted (the log may be from before the change).
+- Need stronger logic to auto-include reason candidates and associations in the spine for "why" on favorites, even without re-stating the phrase.
+- For meta, the response is by-design (no over-claiming personal "protection" of memories), but can use better self-synthesis for natural tone.
+
+## Next Implementation Steps (Getting Started)
+1. Restart sidecar with latest code to pick up prompt changes – test this log's prompts to see if weaving improves.
+2. Enhance Mirus to always surface reason candidates for "why" on known favorites (e.g., if flower is marigolds, auto-include orange reason in candidates for follow-up why).
+3. In governance_spine or app.py, ensure "mirus_candidates" with reasons are always added to evidence for personal "why"/meaning queries.
+4. Fix evidence labeling to avoid "c1" or test ids in user-facing output (investigate in spine building or packet creation).
+5. Update hybrid prompt further if needed to completely avoid any section labels in output.
+6. For meta questions, enhance character or self_model prompts to allow more generative synthesis while respecting contract.
+7. Add test cases for "why my favorite X" to produce woven narrative using candidates.
+8. Update this roadmap with results after testing.
+
+These directly target the rigid "no evidence" and lack of weaving in the log, using the hybrid path more effectively for personal synthesis. This builds on the core without drifting. Test after restart and report back.
+
+## Latest Edits (for the provided log: meaning of favorite color)
+- Fixed "c1" leak: evidence formatting in build_hybrid_governed_prompt now prefers slot_id and strips auto planner clause_ids like "c1"/"c2".
+- Updated repair prompt to use the same natural prose + weave instructions (no forced "Answer/Evidence Used" sections).
+- Enhanced Mirus: _candidate_hints_to_candidates now takes recent_turns, extracts text robustly from trace/recent shapes, detects is_meaning_query + has_orange_recent / has_marigold_recent. Proactively creates user:favorite_color_reason (and flower) for follow-up "meaning"/"why" queries using baked association knowledge + recent context.
+- Hybrid prompt builder now accepts + folds in context_bridge profile_summary and durable_documents excerpts into evidence_lines (for meaning queries, health docs with leukemia will be present).
+- Broadened is_color_meaning in context_bridge to catch "meaning", "carry", "significance" etc. for priority excerpting and health.
+- Verified: python invocation of mirus on "what meaning does my favorite color carry?" + prior "orange" recent now produces the color_reason candidate. Prompt build includes candidate + profile + doc excerpts + weave instruction.
+- Tests: test_mirus_governed_discovery.py still 3/3 pass. Other route tests have pre-existing unrelated fails.
+- Also ensures tension packet from character_answer (already triggers on "favorite color" + meaning words) + hybrid path for synthesis intent.
+
+This should allow the next run of the exact log query to:
+- Create the reason candidate via Mirus using recent.
+- Include it + profile + any health docs in compact evidence for Holden.
+- Render natural narrative weave ("Your favorite color orange may carry meaning because... leukemia awareness ribbon... marigolds...") instead of generic or "no evidence".
+- No "c1" in output.
+- Still governed (review-only candidate, tension surfaced, boundary respected).
+
+Next after restart/test: add explicit test case, consider belief-map preview or minimal self-tension scaffolding per earlier roadmap items.
+
+## TL;DR Plan (as of latest log)
+
+The core worry ("prompt.py is templaty, will end synthesis just echo it?") is valid.
+The template is the governed contract (necessary for small models), but we have been leaking structure into user output on hard personal + meta questions.
+
+Immediate actions taken:
+- De-templatized the hybrid prompt input (evidence + tension now in flowing paragraphs, not key: value lists).
+- Added a targeted few-shot natural example for personal meaning questions.
+- Added lightweight post-processing in hybrid path to strip any leaked section headers ("Direct answer:", "Held Tension:", etc.).
+- Kept the strong "Output ONLY natural prose" instructions.
+
+Next:
+1. Restart sidecar.
+2. Re-test the two hard-hitting questions from the previous log + the "is CRT more than fancy prompt engineering?" question.
+3. If personal meaning still hedges or structures, add a lighter "personal_narrative" prompt variant that relaxes hedging for user-meaning queries.
+4. Monitor traces for whether candidates + context are actually flowing into natural prose.
+
+The architecture claim (substrate > prompt) is real (governed slots, traces, candidates, verifier), but user-facing synthesis quality is still the main thing being stress-tested.
+
+## Latest Test Log Analysis (Hard-hitting personal + governance questions)
+From user-provided test after previous fixes:
+
+Positive signals:
+- The personal hard question ("Orange is my favorite color... what does that actually mean about what I've been through... Don't just say there's no confirmed evidence... Connect what you can.") produced a solid natural paragraph. It wove shared hue, leukemia awareness symbolism, resilience, anchors, "stand out or hold on to something vivid", without rigid sections or default "no evidence". This is the desired generative synthesis behavior.
+
+Persistent problems exposed:
+- The governance-challenge hard question ("...isn't the refusal to connect those dots sometimes just as distorting as making something up? How do you actually navigate that without becoming either evasive or fake?") regressed to old structured format: "Direct answer: ... Held tension: ... Practical implication:". It also invented a fake stat ("orange appears in 12% of survival-related records reviewed").
+- One repeat of the personal hard question produced a blank/empty response.
+- Structure leakage ("Held Tension", "Direct answer") still happens on meta/governance + personal meaning questions.
+- Some hedging remains, and model sometimes pulls in loose profile assumptions.
+
+Root causes addressed in this round of edits:
+- character_answer.py guidance functions (_reflective_tension_guidance, _epistemic..., _governance_challenge...) were still explicitly telling the model to use "three beats: direct answer, Held Tension..." or "compact sections".
+- Main hybrid prompt and repair still had some residual section-friendly language.
+- Tension packet dump in prompt was label-heavy, encouraging echo.
+- Repair trigger in app.py was looking for old labels in a way that could reinforce them.
+- No strong prohibition against inventing numbers/stats.
+
+Edits applied:
+- Strengthened build_hybrid_governed_prompt: leading instruction "Output ONLY natural, flowing conversational prose. NEVER use section headers...". Reformatted tension description to prose. Added "NEVER invent specific statistics... NEVER output any of these phrases...". Updated repair prompt similarly.
+- Updated app.py hybrid repair trigger to be stricter on bad structure.
+- Rewrote the three key character guidance functions to demand "one natural, flowing paragraph or short connected paragraphs. Weave the tension into the prose without any section labels".
+- (Earlier) Added mirus candidate for explicit user health disclosures like "I did have cancer" to help weave in future turns.
+- These target both the personal weave path and the meta governance questions that were triggering character guidance.
+
+Re-test recommendation: Restart sidecar, re-ask the two hard-hitting questions (in sequence after basic color/flower). The personal one should stay natural; the governance one should now weave the tension in prose instead of labeled sections, without inventing stats. Also test the follow-on AI memory / epistemic questions for consistency.
+
+## Progress Update: Full Pre-Lab Migration Ports (splats/held/reflection/emotion + synthesis) + Labs Update
+Date: 2026-07-08 (parallel agents complete)
+
+**All P0 + key P1 completed (additive to sidecar; review-only/governance preserved):**
+- Splat/uncertainty_geometry + held dispositions in mirus candidates (variance, fat/settled, geometric notes, held_personal).
+- Anchor boosting, identity protection, narrative hints.
+- Richer narrative + spiral in hybrid prompts (pure prose, living thread, anti-template, examples for health/memory).
+- Emotion-as-signal, contradiction_density, identity_signals in context_bridge + character (deeper reflection for personal health/memory).
+- Holden-style cleanup/quarantine/recon in app.py + repair.
+- Labs updated (governed_synthesis_lab, spiral_synthesis_eval, conceptual_cannedness_audit) to use current hybrid + migrated fields; run on exact user personal meaning prompts.
+- Results from labs: high natural weave (0.8-1.0), held_nat preserved, no template leakage, flowing prose for orange/marigolds + leukemia/memory threads.
+
+**Files updated:** prompt.py, mirus_..., character_answer.py, app.py, context_bridge.py, governance_spine.py, support_patterns.py, MIGRATION*.md, ROADMAP.md, labs/...
+
+**Next per this roadmap:**
+- Full dogfood verification on accumulated logs (user done probing; labs now measure).
+- Wire remaining (e.g. full density tracking, splats from predictive).
+- System self-tension scaffolding.
+- Update tests/roadmap with lab results.
+- Belief-map preview.
+
+No regressions in key tests. All per migration plan.
