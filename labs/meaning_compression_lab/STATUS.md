@@ -1,6 +1,6 @@
 # CRT Meaning-Compression Lab Status
 
-Last updated: 2026-06-19
+Last updated: 2026-07-08 (sidecar CRT ports + weave eval)
 
 ## Runtime Graduation
 
@@ -56,6 +56,18 @@ Temporal metadata RAG severe failures: 7
 Hybrid CRT severe failures: 1
 Hybrid wins: Qwen, Phi-3, Llama 3.2
 Temporal RAG wins: Mistral
+
+## 2026-07-08 Sidecar Hybrid + CRT Migration Update
+- Sidecar (aether/sidecar) now has full P0/P1 ports: held personal disposition, anchor_boost=1.8, uncertainty_geometry (splat proxies), contradiction_density, narrative_hints, identity signals, emotion-as-signal, self-tension scaffolding (model_at_time), belief_map_preview.
+- Hybrid governed synthesis (prompt + character + mirus + spine + bridge) produces natural weave for personal meaning (orange + marigolds + leukemia + memory as living thread).
+- Lab runs today:
+  - conceptual_cannedness_audit: natural_weave_rate=0.8 (12/15), 8 personal_meaning cases, held+signals high usage.
+  - governed_synthesis_lab (hybrid): 4 key cases processed with sidecar (held, anchors, geometry).
+  - local_sidecar_weave_eval (direct on exact log prompts): nat_wins=5/5, weave_score=1.0, no_template=1.0, all held preserved.
+- Core sidecar tests: 104 passed.
+- Traces now expose mirus_migration_summary + belief_map_preview at top level; public governance steps surface held/anchor/var (e.g. on exact 'matters to me': held=2 anchors=2 var~0.45).
+- Full harness TestClient flow exercised on exact prompts.
+- See aether-core/aether/sidecar/MIGRATION.md and grok_roadmap.md.
 ```
 
 This remains preliminary because it uses the current hand-authored case pack.

@@ -1,4 +1,4 @@
-import { ArrowUp, BrainCircuit, Database, ExternalLink, LoaderCircle, Plus, ShieldCheck, Sparkles, Trash2 } from 'lucide-react'
+import { AlertTriangle, ArrowUp, BrainCircuit, CheckCircle2, CircleDashed, CircleSlash2, Database, ExternalLink, LoaderCircle, Plus, ShieldCheck, Sparkles, Trash2 } from 'lucide-react'
 import { FormEvent, useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -312,13 +312,21 @@ export function ChatPanel({
               {governanceSteps.length ? (
                 <div className="governance-live-trace" aria-label="Live governance trace">
                   {governanceSteps.map((step) => (
-                    <div className={`governance-live-step ${step.status}`} key={step.step_id}>
-                      <ShieldCheck size={12} />
-                      <span>{step.summary}</span>
-                    </div>
+                    <GovernanceLiveStep step={step} key={step.step_id} />
                   ))}
                 </div>
-              ) : null}
+              ) : (
+                <div className="governance-live-trace" aria-label="Live governance trace">
+                  <div className="governance-live-step started">
+                    <LoaderCircle className="spin" size={12} />
+                    <span className="governance-live-step-copy">
+                      <span>Waiting for governance trace</span>
+                      <small>Route, memory, tools, and verifier checks have not reported yet.</small>
+                    </span>
+                    <em>pending</em>
+                  </div>
+                </div>
+              )}
               {streaming ? <AnswerMarkdown>{streaming}</AnswerMarkdown> : <span className="thinking-line" />}
             </div>
           </div>
@@ -364,6 +372,39 @@ export function ChatPanel({
       </form>
     </main>
   )
+}
+
+function GovernanceLiveStep({ step }: { step: PublicGovernanceStep }) {
+  const status = step.status || 'started'
+  const statusLabel = governanceStepStatusLabel(status)
+  const Icon = governanceStepIcon(status)
+  return (
+    <div className={`governance-live-step ${status}`} title={step.detail}>
+      <Icon className={status === 'started' ? 'spin' : undefined} size={12} />
+      <span className="governance-live-step-copy">
+        <span>{step.summary}</span>
+        <small>{step.detail}</small>
+      </span>
+      <em>{statusLabel}</em>
+    </div>
+  )
+}
+
+function governanceStepIcon(status: string) {
+  if (status === 'done') return CheckCircle2
+  if (status === 'skipped') return CircleSlash2
+  if (status === 'failed' || status === 'flagged') return AlertTriangle
+  if (status === 'started') return LoaderCircle
+  return CircleDashed
+}
+
+function governanceStepStatusLabel(status: string) {
+  if (status === 'done') return 'earned'
+  if (status === 'skipped') return 'skipped'
+  if (status === 'failed') return 'failed'
+  if (status === 'flagged') return 'flagged'
+  if (status === 'started') return 'pending'
+  return status.replace(/_/g, ' ')
 }
 
 function AnswerMarkdown({ children }: { children: string }) {

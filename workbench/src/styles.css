@@ -170,10 +170,22 @@ button { color: inherit; }
 .answer-thinking-section p { margin: 0; color: #727d75; font-size: 10px; line-height: 1.45; }
 .frontier-message { margin-top: 12px; padding: 13px; border-left: 2px solid var(--blue); background: rgba(114, 183, 255, .06); }
 .streaming { min-height: 70px; }
-.governance-live-trace { display: grid; gap: 5px; margin: 10px 0 11px; padding: 8px; border: 1px solid rgba(168,207,90,.18); border-radius: 6px; background: rgba(168,207,90,.045); }
-.governance-live-step { display: flex; align-items: center; gap: 7px; min-height: 18px; color: #aeb8ad; font-size: 10px; line-height: 1.35; }
-.governance-live-step svg { flex: 0 0 auto; color: #8da665; }
-.governance-live-step.skipped svg { color: #68756f; }
+.governance-live-trace { display: grid; gap: 6px; margin: 10px 0 11px; padding: 8px; border: 1px solid rgba(168,207,90,.18); border-radius: 6px; background: rgba(168,207,90,.045); }
+.governance-live-step { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; align-items: start; gap: 7px; min-height: 20px; color: #aeb8ad; font-size: 10px; line-height: 1.35; }
+.governance-live-step svg { flex: 0 0 auto; margin-top: 1px; color: #9dbb68; }
+.governance-live-step-copy { display: grid; gap: 1px; min-width: 0; }
+.governance-live-step-copy > span { color: #d1d7cf; }
+.governance-live-step-copy small { color: #849086; font-size: 9px; line-height: 1.35; overflow-wrap: anywhere; }
+.governance-live-step em { align-self: start; border: 1px solid rgba(168,207,90,.18); border-radius: 999px; padding: 1px 5px; color: #9fb66d; font-size: 8px; font-style: normal; text-transform: uppercase; letter-spacing: .06em; }
+.governance-live-step.skipped svg,
+.governance-live-step.skipped .governance-live-step-copy > span { color: #758079; }
+.governance-live-step.skipped em { color: #7f8b83; border-color: rgba(127,139,131,.22); }
+.governance-live-step.failed svg,
+.governance-live-step.flagged svg { color: #ef9d91; }
+.governance-live-step.failed em,
+.governance-live-step.flagged em { color: #ef9d91; border-color: rgba(239,157,145,.28); }
+.governance-live-step.started svg { color: #a8cf5a; }
+.governance-live-step.started em { color: #a8cf5a; }
 .thinking-line { display: block; width: 64%; height: 8px; margin-top: 15px; background: linear-gradient(90deg, #29312d 20%, #3b463f 50%, #29312d 80%); background-size: 180% 100%; animation: shimmer 1.1s infinite; border-radius: 4px; }
 .spin { animation: spin 1s linear infinite; }
 .chat-error, .inline-notice { color: #ef9d91; border: 1px solid rgba(230,108,92,.32); background: rgba(230,108,92,.08); padding: 9px 10px; border-radius: 6px; font-size: 11px; margin-top: 10px; }

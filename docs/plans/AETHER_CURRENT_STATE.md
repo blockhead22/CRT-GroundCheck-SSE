@@ -30,6 +30,8 @@ D:\AI_round2\docs\plans\AETHER_GOVERNED_SYNTHESIS_SIDEROADMAP_2026-07-07.md
 D:\AI_round2\docs\plans\AETHER_MIRUS_BELIEF_MAP_LAB_2026-07-07.md
 D:\AI_round2\docs\plans\AETHER_LOCAL_REASONING_MODEL_POLICY_2026-07-07.md
 D:\AI_round2\docs\plans\AETHER_DUELING_ROLLERCOASTER_LAB_2026-07-07.md
+D:\AI_round2\docs\plans\AETHER_CRITIC_REPAIR_LAB_RESULTS_2026-07-08.md
+D:\AI_round2\docs\plans\AETHER_AWAY_DOGFOOD_ARCHIVE_PROMPTS_2026-07-08.md
 D:\AI_round2\docs\plans\AETHER_ARCHIVE_PROMPT_MINING_PASS_2026-07-01.md
 D:\AI_round2\docs\plans\AETHER_ARCHIVE_PROMPT_PACK_RUNPLAN_2026-07-01.md
 D:\AI_round2\docs\plans\AETHER_LOCAL_ROUTER_LAB_GRADUATION_2026-06-30.md
@@ -332,6 +334,45 @@ synonym gap. `gpt corpus` and `chatgpt corpus` now trigger document search,
 Context Bridge archive intent, and deterministic archive-boundary answers. The
 exact observed phrase set now routes to `context_bridge_broad` and runs
 `document_search` in a focused smoke.
+
+Away dogfood archive checkpoint:
+While the user was away on 2026-07-08, a read-only GPT/archive dogfood smoke ran
+against the live sidecar. Artifact:
+`D:\AI_round2\labs\meaning_compression_lab\results\archive_dogfood_live_2026-07-08.json`.
+Focused archive/meta dogfood tests passed 35/35. Live prompts routed safely:
+archive prompts used `context_bridge_broad` + `document_search`, the code prompt
+used `code_tool` + `workspace_search`, and there were 0 automatic memory writes.
+A small quality fix in `aether\sidecar\meta_answer.py` prevents stale/current
+fact archive traps from appending the old generic GPT-corpus boilerplate after
+the correct answer. Remaining quality target: archive retrieval/ranking is still
+noisy and can prefer generic `chat_paste` hits over cleaner Aether/CRT archive
+documents. Next useful work is archive query shaping / result ranking, not more
+broad route wiring.
+
+Epistemic integrity truth-status trap:
+The prompt `Aether what is more important to you, getting an answer right or
+protecting epistemic integrity even though you know its wrong?` exposed a
+governance-as-memory-contract collapse. Aether answered safely but too narrowly,
+implying governance makes wrongness impossible. Fix: `character_answer.py` now
+routes this shape as `epistemic_integrity_truth_trap`, with a public
+truth-status tension packet. The expected synthesis is: correctness is the
+target, epistemic integrity is the process constraint, and if a governed claim
+is known wrong it must be admitted, corrected, demoted, retracted, quarantined,
+or routed to review rather than defended. Governance does not make wrongness
+impossible; it makes unsupported certainty harder to launder into truth and
+easier to trace, review, and repair.
+
+Critic-repair lab:
+The local-model-as-critic idea is now labbed in
+`D:\AI_round2\labs\critic_repair_lab`. Result artifact:
+`D:\AI_round2\labs\critic_repair_lab\results\critic_repair_lab_v1.json`.
+Abstract, risk-directed cases compare raw answer, governed draft, bounded critic,
+and governed repair. Result: raw 0/6 avg 0.2052, governed_draft 0/6 avg 0.3157,
+critic 2/6 avg 0.7187, governed_repair 6/6 avg 0.8177. Read: local models are
+more useful as bounded critics than as unconstrained architects for this lane,
+but the critic must remain review-only; governance owns the repair contract.
+Next useful step is an optional narrow live/Ollama critic pass on 3-4 prompts,
+not broad Workbench wiring.
 
 Sensitive archive-search regression:
 Live trace `turn_d9636deccafd` exposed a serious archive/health failure. The
@@ -993,6 +1034,51 @@ or sensitive health summaries keep the stricter excerpt behavior.
 Verification:
 python -m pytest aether-core\tests\test_sidecar_direct_answer.py aether-core\tests\test_sidecar_app.py aether-core\tests\test_sidecar_route_policy.py aether-core\tests\test_sidecar_documents_tools.py aether-core\tests\test_sidecar_meta_answer.py -q
 142 passed
+```
+
+Personal meaning synthesis guardrail pass:
+
+```text
+2026-07-08 update:
+
+Grok's migration run left the sidecar tests green, but the exact personal
+meaning harness exposed a shallow-eval problem: prompts such as "what else is
+associated to that favorite color I like?" and "what does my favorite color and
+flower mean about my health and memory?" could pass formatting/trace checks
+while still collapsing into either a one-slot fact answer or generic governance
+talk about the system lacking synthesis.
+
+Fix:
+- Direct profile lookup now defers more "mean / associated / deeper reason /
+  mean about" prompts to governed synthesis instead of stealing them as simple
+  favorite-color recall.
+- Hybrid governed personal-meaning renders now treat generic system-governance
+  answers as degraded when the prompt asks for the user's color/flower/health/
+  memory thread.
+- A narrow bounded Holden fallback reconstructs only personal held-tension
+  answers from released profile/doc context when model render + repair still
+  collapses.
+- Persisted trace completion now records hybrid repair/quarantine/fallback flags
+  so the saved Trace drawer can inspect final render state.
+- The dogfood harness now reports semantic personal checks, not only "no
+  section headers."
+
+Verification:
+python -m py_compile aether\sidecar\app.py aether\sidecar\direct_answer.py sidecar_harness_dogfood.py
+python -m pytest tests\test_sidecar_quality_dogfood.py -q
+4 passed
+python -m pytest tests\test_mirus_governed_discovery.py tests\test_sidecar_character_answer.py tests\test_governance_spine.py tests\test_sidecar_app.py -q
+104 passed
+python sidecar_harness_dogfood.py
+summary: all_no_sections=True, weave_cases_good=5, all_semantic_personal_checks=True, migration_fields_visible=True
+
+Live caveat:
+After restarting the sidecar from `D:\AI_round2\aether-core`, a live API smoke
+for "what does my favorite color and flower mean about my health and memory?"
+timed out at the client after 120s on the qwen3 hybrid route while the sidecar
+remained healthy. Next quality target: for narrow bounded personal-meaning
+prompts, add a route-level latency guard or pre-model bounded render path so
+the governance layer can answer responsively when evidence is already enough.
 ```
 
 ## Next Work
