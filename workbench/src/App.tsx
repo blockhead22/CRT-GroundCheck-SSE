@@ -19,7 +19,7 @@ type Drawer = 'trace' | 'memory' | 'reflect' | 'support' | 'learn' | null
 export default function App() {
   const [health, setHealth] = useState<Health | null>(null)
   const [models, setModels] = useState<ModelInfo[]>([])
-  const [model, setModel] = useState('qwen2.5:7b-instruct')
+  const [model, setModel] = useState('qwen3:14b')
   const [conversationId, setConversationId] = useState<string | null>(() => localStorage.getItem('aether.currentConversation'))
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [turns, setTurns] = useState<Turn[]>([])

@@ -16,7 +16,7 @@ def test_governed_synthesis_lab_passes_without_writes():
     result = run_lab()
 
     assert result["passed"] is True
-    assert result["case_count"] == 12
+    assert result["case_count"] == 13
     assert {case["case_id"] for case in result["cases"]} == {
         "deterministic_vs_epistemic_governance",
         "crt_epistemic_integrity",
@@ -29,6 +29,7 @@ def test_governed_synthesis_lab_passes_without_writes():
         "tension_archive_evidence_not_memory",
         "tension_personal_aether_general_core",
         "tension_personality_without_fake_intimacy",
+        "tension_mempalace_meaning_weight",
         "code_search_memory_candidates",
     }
     assert result["writes_performed"] is False
@@ -58,6 +59,7 @@ def test_tension_packet_adds_value_over_plain_spine_render():
         "tension_archive_evidence_not_memory",
         "tension_personal_aether_general_core",
         "tension_personality_without_fake_intimacy",
+        "tension_mempalace_meaning_weight",
     }
     for spine in tension_cases:
         packet_render = verify_render(spine, render_governed_answer(spine))
@@ -204,7 +206,7 @@ def test_run_lab_can_include_model_adapter_results_without_writes():
 
     assert result["model_name"] == "fake-small-model"
     assert result["model_repair_enabled"] is False
-    assert result["model_case_count"] == 12
+    assert result["model_case_count"] == 13
     assert result["model_pass_count"] == 0
     assert result["writes_performed"] is False
     assert result["raw_chain_of_thought_stored"] is False

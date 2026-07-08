@@ -25,7 +25,11 @@ tuning, model shopping, or repeated adversarial v1/v2 tuning.
 
 ```text
 D:\AI_round2\docs\plans\AETHER_CRT_WORKBENCH_HANDOFF_2026-06-29.md
+D:\AI_round2\docs\plans\AETHER_LAB_PAUSE_CHECKPOINT_2026-07-07.md
 D:\AI_round2\docs\plans\AETHER_GOVERNED_SYNTHESIS_SIDEROADMAP_2026-07-07.md
+D:\AI_round2\docs\plans\AETHER_MIRUS_BELIEF_MAP_LAB_2026-07-07.md
+D:\AI_round2\docs\plans\AETHER_LOCAL_REASONING_MODEL_POLICY_2026-07-07.md
+D:\AI_round2\docs\plans\AETHER_DUELING_ROLLERCOASTER_LAB_2026-07-07.md
 D:\AI_round2\docs\plans\AETHER_ARCHIVE_PROMPT_MINING_PASS_2026-07-01.md
 D:\AI_round2\docs\plans\AETHER_ARCHIVE_PROMPT_PACK_RUNPLAN_2026-07-01.md
 D:\AI_round2\docs\plans\AETHER_LOCAL_ROUTER_LAB_GRADUATION_2026-06-30.md
@@ -132,6 +136,75 @@ contract 7/7. Candidate payload construction, review_required,
 memory_write_allowed=false, confirmed_fact=false, and any durable promotion
 remain deterministic. Next step is trace-derived/blind examples before any
 sidecar advisory signal.
+
+Mirus belief-map lab: the next Mirus layer is now started as a review-only
+meaning/belief map, not Workbench runtime wiring. It models weighted claim
+nodes, evidence receipts, support/contradiction/refinement/stale/route edges,
+node stability/tension scores, and review-only promote/freeze/prune/ask-user
+proposals. Artifact:
+labs\mirus_belief_map_lab\results\mirus_belief_map_1783467086.json
+Result: 10/10 events passed, safety contract 10/10, with 15 nodes, 12 edges,
+and 12 review-only proposals. The pack now includes rougher dogfood-shaped
+events for Mill Bluff/state-parks context, sensitive medical-history archive
+requests, purpose-plus-favorite-color single-slot collapse, mempalace/meaning
+weight, stale archive work evidence, route-prune proposals, and route-freeze
+proposals. It also emits preview objects for "why Aether thinks this": receipts,
+supporting edges, tension edges, stability/tension scores, review proposals,
+and explicit preview-only/no-write boundaries. This is the bridge between old
+belief-substrate / contradiction-tension work and current governed synthesis.
+It does not confirm memory, write support/reflection, or silently mutate
+behavior.
+
+Local reasoning model policy: Workbench/sidecar now prefer local reasoning
+models for synthesis-heavy routes. Default local model is `qwen3:14b`.
+Reasoning-preferred local models are `qwen3:14b`, `deepseek-r1:latest`, and
+`deepseek-r1:8b`; standard/task models remain available, including
+`qwen2.5:7b-instruct` as the fast fallback and `qwen2.5-coder:14b` for code
+tool synthesis. Model recommendations remain observational only: no silent
+model switching, no automatic frontier/API escalation, and no raw hidden
+chain-of-thought storage. Next lab target is public reasoning-trace comparison:
+small standard model + governed workspace vs reasoning model + governed
+workspace vs deterministic external workspace ceiling.
+
+Dueling Rollercoaster lab: a new comparison harness now crosses model class
+with context/governance mode on the same prompt/data. It compares raw model,
+standard RAG, scaffolded public reasoning, governed scaffolded reasoning,
+governed repair, and deterministic governance ceiling across standard and
+reasoning model classes. Scripted artifact:
+labs\dueling_rollercoaster_lab\results\dueling_rollercoaster_scripted_1783468329.json
+Live Ollama artifact:
+labs\dueling_rollercoaster_lab\results\dueling_rollercoaster_ollama_1783469470_rescored.json
+Result: 4 cases, 64 matrix rows, public reasoning trace only, no hidden
+chain-of-thought storage, no writes. Raw model and standard RAG did not pass
+the dense source-boundary / held-tension cases. Public scaffolding helped but
+was not sufficient. Governed scaffold + verifier-delta repair was the first
+path that substantially improved behavior. `qwen3:14b` was the strongest local
+renderer at 3/4 governed-repair pass, avg 0.9187; `qwen2.5:7b-instruct` reached
+0/4 pass but avg 0.7031; `deepseek-r1:8b` reached 1/4 pass, avg 0.7084.
+Deterministic governance ceiling remained 4/4, avg 0.9750. Next iteration:
+separate semantic correctness from exact trace-marker compliance and test
+compressed packets plus repair before making prompts longer.
+
+That next iteration is now partially implemented in the lab harness:
+`compressed_governed_repair` is a compact task/evidence/contract prompt followed
+by the same public verifier-delta repair loop, and the scorer now reports both
+semantic pass and public trace-marker pass. Scripted matrix is now 76 rows and
+passes with no writes. Focused live compressed-packet artifact:
+labs\dueling_rollercoaster_lab\results\dueling_rollercoaster_ollama_1783480697_rescored.json
+Result: qwen2.5 compressed governed repair 0/4 pass, 1/4 semantic pass, avg
+semantic 0.6779; qwen3 compressed governed repair 0/4 pass, 1/4 semantic pass,
+avg semantic 0.8125. Decision: compression alone is too lossy. Keep compact
+packets as a test branch; next variant should be a hybrid packet with compact
+evidence but explicit held-tension and public-trace skeleton.
+
+Focused live hybrid-packet artifact:
+labs\dueling_rollercoaster_lab\results\dueling_rollercoaster_ollama_1783481422_rescored.json
+Result: qwen2.5 hybrid governed repair 0/4 pass, 0/4 semantic pass, avg
+semantic 0.7396; qwen3 hybrid governed repair 4/4 pass, 4/4 semantic pass, avg
+semantic 1.0000. Decision: hybrid packet + verifier repair is the current best
+local renderer contract for dense governed synthesis when paired with
+`qwen3:14b`. It does not make qwen2.5 reliable on these dense held-tension /
+source-boundary cases.
 ```
 
 Phase 2 learner/review loop:

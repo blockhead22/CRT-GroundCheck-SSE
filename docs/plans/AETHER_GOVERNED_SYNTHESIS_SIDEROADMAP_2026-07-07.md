@@ -611,3 +611,137 @@ This is a fixture-backed Workbench preview surface. It does not automatically
 route live answers through tension packets, write memory, promote support or
 reflection candidates, or mutate policy.
 ```
+
+## Lab Checkpoint - Mempalace Meaning-Weight Tension
+
+Observed live dogfood issue:
+
+```text
+Prompt: Is mempalace relevant to Aether if I want meaning to have weight/value
+over time through contradiction and competing facts?
+
+Failure shape: Aether held some epistemic tension, but opened by saying
+mempalace was "not directly relevant." That flattened the better relationship:
+mempalace can be relevant as memory-space/retrieval metaphor, while CRT/Mirus
+governance owns meaning-weight, contradiction pressure, review, and score
+interpretation.
+```
+
+Lab update:
+
+```text
+Added governed_synthesis_lab case:
+tension_mempalace_meaning_weight
+
+Artifact:
+D:\AI_round2\labs\meaning_compression_lab\results\governed_synthesis_lab_mempalace_meaning_weight_v0.json
+```
+
+Result:
+
+```text
+cases: 13
+passed: true
+new case governed verification: passed
+new case held_tension_score: 1.0
+new case synthesis_score: 1.0
+memory/support/reflection writes: false
+raw hidden chain-of-thought stored: false
+```
+
+Interpretation:
+
+```text
+This case sharpens the old Mirus / meaning-weight idea:
+
+- Mempalace can organize memory-space, associations, rooms, and return paths.
+- Mempalace does not prove weighted meaning by itself.
+- Meaning value should not start as one simple scalar truth.
+- Meaning weight can emerge over time from recurrence, source authority,
+  salience, usefulness, stability, unresolved tension, and contradiction
+  pressure.
+- Neural or pattern-matching scorers may rank or predict tension/relevance,
+  but governance decides what those scores are allowed to mean.
+```
+
+Verification:
+
+```text
+python -m pytest tests\test_governed_synthesis_lab.py -q
+12 passed
+```
+
+Next useful step:
+
+```text
+Do not broadly wire this yet. If dogfood keeps hitting this concept, add one
+focused Workbench route for mempalace/meaning-weight prompts using a public
+tension packet and repair verifier, then test live formatting and personality.
+```
+
+## Runtime Checkpoint - Cannedness Audit + Meaning-Value Upgrade
+
+Implemented the first conceptual cannedness audit:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\conceptual_cannedness_audit.py
+D:\AI_round2\tests\test_conceptual_cannedness_audit.py
+D:\AI_round2\labs\meaning_compression_lab\results\conceptual_cannedness_audit_2026-07-07.json
+```
+
+Audit result:
+
+```text
+case_count: 9
+safe_deterministic: 2
+governed_synthesis: 4
+deterministic_watch: 3
+
+next upgrade candidates:
+- aether_purpose
+- system_theory
+- project_purpose
+```
+
+Runtime upgrade:
+
+```text
+meaning_value moved from a deterministic formula card to guided synthesis with
+repair checks. The route now rejects token-ID collapse, single-scalar-truth
+collapse, and automatic-memory/policy overreach. It asks the model to weave
+evidence/source authority, contextual salience, usefulness, continuity,
+contradiction/tension, uncertainty, review, and traceability.
+```
+
+Additional runtime upgrade:
+
+```text
+over_reservation_pressure added as a governed synthesis route after live
+dogfood showed Aether slipping into therapy-style feedback language around
+"anxiety." The route now distinguishes subjective anxiety from observable
+constraint pressure: refusal drift, blandness, over-caveating, generic safety
+language, and failure to answer the useful bounded version. The expected action
+is trace/review/repair, not memory write, hidden self-correction, or policy
+mutation.
+```
+
+Boundary:
+
+```text
+Exact memory lookup, concrete architecture inventory, safety boundaries, and
+review confirmations should remain deterministic. Conceptual prompts that ask
+for relationships between memory, meaning, contradiction, project purpose, or
+system theory should graduate only after dogfood or lab evidence shows the
+deterministic card is flattening the user's intent.
+```
+
+Verification:
+
+```text
+python -m pytest tests\test_conceptual_cannedness_audit.py tests\test_governed_synthesis_lab.py tests\test_generative_governance_lab.py -q
+19 passed
+
+cd D:\AI_round2\aether-core
+python -m pytest tests\test_sidecar_character_answer.py tests\test_sidecar_direct_answer.py tests\test_sidecar_depth.py -q
+81 passed
+```

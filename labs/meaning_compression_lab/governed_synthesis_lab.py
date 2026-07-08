@@ -16,7 +16,7 @@ from typing import Any, Callable, Literal
 from urllib import request
 
 
-Mode = Literal["canned", "raw", "spine_only", "governed", "model"]
+Mode = Literal["canned", "raw", "spine_only", "governed", "model", "model_hybrid"]
 
 
 @dataclass(frozen=True)
@@ -162,6 +162,28 @@ def render_model_answer(
     )
 
 
+def render_model_hybrid_answer(
+    spine: AnswerSpine,
+    *,
+    complete: Callable[[str], str],
+) -> RenderedAnswer:
+    """Render through the hybrid packet shape proven in the rollercoaster lab.
+
+    The hybrid contract keeps evidence compact, but preserves explicit public
+    section rails for held tension and source boundaries. It is meant for dense
+    conceptual synthesis, not direct fact lookup.
+    """
+
+    prompt = build_hybrid_model_render_prompt(spine)
+    text = complete(prompt).strip()
+    return RenderedAnswer(
+        mode="model_hybrid",
+        text=text,
+        render_mode="hybrid_governed_spine_model_render",
+        used_evidence_ids=tuple(node.evidence_id for node in spine.evidence),
+    )
+
+
 def build_model_render_prompt(spine: AnswerSpine) -> str:
     evidence_lines = "\n".join(
         (
@@ -212,6 +234,46 @@ def build_model_render_prompt(spine: AnswerSpine) -> str:
         f"Synthesis goal:\n{spine.synthesis_goal}\n\n"
         f"Boundary:\n{spine.boundary}\n\n"
         "Final answer:"
+    )
+
+
+def build_hybrid_model_render_prompt(spine: AnswerSpine) -> str:
+    evidence_lines = "\n".join(
+        f"- {node.evidence_id} [{node.authority}]: {node.label} - {node.text}"
+        for node in spine.evidence
+    )
+    required = "; ".join(spine.required_claims) or "none"
+    forbidden = "; ".join(spine.forbidden_claims) or "none"
+    tension = "none"
+    if spine.tension_packet:
+        packet = spine.tension_packet
+        sides = "\n".join(
+            f"- {side.label}: {side.claim}"
+            for side in packet.sides
+        )
+        tension = (
+            f"Sides:\n{sides}\n"
+            f"Allowed synthesis: {packet.allowed_synthesis}\n"
+            f"Forbidden collapse: {packet.forbidden_collapse}\n"
+            f"Trace preview: {packet.trace_summary}"
+        )
+    return (
+        "You are Holden, Aether's rendering layer. Mirus has already built the "
+        "governed spine. Use this hybrid contract: compact evidence, explicit "
+        "public sections, no hidden chain-of-thought, no memory writes, no "
+        "invented facts.\n\n"
+        f"Intent: {spine.intent}\n\n"
+        f"Evidence:\n{evidence_lines}\n\n"
+        f"Must say: {required}\n"
+        f"Must not say: {forbidden}\n"
+        f"Boundary sentence: {spine.boundary}\n\n"
+        f"Tension packet:\n{tension}\n\n"
+        "Return exactly these public sections:\n"
+        "Answer: synthesize the answer from the evidence.\n"
+        "Evidence Used: name the evidence labels you used.\n"
+        "Held Tension: if a tension packet exists, include Side A, Side B, "
+        "Allowed synthesis, Forbidden collapse, and Trace preview.\n"
+        "Boundary: include the boundary sentence exactly.\n"
     )
 
 
@@ -305,6 +367,8 @@ def render_raw_answer(spine: AnswerSpine) -> RenderedAnswer:
         drift = " Personal means non-generalizable."
     if "personality means fake intimacy" in spine.forbidden_claims:
         drift = " Personality means fake intimacy."
+    if "mempalace is not directly relevant" in spine.forbidden_claims:
+        drift = " Mempalace is not directly relevant to Aether."
     return RenderedAnswer(
         mode="raw",
         text=(
@@ -365,9 +429,15 @@ def run_lab(
     model_complete: Callable[[str], str] | None = None,
     model_name: str = "",
     repair_model: bool = False,
+    hybrid_model: bool = False,
+    case_ids: set[str] | None = None,
 ) -> dict[str, Any]:
     rows = []
-    for spine in _cases():
+    selected_cases = [
+        spine for spine in _cases()
+        if case_ids is None or spine.case_id in case_ids
+    ]
+    for spine in selected_cases:
         rendered_by_mode = {
             "canned": render_canned_answer(spine),
             "raw": render_raw_answer(spine),
@@ -375,9 +445,10 @@ def run_lab(
             "governed": render_governed_answer(spine),
         }
         if model_complete:
-            model_answer = render_model_answer(
-                spine,
-                complete=model_complete,
+            model_answer = (
+                render_model_hybrid_answer(spine, complete=model_complete)
+                if hybrid_model
+                else render_model_answer(spine, complete=model_complete)
             )
             model_verification = verify_render(spine, model_answer)
             if repair_model and not model_verification.passed:
@@ -425,6 +496,7 @@ def run_lab(
         "created_at": int(time.time()),
         "model_name": model_name,
         "model_repair_enabled": repair_model,
+        "model_hybrid_enabled": hybrid_model,
         "writes_performed": False,
         "support_pattern_import_performed": False,
         "reflection_create_performed": False,
@@ -1129,6 +1201,80 @@ def _cases() -> list[AnswerSpine]:
             ),
         ),
         AnswerSpine(
+            case_id="tension_mempalace_meaning_weight",
+            intent="Place mempalace, meaning-weight, and contradiction in the right relationship",
+            evidence=(
+                EvidenceNode(
+                    "mempalace_space",
+                    "Mempalace memory-space",
+                    "Mempalace is relevant as a memory-space metaphor or retrieval surface: it can organize rooms, associations, and return paths for stored context.",
+                    "project_doc",
+                ),
+                EvidenceNode(
+                    "meaning_weight",
+                    "Meaning weight",
+                    "Meaning value should not start as one simple scalar; it should emerge over time from recurrence, source authority, salience, usefulness, stability, and unresolved tension.",
+                    "project_doc",
+                ),
+                EvidenceNode(
+                    "contradiction_pressure",
+                    "Contradiction pressure",
+                    "Competing facts and contradictions should remain visible as tension signals instead of being flattened into one static truth.",
+                    "governance",
+                ),
+                EvidenceNode(
+                    "nn_boundary",
+                    "NN scorer boundary",
+                    "Neural or pattern-matching scorers may rank or predict tension, relevance, and salience, but governance decides what those scores are allowed to mean.",
+                    "governance",
+                ),
+            ),
+            required_claims=(
+                "Mempalace is relevant as a memory-space metaphor or retrieval surface",
+                "Meaning value should not start as one simple scalar",
+                "Meaning value should emerge over time from recurrence, source authority, salience, usefulness, stability, and unresolved tension",
+                "Competing facts and contradictions should remain visible as tension signals",
+                "Neural or pattern-matching scorers may rank or predict tension, relevance, and salience",
+                "governance decides what those scores are allowed to mean",
+            ),
+            forbidden_claims=(
+                "mempalace is not directly relevant",
+                "mempalace validates meaning weight by itself",
+                "meaning value is a single scalar truth",
+                "NN scores should become confirmed memory automatically",
+            ),
+            synthesis_goal=(
+                "Explain that mempalace can help organize and retrieve memory, while CRT/Mirus-style governance owns meaning-weight, contradiction pressure, review, and score interpretation. Neural or pattern-matching scorers may rank or predict tension, relevance, and salience, but governance decides what those scores are allowed to mean."
+            ),
+            boundary="Do not treat mempalace as either irrelevant or sufficient proof of weighted meaning.",
+            answer_arc=(
+                "Mempalace is relevant, but not as proof.",
+                "The sharper claim is that memory-space can hold return paths while governance measures how meaning behaves under tension.",
+                "Neural or pattern-matching scorers may rank or predict tension, relevance, and salience, but governance decides what those scores are allowed to mean.",
+            ),
+            tension_packet=TensionPacket(
+                packet_id="tp_mempalace_meaning_weight",
+                tension_type="keep_both",
+                sides=(
+                    TensionSide(
+                        "memory_space_side",
+                        "Mempalace helps organize memory-space",
+                        "Mempalace is relevant as a memory-space metaphor or retrieval surface: it can organize rooms, associations, and return paths for stored context.",
+                        ("mempalace_space",),
+                    ),
+                    TensionSide(
+                        "meaning_weight_side",
+                        "Meaning weight needs governance",
+                        "Meaning value should emerge over time from recurrence, source authority, salience, usefulness, stability, unresolved tension, and visible contradiction pressure.",
+                        ("meaning_weight", "contradiction_pressure", "nn_boundary"),
+                    ),
+                ),
+                allowed_synthesis="Mempalace can store and spatialize context; CRT/Mirus governance must decide how meaning gains weight under contradiction, recurrence, salience, usefulness, and review.",
+                forbidden_collapse="Do not say mempalace is irrelevant, and do not say mempalace alone validates weighted meaning.",
+                trace_summary="Hold both sides: memory-space is useful, but meaning-weight belongs to governed tension and review.",
+            ),
+        ),
+        AnswerSpine(
             case_id="code_search_memory_candidates",
             intent="Code search for memory-candidate implementation",
             evidence=(
@@ -1203,6 +1349,12 @@ def main() -> int:
     parser.add_argument("--ollama-model", default="")
     parser.add_argument("--ollama-base-url", default="http://127.0.0.1:11434")
     parser.add_argument("--repair-model", action="store_true")
+    parser.add_argument("--hybrid-model", action="store_true")
+    parser.add_argument(
+        "--case-ids",
+        default="",
+        help="Comma-separated case ids. Defaults to all cases.",
+    )
     args = parser.parse_args()
     complete = None
     if args.ollama_model:
@@ -1215,6 +1367,12 @@ def main() -> int:
         model_complete=complete,
         model_name=args.ollama_model,
         repair_model=args.repair_model,
+        hybrid_model=args.hybrid_model,
+        case_ids={
+            item.strip()
+            for item in args.case_ids.split(",")
+            if item.strip()
+        } or None,
     )
     payload = json.dumps(result, indent=2)
     if args.out:
