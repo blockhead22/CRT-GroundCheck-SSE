@@ -1,6 +1,6 @@
 # Grok Build Handoff - Aether / CRT / Workbench
 
-Last updated: 2026-07-08
+Last updated: 2026-07-09
 
 Workspace root:
 
@@ -827,6 +827,125 @@ Avoid these traps:
 - Do not treat deterministic render as product success when it feels canned.
 
 ## Best Next Moves
+
+## Latest Workbench / Aether-Core Update - 2026-07-09
+
+The current `aether-core` lane moved into memory-as-RAG plus live dogfood
+quality fixes. The newest implementation changes are useful but should not be
+mistaken for the final architectural answer.
+
+What changed:
+
+- Memory-as-RAG default path exists in `D:\AI_round2\aether-core`.
+  The current product contract is:
+
+```text
+model = voice
+memory = self
+past context can soften / ground the present
+personal truth still needs governed evidence
+```
+
+- Exact memory lookup was tightened:
+  `What is my favorite color?` should answer directly from governed memory.
+
+- Compound personal meaning was tightened:
+  `Why does my favorite color matter to me?` should use stored reason slots
+  such as `user:favorite_color_reason` when present, and should not invent
+  marigold/resilience/health symbolism from model vibes alone.
+
+- Aether identity/system questions were given grounded routes:
+  `What is this system?`, `What is the purpose of this system?`,
+  `How does aether-core work?`, and `What concepts make aether-core work?`
+  now have concrete Aether/aether-core answers instead of raw-model confusion.
+
+- Correction handling was improved:
+  if the user corrects a prior mundane answer, Aether should demote the bad
+  answer and preserve the reliable part rather than ask for clarification
+  theater.
+
+- Conflict direct answers no longer leak withheld conflicting evidence values.
+
+Verification snapshot for this latest sidecar quality pass:
+
+```powershell
+cd D:\AI_round2\aether-core
+python -m pytest tests\test_sidecar_character_answer.py tests\test_sidecar_direct_answer.py tests\test_profile_dossier_answer.py tests\test_sidecar_quality_dogfood.py tests\test_rag_answer.py tests\test_claim_split_meaning.py -q
+# 98 passed
+```
+
+Important critique / unresolved issue:
+
+The last patch still used deterministic phrase routing for several identity and
+system prompts. That improves exact prompts but does **not** solve the deeper
+problem. Example:
+
+```text
+what is this system?   -> grounded Aether route
+are you aether?        -> grounded Aether route
+aree you aether?       -> can miss route and fall into wrong memory/empty answer
+```
+
+That typo failure is the proof: the system is still too brittle if "self /
+system / identity / architecture" recognition depends on exact trigger strings.
+
+Do not keep solving this by adding more typo phrases. The next better layer is:
+
+```text
+semantic intent classification for self/system/project/memory/tool/archive
+    ->
+route confidence / evidence needs
+    ->
+bounded answer spine
+    ->
+model render only where useful
+    ->
+verifier checks truth-status and route fit
+```
+
+In plain terms: the route should understand the user's intent class, not merely
+match a phrase. Deterministic governance can still guard edges, but it should
+not become the only way Aether knows what it is.
+
+Suggested next Grok/Codex task:
+
+```text
+Replace brittle self/system phrase routing with a tiny semantic route classifier
+or scorer. Start with a lab/test harness, then wire only if it beats exact
+routes on typo/paraphrase prompts without stealing normal chat.
+```
+
+Minimum test pack for that:
+
+```text
+are you aether?
+aree you aether?
+are u aether
+what is this system?
+what kind of system are you?
+what is aether-core?
+how does aether core work?
+what concepts make aether work?
+what can you do?
+what is my favorite color?
+why does my favorite color matter to me?
+what is the capital of Wisconsin?
+search the GPT logs for CRT concepts
+search this repo for where memory candidates are created
+```
+
+Expected result:
+
+- self/system prompts route to grounded Aether self-description
+- personal facts route to governed memory
+- personal meaning routes to stored reasons or says the reason is not stored
+- normal world questions still answer from model
+- code/search/archive prompts still use the appropriate tools
+- typos/paraphrases should not collapse into "I don't have that stored"
+
+This should be treated as the next quality wall, not as a solved issue.
+
+---
 
 If picking up immediately, do this sequence:
 
