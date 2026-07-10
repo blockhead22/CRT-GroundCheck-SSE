@@ -854,10 +854,21 @@ personal truth still needs governed evidence
   such as `user:favorite_color_reason` when present, and should not invent
   marigold/resilience/health symbolism from model vibes alone.
 
-- Aether identity/system questions were given grounded routes:
-  `What is this system?`, `What is the purpose of this system?`,
-  `How does aether-core work?`, and `What concepts make aether-core work?`
-  now have concrete Aether/aether-core answers instead of raw-model confusion.
+- Aether identity/system questions are **spine → model voice**, not canned plaques.
+  Codex briefly put deterministic identity cards in front of the model (fixed the
+  denial, violated the direction). Grok picked that up and reversed it:
+
+```text
+intent catch (light fuzzy, not phrase catalog growth)
+  -> small IDENTITY / PURPOSE / ARCHITECTURE / CONCEPTS spine in prompt_guidance
+  -> model renders (render_mode: voice_with_identity_spine)
+  -> verifier: repair if answer denies Aether or collapses to "I don't have that stored"
+```
+
+  Covered: `are you aether?`, typo `aree you aether?`, `what is this system?`,
+  purpose (with confirmed color as evidence not collapse), `how does aether-core work?`,
+  concepts list. Hybrid monologue is **blocked** for these spine-voice kinds so
+  Holden fog does not steal the route.
 
 - Correction handling was improved:
   if the user corrects a prior mundane answer, Aether should demote the bad
@@ -866,30 +877,32 @@ personal truth still needs governed evidence
 
 - Conflict direct answers no longer leak withheld conflicting evidence values.
 
-Verification snapshot for this latest sidecar quality pass:
+Verification snapshot (voice/self + identity spine pass):
 
 ```powershell
 cd D:\AI_round2\aether-core
-python -m pytest tests\test_sidecar_character_answer.py tests\test_sidecar_direct_answer.py tests\test_profile_dossier_answer.py tests\test_sidecar_quality_dogfood.py tests\test_rag_answer.py tests\test_claim_split_meaning.py -q
-# 98 passed
+$env:PYTHONPATH="D:\AI_round2\aether-core"
+$env:AETHER_RAG_DEFAULT="1"
+$env:AETHER_DEMO_PERSONAL_HARDCODE="0"
+python -m pytest tests\test_sidecar_character_answer.py tests\test_rag_answer.py -q
+# identity + rag probes green (see session notes for full count)
 ```
 
-Important critique / unresolved issue:
-
-The last patch still used deterministic phrase routing for several identity and
-system prompts. That improves exact prompts but does **not** solve the deeper
-problem. Example:
+### What not to do again
 
 ```text
-what is this system?   -> grounded Aether route
-are you aether?        -> grounded Aether route
-aree you aether?       -> can miss route and fall into wrong memory/empty answer
+WRONG: exact phrase -> deterministic plaque answer (generation_model=deterministic)
+RIGHT: intent -> bounded spine -> model voice -> repair if deny/drift
 ```
 
-That typo failure is the proof: the system is still too brittle if "self /
-system / identity / architecture" recognition depends on exact trigger strings.
+User called this correctly: deterministic routing was what we said we would not do.
+`aree you aether?` falling to "I don't have that stored" was the proof plaque-routing
+is brittle; fuzzy `ar+e* you` + aether + spine-voice is the interim fix.
 
-Do not keep solving this by adding more typo phrases. The next better layer is:
+### Still open (do not claim done)
+
+Full semantic self/system/project classifier is still the next layer if typo
+lists start growing again. Do **not** add endless identity phrases.
 
 ```text
 semantic intent classification for self/system/project/memory/tool/archive
@@ -903,29 +916,24 @@ model render only where useful
 verifier checks truth-status and route fit
 ```
 
-In plain terms: the route should understand the user's intent class, not merely
-match a phrase. Deterministic governance can still guard edges, but it should
-not become the only way Aether knows what it is.
-
-Suggested next Grok/Codex task:
+Suggested next task (only if paraphrase failures return):
 
 ```text
-Replace brittle self/system phrase routing with a tiny semantic route classifier
-or scorer. Start with a lab/test harness, then wire only if it beats exact
-routes on typo/paraphrase prompts without stealing normal chat.
+Tiny semantic route classifier lab — beat current fuzzy+spine on paraphrase pack
+without stealing normal chat or reintroducing plaques.
 ```
 
-Minimum test pack for that:
+Minimum regression pack (must stay green):
 
 ```text
 are you aether?
 aree you aether?
-are u aether
 what is this system?
-what kind of system are you?
-what is aether-core?
-how does aether core work?
-what concepts make aether work?
+what is my favorite color?          # memory path, not identity
+Why does my favorite color matter?  # reason slot or refuse invent
+how does aether-core work?
+capital of France / meaning of existence  # pure voice, no invent-refuse
+```
 what can you do?
 what is my favorite color?
 why does my favorite color matter to me?
