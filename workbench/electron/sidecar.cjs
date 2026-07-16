@@ -8,9 +8,10 @@ const path = require('node:path')
 class SidecarManager extends EventEmitter {
   constructor(options = {}) {
     super()
-    this.python = options.python || process.env.AETHER_PYTHON || 'python'
+    this.env = options.env || process.env
+    this.python = options.python || this.env.AETHER_PYTHON || 'python'
     this.host = options.host || '127.0.0.1'
-    this.port = Number(options.port || process.env.AETHER_SIDECAR_PORT || 8765)
+    this.port = Number(options.port || this.env.AETHER_SIDECAR_PORT || 8765)
     this.spawnImpl = options.spawnImpl || spawn
     this.process = null
     this.stopping = false
@@ -22,20 +23,29 @@ class SidecarManager extends EventEmitter {
     this.emit('status', 'starting')
     const sourceCore = path.resolve(__dirname, '..', '..', 'aether-core')
     const pythonPath = fs.existsSync(sourceCore)
-      ? [sourceCore, process.env.PYTHONPATH].filter(Boolean).join(path.delimiter)
-      : process.env.PYTHONPATH
-    const configuredRoots = process.env.AETHER_WORKSPACE_ROOTS
+      ? [sourceCore, this.env.PYTHONPATH].filter(Boolean).join(path.delimiter)
+      : this.env.PYTHONPATH
+    const configuredRoots = this.env.AETHER_WORKSPACE_ROOTS
     const defaultRoots = [
       path.resolve(sourceCore, '..'),
       path.join(os.homedir(), 'Downloads', 'src', 'src'),
     ].filter((candidate) => fs.existsSync(candidate))
     const workspaceRoots = configuredRoots || defaultRoots.join(path.delimiter)
+    const continuityDevEnv = this.env.NODE_ENV === 'development'
+      ? {
+          AETHER_CONTINUITY_ENABLED: this.env.AETHER_CONTINUITY_ENABLED ?? '1',
+          AETHER_CONTINUITY_MODEL_RENDER_ENABLED:
+            this.env.AETHER_CONTINUITY_MODEL_RENDER_ENABLED ?? '1',
+          AETHER_CONTINUITY_ROOT: this.env.AETHER_CONTINUITY_ROOT ?? sourceCore,
+        }
+      : {}
     this.process = this.spawnImpl(
       this.python,
       ['-m', 'aether.sidecar'],
       {
         env: {
-          ...process.env,
+          ...this.env,
+          ...continuityDevEnv,
           AETHER_SIDECAR_HOST: this.host,
           AETHER_SIDECAR_PORT: String(this.port),
           ...(pythonPath ? { PYTHONPATH: pythonPath } : {}),

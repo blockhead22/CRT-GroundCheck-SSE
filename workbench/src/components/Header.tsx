@@ -28,7 +28,11 @@ export function Header({
           <span className="status-dot" />
           {connected ? 'Local' : 'Offline'}
         </span>
-        <button aria-label={floating ? 'Dock window' : 'Float window'} onClick={onToggleFloating}>
+        <button
+          aria-label={floating ? 'Dock window' : 'Float window'}
+          title={floating ? 'Dock window and reserve desktop space' : 'Float window'}
+          onClick={onToggleFloating}
+        >
           <PanelLeft size={15} />
         </button>
         <button aria-label={pinned ? 'Disable always on top' : 'Enable always on top'} onClick={onTogglePinned}>

@@ -18,13 +18,13 @@ export function ModelPolicySummary({ trace }: { trace: Trace | null }) {
     <section className="model-policy-summary" aria-label="Model policy recommendation">
       <div className="model-policy-head">
         <Shuffle size={14} />
-        <span>{formatValue(decision.selected_route)}</span>
+        <span>{formatValue(decision.selected_route, 'route unavailable')}</span>
         <strong>{recommendation.model_selection_changed ? 'switching' : 'no auto switch'}</strong>
       </div>
       <div className="model-policy-grid">
         <div>
           <span>Current</span>
-          <strong>{recommendation.current_selected_model}</strong>
+          <strong>{formatValue(recommendation.current_selected_model)}</strong>
         </div>
         <div>
           <span>Recommended</span>
@@ -32,7 +32,7 @@ export function ModelPolicySummary({ trace }: { trace: Trace | null }) {
         </div>
         <div>
           <span>Fallback</span>
-          <strong>{recommendation.fallback_model}</strong>
+          <strong>{formatValue(recommendation.fallback_model)}</strong>
         </div>
         <div>
           <span>Confidence</span>
@@ -41,16 +41,16 @@ export function ModelPolicySummary({ trace }: { trace: Trace | null }) {
       </div>
       <div className="model-policy-note">
         <Gauge size={13} />
-        <span>{recommendation.latency_caveat}</span>
+        <span>{recommendation.latency_caveat || 'No latency note for this route.'}</span>
       </div>
       <div className="model-policy-note evidence">
         <ShieldCheck size={13} />
-        <span>{recommendation.evidence_path}</span>
+        <span>{recommendation.evidence_path || 'No recommendation evidence path for this route.'}</span>
       </div>
     </section>
   )
 }
 
-function formatValue(value: string) {
-  return value.replaceAll('_', ' ')
+function formatValue(value: string | null | undefined, fallback = 'not specified') {
+  return value?.trim() ? value.replaceAll('_', ' ') : fallback
 }

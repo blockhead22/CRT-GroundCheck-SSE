@@ -4,6 +4,7 @@ const { SidecarManager } = require('./sidecar.cjs')
 const { configureDevUserData } = require('./dev-config.cjs')
 const { buildSpellcheckContextMenuTemplate } = require('./context-menu.cjs')
 const { dockBounds } = require('./window.cjs')
+const { AppBarManager } = require('./appbar.cjs')
 
 let window
 let tray
@@ -11,13 +12,43 @@ let sidecar
 let floating = false
 let expanded = false
 let alwaysOnTop = true
+const appBar = new AppBarManager()
 
 configureDevUserData(app)
 
+function releaseDockReservation() {
+  if (!window) return
+  try {
+    appBar.release(window)
+  } catch (error) {
+    console.warn('Could not release the Windows AppBar reservation:', error.message)
+  }
+}
+
 function applyDockBounds() {
-  if (!window || floating) return
-  const display = screen.getPrimaryDisplay()
-  window.setBounds(dockBounds(display.workArea, expanded), true)
+  if (!window || window.isDestroyed()) return
+  if (floating || !window.isVisible() || window.isMinimized()) {
+    releaseDockReservation()
+    return
+  }
+  const display = screen.getDisplayMatching(window.getBounds())
+  const desired = dockBounds(display.bounds, expanded)
+  try {
+    const reserved = appBar.reserve(window, display.bounds, desired.width)
+    window.setBounds(reserved || dockBounds(display.workArea, expanded), true)
+  } catch (error) {
+    console.warn('Could not reserve the Windows work area:', error.message)
+    window.setBounds(dockBounds(display.workArea, expanded), true)
+  }
+}
+
+function showWindow() {
+  window.show()
+}
+
+function hideWindow() {
+  releaseDockReservation()
+  window.hide()
 }
 
 function createWindow() {
@@ -42,11 +73,15 @@ function createWindow() {
   } else {
     window.loadFile(path.join(__dirname, '..', 'dist', 'index.html'))
   }
-  window.once('ready-to-show', () => window.show())
+  window.once('ready-to-show', showWindow)
+  window.on('show', applyDockBounds)
+  window.on('hide', releaseDockReservation)
+  window.on('minimize', releaseDockReservation)
+  window.on('restore', applyDockBounds)
   window.on('close', (event) => {
     if (!app.isQuitting) {
       event.preventDefault()
-      window.hide()
+      hideWindow()
     }
   })
 }
@@ -55,8 +90,8 @@ function createTray() {
   tray = new Tray(path.join(__dirname, 'tray-icon.png'))
   tray.setToolTip('Aether Workbench')
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Show Aether', click: () => window.show() },
-    { label: 'Hide', click: () => window.hide() },
+    { label: 'Show Aether', click: showWindow },
+    { label: 'Hide', click: hideWindow },
     { type: 'separator' },
     {
       label: 'Quit',
@@ -67,8 +102,8 @@ function createTray() {
     },
   ]))
   tray.on('click', () => {
-    if (window.isVisible()) window.hide()
-    else window.show()
+    if (window.isVisible()) hideWindow()
+    else showWindow()
   })
 }
 
@@ -90,6 +125,9 @@ app.whenReady().then(async () => {
   sidecar.start()
   createWindow()
   createTray()
+  screen.on('display-metrics-changed', applyDockBounds)
+  screen.on('display-added', applyDockBounds)
+  screen.on('display-removed', applyDockBounds)
   sidecar.on('status', (status) => window?.webContents.send('sidecar:status', status))
   await sidecar.waitUntilReady()
   const smokeExitMs = Number(process.env.AETHER_SMOKE_EXIT_MS || 0)
@@ -109,6 +147,7 @@ ipcMain.handle('window:set-expanded', (_event, value) => {
 ipcMain.handle('window:set-floating', (_event, value) => {
   floating = Boolean(value)
   if (floating) {
+    releaseDockReservation()
     window.setBounds({ width: 780, height: 820 }, true)
     window.center()
   } else {
@@ -122,10 +161,11 @@ ipcMain.handle('window:set-always-on-top', (_event, value) => {
   return alwaysOnTop
 })
 ipcMain.on('window:minimize', () => window.minimize())
-ipcMain.on('window:close', () => window.hide())
+ipcMain.on('window:close', hideWindow)
 
 app.on('before-quit', () => {
   app.isQuitting = true
+  releaseDockReservation()
   sidecar?.stop()
 })
 app.on('window-all-closed', (event) => event.preventDefault())

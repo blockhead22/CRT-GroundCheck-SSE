@@ -11,6 +11,7 @@
   Reflection,
   SupportPattern,
   ConsolidationPreview,
+  ContinuityOpenLoop,
 } from './types'
 
 const API_BASE = import.meta.env.VITE_AETHER_API_BASE || 'http://127.0.0.1:8765'
@@ -114,6 +115,27 @@ export const api = {
     }),
   consolidationCandidates: (limit = 20) =>
     request<ConsolidationPreview>(`/v1/consolidation/candidates?limit=${encodeURIComponent(String(limit))}`),
+  continuityOpenLoops: async (status = 'open') =>
+    (await request<{ open_loops: ContinuityOpenLoop[] }>(
+      `/v1/continuity/open-loops?status=${encodeURIComponent(status)}`,
+    )).open_loops,
+  createContinuityOpenLoop: (summary: string, idempotencyKey: string) =>
+    request<ContinuityOpenLoop>('/v1/continuity/open-loops', {
+      method: 'POST',
+      body: JSON.stringify({ summary, idempotency_key: idempotencyKey }),
+    }),
+  reviewContinuityOpenLoop: (
+    loopId: string,
+    body: {
+      action: 'done' | 'defer' | 'reopen'
+      note: string
+      revision_hash: string
+      idempotency_key: string
+    },
+  ) => request<ContinuityOpenLoop>(
+    `/v1/continuity/open-loops/${encodeURIComponent(loopId)}/review`,
+    { method: 'POST', body: JSON.stringify(body) },
+  ),
   documents: () => request<{ documents: Array<{
     document_id: string
     title: string

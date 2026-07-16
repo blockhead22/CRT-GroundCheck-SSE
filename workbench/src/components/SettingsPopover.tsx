@@ -53,10 +53,10 @@ export function SettingsPopover({
         </div>
         {decision && recommendation ? (
           <div className="settings-policy-grid">
-            <span>Route</span><strong>{formatValue(decision.selected_route)}</strong>
-            <span>Current</span><strong>{recommendation.current_selected_model}</strong>
+            <span>Route</span><strong>{formatValue(decision.selected_route, 'route unavailable')}</strong>
+            <span>Current</span><strong>{formatValue(recommendation.current_selected_model)}</strong>
             <span>Recommended</span><strong>{formatValue(recommendation.recommended_model_policy)}</strong>
-            <span>Fallback</span><strong>{recommendation.fallback_model}</strong>
+            <span>Fallback</span><strong>{formatValue(recommendation.fallback_model)}</strong>
             <span>Confidence</span><strong>{formatValue(recommendation.confidence)}</strong>
             <span>Switch</span><strong>{recommendation.model_selection_changed ? 'changed' : 'no automatic switch'}</strong>
           </div>
@@ -73,6 +73,6 @@ export function SettingsPopover({
   )
 }
 
-function formatValue(value: string) {
-  return value.replaceAll('_', ' ')
+function formatValue(value: string | null | undefined, fallback = 'not specified') {
+  return value?.trim() ? value.replaceAll('_', ' ') : fallback
 }

@@ -74,6 +74,16 @@ export interface Trace {
   route_decision?: RouteDecision
   governance_answer_spine?: GovernanceAnswerSpine
   public_governance_steps?: PublicGovernanceStep[]
+  continuity_claim_atoms?: {
+    schema: string
+    request_kind: string
+    atoms: ContinuityClaimAtom[]
+  }
+  continuity_packet?: {
+    schema: string
+    request_kind: string
+    open_loops?: ContinuityOpenLoopItem[]
+  }
   mirus_governed_discovery?: MirusGovernedDiscovery | null
   completion?: {
     source?: string
@@ -144,6 +154,38 @@ export interface Trace {
     reason: string
     source?: string
   }>
+}
+
+export interface ContinuityClaimAtom {
+  atom_id: string
+  section: 'where' | 'changed' | 'next_candidate' | string
+  proposition: string
+  state: 'observed' | 'inferred_candidate' | 'explicit_open_loop' | string
+  evidence_ids: string[]
+}
+
+export interface ContinuityOpenLoopItem {
+  item_id: string
+  category: string
+  summary: string
+  state: string
+  evidence_ids: string[]
+  loop_id: string
+  source_type: string
+  revision_hash: string
+  observed_at?: number
+}
+
+export interface ContinuityOpenLoop {
+  loop_id: string
+  project_root: string
+  summary: string
+  source_type: 'user_explicit' | 'review_confirmed' | string
+  status: 'open' | 'done' | 'deferred' | string
+  idempotency_key: string
+  created_at: number
+  updated_at: number
+  revision_hash: string
 }
 
 export interface CharacterCriticFinding {
@@ -335,14 +377,14 @@ export interface RouteDecision {
   silent_escalation_allowed: boolean
   model_recommendation?: {
     current_selected_model: string
-    recommended_model_policy: string
-    recommended_model: string
-    fallback_model: string
-    confidence: string
-    latency_caveat: string
-    evidence_path: string
-    observational_only: boolean
-    model_selection_changed: boolean
+    recommended_model_policy?: string
+    recommended_model?: string
+    fallback_model?: string
+    confidence?: string
+    latency_caveat?: string
+    evidence_path?: string
+    observational_only?: boolean
+    model_selection_changed?: boolean
   }
 }
 

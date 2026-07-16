@@ -1,8 +1,8 @@
-import { AlertTriangle, ArrowUp, BrainCircuit, CheckCircle2, CircleDashed, CircleSlash2, Database, ExternalLink, LoaderCircle, Plus, ShieldCheck, Sparkles, Trash2 } from 'lucide-react'
+import { AlertTriangle, ArrowUp, BrainCircuit, Check, CheckCircle2, CircleDashed, CircleSlash2, Clock3, Database, ExternalLink, History, LoaderCircle, Pin, Plus, ShieldCheck, Sparkles, Trash2 } from 'lucide-react'
 import { FormEvent, useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { api, streamChat } from '../api'
+import { api, idempotencyKey, streamChat } from '../api'
 import type { Conversation, PublicGovernanceStep, Trace, Turn } from '../types'
 import { ModelPolicySummary } from './ModelPolicySummary'
 
@@ -12,6 +12,19 @@ const VOICE_OPTIONS = [
   { value: 'warm', label: 'Warm' },
   { value: 'alive', label: 'Alive' },
 ]
+
+interface ContinuityActionState {
+  busy?: boolean
+  loop?: ContinuityLoopRef
+  notice?: string
+}
+
+interface ContinuityLoopRef {
+  loop_id: string
+  summary: string
+  status: string
+  revision_hash: string
+}
 
 interface ChatPanelProps {
   model: string
@@ -54,12 +67,14 @@ export function ChatPanel({
   const [escalating, setEscalating] = useState(false)
   const [frontierAnswer, setFrontierAnswer] = useState('')
   const [error, setError] = useState('')
+  const [continuityActions, setContinuityActions] = useState<Record<string, ContinuityActionState>>({})
   const [voiceProfile, setVoiceProfile] = useState(() => {
     const stored = window.localStorage.getItem(VOICE_STORAGE_KEY)
     return VOICE_OPTIONS.some((option) => option.value === stored) ? stored || 'warm' : 'warm'
   })
   const scrollRef = useRef<HTMLDivElement>(null)
   const activeConversationRef = useRef(conversationId)
+  const activeTurnRef = useRef<string | null>(null)
   const activeTraceRef = useRef<Trace | null>(null)
   const dispatchedMapActionsRef = useRef<Set<string>>(new Set())
 
@@ -78,8 +93,13 @@ export function ChatPanel({
   async function submit(event: FormEvent) {
     event.preventDefault()
     const text = message.trim()
-    if (!text || pendingTurn) return
+    if (!text) return
     setMessage('')
+    await runMessage(text)
+  }
+
+  async function runMessage(text: string) {
+    if (!text || pendingTurn) return
     setPendingUser(text)
     setStreaming('')
     setGovernanceSteps([])
@@ -93,6 +113,7 @@ export function ChatPanel({
         {
           onTurn: ({ turn_id, conversation_id }) => {
             setPendingTurn(turn_id)
+            activeTurnRef.current = turn_id
             activeConversationRef.current = conversation_id
             onConversation(conversation_id)
           },
@@ -112,7 +133,7 @@ export function ChatPanel({
             const { needs_stronger_model } = done
             setNeedsStronger(needs_stronger_model)
             if (activeTraceRef.current) {
-              const completedTrace: Trace = {
+              let completedTrace: Trace = {
                 ...activeTraceRef.current,
                 completion: {
                   source: done.source || done.guidance_source || inferTraceSource(activeTraceRef.current),
@@ -123,6 +144,18 @@ export function ChatPanel({
                   guidance_repair_failed: done.guidance_repair_failed,
                   character_critic_repair: done.character_critic_repair,
                 },
+              }
+              if (activeTurnRef.current) {
+                try {
+                  const result = await api.trace(activeTurnRef.current)
+                  completedTrace = result.trace
+                  setThinkingTraceCache((current) => ({
+                    ...current,
+                    [activeTurnRef.current as string]: result.trace,
+                  }))
+                } catch {
+                  // The streamed trace remains usable if final trace readback fails.
+                }
               }
               activeTraceRef.current = completedTrace
               onTrace(completedTrace)
@@ -136,6 +169,7 @@ export function ChatPanel({
                 ? `Response saved, but refresh failed: ${reason.message}`
                 : 'Response saved, but the conversation refresh failed.')
             } finally {
+              activeTurnRef.current = null
               setPendingTurn(null)
               setPendingUser('')
               setStreaming('')
@@ -148,6 +182,7 @@ export function ChatPanel({
               const activeConversation = activeConversationRef.current
               if (activeConversation) onTurns(await api.turns(activeConversation))
             } finally {
+              activeTurnRef.current = null
               setPendingTurn(null)
               setPendingUser('')
               setStreaming('')
@@ -158,6 +193,7 @@ export function ChatPanel({
       )
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Local response failed.')
+      activeTurnRef.current = null
       setPendingTurn(null)
       setPendingUser('')
       setStreaming('')
@@ -206,6 +242,70 @@ export function ChatPanel({
     }
   }
 
+  async function pinContinuityLoop(turnId: string, summary: string) {
+    setContinuityActions((current) => ({
+      ...current,
+      [turnId]: { ...current[turnId], busy: true },
+    }))
+    setError('')
+    try {
+      const loop = await api.createContinuityOpenLoop(
+        summary,
+        idempotencyKey(`continuity-pin-${turnId}`),
+      )
+      setContinuityActions((current) => ({
+        ...current,
+        [turnId]: {
+          busy: false,
+          loop,
+          notice: 'Pinned as open next step',
+        },
+      }))
+    } catch (reason) {
+      setContinuityActions((current) => ({
+        ...current,
+        [turnId]: { ...current[turnId], busy: false },
+      }))
+      setError(reason instanceof Error ? reason.message : 'Could not pin the next step.')
+    }
+  }
+
+  async function reviewContinuityLoop(
+    turnId: string,
+    loop: ContinuityLoopRef,
+    action: 'done' | 'defer',
+  ) {
+    setContinuityActions((current) => ({
+      ...current,
+      [turnId]: { ...current[turnId], busy: true, loop },
+    }))
+    setError('')
+    try {
+      const reviewed = await api.reviewContinuityOpenLoop(loop.loop_id, {
+        action,
+        note: action === 'done'
+          ? 'Marked done from the Workbench Continuity answer.'
+          : 'Deferred from the Workbench Continuity answer.',
+        revision_hash: loop.revision_hash,
+        idempotency_key: idempotencyKey(`continuity-${action}-${loop.loop_id}`),
+      })
+      setContinuityActions((current) => ({
+        ...current,
+        [turnId]: {
+          busy: false,
+          loop: reviewed,
+          notice: action === 'done' ? 'Marked done' : 'Deferred',
+        },
+      }))
+    } catch (reason) {
+      setContinuityActions((current) => ({
+        ...current,
+        [turnId]: { ...current[turnId], busy: false, loop },
+      }))
+      setError(reason instanceof Error ? reason.message : 'Could not update the open next step.')
+    }
+  }
+
   return (
     <main className="chat-panel">
       <div className="model-strip">
@@ -243,6 +343,15 @@ export function ChatPanel({
             <option value={option.value} key={option.value}>{option.label}</option>
           ))}
         </select>
+        <button
+          className="continuity-resume-button"
+          aria-label="Resume work from governed evidence"
+          title="Resume work from governed evidence"
+          disabled={Boolean(pendingTurn)}
+          onClick={() => void runMessage('/resume')}
+        >
+          <History size={14} />
+        </button>
         <button aria-label="New chat" onClick={onNewConversation}>
           <Plus size={15} />
         </button>
@@ -293,6 +402,13 @@ export function ChatPanel({
                 </div>
               </div>
               <AnswerMarkdown>{turn.local_answer}</AnswerMarkdown>
+              <ContinuityLoopActions
+                turnId={turn.turn_id}
+                trace={trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id]}
+                state={continuityActions[turn.turn_id]}
+                onPin={pinContinuityLoop}
+                onReview={reviewContinuityLoop}
+              />
               {openThinkingTurn === turn.turn_id ? (
                 <AnswerThinkingTrace
                   loading={thinkingLoadingTurn === turn.turn_id}
@@ -373,6 +489,94 @@ export function ChatPanel({
       </form>
     </main>
   )
+}
+
+function ContinuityLoopActions({
+  turnId,
+  trace,
+  state,
+  onPin,
+  onReview,
+}: {
+  turnId: string
+  trace?: Trace
+  state?: ContinuityActionState
+  onPin: (turnId: string, summary: string) => Promise<void>
+  onReview: (
+    turnId: string,
+    loop: ContinuityLoopRef,
+    action: 'done' | 'defer',
+  ) => Promise<void>
+}) {
+  const target = continuityLoopTarget(trace, state?.loop)
+  if (!target) return null
+  const closed = target.mode === 'manage' && target.loop.status !== 'open'
+  return (
+    <div className="continuity-loop-actions" aria-label="Continuity next-step actions">
+      <small>{state?.notice || (
+        target.mode === 'pin' ? 'Review-only candidate' : 'Explicit open loop'
+      )}</small>
+      {!closed && target.mode === 'pin' ? (
+        <button
+          aria-label="Pin as open next step"
+          title="Pin as open next step"
+          disabled={Boolean(state?.busy)}
+          onClick={() => void onPin(turnId, target.summary)}
+        >
+          <Pin size={13} />
+        </button>
+      ) : null}
+      {!closed && target.mode === 'manage' ? (
+        <>
+          <button
+            aria-label="Mark open next step done"
+            title="Mark done"
+            disabled={Boolean(state?.busy)}
+            onClick={() => void onReview(turnId, target.loop, 'done')}
+          >
+            <Check size={13} />
+          </button>
+          <button
+            aria-label="Defer open next step"
+            title="Defer"
+            disabled={Boolean(state?.busy)}
+            onClick={() => void onReview(turnId, target.loop, 'defer')}
+          >
+            <Clock3 size={13} />
+          </button>
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+function continuityLoopTarget(
+  trace?: Trace,
+  confirmedLoop?: ContinuityLoopRef,
+): { mode: 'pin'; summary: string } | { mode: 'manage'; loop: ContinuityLoopRef } | null {
+  if (confirmedLoop) return { mode: 'manage', loop: confirmedLoop }
+  const atom = trace?.continuity_claim_atoms?.atoms.find(
+    (item) => item.section === 'next_candidate',
+  )
+  if (!atom) return null
+  if (atom.state === 'inferred_candidate') {
+    return { mode: 'pin', summary: atom.proposition }
+  }
+  if (atom.state !== 'explicit_open_loop') return null
+  const evidence = new Set(atom.evidence_ids)
+  const item = trace?.continuity_packet?.open_loops?.find((row) => (
+    row.evidence_ids.some((referenceId) => evidence.has(referenceId))
+  ))
+  if (!item?.loop_id || !item.revision_hash) return null
+  return {
+    mode: 'manage',
+    loop: {
+      loop_id: item.loop_id,
+      summary: item.summary,
+      status: 'open',
+      revision_hash: item.revision_hash,
+    },
+  }
 }
 
 function GovernanceLiveStep({ step }: { step: PublicGovernanceStep }) {
