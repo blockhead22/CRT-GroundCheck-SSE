@@ -646,21 +646,21 @@ test('opens an inline thinking trace from a historical assistant answer', async 
   ))
 })
 
-test('shows model recommendation summary after opening a trace', async () => {
+test('keeps model recommendation out of chat and inside the trace drawer', async () => {
   localStorage.setItem('aether.currentConversation', 'conv-1')
   render(<App />)
   await screen.findByText('old answer')
 
   fireEvent.click(screen.getByRole('button', { name: 'Open trace for turn turn-old' }))
 
-  const summary = await screen.findByLabelText('Model policy recommendation')
-  expect(summary).toHaveTextContent('context bridge broad')
-  expect(summary).toHaveTextContent('no auto switch')
-  expect(summary).toHaveTextContent('qwen2.5:7b-instruct')
-  expect(summary).toHaveTextContent('qwen2.5 default with context bridge')
-  expect(summary).toHaveTextContent('qwen3:14b')
-  expect(summary).toHaveTextContent('medium')
-  expect(summary).toHaveTextContent('workbench_eval_20260626_022453.json')
+  expect(screen.queryByLabelText('Model policy recommendation')).not.toBeInTheDocument()
+  const decision = await screen.findByLabelText('Route decision')
+  expect(decision).toHaveTextContent('context bridge broad')
+  expect(decision).toHaveTextContent('qwen2.5:7b-instruct')
+  expect(decision).toHaveTextContent('qwen2.5 default with context bridge')
+  expect(decision).toHaveTextContent('qwen3:14b')
+  expect(decision).toHaveTextContent('medium')
+  expect(decision).toHaveTextContent('workbench_eval_20260626_022453.json')
 })
 
 test('shows read-only route model policy in settings after opening a trace', async () => {
@@ -669,7 +669,7 @@ test('shows read-only route model policy in settings after opening a trace', asy
   await screen.findByText('old answer')
 
   fireEvent.click(screen.getByRole('button', { name: 'Open trace for turn turn-old' }))
-  await screen.findByLabelText('Model policy recommendation')
+  await screen.findByLabelText('Route decision')
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
 
   const policy = await screen.findByLabelText('Route model policy')

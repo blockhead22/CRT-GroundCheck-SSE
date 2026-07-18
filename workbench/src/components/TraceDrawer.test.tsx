@@ -168,6 +168,52 @@ test('renders clause-level governance decisions', () => {
   expect(within(depth).getByText('answer too short for requested depth')).toBeInTheDocument()
 })
 
+test('summary prefers completion, planner, and result receipts over raw slot plan', () => {
+  render(
+    <TraceDrawer
+      trace={{
+        ...trace,
+        status: 'completed',
+        plan: {
+          ...trace.plan,
+          status: 'unknown',
+          coverage: 0,
+          coverage_applicable: false,
+          unresolved_clauses: trace.plan?.unresolved_clauses || [],
+          clauses: trace.plan?.clauses || [],
+        },
+        planner: {
+          applicable: false,
+          status: 'needs_clarification',
+          coverage: null,
+          raw_coverage: 0,
+        },
+        coverage: {
+          status: 'complete',
+          applicable: 5,
+          checked: 5,
+          passed: 5,
+          failed: 0,
+          not_checked: 0,
+          fully_verified: true,
+        },
+        result: {
+          status: 'completed',
+          accepted: true,
+          answer_released: true,
+          fully_verified: true,
+        },
+      }}
+    />,
+  )
+
+  expect(screen.getByText('Coverage').parentElement).toHaveTextContent('5/5')
+  expect(screen.getByText('Planner').parentElement).toHaveTextContent(
+    'not applicable',
+  )
+  expect(screen.getByText('Result').parentElement).toHaveTextContent('completed')
+})
+
 test('renders governance answer spine and compliance summary', () => {
   render(<TraceDrawer trace={{
     ...trace,
@@ -229,6 +275,163 @@ test('renders governance answer spine and compliance summary', () => {
   expect(within(spine).getByText('blocked')).toBeInTheDocument()
   expect(within(spine).getByText('not stored')).toBeInTheDocument()
   expect(within(spine).getByText(/answer from released evidence/)).toBeInTheDocument()
+})
+
+test('renders a continuity receipt without ordinary planner packets', () => {
+  const continuityTrace = {
+    schema: 'aether.continuity_trace.v0',
+    query: '/resume',
+    status: 'completed',
+    turn_id: 'turn_continuity',
+    conversation_id: 'conv_continuity',
+    model: 'qwen2.5:7b-instruct',
+    generation_model: 'deterministic',
+    result: {
+      schema: 'aether.turn_result.v0',
+      status: 'completed',
+      accepted: true,
+      answer_released: true,
+    },
+    coverage: {
+      schema: 'aether.completion_coverage.v0',
+      scope: 'completion_verification_dimensions',
+      status: 'complete',
+      applicable: 4,
+      checked: 3,
+      passed: 3,
+      failed: 0,
+      not_checked: 1,
+      fully_verified: false,
+    },
+    planner: {
+      schema: 'aether.trace_planner_receipt.v0',
+      scope: 'durable_memory_slot_planning',
+      applicable: false,
+      status: '',
+      reason: 'no_durable_memory_slot_request_was_applicable',
+    },
+    governance_answer_spine: {
+      spine_schema: 'aether.governance_answer_spine.v0',
+      source: 'aether_continuity',
+      question_summary: '/resume',
+      render_mode: 'atom_deterministic_fallback',
+      deterministic_source: 'aether_continuity',
+      safety_contract: {
+        memory_writes_allowed: false,
+        raw_chain_of_thought_stored: false,
+      },
+    },
+    public_governance_steps: [{
+      schema: 'aether.public_governance_step.v0',
+      step_id: 'continuity-next',
+      index: 0,
+      phase: 'continuity',
+      status: 'done',
+      summary: 'Open next step',
+      detail: 'Resume the synthetic index review.',
+      public: true,
+      raw_chain_of_thought: false,
+    }],
+    completion: {
+      source: 'aether_continuity',
+      needs_stronger_model: false,
+      generation_model: 'deterministic',
+      verification_summary: {
+        schema: 'aether.completion_verification.v0',
+        accepted: true,
+        all_applicable_checks_passed: true,
+        fully_verified: false,
+        applicable_dimension_count: 4,
+        checked_dimension_count: 3,
+        passed_dimension_count: 3,
+        failed_dimension_count: 0,
+        not_checked_dimension_count: 1,
+        dimensions: {
+          authority_boundary: {
+            status: 'passed', checked: true, passed: true, reason: 'guarded',
+          },
+        },
+        raw_chain_of_thought_stored: false,
+      },
+    },
+  } satisfies Trace
+
+  render(<TraceDrawer trace={continuityTrace} />)
+
+  expect(screen.getByLabelText('Completion verification')).toBeInTheDocument()
+  expect(screen.getByText('Open next step')).toBeInTheDocument()
+  expect(screen.getByText('not applicable')).toBeInTheDocument()
+  expect(screen.queryByText('No resolved slot')).not.toBeInTheDocument()
+})
+
+test('renders cross-conversation provenance, candidates, and excluded assistant state', () => {
+  render(<TraceDrawer trace={{
+    query: 'Find the prior fictional thread.',
+    status: 'completed',
+    turn_id: 'turn-destination',
+    conversation_id: 'conv-destination',
+    model: 'qwen3:14b',
+    continuity_alignment_receipt: {
+      schema: 'aether.continuity_alignment_receipt.v0',
+      status: 'partial',
+      retrieval_method: 'semantic',
+      source_conversation_ids: ['conv-source'],
+      source_conversations: [{
+        conversation_id: 'conv-source',
+        title: 'Fictional archive source',
+      }],
+      candidate_conversations: [],
+      destination_conversation_id: 'conv-destination',
+      destination_turn_id: 'turn-destination',
+      cited_turn_ids: ['turn-source'],
+      carried_claims: [],
+      clarification_required: false,
+      profile_memory_write_count: 0,
+      archived_conversation_promoted_to_profile_memory: false,
+    },
+    cross_conversation_context: {
+      schema: 'aether.cross_conversation_continuity_packet.v0',
+      requested: true,
+      retrieval_method: 'semantic',
+      status: 'selected',
+      source_conversation_ids: ['conv-source'],
+      source_title: 'Fictional archive source',
+      candidates: [{
+        conversation_id: 'conv-source',
+        title: 'Fictional archive source',
+        match_kind: 'lexical_fallback',
+        score: 0.92,
+        matching_turn_ids: ['turn-source'],
+      }],
+      turns: [{
+        turn_id: 'turn-source',
+        user: {
+          text: 'The fictional source establishes checkpoint 8842.',
+          authority: 'user_authored_conversation',
+        },
+        assistant: {
+          text: '',
+          authority: 'assistant_derived',
+          included: false,
+          exclusion_reason: 'rejected_completion_receipt',
+        },
+      }],
+    },
+  }} />)
+
+  const alignment = screen.getByLabelText('Cross-conversation alignment receipt')
+  expect(within(alignment).getByText('partial')).toBeInTheDocument()
+  expect(within(alignment).getByText('semantic')).toBeInTheDocument()
+  expect(within(alignment).getByText('conv-source')).toBeInTheDocument()
+  expect(screen.getByLabelText('Conversation retrieval candidates')).toHaveTextContent(
+    'Fictional archive source (conv-source)',
+  )
+  expect(screen.getByLabelText('Cited archived conversation turns')).toHaveTextContent(
+    'The fictional source establishes checkpoint 8842.',
+  )
+  expect(screen.getByLabelText('Cited archived conversation turns')).toHaveTextContent(
+    'Assistant excluded: rejected completion receipt',
+  )
 })
 
 test('renders tension packet preview inside governance spine', () => {

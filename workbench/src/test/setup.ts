@@ -4,6 +4,7 @@ import { vi } from 'vitest'
 Object.defineProperty(window, 'aetherDesktop', {
   configurable: true,
   value: {
+    apiBase: 'http://127.0.0.1:8765',
     setExpanded: vi.fn().mockResolvedValue({}),
     setFloating: vi.fn().mockResolvedValue(false),
     setAlwaysOnTop: vi.fn().mockResolvedValue(true),

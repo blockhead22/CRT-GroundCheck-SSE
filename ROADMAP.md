@@ -1,4 +1,10 @@
 # CRT/Aether Roadmap
+
+> **Roadmap authority notice (2026-07-16):** This file preserves the historical
+> pre-Aether/Aeteros-split implementation roadmap. Current priorities and exit
+> gates are defined in
+> [AETHER_UNIFIED_ROADMAP_2026-07-16.md](docs/plans/AETHER_UNIFIED_ROADMAP_2026-07-16.md).
+
 Last updated: April 4, 2026 (v3.7)
 
 ---

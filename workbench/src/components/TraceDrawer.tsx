@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCircle2, CircleSlash2, ShieldQuestion } from 'lucide-react'
 import { useState } from 'react'
 import type {
+  CompletionVerification,
   GovernanceAnswerSpine,
   GovernanceSpineCompliance,
   LocalRouterRagEvidenceReview,
@@ -157,21 +158,44 @@ export function TraceDrawer({
   }
   const evidenceReview = localRouterEvidenceReview(trace)
   const governanceReview = governanceSpineReview(trace)
+  const completionVerification = trace.completion?.verification_summary
+  const completionCoverage = trace.coverage
+  // Continuity is a read-only, source-bound route and intentionally has no
+  // durable-memory clause plan or evidence packets.  The drawer still needs
+  // to show its receipt and public trace rather than treating that omission
+  // as a rendering error.
+  const plan = trace.plan || {
+    status: 'not_applicable',
+    coverage: 0,
+    coverage_applicable: false,
+    unresolved_clauses: [],
+    clauses: [],
+  }
+  const packets = trace.packets || []
+  const coverageLabel = completionCoverage?.status === 'complete'
+    ? `${completionCoverage.passed ?? 0}/${completionCoverage.applicable ?? 0}`
+    : plan.coverage_applicable === false
+      ? 'not applicable'
+      : `${Math.round(plan.coverage * 100)}%`
+  const plannerLabel = trace.planner
+    ? trace.planner.applicable ? trace.planner.status : 'not applicable'
+    : plan.status
+  const resultLabel = trace.result?.status || trace.status
 
   return (
     <div className="trace-view">
       <div className="trace-summary">
         <div>
           <span>Coverage</span>
-          <strong>{Math.round(trace.plan.coverage * 100)}%</strong>
+          <strong>{coverageLabel}</strong>
         </div>
         <div>
           <span>Planner</span>
-          <strong>{trace.plan.status}</strong>
+          <strong>{plannerLabel}</strong>
         </div>
         <div>
           <span>Result</span>
-          <strong>{trace.status}</strong>
+          <strong>{resultLabel}</strong>
         </div>
       </div>
       <article className="trace-route" aria-label="Response route">
@@ -239,6 +263,60 @@ export function TraceDrawer({
                   <span>{item.label}</span>
                   <strong>{item.value}</strong>
                 </div>
+              ))}
+            </div>
+          ) : null}
+        </article>
+      ) : null}
+      {completionVerification ? (
+        <article className="trace-route" aria-label="Completion verification">
+          <div className="tool-run-heading">Completion verification</div>
+          <div className="route-grid">
+            {completionVerificationRows(completionVerification).map((item) => (
+              <div className="route-cell" key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+              </div>
+            ))}
+          </div>
+        </article>
+      ) : null}
+      {trace.continuity_alignment_receipt ? (
+        <article className="trace-route" aria-label="Cross-conversation alignment receipt">
+          <div className="tool-run-heading">Cross-conversation alignment</div>
+          <div className="route-grid">
+            <div className="route-cell"><span>Status</span><strong>{trace.continuity_alignment_receipt.status}</strong></div>
+            <div className="route-cell"><span>Retrieval</span><strong>{trace.continuity_alignment_receipt.retrieval_method.replaceAll('_', ' ')}</strong></div>
+            <div className="route-cell"><span>Source</span><strong>{trace.continuity_alignment_receipt.source_conversation_ids.join(', ') || 'none'}</strong></div>
+            <div className="route-cell"><span>Profile writes</span><strong>{trace.continuity_alignment_receipt.profile_memory_write_count}</strong></div>
+          </div>
+          {trace.cross_conversation_context?.candidates?.length ? (
+            <div className="tool-meta-grid" aria-label="Conversation retrieval candidates">
+              {trace.cross_conversation_context.candidates.map((candidate) => (
+                <div className="tool-meta-cell" key={candidate.conversation_id}>
+                  <span>{candidate.match_kind.replaceAll('_', ' ')} · {candidate.score.toFixed(3)}</span>
+                  <strong>{candidate.title} ({candidate.conversation_id})</strong>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {trace.cross_conversation_context?.turns?.length ? (
+            <div className="tool-snippet-blocks" aria-label="Cited archived conversation turns">
+              {trace.cross_conversation_context.turns.map((turn) => (
+                <section className="tool-snippet-block" key={turn.turn_id}>
+                  <div>{turn.turn_id} · user · {turn.user.authority.replaceAll('_', ' ')}</div>
+                  <pre>{turn.user.text}</pre>
+                  {turn.assistant.included ? (
+                    <>
+                      <div>assistant · accepted derived answer</div>
+                      <pre>{turn.assistant.text}</pre>
+                    </>
+                  ) : (
+                    <div className="tool-notice" role="status">
+                      Assistant excluded: {turn.assistant.exclusion_reason.replaceAll('_', ' ')}
+                    </div>
+                  )}
+                </section>
               ))}
             </div>
           ) : null}
@@ -366,9 +444,9 @@ export function TraceDrawer({
         </section>
       ) : null}
       <div className="packet-list">
-        {trace.plan.clauses.map((clause) => {
-          const packets = trace.packets.filter((packet) => packet.clause_id === clause.clause_id)
-          if (!packets.length) {
+        {plan.clauses.map((clause) => {
+          const clausePackets = packets.filter((packet) => packet.clause_id === clause.clause_id)
+          if (!clausePackets.length) {
             return (
               <article className="trace-packet no_evidence" key={clause.clause_id}>
                 <div className="packet-head">
@@ -380,7 +458,7 @@ export function TraceDrawer({
               </article>
             )
           }
-          return packets.map((packet) => {
+          return clausePackets.map((packet) => {
             const meta = releaseMeta[packet.release]
             const Icon = meta.icon
             return (
@@ -511,6 +589,26 @@ function governanceSpineRows(
       value: safety.raw_chain_of_thought_stored ? 'stored' : 'not stored',
     },
   ].filter((item): item is { label: string; value: string } => Boolean(item))
+}
+
+function completionVerificationRows(verification: CompletionVerification) {
+  const summary = [
+    {
+      label: 'Overall',
+      value: verification.failed_dimension_count
+        ? 'flagged'
+        : verification.fully_verified ? 'fully verified' : 'partially checked',
+    },
+    {
+      label: 'Checked',
+      value: `${verification.checked_dimension_count}/${verification.applicable_dimension_count}`,
+    },
+  ]
+  const dimensions = Object.entries(verification.dimensions).map(([name, value]) => ({
+    label: formatRouteValue(name),
+    value: formatRouteValue(value.status),
+  }))
+  return [...summary, ...dimensions]
 }
 
 function tensionPacketRows(spine: GovernanceAnswerSpine) {

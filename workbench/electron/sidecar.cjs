@@ -4,14 +4,21 @@ const http = require('node:http')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
+const { resolveSidecarPort } = require('./data-lifecycle.cjs')
 
 class SidecarManager extends EventEmitter {
   constructor(options = {}) {
     super()
     this.env = options.env || process.env
     this.python = options.python || this.env.AETHER_PYTHON || 'python'
+    this.isPackaged = options.isPackaged ?? false
+    this.resourcesPath = options.resourcesPath || process.resourcesPath || ''
+    this.platform = options.platform || process.platform
+    this.existsSync = options.existsSync || fs.existsSync
+    this.dataRoot = options.dataRoot || this.env.AETHER_HOME || ''
+    this.profileId = options.profileId || this.env.AETHER_PROFILE_ID || ''
     this.host = options.host || '127.0.0.1'
-    this.port = Number(options.port || this.env.AETHER_SIDECAR_PORT || 8765)
+    this.port = options.port || resolveSidecarPort(this.env)
     this.spawnImpl = options.spawnImpl || spawn
     this.process = null
     this.stopping = false
@@ -22,14 +29,29 @@ class SidecarManager extends EventEmitter {
     this.stopping = false
     this.emit('status', 'starting')
     const sourceCore = path.resolve(__dirname, '..', '..', 'aether-core')
-    const pythonPath = fs.existsSync(sourceCore)
+    let runtime
+    try {
+      runtime = resolveSidecarRuntime({
+        env: this.env,
+        python: this.python,
+        isPackaged: this.isPackaged,
+        resourcesPath: this.resourcesPath,
+        platform: this.platform,
+        existsSync: this.existsSync,
+      })
+    } catch (error) {
+      this.emit('log', `${error.message}\n`)
+      this.emit('status', 'failed')
+      throw error
+    }
+    const pythonPath = !this.isPackaged && this.existsSync(sourceCore)
       ? [sourceCore, this.env.PYTHONPATH].filter(Boolean).join(path.delimiter)
-      : this.env.PYTHONPATH
+      : undefined
     const configuredRoots = this.env.AETHER_WORKSPACE_ROOTS
-    const defaultRoots = [
+    const defaultRoots = this.isPackaged ? [] : [
       path.resolve(sourceCore, '..'),
       path.join(os.homedir(), 'Downloads', 'src', 'src'),
-    ].filter((candidate) => fs.existsSync(candidate))
+    ].filter((candidate) => this.existsSync(candidate))
     const workspaceRoots = configuredRoots || defaultRoots.join(path.delimiter)
     const continuityDevEnv = this.env.NODE_ENV === 'development'
       ? {
@@ -39,15 +61,19 @@ class SidecarManager extends EventEmitter {
           AETHER_CONTINUITY_ROOT: this.env.AETHER_CONTINUITY_ROOT ?? sourceCore,
         }
       : {}
+    const childEnv = { ...this.env }
+    if (this.isPackaged) delete childEnv.PYTHONPATH
     this.process = this.spawnImpl(
-      this.python,
-      ['-m', 'aether.sidecar'],
+      runtime.command,
+      runtime.args,
       {
         env: {
-          ...this.env,
+          ...childEnv,
           ...continuityDevEnv,
           AETHER_SIDECAR_HOST: this.host,
           AETHER_SIDECAR_PORT: String(this.port),
+          ...(this.dataRoot ? { AETHER_HOME: this.dataRoot } : {}),
+          ...(this.profileId ? { AETHER_PROFILE_ID: this.profileId } : {}),
           ...(pythonPath ? { PYTHONPATH: pythonPath } : {}),
           ...(workspaceRoots ? { AETHER_WORKSPACE_ROOTS: workspaceRoots } : {}),
         },
@@ -106,4 +132,45 @@ class SidecarManager extends EventEmitter {
   }
 }
 
-module.exports = { SidecarManager }
+function resolveSidecarRuntime({
+  env = process.env,
+  python = env.AETHER_PYTHON || 'python',
+  isPackaged = false,
+  resourcesPath = process.resourcesPath || '',
+  platform = process.platform,
+  existsSync = fs.existsSync,
+} = {}) {
+  const executableName = platform === 'win32' ? 'aether-sidecar.exe' : 'aether-sidecar'
+  const explicitExecutable = String(env.AETHER_SIDECAR_EXECUTABLE || '').trim()
+  if (explicitExecutable) {
+    const command = path.resolve(explicitExecutable)
+    if (!existsSync(command)) {
+      throw new Error(`Configured Aether sidecar executable was not found: ${command}`)
+    }
+    return { command, args: [], kind: 'configured-executable' }
+  }
+
+  if (isPackaged && resourcesPath) {
+    const command = path.join(resourcesPath, 'sidecar', executableName)
+    if (existsSync(command)) return { command, args: [], kind: 'bundled-executable' }
+  }
+
+  const configuredPython = String(env.AETHER_PYTHON || '').trim()
+  if (configuredPython) {
+    return {
+      command: configuredPython,
+      args: ['-m', 'aether.sidecar'],
+      kind: 'configured-python',
+    }
+  }
+
+  if (isPackaged) {
+    throw new Error(
+      'Packaged Aether Workbench has no bundled sidecar. Reinstall it or set AETHER_SIDECAR_EXECUTABLE/AETHER_PYTHON explicitly.',
+    )
+  }
+
+  return { command: python, args: ['-m', 'aether.sidecar'], kind: 'development-python' }
+}
+
+module.exports = { SidecarManager, resolveSidecarRuntime }

@@ -1,6 +1,15 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
+const sidecarApiArgument = process.argv.find((argument) =>
+  argument.startsWith('--aether-sidecar-api-base='),
+)
+if (!sidecarApiArgument) {
+  throw new Error('Electron did not provide the Aether sidecar API base')
+}
+const sidecarApiBase = sidecarApiArgument.slice(sidecarApiArgument.indexOf('=') + 1)
+
 contextBridge.exposeInMainWorld('aetherDesktop', {
+  apiBase: sidecarApiBase,
   setExpanded: (value) => ipcRenderer.invoke('window:set-expanded', value),
   setFloating: (value) => ipcRenderer.invoke('window:set-floating', value),
   setAlwaysOnTop: (value) => ipcRenderer.invoke('window:set-always-on-top', value),

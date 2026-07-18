@@ -49,6 +49,8 @@ coverage/
 /electron/dist/
 /workbench/node_modules/
 /workbench/release/
+/workbench/release-*/
+/workbench/.packaging/
 /workbench/release-coder/
 /workbench/release-fixed/
 /workbench/release-reflect/

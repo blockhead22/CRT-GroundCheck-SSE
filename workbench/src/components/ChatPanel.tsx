@@ -3,8 +3,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { api, idempotencyKey, streamChat } from '../api'
-import type { Conversation, PublicGovernanceStep, Trace, Turn } from '../types'
-import { ModelPolicySummary } from './ModelPolicySummary'
+import type { ContinuityAlignmentReceipt, Conversation, PublicGovernanceStep, Trace, Turn } from '../types'
 
 const VOICE_STORAGE_KEY = 'aether.voiceProfile'
 const VOICE_OPTIONS = [
@@ -98,7 +97,10 @@ export function ChatPanel({
     await runMessage(text)
   }
 
-  async function runMessage(text: string) {
+  async function runMessage(
+    text: string,
+    targetConversationId: string | null = conversationId,
+  ) {
     if (!text || pendingTurn) return
     setPendingUser(text)
     setStreaming('')
@@ -109,7 +111,7 @@ export function ChatPanel({
 
     try {
       await streamChat(
-        { message: text, conversation_id: conversationId || undefined, model, voice_profile: voiceProfile },
+        { message: text, conversation_id: targetConversationId || undefined, model, voice_profile: voiceProfile },
         {
           onTurn: ({ turn_id, conversation_id }) => {
             setPendingTurn(turn_id)
@@ -199,6 +201,15 @@ export function ChatPanel({
       setStreaming('')
       setGovernanceSteps([])
     }
+  }
+
+  function continueFromConversation(sourceConversationId: string) {
+    if (!sourceConversationId || pendingTurn) return
+    onNewConversation()
+    void runMessage(
+      `Continue from conversation ${sourceConversationId} and explicitly align this new conversation with it.`,
+      null,
+    )
   }
 
   const lastTurn = turns.at(-1)
@@ -317,7 +328,11 @@ export function ChatPanel({
           {showStronger ? 'Needs stronger model' : 'Locally answerable'}
         </div>
       </div>
-      <ModelPolicySummary trace={trace} />
+      <div
+        className="model-policy-summary-placeholder"
+        data-testid="model-policy-summary-placeholder"
+        aria-hidden="true"
+      />
       <div className="conversation-toolbar">
         <select
           aria-label="Conversation"
@@ -351,6 +366,15 @@ export function ChatPanel({
           onClick={() => void runMessage('/resume')}
         >
           <History size={14} />
+        </button>
+        <button
+          className="cross-conversation-button"
+          aria-label="Continue current chat in a new aligned chat"
+          title="Continue current chat in a new aligned chat"
+          disabled={!conversationId || Boolean(pendingTurn)}
+          onClick={() => conversationId && continueFromConversation(conversationId)}
+        >
+          <ExternalLink size={14} />
         </button>
         <button aria-label="New chat" onClick={onNewConversation}>
           <Plus size={15} />
@@ -402,6 +426,16 @@ export function ChatPanel({
                 </div>
               </div>
               <AnswerMarkdown>{turn.local_answer}</AnswerMarkdown>
+              <ConversationAlignmentChip
+                receipt={
+                  turn.continuity_alignment_receipt
+                  || (trace?.turn_id === turn.turn_id
+                    ? trace.continuity_alignment_receipt
+                    : thinkingTraceCache[turn.turn_id]?.continuity_alignment_receipt)
+                }
+                onOpen={onConversation}
+                onContinue={continueFromConversation}
+              />
               <ContinuityLoopActions
                 turnId={turn.turn_id}
                 trace={trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id]}
@@ -416,7 +450,10 @@ export function ChatPanel({
                 />
               ) : null}
               <div className="answer-meta">
-                <span>Local</span><span>Governed</span><span>Checked</span>
+                <span>Local</span><span>Governed</span><span>{completionCheckLabel(
+                  trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id],
+                  turn.completion_verification,
+                )}</span>
               </div>
             </div>
           </div>
@@ -488,6 +525,66 @@ export function ChatPanel({
         </div>
       </form>
     </main>
+  )
+}
+
+function ConversationAlignmentChip({
+  receipt,
+  onOpen,
+  onContinue,
+}: {
+  receipt?: ContinuityAlignmentReceipt
+  onOpen: (conversationId: string) => void
+  onContinue: (conversationId: string) => void
+}) {
+  if (!receipt) return null
+  const sources = receipt.source_conversations?.length
+    ? receipt.source_conversations
+    : receipt.source_conversation_ids.map((conversationId) => ({
+        conversation_id: conversationId,
+        title: conversationId,
+      }))
+  const candidates = receipt.status === 'ambiguous'
+    ? receipt.candidate_conversations || []
+    : []
+  const successful = receipt.status === 'exact' || receipt.status === 'partial'
+  const Icon = successful ? CheckCircle2 : AlertTriangle
+
+  return (
+    <section className={`conversation-alignment ${receipt.status}`} aria-label="Conversation alignment">
+      <div className="conversation-alignment-head">
+        <Icon size={13} />
+        <strong>{receipt.status} cross-chat alignment</strong>
+        <span>{receipt.retrieval_method.replaceAll('_', ' ')}</span>
+      </div>
+      {sources.map((source) => (
+        <div className="conversation-source" key={source.conversation_id}>
+          <span title={source.conversation_id}>{source.title || source.conversation_id}</span>
+          <button
+            onClick={() => onOpen(source.conversation_id)}
+            aria-label={`Open source conversation ${source.conversation_id}`}
+          >
+            Open source
+          </button>
+        </div>
+      ))}
+      {candidates.map((candidate) => (
+        <div className="conversation-source candidate" key={candidate.conversation_id}>
+          <span title={candidate.conversation_id}>{candidate.title || candidate.conversation_id}</span>
+          <button
+            onClick={() => onContinue(candidate.conversation_id)}
+            aria-label={`Continue from candidate conversation ${candidate.conversation_id}`}
+          >
+            Continue here
+          </button>
+        </div>
+      ))}
+      <small>
+        {receipt.profile_memory_write_count === 0
+          ? 'Conversation context only · no profile memory written'
+          : `${receipt.profile_memory_write_count} profile write(s) recorded`}
+      </small>
+    </section>
   )
 }
 
@@ -689,6 +786,18 @@ function AnswerThinkingTrace({
       </div>
     </div>
   )
+}
+
+function completionCheckLabel(trace?: Trace, persistedVerification?: Turn['completion_verification']) {
+  const verification = trace?.completion?.verification_summary || persistedVerification
+  if (!verification) return 'Checks unavailable'
+  if (verification.failed_dimension_count > 0) {
+    return `Checks flagged ${verification.failed_dimension_count}`
+  }
+  if (!verification.fully_verified) {
+    return `Checked ${verification.checked_dimension_count}/${verification.applicable_dimension_count}`
+  }
+  return `Verified ${verification.passed_dimension_count}/${verification.applicable_dimension_count}`
 }
 
 function answerThinkingSections(trace: Trace) {

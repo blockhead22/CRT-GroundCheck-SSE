@@ -1,5 +1,10 @@
 # Aether / Aeteros Master Plan - 2026-06-26
 
+> **Current-roadmap notice (2026-07-16):** This document remains authoritative
+> for the product thesis and layer split. Current sequencing, completion state,
+> milestone gates, and side-lane disposition are consolidated in
+> [AETHER_UNIFIED_ROADMAP_2026-07-16.md](AETHER_UNIFIED_ROADMAP_2026-07-16.md).
+
 Purpose: define the product, the split, and the roadmap re-entry after the
 Lumi/CRT archaeology pass.
 

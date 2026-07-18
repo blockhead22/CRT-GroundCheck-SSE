@@ -1,6 +1,18 @@
 # Aether Current State
 
-Last updated: 2026-07-07
+Last checkpoint content: 2026-07-07
+
+Roadmap authority updated: 2026-07-16
+
+Canonical priorities, milestone gates, and side-lane disposition:
+
+```text
+D:\AI_round2\docs\plans\AETHER_UNIFIED_ROADMAP_2026-07-16.md
+```
+
+This file retains the detailed July 7 implementation checkpoint. Where its
+"Next Work" section differs from the unified roadmap, follow the unified
+roadmap.
 
 Start new Codex threads here:
 

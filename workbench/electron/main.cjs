@@ -1,6 +1,11 @@
 const { app, BrowserWindow, ipcMain, Menu, screen, Tray } = require('electron')
 const path = require('node:path')
 const { SidecarManager } = require('./sidecar.cjs')
+const {
+  resolveAetherDataRoot,
+  resolveProfileId,
+  resolveSidecarApiBase,
+} = require('./data-lifecycle.cjs')
 const { configureDevUserData } = require('./dev-config.cjs')
 const { buildSpellcheckContextMenuTemplate } = require('./context-menu.cjs')
 const { dockBounds } = require('./window.cjs')
@@ -53,6 +58,7 @@ function hideWindow() {
 
 function createWindow() {
   const bounds = dockBounds(screen.getPrimaryDisplay().workArea)
+  const sidecarApiBase = resolveSidecarApiBase(process.env)
   window = new BrowserWindow({
     ...bounds,
     minWidth: 420,
@@ -66,6 +72,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       spellcheck: true,
+      additionalArguments: [`--aether-sidecar-api-base=${sidecarApiBase}`],
     },
   })
   if (process.env.NODE_ENV === 'development') {
@@ -121,15 +128,30 @@ function installContextMenu() {
 
 app.whenReady().then(async () => {
   installContextMenu()
-  sidecar = new SidecarManager()
-  sidecar.start()
   createWindow()
   createTray()
   screen.on('display-metrics-changed', applyDockBounds)
   screen.on('display-added', applyDockBounds)
   screen.on('display-removed', applyDockBounds)
+  const dataRoot = resolveAetherDataRoot({
+    env: process.env,
+    userDataPath: app.getPath('userData'),
+  })
+  sidecar = new SidecarManager({
+    isPackaged: app.isPackaged,
+    resourcesPath: process.resourcesPath,
+    dataRoot,
+    profileId: resolveProfileId(process.env),
+  })
   sidecar.on('status', (status) => window?.webContents.send('sidecar:status', status))
-  await sidecar.waitUntilReady()
+  sidecar.on('log', (message) => console.log(`[sidecar] ${message}`.trimEnd()))
+  try {
+    sidecar.start()
+    await sidecar.waitUntilReady()
+  } catch (error) {
+    console.error('Could not start the packaged Aether sidecar:', error.message)
+    window?.webContents.send('sidecar:status', 'failed')
+  }
   const smokeExitMs = Number(process.env.AETHER_SMOKE_EXIT_MS || 0)
   if (smokeExitMs > 0) {
     setTimeout(() => {

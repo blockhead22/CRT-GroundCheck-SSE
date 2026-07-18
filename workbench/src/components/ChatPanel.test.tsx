@@ -194,6 +194,61 @@ beforeEach(() => {
 })
 
 describe('Continuity Resume action', () => {
+  test('shows a counted verification receipt instead of a blanket checked label', () => {
+    renderPanel({
+      conversationId: 'conv-next',
+      turns: [continuityTurn],
+      trace: {
+        ...continuityTrace('explicit_open_loop'),
+        completion: {
+          needs_stronger_model: false,
+          verification_summary: {
+            schema: 'aether.completion_verification.v0',
+            accepted: true,
+            all_applicable_checks_passed: true,
+            fully_verified: false,
+            applicable_dimension_count: 5,
+            checked_dimension_count: 4,
+            passed_dimension_count: 4,
+            failed_dimension_count: 0,
+            not_checked_dimension_count: 1,
+            dimensions: {},
+            raw_chain_of_thought_stored: false,
+          },
+        },
+      },
+    })
+
+    expect(screen.getByText('Checked 4/5')).toBeInTheDocument()
+    expect(screen.queryByText(/^Checked$/)).not.toBeInTheDocument()
+  })
+
+  test('shows the persisted completion receipt after conversation rehydration', () => {
+    renderPanel({
+      conversationId: 'conv-next',
+      turns: [{
+        ...continuityTurn,
+        completion_verification: {
+          schema: 'aether.completion_verification.v0',
+          accepted: true,
+          all_applicable_checks_passed: true,
+          fully_verified: true,
+          applicable_dimension_count: 4,
+          checked_dimension_count: 4,
+          passed_dimension_count: 4,
+          failed_dimension_count: 0,
+          not_checked_dimension_count: 0,
+          dimensions: {},
+          raw_chain_of_thought_stored: false,
+        },
+      }],
+      trace: null,
+    })
+
+    expect(screen.getByText('Verified 4/4')).toBeInTheDocument()
+    expect(screen.queryByText('Checks unavailable')).not.toBeInTheDocument()
+  })
+
   test('sends the exact governed command through the normal chat stream', async () => {
     const props = renderPanel()
 
@@ -232,6 +287,107 @@ describe('Continuity Resume action', () => {
     })
     expect(button).toHaveAttribute('title', 'Resume work from governed evidence')
     expect(button).toHaveTextContent('')
+  })
+})
+
+describe('Cross-conversation continuity controls', () => {
+  test('rehydrates the source chip and opens the cited conversation', () => {
+    const props = renderPanel({
+      conversationId: 'conv-destination',
+      turns: [{
+        ...continuityTurn,
+        continuity_alignment_receipt: {
+          schema: 'aether.continuity_alignment_receipt.v0',
+          status: 'exact',
+          retrieval_method: 'exact_id',
+          source_conversation_ids: ['conv-source'],
+          source_conversations: [{
+            conversation_id: 'conv-source',
+            title: 'Fictional source thread',
+          }],
+          candidate_conversations: [],
+          destination_conversation_id: 'conv-destination',
+          destination_turn_id: 'turn-next',
+          cited_turn_ids: ['turn-source'],
+          carried_claims: [],
+          clarification_required: false,
+          profile_memory_write_count: 0,
+          archived_conversation_promoted_to_profile_memory: false,
+        },
+      }],
+    })
+
+    expect(screen.getByText('exact cross-chat alignment')).toBeInTheDocument()
+    expect(screen.getByText('Fictional source thread')).toBeInTheDocument()
+    expect(screen.getByText('Conversation context only · no profile memory written')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', {
+      name: 'Open source conversation conv-source',
+    }))
+    expect(props.onConversation).toHaveBeenCalledWith('conv-source')
+  })
+
+  test('starts a new explicitly aligned chat from the selected conversation', async () => {
+    const props = renderPanel({ conversationId: 'conv-source' })
+
+    fireEvent.click(screen.getByRole('button', {
+      name: 'Continue current chat in a new aligned chat',
+    }))
+
+    expect(props.onNewConversation).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(mockedStreamChat).toHaveBeenCalledWith(
+      {
+        message: (
+          'Continue from conversation conv-source and explicitly align this new '
+          + 'conversation with it.'
+        ),
+        conversation_id: undefined,
+        model: 'qwen3:14b',
+        voice_profile: 'warm',
+      },
+      expect.any(Object),
+    ))
+  })
+
+  test('lets an ambiguous receipt choose a candidate without a silent selection', async () => {
+    const props = renderPanel({
+      conversationId: 'conv-destination',
+      turns: [{
+        ...continuityTurn,
+        continuity_alignment_receipt: {
+          schema: 'aether.continuity_alignment_receipt.v0',
+          status: 'ambiguous',
+          retrieval_method: 'semantic',
+          source_conversation_ids: [],
+          source_conversations: [],
+          candidate_conversations: [{
+            conversation_id: 'conv-candidate',
+            title: 'Candidate source',
+            match_kind: 'lexical_fallback',
+            score: 0.9,
+          }],
+          destination_conversation_id: 'conv-destination',
+          destination_turn_id: 'turn-next',
+          cited_turn_ids: [],
+          carried_claims: [],
+          clarification_required: true,
+          profile_memory_write_count: 0,
+          archived_conversation_promoted_to_profile_memory: false,
+        },
+      }],
+    })
+
+    expect(screen.getByText('ambiguous cross-chat alignment')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', {
+      name: 'Continue from candidate conversation conv-candidate',
+    }))
+    expect(props.onNewConversation).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(mockedStreamChat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining('conversation conv-candidate'),
+        conversation_id: undefined,
+      }),
+      expect.any(Object),
+    ))
   })
 })
 

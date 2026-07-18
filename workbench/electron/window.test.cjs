@@ -1,7 +1,7 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const { dockBounds } = require('./window.cjs')
-const { SidecarManager } = require('./sidecar.cjs')
+const { SidecarManager, resolveSidecarRuntime } = require('./sidecar.cjs')
 const { configureDevUserData, devUserDataPath } = require('./dev-config.cjs')
 const { AppBarManager } = require('./appbar.cjs')
 
@@ -130,6 +130,68 @@ test('production sidecar leaves Continuity opt-in and preserves explicit develop
   assert.equal(captures[0].AETHER_CONTINUITY_MODEL_RENDER_ENABLED, undefined)
   assert.equal(captures[1].AETHER_CONTINUITY_ENABLED, '0')
   assert.equal(captures[1].AETHER_CONTINUITY_MODEL_RENDER_ENABLED, '0')
+})
+
+test('packaged sidecar uses its bundled executable and isolated profile state', () => {
+  let capture
+  const resourcesPath = 'C:\\Program Files\\Aether Workbench\\resources'
+  const executable = `${resourcesPath}\\sidecar\\aether-sidecar.exe`
+  const child = {
+    stdout: { on() {} },
+    stderr: { on() {} },
+    on() {},
+    kill() {},
+  }
+  const manager = new SidecarManager({
+    env: { NODE_ENV: 'production', PYTHONPATH: 'D:\\AI_round2\\aether-core' },
+    isPackaged: true,
+    resourcesPath,
+    platform: 'win32',
+    existsSync: (candidate) => candidate === executable,
+    dataRoot: 'C:\\fixture\\aether-state',
+    profileId: 'atlas',
+    spawnImpl: (command, args, options) => {
+      capture = { command, args, options }
+      return child
+    },
+  })
+
+  manager.start()
+
+  assert.equal(capture.command, executable)
+  assert.deepEqual(capture.args, [])
+  assert.equal(capture.options.env.AETHER_HOME, 'C:\\fixture\\aether-state')
+  assert.equal(capture.options.env.AETHER_PROFILE_ID, 'atlas')
+  assert.equal(capture.options.env.PYTHONPATH, undefined)
+  assert.equal(capture.options.env.AETHER_WORKSPACE_ROOTS, undefined)
+})
+
+test('packaged runtime fails closed unless a bundled or explicit runtime exists', () => {
+  assert.throws(
+    () => resolveSidecarRuntime({
+      env: {},
+      isPackaged: true,
+      resourcesPath: 'C:\\missing',
+      platform: 'win32',
+      existsSync: () => false,
+    }),
+    /no bundled sidecar/,
+  )
+
+  assert.deepEqual(
+    resolveSidecarRuntime({
+      env: { AETHER_PYTHON: 'C:\\AetherRuntime\\python.exe' },
+      isPackaged: true,
+      resourcesPath: 'C:\\missing',
+      platform: 'win32',
+      existsSync: () => false,
+    }),
+    {
+      command: 'C:\\AetherRuntime\\python.exe',
+      args: ['-m', 'aether.sidecar'],
+      kind: 'configured-python',
+    },
+  )
 })
 
 test('development userData uses an isolated temp directory', () => {

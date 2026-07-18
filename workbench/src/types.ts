@@ -54,8 +54,39 @@ export interface TracePacket {
 }
 
 export interface Trace {
+  schema?: string
   query: string
   status: string
+  planner?: {
+    schema?: string
+    scope?: string
+    applicable: boolean
+    status: string
+    coverage?: number | null
+    raw_coverage?: number | null
+    reason?: string
+  }
+  coverage?: {
+    schema?: string
+    scope?: string
+    status: string
+    applicable?: number
+    checked?: number
+    passed?: number
+    failed?: number
+    not_checked?: number
+    fully_verified?: boolean
+  }
+  result?: {
+    schema?: string
+    status: string
+    accepted?: boolean | null
+    answer_released?: boolean
+    source?: string
+    needs_stronger_model?: boolean
+    fully_verified?: boolean
+    raw_chain_of_thought_stored?: boolean
+  }
   turn_id: string
   conversation_id: string
   model: string
@@ -84,6 +115,32 @@ export interface Trace {
     request_kind: string
     open_loops?: ContinuityOpenLoopItem[]
   }
+  cross_conversation_context?: {
+    schema: string
+    requested: boolean
+    retrieval_method: string
+    status: string
+    source_conversation_ids: string[]
+    source_title?: string
+    candidates?: Array<{
+      conversation_id: string
+      title: string
+      match_kind: string
+      score: number
+      matching_turn_ids: string[]
+    }>
+    turns?: Array<{
+      turn_id: string
+      user: { text: string; authority: string }
+      assistant: {
+        text: string
+        authority: string
+        included: boolean
+        exclusion_reason: string
+      }
+    }>
+  }
+  continuity_alignment_receipt?: ContinuityAlignmentReceipt
   mirus_governed_discovery?: MirusGovernedDiscovery | null
   completion?: {
     source?: string
@@ -91,16 +148,21 @@ export interface Trace {
     generation_model?: string
     route_decision?: RouteDecision
     governance_spine_compliance?: GovernanceSpineCompliance
+    verification_summary?: CompletionVerification
     guidance_kind?: string
     guidance_repaired?: boolean | null
     guidance_repair_failed?: boolean | null
     character_critic_repair?: CharacterCriticRepair
     depth?: DepthCompletion
+    continuity_alignment_receipt?: ContinuityAlignmentReceipt
   }
   depth_policy?: DepthPolicy
-  plan: {
+  plan?: {
     status: string
     coverage: number
+    coverage_applicable?: boolean
+    applicable?: boolean
+    scope?: string
     unresolved_clauses: string[]
     clauses: Array<{
       clause_id: string
@@ -110,7 +172,7 @@ export interface Trace {
       reason_code: string
     }>
   }
-  packets: TracePacket[]
+  packets?: TracePacket[]
   local_router_trace?: Record<string, unknown>
   memory_writes?: Array<{
     slot_id: string
@@ -319,6 +381,34 @@ export interface GovernanceSpineCompliance {
   raw_chain_of_thought_stored: boolean
 }
 
+export type CompletionVerificationStatus =
+  | 'passed'
+  | 'failed'
+  | 'not_checked'
+  | 'not_applicable'
+
+export interface CompletionVerificationDimension {
+  status: CompletionVerificationStatus
+  checked: boolean
+  passed: boolean | null
+  reason: string
+  flags?: string[]
+}
+
+export interface CompletionVerification {
+  schema: string
+  accepted: boolean
+  all_applicable_checks_passed: boolean
+  fully_verified: boolean
+  applicable_dimension_count: number
+  checked_dimension_count: number
+  passed_dimension_count: number
+  failed_dimension_count: number
+  not_checked_dimension_count: number
+  dimensions: Record<string, CompletionVerificationDimension>
+  raw_chain_of_thought_stored: boolean
+}
+
 export interface LocalRouterRagEvidenceReview {
   kind: 'local_router_rag_evidence_review'
   source: 'local_router_rag_suite' | string
@@ -421,6 +511,30 @@ export interface PatchApplyReceipt {
   idempotent_replay: boolean
 }
 
+export interface ContinuityAlignmentReceipt {
+  schema: string
+  status: 'exact' | 'partial' | 'ambiguous' | 'blocked' | string
+  retrieval_method: string
+  source_conversation_ids: string[]
+  source_conversations?: Array<{
+    conversation_id: string
+    title: string
+  }>
+  candidate_conversations?: Array<{
+    conversation_id: string
+    title: string
+    match_kind: string
+    score: number
+  }>
+  destination_conversation_id: string
+  destination_turn_id: string
+  cited_turn_ids: string[]
+  carried_claims: Array<Record<string, unknown>>
+  clarification_required: boolean
+  profile_memory_write_count: number
+  archived_conversation_promoted_to_profile_memory: boolean
+}
+
 export interface Turn {
   turn_id: string
   user_message: string
@@ -429,6 +543,8 @@ export interface Turn {
   needs_stronger_model: boolean
   created_at: number
   completed_at?: number
+  completion_verification?: CompletionVerification
+  continuity_alignment_receipt?: ContinuityAlignmentReceipt
 }
 
 export interface Conversation {
@@ -616,6 +732,7 @@ export interface ChatEvents {
 }
 
 export interface DesktopBridge {
+  apiBase: string
   setExpanded: (value: boolean) => Promise<unknown>
   setFloating: (value: boolean) => Promise<boolean>
   setAlwaysOnTop: (value: boolean) => Promise<boolean>
