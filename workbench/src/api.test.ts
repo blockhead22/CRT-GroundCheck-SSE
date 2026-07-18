@@ -88,7 +88,12 @@ test('streamChat dispatches public governance steps before answer tokens', async
 
   const events: string[] = []
   await streamChat(
-    { message: 'hi', model: 'qwen2.5:7b-instruct', voice_profile: 'alive' },
+    {
+      message: 'hi',
+      model: 'qwen2.5:7b-instruct',
+      voice_profile: 'alive',
+      render_provider: 'local',
+    },
     {
       onTurn: () => events.push('turn'),
       onTrace: () => events.push('trace'),
@@ -115,6 +120,7 @@ test('streamChat dispatches public governance steps before answer tokens', async
         message: 'hi',
         model: 'qwen2.5:7b-instruct',
         voice_profile: 'alive',
+        render_provider: 'local',
       }),
     }),
   )

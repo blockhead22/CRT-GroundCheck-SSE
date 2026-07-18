@@ -290,6 +290,21 @@ test('shows Codex availability in settings', async () => {
   expect(screen.getByText('No route recommendation for the active turn.')).toBeInTheDocument()
 })
 
+test('makes hosted rendering an explicit disclosed setting', async () => {
+  render(<App />)
+  await screen.findByText('Local')
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+
+  const provider = screen.getByLabelText('Answer renderer')
+  expect(provider).toHaveValue('local')
+  expect(screen.getByText('Answer wording stays on this machine through Ollama.')).toBeInTheDocument()
+
+  fireEvent.change(provider, { target: { value: 'grok_build' } })
+  expect(provider).toHaveValue('grok_build')
+  expect(screen.getByText(/governed answer packet is sent to Grok for wording/)).toBeInTheDocument()
+  await waitFor(() => expect(localStorage.getItem('aether.renderProvider')).toBe('grok_build'))
+})
+
 test('opens the reflect drawer from bottom navigation', async () => {
   render(<App />)
   await screen.findByText('Local')

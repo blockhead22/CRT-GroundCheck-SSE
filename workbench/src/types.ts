@@ -1,5 +1,18 @@
 ﻿export type ReleaseDecision = 'answerable' | 'withhold' | 'conflict' | 'no_evidence'
 
+export type RenderProvider = 'local' | 'grok_build'
+
+export interface RenderProviderReceipt {
+  schema?: string
+  requested: RenderProvider
+  effective: RenderProvider
+  model?: string
+  fallback_applied?: boolean
+  status?: string
+  authority?: 'aether' | string
+  role?: 'wording_only' | 'none' | string
+}
+
 export interface Health {
   ok: boolean
   aether: string
@@ -92,6 +105,24 @@ export interface Trace {
   model: string
   generation_model?: string
   voice_profile?: string
+  external_renderer?: {
+    requested_provider?: RenderProvider
+    effective_provider?: RenderProvider
+    request_source?: string
+    requested?: boolean
+    eligible?: boolean
+    selected?: boolean
+    status?: string
+    model?: string
+    effective_model?: string
+    attempts?: number
+    latency_s?: number
+    fallback_applied?: boolean
+    tools_allowed?: boolean
+    writes_allowed?: boolean
+    authority?: string
+    role?: string
+  }
   meta_answer?: { source?: string; intents?: Record<string, boolean> }
   direct_answer?: { source?: string; slot?: string }
   self_description_answer?: { source?: string }
@@ -146,6 +177,7 @@ export interface Trace {
     source?: string
     needs_stronger_model: boolean
     generation_model?: string
+    render_provider?: RenderProviderReceipt
     route_decision?: RouteDecision
     governance_spine_compliance?: GovernanceSpineCompliance
     verification_summary?: CompletionVerification
@@ -543,6 +575,8 @@ export interface Turn {
   needs_stronger_model: boolean
   created_at: number
   completed_at?: number
+  generation_model?: string
+  render_provider?: RenderProviderReceipt
   completion_verification?: CompletionVerification
   continuity_alignment_receipt?: ContinuityAlignmentReceipt
 }

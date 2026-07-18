@@ -22,6 +22,7 @@ const mockedApi = vi.mocked(api)
 function renderPanel(overrides: Partial<ComponentProps<typeof ChatPanel>> = {}) {
   const props = {
     model: 'qwen3:14b',
+    renderProvider: 'local' as const,
     conversationId: null,
     conversations: [],
     turns: [],
@@ -194,6 +195,39 @@ beforeEach(() => {
 })
 
 describe('Continuity Resume action', () => {
+  test('sends an explicit hosted wording choice and labels rehydrated Grok output', async () => {
+    renderPanel({
+      renderProvider: 'grok_build',
+      conversationId: 'conv-next',
+      turns: [{
+        ...continuityTurn,
+        render_provider: {
+          requested: 'grok_build',
+          effective: 'grok_build',
+          model: 'grok-4.5',
+          status: 'rendered',
+          authority: 'aether',
+          role: 'wording_only',
+        },
+      }],
+    })
+
+    expect(screen.getByText('Grok 4.5 · hosted wording')).toBeInTheDocument()
+    expect(screen.getByText('Hosted Grok answer')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Message Aether'), {
+      target: { value: 'Explain this governed packet.' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
+
+    await waitFor(() => expect(mockedStreamChat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Explain this governed packet.',
+        render_provider: 'grok_build',
+      }),
+      expect.any(Object),
+    ))
+  })
+
   test('shows a counted verification receipt instead of a blanket checked label', () => {
     renderPanel({
       conversationId: 'conv-next',
@@ -262,6 +296,7 @@ describe('Continuity Resume action', () => {
         conversation_id: undefined,
         model: 'qwen3:14b',
         voice_profile: 'warm',
+        render_provider: 'local',
       },
       expect.any(Object),
     ))
@@ -343,6 +378,7 @@ describe('Cross-conversation continuity controls', () => {
         conversation_id: undefined,
         model: 'qwen3:14b',
         voice_profile: 'warm',
+        render_provider: 'local',
       },
       expect.any(Object),
     ))

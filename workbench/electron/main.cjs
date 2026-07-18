@@ -10,6 +10,7 @@ const { configureDevUserData } = require('./dev-config.cjs')
 const { buildSpellcheckContextMenuTemplate } = require('./context-menu.cjs')
 const { dockBounds } = require('./window.cjs')
 const { AppBarManager } = require('./appbar.cjs')
+const { guardParentPipe, writeLineSafely } = require('./safe-stdio.cjs')
 
 let window
 let tray
@@ -19,6 +20,8 @@ let expanded = false
 let alwaysOnTop = true
 const appBar = new AppBarManager()
 
+guardParentPipe(process.stdout)
+guardParentPipe(process.stderr)
 configureDevUserData(app)
 
 function releaseDockReservation() {
@@ -26,7 +29,7 @@ function releaseDockReservation() {
   try {
     appBar.release(window)
   } catch (error) {
-    console.warn('Could not release the Windows AppBar reservation:', error.message)
+    writeLineSafely(process.stderr, `Could not release the Windows AppBar reservation: ${error.message}`)
   }
 }
 
@@ -42,7 +45,7 @@ function applyDockBounds() {
     const reserved = appBar.reserve(window, display.bounds, desired.width)
     window.setBounds(reserved || dockBounds(display.workArea, expanded), true)
   } catch (error) {
-    console.warn('Could not reserve the Windows work area:', error.message)
+    writeLineSafely(process.stderr, `Could not reserve the Windows work area: ${error.message}`)
     window.setBounds(dockBounds(display.workArea, expanded), true)
   }
 }
@@ -144,12 +147,14 @@ app.whenReady().then(async () => {
     profileId: resolveProfileId(process.env),
   })
   sidecar.on('status', (status) => window?.webContents.send('sidecar:status', status))
-  sidecar.on('log', (message) => console.log(`[sidecar] ${message}`.trimEnd()))
+  sidecar.on('log', (message) => {
+    writeLineSafely(process.stdout, `[sidecar] ${message}`.trimEnd())
+  })
   try {
     sidecar.start()
     await sidecar.waitUntilReady()
   } catch (error) {
-    console.error('Could not start the packaged Aether sidecar:', error.message)
+    writeLineSafely(process.stderr, `Could not start the packaged Aether sidecar: ${error.message}`)
     window?.webContents.send('sidecar:status', 'failed')
   }
   const smokeExitMs = Number(process.env.AETHER_SMOKE_EXIT_MS || 0)

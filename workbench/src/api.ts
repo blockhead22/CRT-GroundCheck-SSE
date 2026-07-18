@@ -166,7 +166,13 @@ function dispatchEvent(block: string, events: ChatEvents) {
 }
 
 export async function streamChat(
-  body: { message: string; conversation_id?: string; model: string; voice_profile?: string },
+  body: {
+    message: string
+    conversation_id?: string
+    model: string
+    voice_profile?: string
+    render_provider: 'local' | 'grok_build'
+  },
   events: ChatEvents,
 ) {
   const response = await fetch(`${API_BASE}/v1/chat/stream`, {

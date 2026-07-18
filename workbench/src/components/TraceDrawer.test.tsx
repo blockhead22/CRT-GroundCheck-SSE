@@ -168,6 +168,48 @@ test('renders clause-level governance decisions', () => {
   expect(within(depth).getByText('answer too short for requested depth')).toBeInTheDocument()
 })
 
+test('labels hosted wording without claiming local generation authority', () => {
+  render(<TraceDrawer trace={{
+    ...trace,
+    generation_model: 'grok-4.5',
+    external_renderer: {
+      requested_provider: 'grok_build',
+      effective_provider: 'grok_build',
+      requested: true,
+      eligible: true,
+      selected: true,
+      status: 'rendered',
+      model: 'grok-4.5',
+      effective_model: 'grok-4.5',
+      attempts: 1,
+      tools_allowed: false,
+      writes_allowed: false,
+      authority: 'aether',
+      role: 'wording_only',
+    },
+    completion: {
+      ...trace.completion,
+      source: 'local_generation',
+      needs_stronger_model: false,
+      generation_model: 'grok-4.5',
+      render_provider: {
+        requested: 'grok_build',
+        effective: 'grok_build',
+        model: 'grok-4.5',
+        status: 'rendered',
+        authority: 'aether',
+        role: 'wording_only',
+      },
+    },
+  }} />)
+
+  const route = screen.getByLabelText('Response route')
+  expect(within(route).getByText('Aether governed')).toBeInTheDocument()
+  expect(within(route).getByText('Grok hosted wording')).toBeInTheDocument()
+  expect(within(route).getByText('Aether verified')).toBeInTheDocument()
+  expect(within(route).queryByText('local generation')).not.toBeInTheDocument()
+})
+
 test('summary prefers completion, planner, and result receipts over raw slot plan', () => {
   render(
     <TraceDrawer

@@ -1,14 +1,16 @@
 import { Check, MonitorUp } from 'lucide-react'
-import type { Health, ModelInfo, Trace } from '../types'
+import type { Health, ModelInfo, RenderProvider, Trace } from '../types'
 
 interface SettingsProps {
   health: Health | null
   models: ModelInfo[]
   model: string
+  renderProvider: RenderProvider
   pinned: boolean
   floating: boolean
   trace: Trace | null
   onModel: (model: string) => void
+  onRenderProvider: (provider: RenderProvider) => void
   onPinned: (value: boolean) => void
   onFloating: (value: boolean) => void
 }
@@ -17,10 +19,12 @@ export function SettingsPopover({
   health,
   models,
   model,
+  renderProvider,
   pinned,
   floating,
   trace,
   onModel,
+  onRenderProvider,
   onPinned,
   onFloating,
 }: SettingsProps) {
@@ -38,6 +42,20 @@ export function SettingsPopover({
           <option key={item.name} value={item.name}>{item.name}</option>
         )) : <option value={model}>{model}</option>}
       </select>
+      <label className="field-label" htmlFor="render-provider-select">Answer renderer</label>
+      <select
+        id="render-provider-select"
+        value={renderProvider}
+        onChange={(event) => onRenderProvider(event.target.value as RenderProvider)}
+      >
+        <option value="local">Local model</option>
+        <option value="grok_build">Grok 4.5 via Grok CLI (hosted)</option>
+      </select>
+      <p className={`provider-disclosure ${renderProvider === 'grok_build' ? 'hosted' : ''}`}>
+        {renderProvider === 'grok_build'
+          ? 'Your governed answer packet is sent to Grok for wording. Aether keeps retrieval, memory, writes, verification, and receipts.'
+          : 'Answer wording stays on this machine through Ollama.'}
+      </p>
       <button className="toggle-row" onClick={() => onPinned(!pinned)}>
         <span>Always on top</span>
         <span className={`switch ${pinned ? 'on' : ''}`}><Check size={12} /></span>

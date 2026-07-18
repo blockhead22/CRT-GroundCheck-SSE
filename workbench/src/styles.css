@@ -441,6 +441,8 @@ button { color: inherit; }
 .settings-popover { position: absolute; z-index: 10; top: 38px; right: 8px; width: 260px; border: 1px solid #485149; border-radius: 8px; background: #1a211e; box-shadow: 0 16px 40px rgba(0,0,0,.45); padding: 12px; }
 .popover-title { display: flex; align-items: center; gap: 8px; color: #d0d5cf; font-size: 11px; font-weight: 700; margin-bottom: 13px; }
 .settings-popover select { width: 100%; margin: 6px 0 10px; background: #111614; border: 1px solid var(--border); border-radius: 5px; color: #d9ddd7; padding: 7px; font: 400 10px "DM Mono", monospace; outline: 0; }
+.provider-disclosure { margin: -3px 0 10px; color: #78817b; font-size: 9px; line-height: 1.45; }
+.provider-disclosure.hosted { color: #c8ad78; border-left: 2px solid #b58a4a; padding-left: 8px; }
 .toggle-row { width: 100%; display: flex; justify-content: space-between; align-items: center; background: transparent; border: 0; border-top: 1px solid var(--border-soft); padding: 9px 0; color: #aeb5ae; cursor: pointer; font-size: 10px; }
 .switch { width: 28px; height: 16px; border-radius: 9px; background: #343c37; display: flex; align-items: center; justify-content: flex-start; padding: 2px; color: transparent; }
 .switch.on { justify-content: flex-end; background: #6d873d; color: #14200e; }

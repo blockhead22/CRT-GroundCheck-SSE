@@ -60,6 +60,36 @@ semantically wrong. Governed cross-conversation retrieval and explicit
 continuity alignment are therefore the active product-hardening gate. Broad
 answer-superiority claims remain unsupported.
 
+### Product / research split checkpoint - 2026-07-18
+
+The program is now tracked in two explicit buckets.
+
+**Aether product lane.** The governed Workbench baseline, conversation-control
+repair, reusable Core demo, comparative and blind product evidence, profile
+isolation, receipt persistence, interrupted-task `/resume`, backup/restore,
+installed Python operation, Windows desktop lifecycle, cross-conversation
+archive retrieval/alignment, and explicit Local/Grok renderer choice have
+bounded evidence. The active product gate remains executable cross-thread task
+continuation: a prior conversation can be retrieved, cited, and aligned, but
+Aether does not yet claim that it can reconstruct and resume arbitrary task
+state from prose. The current backend and Workbench worktrees remain dirty and
+must be revalidated and checkpointed before the next implementation slice.
+
+**Research lane.** Governed-renderer, causal-evidence-receipt, and epistemic
+circuit-breaker experiments are evidence-producing but non-production. The
+circuit-breaker first blind reveal found 24 unsafe synthetic accepts across
+required-authority, malformed-provenance, and parallel-signed-channel cases.
+The isolated implementation repaired those three layers and passed the same
+revealed pack 96/96 with zero unsafe accepts while retaining 24/24 benign
+accepts. That is a post-reveal regression, not a second blind replication.
+Calibration, realized quarantine utility, external scenarios, and formal
+novelty remain unproven. None of this research is wired into live Aether.
+
+The dated restart and evidence map is
+`docs/plans/AETHER_PRODUCT_RESEARCH_HANDOFF_2026-07-18.md`. Resume the product
+lane from the governed cross-conversation task/open-loop continuation gate; do
+not reopen research merely because an optional experiment remains unfinished.
+
 ## Completed and Parked Work
 
 ### Foundation and Workbench

@@ -3,7 +3,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { api, idempotencyKey, streamChat } from '../api'
-import type { ContinuityAlignmentReceipt, Conversation, PublicGovernanceStep, Trace, Turn } from '../types'
+import type { ContinuityAlignmentReceipt, Conversation, PublicGovernanceStep, RenderProvider, Trace, Turn } from '../types'
 
 const VOICE_STORAGE_KEY = 'aether.voiceProfile'
 const VOICE_OPTIONS = [
@@ -27,6 +27,7 @@ interface ContinuityLoopRef {
 
 interface ChatPanelProps {
   model: string
+  renderProvider: RenderProvider
   conversationId: string | null
   conversations: Conversation[]
   turns: Turn[]
@@ -42,6 +43,7 @@ interface ChatPanelProps {
 
 export function ChatPanel({
   model,
+  renderProvider,
   conversationId,
   conversations,
   turns,
@@ -111,7 +113,13 @@ export function ChatPanel({
 
     try {
       await streamChat(
-        { message: text, conversation_id: targetConversationId || undefined, model, voice_profile: voiceProfile },
+        {
+          message: text,
+          conversation_id: targetConversationId || undefined,
+          model,
+          voice_profile: voiceProfile,
+          render_provider: renderProvider,
+        },
         {
           onTurn: ({ turn_id, conversation_id }) => {
             setPendingTurn(turn_id)
@@ -322,10 +330,14 @@ export function ChatPanel({
       <div className="model-strip">
         <div>
           <BrainCircuit size={16} />
-          <span>{model}</span>
+          <span>{renderProvider === 'grok_build' ? 'Grok 4.5 · hosted wording' : model}</span>
         </div>
         <div className={`strength-indicator ${showStronger ? 'needs' : ''}`}>
-          {showStronger ? 'Needs stronger model' : 'Locally answerable'}
+          {showStronger
+            ? 'Needs stronger model'
+            : renderProvider === 'grok_build'
+              ? 'Aether governed'
+              : 'Locally answerable'}
         </div>
       </div>
       <div
@@ -404,7 +416,7 @@ export function ChatPanel({
             <div className="user-message">{turn.user_message}</div>
             <div className="assistant-message">
               <div className="assistant-head">
-                <div className="assistant-label"><span className="tiny-mark">Æ</span> Local answer</div>
+                <div className="assistant-label"><span className="tiny-mark">Æ</span> {answerProviderLabel(turn)}</div>
                 <div className="assistant-actions">
                   <button
                     className="turn-thinking-button"
@@ -450,7 +462,7 @@ export function ChatPanel({
                 />
               ) : null}
               <div className="answer-meta">
-                <span>Local</span><span>Governed</span><span>{completionCheckLabel(
+                <span>{turn.render_provider?.effective === 'grok_build' ? 'Grok 4.5' : 'Local'}</span><span>Governed</span><span>{completionCheckLabel(
                   trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id],
                   turn.completion_verification,
                 )}</span>
@@ -462,7 +474,7 @@ export function ChatPanel({
           <div className="turn">
             <div className="user-message">{pendingUser}</div>
             <div className="assistant-message streaming">
-              <div className="assistant-label"><LoaderCircle className="spin" size={14} /> Governing response</div>
+              <div className="assistant-label"><LoaderCircle className="spin" size={14} /> Governing {renderProvider === 'grok_build' ? 'hosted ' : ''}response</div>
               {governanceSteps.length ? (
                 <div className="governance-live-trace" aria-label="Live governance trace">
                   {governanceSteps.map((step) => (
@@ -520,12 +532,18 @@ export function ChatPanel({
           <ArrowUp size={17} />
         </button>
         <div className="composer-foot">
-          <span><span className="status-dot" /> Aether governs context before inference</span>
+          <span><span className="status-dot" /> Aether governs context before {renderProvider === 'grok_build' ? 'hosted ' : ''}inference</span>
           <span>Enter to send</span>
         </div>
       </form>
     </main>
   )
+}
+
+function answerProviderLabel(turn: Turn) {
+  if (turn.render_provider?.effective === 'grok_build') return 'Hosted Grok answer'
+  if (turn.render_provider?.fallback_applied) return 'Local fallback answer'
+  return 'Local answer'
 }
 
 function ConversationAlignmentChip({

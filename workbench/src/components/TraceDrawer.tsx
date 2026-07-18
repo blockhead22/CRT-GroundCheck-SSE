@@ -707,6 +707,8 @@ function formatRouteValue(value: string) {
 
 function responseRoute(trace: Trace) {
   const generationModel = trace.completion?.generation_model || trace.generation_model || trace.model
+  const renderProvider = trace.completion?.render_provider
+  const hostedWording = renderProvider?.effective === 'grok_build'
   const guidanceKind = trace.completion?.guidance_kind || trace.character_answer?.kind || ''
   const source = trace.completion?.source || trace.meta_answer?.source || trace.direct_answer?.source
     || trace.self_description_answer?.source || trace.character_answer?.source || 'local_generation'
@@ -718,14 +720,20 @@ function responseRoute(trace: Trace) {
         ? 'repaired'
         : 'clean'
   return [
-    { label: 'Source', value: source.replaceAll('_', ' ') },
+    { label: 'Source', value: hostedWording ? 'Aether governed' : source.replaceAll('_', ' ') },
     { label: 'Selected', value: trace.model },
     { label: 'Generated', value: generationModel },
+    hostedWording ? { label: 'Provider', value: 'Grok hosted wording' } : null,
+    renderProvider?.fallback_applied ? { label: 'Provider', value: 'Local fallback' } : null,
     guidanceKind ? { label: 'Guidance', value: guidanceKind.replaceAll('_', ' ') } : null,
     repair ? { label: 'Repair', value: repair } : null,
     trace.completion ? {
       label: 'Boundary',
-      value: trace.completion.needs_stronger_model ? 'needs stronger model' : 'local ok',
+      value: trace.completion.needs_stronger_model
+        ? 'needs stronger model'
+        : hostedWording
+          ? 'Aether verified'
+          : 'local ok',
     } : null,
   ].filter((item): item is { label: string; value: string } => Boolean(item))
 }

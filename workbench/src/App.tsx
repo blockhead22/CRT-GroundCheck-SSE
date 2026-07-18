@@ -11,15 +11,21 @@ import { ReflectionDrawer } from './components/ReflectionDrawer'
 import { SettingsPopover } from './components/SettingsPopover'
 import { SupportPatternDrawer } from './components/SupportPatternDrawer'
 import { TraceDrawer } from './components/TraceDrawer'
-import type { Conversation, Health, ModelInfo, PatchApplyReceipt, ReviewDraftHandoff, Trace, Turn } from './types'
+import type { Conversation, Health, ModelInfo, PatchApplyReceipt, RenderProvider, ReviewDraftHandoff, Trace, Turn } from './types'
 import './styles.css'
 
 type Drawer = 'trace' | 'memory' | 'reflect' | 'support' | 'learn' | null
+const RENDER_PROVIDER_STORAGE_KEY = 'aether.renderProvider'
 
 export default function App() {
   const [health, setHealth] = useState<Health | null>(null)
   const [models, setModels] = useState<ModelInfo[]>([])
   const [model, setModel] = useState('qwen3:14b')
+  const [renderProvider, setRenderProvider] = useState<RenderProvider>(() => (
+    localStorage.getItem(RENDER_PROVIDER_STORAGE_KEY) === 'grok_build'
+      ? 'grok_build'
+      : 'local'
+  ))
   const [conversationId, setConversationId] = useState<string | null>(() => localStorage.getItem('aether.currentConversation'))
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [turns, setTurns] = useState<Turn[]>([])
@@ -34,6 +40,10 @@ export default function App() {
   const [memoryDraftHandoff, setMemoryDraftHandoff] = useState<ReviewDraftHandoff | null>(null)
   const [supportDraftHandoff, setSupportDraftHandoff] = useState<ReviewDraftHandoff | null>(null)
   const [reflectionDraftHandoff, setReflectionDraftHandoff] = useState<ReviewDraftHandoff | null>(null)
+
+  useEffect(() => {
+    localStorage.setItem(RENDER_PROVIDER_STORAGE_KEY, renderProvider)
+  }, [renderProvider])
 
   useEffect(() => {
     Promise.allSettled([api.health(), api.models(), api.conversations()]).then(([healthResult, modelsResult, conversationsResult]) => {
@@ -160,10 +170,12 @@ export default function App() {
             health={health}
             models={models}
             model={model}
+            renderProvider={renderProvider}
             pinned={pinned}
             floating={floating}
             trace={trace}
             onModel={setModel}
+            onRenderProvider={setRenderProvider}
             onPinned={(value) => {
               setPinned(value)
               void window.aetherDesktop?.setAlwaysOnTop(value)
@@ -176,6 +188,7 @@ export default function App() {
         ) : null}
         <ChatPanel
           model={model}
+          renderProvider={renderProvider}
           conversationId={conversationId}
           conversations={conversations}
           turns={turns}
