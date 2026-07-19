@@ -175,3 +175,8 @@ training_data/chat_logs/
 # Tool/vendor/generated folders
 /tools/Rufus/
 /tools/tts_lab_output/
+
+# Nested repos / external vendor worktrees managed outside the root repo.
+/aether-core/
+/labs/mempalace_lab/mempalace/
+/labs/global_workspace_probe_lab/vendor/
