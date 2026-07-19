@@ -129,6 +129,7 @@ labs/**/results/
 belief_variance_experiment/results/
 compression_lab/*results*.json
 compression_lab/*.log
+papers/**/output/
 
 # Generated stress-test artifacts
 artifacts/*.jsonl
