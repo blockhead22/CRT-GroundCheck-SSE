@@ -102,6 +102,7 @@ test_*.py
 
 # Databases and local runtime state
 *.db
+*.db.wipe_backup*
 *.db-journal
 *.db-shm
 *.db-wal
@@ -129,7 +130,14 @@ labs/**/results/
 belief_variance_experiment/results/
 compression_lab/*results*.json
 compression_lab/*.log
+compression_lab/*.pkl
+compression_lab/vectors*.npy
+compression_lab/vectors*_meta.json
 papers/**/output/
+labs/global_workspace_probe_lab/jlens_runs/
+/workspace/uploads/
+/workspace/*.txt
+/workspace/plan_*.json
 
 # Generated stress-test artifacts
 artifacts/*.jsonl
