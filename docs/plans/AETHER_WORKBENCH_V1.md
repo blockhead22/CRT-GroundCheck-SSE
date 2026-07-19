@@ -84,9 +84,9 @@ Current local-router / trace references:
 
 ```text
 D:\AI_round2\docs\plans\AETHER_DURABLE_THINKING_TRACE_REQUIREMENT_2026-06-29.md
-D:\AI_round2\local-router-replay-v0-report-2026-06-28.md
-D:\AI_round2\aether-local-router-v0-notes-2026-06-28.md
-D:\AI_round2\aether-local-router-cli-v0-notes-2026-06-28.md
+D:\AI_round2\docs\archive\local-router-lab-2026-06\local-router-replay-v0-report-2026-06-28.md
+D:\AI_round2\docs\archive\local-router-lab-2026-06\aether-local-router-v0-notes-2026-06-28.md
+D:\AI_round2\docs\archive\local-router-lab-2026-06\aether-local-router-cli-v0-notes-2026-06-28.md
 ```
 
 Adjacent active lane:

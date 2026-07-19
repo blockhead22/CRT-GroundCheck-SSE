@@ -2081,7 +2081,7 @@ Read [](file:///d%3A/AI_round2/routes)
 
 Read [](file:///d%3A/AI_round2/personal_agent)
 
-Read [](file:///d%3A/AI_round2/future_ideas.md)
+Read [](file:///d%3A/AI_round2/docs/archive/root-notes-2026/future_ideas.md)
 
 Read [](file:///d%3A/groundcheck/README.md#1-1), lines 1 to 80
 
@@ -2139,7 +2139,7 @@ Read [](file:///i%3A/Ai%20Move%20later/CRT/CRT/core)
 
 Read [](file:///c%3A/Users/block/AppData/Roaming/Code/User/workspaceStorage/583abcec10a968785ef96779dd2f662e/GitHub.copilot-chat/chat-session-resources/0d54adee-bda1-4f38-aba0-04144f4419d0/toolu_vrtx_01TB3aEuuQmxUtBwD8sc6BAm__vscode-1771166634523/content.txt)
 
-Read [](file:///d%3A/AI_round2/future_ideas.md)
+Read [](file:///d%3A/AI_round2/docs/archive/root-notes-2026/future_ideas.md)
 
 Now I have the full picture. Here's your strategic assessment.
 

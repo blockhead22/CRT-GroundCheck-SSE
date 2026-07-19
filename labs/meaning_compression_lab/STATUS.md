@@ -67,7 +67,7 @@ Temporal RAG wins: Mistral
 - Core sidecar tests: 104 passed.
 - Traces now expose mirus_migration_summary + belief_map_preview at top level; public governance steps surface held/anchor/var (e.g. on exact 'matters to me': held=2 anchors=2 var~0.45).
 - Full harness TestClient flow exercised on exact prompts.
-- See aether-core/aether/sidecar/MIGRATION.md and grok_roadmap.md.
+- See aether-core/aether/sidecar/MIGRATION.md and docs/archive/grok-research-2026-07/grok_roadmap.md.
 ```
 
 This remains preliminary because it uses the current hand-authored case pack.

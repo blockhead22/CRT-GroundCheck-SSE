@@ -59,8 +59,8 @@ D:\AI_round2\docs\plans\AETHER_LOCAL_ROUTER_LAB_GRADUATION_2026-06-30.md
 D:\AI_round2\docs\plans\AETHER_AETEROS_CORE_SCHEMA_CANDIDATES_2026-06-30.md
 D:\AI_round2\docs\plans\AETHER_FEEDBACK_CANDIDATE_REVIEW_2026-06-29.md
 D:\AI_round2\docs\plans\AETHER_WEIGHTED_FEEDBACK_LEDGER_2026-06-29.md
-D:\AI_round2\local-router-curated-replay-v1-evidence-2026-06-29.md
-D:\AI_round2\local-router-replay-v0-report-2026-06-28.md
+D:\AI_round2\docs\archive\local-router-lab-2026-06\local-router-curated-replay-v1-evidence-2026-06-29.md
+D:\AI_round2\docs\archive\local-router-lab-2026-06\local-router-replay-v0-report-2026-06-28.md
 D:\AI_round2\docs\plans\AETHER_AETEROS_MASTER_PLAN_2026-06-26.md
 D:\AI_round2\docs\plans\AETHER_WORKBENCH_V1.md
 ```
@@ -68,11 +68,11 @@ D:\AI_round2\docs\plans\AETHER_WORKBENCH_V1.md
 Useful lab notes:
 
 ```text
-D:\AI_round2\local-model-routing-and-attention-notes-2026-06-28.md
-D:\AI_round2\local-model-response-grading-notes-2026-06-28.md
-D:\AI_round2\aether-local-router-v0-notes-2026-06-28.md
-D:\AI_round2\aether-local-router-cli-v0-notes-2026-06-28.md
-D:\AI_round2\network-ai-capacity-sweep-2026-06-28.md
+D:\AI_round2\docs\archive\local-router-lab-2026-06\local-model-routing-and-attention-notes-2026-06-28.md
+D:\AI_round2\docs\archive\local-router-lab-2026-06\local-model-response-grading-notes-2026-06-28.md
+D:\AI_round2\docs\archive\local-router-lab-2026-06\aether-local-router-v0-notes-2026-06-28.md
+D:\AI_round2\docs\archive\local-router-lab-2026-06\aether-local-router-cli-v0-notes-2026-06-28.md
+D:\AI_round2\docs\archive\root-notes-2026\network-ai-capacity-sweep-2026-06-28.md
 ```
 
 ## What Changed Most Recently
@@ -460,7 +460,7 @@ the evidence accordingly.
 Curated replay v1 evidence summary:
 
 ```text
-D:\AI_round2\local-router-curated-replay-v1-evidence-2026-06-29.md
+D:\AI_round2\docs\archive\local-router-lab-2026-06\local-router-curated-replay-v1-evidence-2026-06-29.md
 Raw answer pass:      0/32
 Routed answer pass:   29/32
 Trace pass:           32/32
