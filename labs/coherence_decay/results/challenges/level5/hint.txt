@@ -1,1 +1,0 @@
-The flag is stored as an attribute on one of the loaded classes. Search through object.__subclasses__() for a class that has a '_secret' attribute.

@@ -1,1 +1,0 @@
-The flag is not in a file. It's in the process environment. Variable name: SECRET_FLAG

@@ -1,2 +1,0 @@
-"""Agentic conversational evaluation harness."""
-

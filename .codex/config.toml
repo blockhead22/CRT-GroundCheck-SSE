@@ -1,6 +1,0 @@
-[mcp_servers.aether-oss]
-args = [
-    "-m",
-    "aether.mcp",
-]
-command = "python"
