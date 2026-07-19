@@ -55,6 +55,7 @@ D:\AI_round2\docs\plans\AETHER_FEEDBACK_CANDIDATE_REVIEW_2026-06-29.md
 D:\AI_round2\docs\plans\AETHER_WEIGHTED_FEEDBACK_LEDGER_2026-06-29.md
 D:\AI_round2\docs\plans\AETHER_AETEROS_MASTER_PLAN_2026-06-26.md
 D:\AI_round2\docs\plans\AETHER_WORKBENCH_V1.md
+D:\AI_round2\docs\plans\AETHER_REPO_CLEANUP_2026-07-19.md
 ```
 
 ## Current Decision
