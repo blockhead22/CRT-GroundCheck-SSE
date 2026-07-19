@@ -56,6 +56,6 @@
 
 ## Files
 
-- Raw metrics: `benchmark_results/benchmark_20260216_083610_raw.json`
+- Raw metrics: `docs/archive/vilt-benchmark-results-2026-02/benchmark_20260216_083610_raw.json`
 - Profile data: `data/vilt_facts_*.json`, `data/vilt_test_queries_*.json`
 - Model checkpoints: `models/vilt_qwen2.5-3b_*/`

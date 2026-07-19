@@ -69,6 +69,7 @@ data/browser_profile/
 *.err
 *.tmp
 *.cache
+/adapter_logs/
 .tmp/
 .tmp_debug/
 ai_logs/
@@ -117,6 +118,7 @@ demo_facts.db
 # Generated eval/lab outputs
 /artifacts/
 /data/
+/benchmark_results/
 output_index/
 eval_results_smoke/
 eval_results*/
