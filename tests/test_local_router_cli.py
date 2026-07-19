@@ -161,9 +161,15 @@ def test_personal_synthesis_allows_grounded_identity_claim_with_concrete_receipt
 def test_run_cli_request_accepts_injected_call_ollama(monkeypatch):
     def fake_call_ollama(prompt: str, model: str, timeout: int) -> str:
         return (
-            "Receipts: local CRT and Aether. Pattern: a measurable low-cost business direction. "
-            "Limits: this is not guaranteed and not frontier capability. "
-            "Next Useful Move: use a verifier and evals to compare raw and scaffolded responses."
+            "Local CRT and Aether give the grant direction a measurable low-cost business frame. "
+            "What matters is that an AI request router can choose a local model, "
+            "apply a scaffold, and then use a verifier to compare raw and scaffolded responses. "
+            "This is bounded and not a frontier capability, so it should be framed as "
+            "support for governance, traceability, and review discipline, not as autonomous truth. "
+            "It is also a recurring thread in the roadmap: local-first AI gets more useful when "
+            "memory, routing, and review are visible. "
+            "The next useful move is to package the evals, receipt checks, and repair/fallback trace as "
+            "a small grant-ready research note."
         )
 
     monkeypatch.setattr(
@@ -178,7 +184,8 @@ def test_run_cli_request_accepts_injected_call_ollama(monkeypatch):
 
     assert out["route"]["task_type"] == "grant_business"
     assert out["judgment"]["passed"] is True
-    assert out["answer"].startswith("Receipts:")
+    assert "Local CRT and Aether" in out["answer"]
+    assert "AI request router" in out["answer"]
     assert out["trace"]["trace_schema"] == "aether.local_router.trace.v0"
     assert out["trace_judgment"]["passed"] is True
     assert out["trace"]["raw_chain_of_thought_stored"] is False

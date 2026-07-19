@@ -168,7 +168,7 @@ test('renders clause-level governance decisions', () => {
   expect(within(depth).getByText('answer too short for requested depth')).toBeInTheDocument()
 })
 
-test('labels hosted wording without claiming local generation authority', () => {
+test('labels hosted governed rendering without claiming local generation authority', () => {
   render(<TraceDrawer trace={{
     ...trace,
     generation_model: 'grok-4.5',
@@ -185,7 +185,7 @@ test('labels hosted wording without claiming local generation authority', () => 
       tools_allowed: false,
       writes_allowed: false,
       authority: 'aether',
-      role: 'wording_only',
+      role: 'governed_renderer',
     },
     completion: {
       ...trace.completion,
@@ -198,15 +198,15 @@ test('labels hosted wording without claiming local generation authority', () => 
         model: 'grok-4.5',
         status: 'rendered',
         authority: 'aether',
-        role: 'wording_only',
+        role: 'governed_renderer',
       },
     },
   }} />)
 
   const route = screen.getByLabelText('Response route')
   expect(within(route).getByText('Aether governed')).toBeInTheDocument()
-  expect(within(route).getByText('Grok hosted wording')).toBeInTheDocument()
-  expect(within(route).getByText('Aether verified')).toBeInTheDocument()
+  expect(within(route).getByText('Grok governed renderer')).toBeInTheDocument()
+  expect(within(route).getByText('Aether accepted · partial checks')).toBeInTheDocument()
   expect(within(route).queryByText('local generation')).not.toBeInTheDocument()
 })
 
@@ -374,6 +374,33 @@ test('renders a continuity receipt without ordinary planner packets', () => {
       public: true,
       raw_chain_of_thought: false,
     }],
+    task_continuation_packet: {
+      schema: 'aether.task_continuation_packet.v0',
+      requested: true,
+      status: 'selected',
+      request_kind: 'resume',
+      project_root: 'D:\\synthetic',
+      pending_steps: [],
+      completed_steps: [],
+      deferred_steps: [],
+      selected_loop_id: 'continuity_loop_fixture',
+      next_action: 'Resume the synthetic index review.',
+      next_action_authorized: true,
+      automatic_execution_allowed: false,
+      workspace_tool_use_allowed: false,
+      durable_writes_allowed: false,
+      profile_memory_write_allowed: false,
+    },
+    task_continuation_receipt: {
+      schema: 'aether.task_continuation_receipt.v0',
+      status: 'selected',
+      selected_loop_id: 'continuity_loop_fixture',
+      next_action_authorized: true,
+      automatic_execution_allowed: false,
+      workspace_tool_use_allowed: false,
+      durable_write_count: 0,
+      profile_memory_write_count: 0,
+    },
     completion: {
       source: 'aether_continuity',
       needs_stronger_model: false,
@@ -402,6 +429,11 @@ test('renders a continuity receipt without ordinary planner packets', () => {
 
   expect(screen.getByLabelText('Completion verification')).toBeInTheDocument()
   expect(screen.getByText('Open next step')).toBeInTheDocument()
+  const taskReceipt = screen.getByLabelText('Task continuation receipt')
+  expect(within(taskReceipt).getByText('continuity_loop_fixture')).toBeInTheDocument()
+  expect(within(taskReceipt).getByText('Resume the synthetic index review.')).toBeInTheDocument()
+  expect(within(taskReceipt).getAllByText('blocked')).toHaveLength(2)
+  expect(within(taskReceipt).getAllByText('0')).toHaveLength(2)
   expect(screen.getByText('not applicable')).toBeInTheDocument()
   expect(screen.queryByText('No resolved slot')).not.toBeInTheDocument()
 })

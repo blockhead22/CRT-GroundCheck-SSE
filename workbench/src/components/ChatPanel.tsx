@@ -330,7 +330,7 @@ export function ChatPanel({
       <div className="model-strip">
         <div>
           <BrainCircuit size={16} />
-          <span>{renderProvider === 'grok_build' ? 'Grok 4.5 · hosted wording' : model}</span>
+          <span>{renderProvider === 'grok_build' ? 'Grok 4.5 · governed renderer' : model}</span>
         </div>
         <div className={`strength-indicator ${showStronger ? 'needs' : ''}`}>
           {showStronger
@@ -809,8 +809,9 @@ function AnswerThinkingTrace({
 function completionCheckLabel(trace?: Trace, persistedVerification?: Turn['completion_verification']) {
   const verification = trace?.completion?.verification_summary || persistedVerification
   if (!verification) return 'Checks unavailable'
+  if (!verification.accepted) return 'Rejected by checks'
   if (verification.failed_dimension_count > 0) {
-    return `Checks flagged ${verification.failed_dimension_count}`
+    return `Checked ${verification.checked_dimension_count}/${verification.applicable_dimension_count} · ${verification.failed_dimension_count} advisory`
   }
   if (!verification.fully_verified) {
     return `Checked ${verification.checked_dimension_count}/${verification.applicable_dimension_count}`

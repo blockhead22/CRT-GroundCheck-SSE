@@ -85,6 +85,123 @@ intent/task classification
 
 ## Latest Implementation State
 
+Generative governance spike:
+
+```text
+D:\AI_round2\labs\meaning_compression_lab\generative_governance_spike.py
+D:\AI_round2\labs\meaning_compression_lab\generative_governance_render_compare.py
+D:\AI_round2\labs\meaning_compression_lab\generative_governance_trace_memory.py
+D:\AI_round2\labs\meaning_compression_lab\generative_governance_live_renderer.py
+D:\AI_round2\tests\test_generative_governance_spike.py
+D:\AI_round2\tests\test_generative_governance_render_compare.py
+D:\AI_round2\tests\test_generative_governance_trace_memory.py
+D:\AI_round2\tests\test_generative_governance_live_renderer.py
+D:\AI_round2\labs\meaning_compression_lab\results\generative_governance_spike_latest.json
+D:\AI_round2\labs\meaning_compression_lab\results\generative_governance_render_compare_latest.json
+D:\AI_round2\labs\meaning_compression_lab\results\generative_governance_trace_memory_latest.json
+D:\AI_round2\labs\meaning_compression_lab\results\generative_governance_live_renderer_scripted_latest.json
+D:\AI_round2\labs\meaning_compression_lab\results\generative_governance_live_renderer_qwen25_7b_latest.json
+D:\AI_round2\labs\meaning_compression_lab\results\generative_governance_live_renderer_expanded_scripted_latest.json
+D:\AI_round2\labs\meaning_compression_lab\results\generative_governance_live_renderer_expanded_qwen25_7b_latest.json
+D:\AI_round2\labs\meaning_compression_lab\results\generative_governance_live_renderer_expanded_qwen3_14b_nothink_latest.json
+```
+
+This is a lab-only Mirus-before-Holden spike. It generates a clear-text
+governance state before model rendering:
+
+```text
+intent
+evidence_state
+answerability
+USER_SELF vs AETHER_SELF boundary
+allowed claims
+blocked claims
+response spine
+governance-only boundary answer
+model_render_needed
+review candidates
+vectorizable_trace_text
+```
+
+Result:
+
+```text
+5/5 spike cases passed.
+5/5 render-comparison cases passed.
+5/5 trace-memory holdout cases passed.
+5/5 scripted live-renderer harness cases passed.
+5/5 qwen2.5:7b-instruct live-renderer cases passed.
+24/24 expanded scripted live-renderer cases passed.
+24/24 expanded qwen2.5:7b-instruct live-renderer cases passed.
+24/24 expanded qwen3:14b / no_think live-renderer cases passed.
+governance_only won weak-evidence and memory-conflict boundary cases.
+governance_plus_model won grounded personal synthesis, architecture synthesis,
+and business-planning cases.
+model_only failed the weak personal-synthesis boundary through unsupported
+identity/founder drift.
+trace memory retrieved matching prior governance situations and chose:
+2 governance_only boundary decisions, 3 governance_plus_model render decisions.
+qwen2.5 live smoke: governed path passed 5/5, model-only passed 3/5,
+governed won/tied 5/5, and governance avoided 2 model calls for boundary cases.
+expanded qwen2.5: governed path passed 24/24, model-only passed 8/24,
+governed won/tied 23/24, used 1 repair, and avoided 6 model calls.
+expanded qwen3/no_think: governed path passed 24/24, model-only passed 9/24,
+governed won/tied 23/24, used 1 repair, and avoided 6 model calls.
+No memory, support-pattern, reflection, policy, or Workbench writes.
+raw_chain_of_thought_stored=false.
+```
+
+Interpretation:
+
+```text
+This supports the "generative governance" direction in a narrow sense:
+governance can generate meaning structure and some boundary answers before
+Holden/model rendering. The comparison adds the useful split: governance-only
+is strongest for boundary/conflict answers, while governance+model is strongest
+for rich synthesis. It does not prove that governance replaces the model for
+rich synthesis.
+
+The trace-memory companion adds the first bounded version of "Mirus remembers
+its own governance shape." It vectorizes only public/clear governance trace
+text, intent, evidence state, answerability, render-needed, and review
+candidate features. It retrieved prior boundary/conflict/rich-synthesis
+situations and used them to choose whether governance answers directly or
+Holden/model rendering should be used. This is not neural learning yet, does
+not write memory, and does not justify Core extraction yet.
+
+The live-renderer companion adds the first local model smoke. It compares raw
+model-only qwen2.5 output against a trace-memory-governed path. The governed
+path does not call the model for insufficient-evidence or memory-conflict
+boundary cases; for grounded/rich cases it supplies Holden/model rendering
+with intent, receipts, blocked claims, and response spine. On the five-case
+smoke, qwen2.5 model-only failed the two risky boundary cases while the
+governed path passed all five.
+
+The expanded live-renderer companion now covers 24 cases across weak personal
+receipts, memory conflicts, grounded personal synthesis, architecture,
+business, and grant/business framing. Both qwen2.5:7b-instruct and
+qwen3:14b/no_think passed 24/24 through the governed path. The raw model-only
+baseline passed 8/24 on qwen2.5 and 9/24 on qwen3. The governed path avoided
+six model calls by answering weak-evidence/conflict cases directly and used one
+verifier-guided public repair in each local-model run. This is stronger than
+the five-case smoke, but still lab-only and not product wiring.
+```
+
+Verification:
+
+```text
+python -m pytest tests\test_generative_governance_spike.py tests\test_generative_governance_render_compare.py tests\test_generative_governance_trace_memory.py tests\test_generative_governance_live_renderer.py tests\test_generative_governance_lab.py tests\test_local_router_cli.py -q
+50 passed
+python -m py_compile labs\meaning_compression_lab\generative_governance_spike.py labs\meaning_compression_lab\generative_governance_render_compare.py labs\meaning_compression_lab\generative_governance_trace_memory.py labs\meaning_compression_lab\generative_governance_live_renderer.py
+passed
+python -m labs.meaning_compression_lab.generative_governance_live_renderer --live-ollama --model qwen2.5:7b-instruct --timeout 120 --out labs\meaning_compression_lab\results\generative_governance_live_renderer_qwen25_7b_latest.json
+passed
+python -m labs.meaning_compression_lab.generative_governance_live_renderer --case-set expanded --live-ollama --model qwen2.5:7b-instruct --timeout 120 --out labs\meaning_compression_lab\results\generative_governance_live_renderer_expanded_qwen25_7b_latest.json
+passed
+python -m labs.meaning_compression_lab.generative_governance_live_renderer --case-set expanded --live-ollama --model qwen3:14b --disable-thinking --num-predict 420 --timeout 240 --out labs\meaning_compression_lab\results\generative_governance_live_renderer_expanded_qwen3_14b_nothink_latest.json
+passed
+```
+
 Governed synthesis side-roadmap:
 
 ```text

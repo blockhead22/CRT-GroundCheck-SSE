@@ -84,11 +84,84 @@ revealed pack 96/96 with zero unsafe accepts while retaining 24/24 benign
 accepts. That is a post-reveal regression, not a second blind replication.
 Calibration, realized quarantine utility, external scenarios, and formal
 novelty remain unproven. None of this research is wired into live Aether.
+The generative-governance spike is also research-only: it shows that a Mirus-like
+governance layer can generate clear-text meaning structure, boundary answers,
+and vectorizable trace text before Holden/model rendering. Its companion
+render-comparison lab shows the expected split: governance-only wins
+weak-evidence and memory-conflict boundary cases, while governance+model wins
+rich synthesis cases. The trace-memory companion adds a small deterministic
+retrieval substrate over public governance traces and chooses the same split on
+holdout cases: governance answers boundary/conflict cases, while Holden/model
+renders grounded synthesis. A first local qwen2.5 live-renderer smoke passed
+5/5 through the governed path versus 3/5 model-only, with governance avoiding
+two model calls for boundary/conflict cases. The expanded 24-case local pack
+now passes through the governed path on both qwen2.5:7b-instruct and
+qwen3:14b/no_think; model-only passes 8/24 and 9/24 respectively. The governed
+path avoids six model calls and uses one public verifier-guided repair in each
+run. This does not change the active product gate.
 
 The dated restart and evidence map is
 `docs/plans/AETHER_PRODUCT_RESEARCH_HANDOFF_2026-07-18.md`. Resume the product
 lane from the governed cross-conversation task/open-loop continuation gate; do
 not reopen research merely because an optional experiment remains unfinished.
+
+### Task-continuation slice 1 checkpoint - 2026-07-18
+
+The cross-conversation plus hosted-renderer implementation was revalidated and
+checkpointed as nested commit `28b46df` and root commit `964170417`. Frozen
+evaluation artifacts were not changed. During live checkpoint dogfood, Electron
+crashed when sidecar log forwarding wrote to a closed parent pipe. EPIPE
+containment was added and the repaired local turn rehydrated `Verified 5/5`
+with zero memory writes.
+
+The first explicit `TaskContinuationPacket` seam is now implemented. A live
+`/resume` may select a next conversational action only when exactly one durable
+`user_explicit` or `review_confirmed` open loop exists for the current project.
+Archived discussion, assistant output, non-resume commands, and ambiguous open
+loops cannot grant that authority. Automatic execution, workspace tools,
+profile memory, and all durable writes remain blocked.
+
+Focused and adjacent backend validation passed `152` tests; post-trace-fix
+focused tests passed `11`; the focused Workbench trace suite passed `21`; and
+the production build passed. Final isolated Workbench turn
+`turn_6a6fe54f3559` in conversation `conv_34a85a4adeac` selected explicit loop
+`continuity_loop_c205aa93ec2b`, recorded zero memory writes and zero tool runs,
+and showed no public step left in progress. The packet and receipt survived a
+sidecar/Electron restart and reopened UI state.
+
+This does not close the continuity gate. Workbench still needs an explicit
+revision-bound choice when multiple loops are open. Structured artifacts and
+active/revoked constraints need explicit sources rather than inference, and a
+separately frozen 30-40 case multi-thread task-state pack is still required.
+The local Continuity renderer also fell back deterministically after a
+`missing_atom_render` finding; the accepted turn honestly remained `Checked
+3/4`, while the separate task-authority receipt was exact. Full evidence and
+limitations are in
+`artifacts/aether-task-continuation-slice-1/RESULTS_2026-07-18.md`.
+
+### Governed hosted-renderer gate - 2026-07-18
+
+Grok 4.5 through Grok Build now passes the controlled renderer gate. The
+effective provider, model, maker, and authority boundary are recorded in an
+authoritative runtime identity receipt. Model output is buffered until Aether
+completion verification; a rejected draft is not streamed or persisted as the
+public answer. Workbench now distinguishes a Grok governed renderer from the
+governing Aether system and distinguishes accepted partial checks from fully
+verified receipt-derived claims.
+
+The frozen local/Grok API comparison, live isolated Workbench dogfood, and
+sidecar restart/rehydration all passed with zero memory writes and zero tool
+runs. Representative live turns are `turn_a86e0b3b3bc7` (semantic coverage
+Checked 4/5) and `turn_dc324d9c60c4` (runtime identity Verified 6/6) in
+conversation `conv_08f9d2aba506`. Full evidence and screenshots are in
+`artifacts/hosted-governed-renderer-gate-2026-07-18/RESULTS_2026-07-18.md`.
+
+This is a renderer choice, not a broader authority grant. Grok has no
+independent retrieval, durable-memory, tool, write, or release authority.
+Proposal-only tools and any further model control remain behind a separate
+typed-proposal, Aether-validation, explicit-approval, sandbox, and receipt
+gate. The normal product roadmap therefore returns to the open
+task-continuation items rather than expanding the hosted harness speculatively.
 
 ## Completed and Parked Work
 

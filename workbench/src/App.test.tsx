@@ -301,7 +301,8 @@ test('makes hosted rendering an explicit disclosed setting', async () => {
 
   fireEvent.change(provider, { target: { value: 'grok_build' } })
   expect(provider).toHaveValue('grok_build')
-  expect(screen.getByText(/governed answer packet is sent to Grok for wording/)).toBeInTheDocument()
+  expect(screen.getByText(/governed packet is sent to Grok for rendering/)).toBeInTheDocument()
+  expect(screen.getByText(/may contribute general knowledge for non-personal questions/)).toBeInTheDocument()
   await waitFor(() => expect(localStorage.getItem('aether.renderProvider')).toBe('grok_build'))
 })
 

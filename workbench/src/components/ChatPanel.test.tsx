@@ -195,7 +195,7 @@ beforeEach(() => {
 })
 
 describe('Continuity Resume action', () => {
-  test('sends an explicit hosted wording choice and labels rehydrated Grok output', async () => {
+  test('sends an explicit hosted renderer choice and labels rehydrated Grok output', async () => {
     renderPanel({
       renderProvider: 'grok_build',
       conversationId: 'conv-next',
@@ -207,12 +207,12 @@ describe('Continuity Resume action', () => {
           model: 'grok-4.5',
           status: 'rendered',
           authority: 'aether',
-          role: 'wording_only',
+          role: 'governed_renderer',
         },
       }],
     })
 
-    expect(screen.getByText('Grok 4.5 · hosted wording')).toBeInTheDocument()
+    expect(screen.getByText('Grok 4.5 · governed renderer')).toBeInTheDocument()
     expect(screen.getByText('Hosted Grok answer')).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Message Aether'), {
       target: { value: 'Explain this governed packet.' },

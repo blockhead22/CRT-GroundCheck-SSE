@@ -53,7 +53,7 @@ export function SettingsPopover({
       </select>
       <p className={`provider-disclosure ${renderProvider === 'grok_build' ? 'hosted' : ''}`}>
         {renderProvider === 'grok_build'
-          ? 'Your governed answer packet is sent to Grok for wording. Aether keeps retrieval, memory, writes, verification, and receipts.'
+          ? 'Your governed packet is sent to Grok for rendering. Grok may contribute general knowledge for non-personal questions; Aether keeps retrieval, durable memory, tools, writes, verification, and receipts.'
           : 'Answer wording stays on this machine through Ollama.'}
       </p>
       <button className="toggle-row" onClick={() => onPinned(!pinned)}>

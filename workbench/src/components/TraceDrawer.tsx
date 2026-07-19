@@ -322,6 +322,23 @@ export function TraceDrawer({
           ) : null}
         </article>
       ) : null}
+      {trace.task_continuation_receipt ? (
+        <article className="trace-route" aria-label="Task continuation receipt">
+          <div className="tool-run-heading">Task continuation</div>
+          <div className="route-grid">
+            <div className="route-cell"><span>Status</span><strong>{trace.task_continuation_receipt.status.replaceAll('_', ' ')}</strong></div>
+            <div className="route-cell"><span>Open loop</span><strong>{trace.task_continuation_receipt.selected_loop_id || 'none'}</strong></div>
+            <div className="route-cell"><span>Next action authorized</span><strong>{trace.task_continuation_receipt.next_action_authorized ? 'yes' : 'no'}</strong></div>
+            <div className="route-cell"><span>Automatic execution</span><strong>{trace.task_continuation_receipt.automatic_execution_allowed ? 'allowed' : 'blocked'}</strong></div>
+            <div className="route-cell"><span>Workspace tools</span><strong>{trace.task_continuation_receipt.workspace_tool_use_allowed ? 'allowed' : 'blocked'}</strong></div>
+            <div className="route-cell"><span>Durable writes</span><strong>{trace.task_continuation_receipt.durable_write_count}</strong></div>
+            <div className="route-cell"><span>Profile writes</span><strong>{trace.task_continuation_receipt.profile_memory_write_count}</strong></div>
+          </div>
+          {trace.task_continuation_packet?.next_action ? (
+            <p className="tool-output">{trace.task_continuation_packet.next_action}</p>
+          ) : null}
+        </article>
+      ) : null}
       {trace.public_governance_steps?.length ? (
         <article className="trace-route" aria-label="Public governance steps">
           <div className="tool-run-heading">Public governance steps</div>
@@ -708,7 +725,8 @@ function formatRouteValue(value: string) {
 function responseRoute(trace: Trace) {
   const generationModel = trace.completion?.generation_model || trace.generation_model || trace.model
   const renderProvider = trace.completion?.render_provider
-  const hostedWording = renderProvider?.effective === 'grok_build'
+  const hostedRenderer = renderProvider?.effective === 'grok_build'
+  const verification = trace.completion?.verification_summary
   const guidanceKind = trace.completion?.guidance_kind || trace.character_answer?.kind || ''
   const source = trace.completion?.source || trace.meta_answer?.source || trace.direct_answer?.source
     || trace.self_description_answer?.source || trace.character_answer?.source || 'local_generation'
@@ -720,10 +738,10 @@ function responseRoute(trace: Trace) {
         ? 'repaired'
         : 'clean'
   return [
-    { label: 'Source', value: hostedWording ? 'Aether governed' : source.replaceAll('_', ' ') },
+    { label: 'Source', value: hostedRenderer ? 'Aether governed' : source.replaceAll('_', ' ') },
     { label: 'Selected', value: trace.model },
     { label: 'Generated', value: generationModel },
-    hostedWording ? { label: 'Provider', value: 'Grok hosted wording' } : null,
+    hostedRenderer ? { label: 'Provider', value: 'Grok governed renderer' } : null,
     renderProvider?.fallback_applied ? { label: 'Provider', value: 'Local fallback' } : null,
     guidanceKind ? { label: 'Guidance', value: guidanceKind.replaceAll('_', ' ') } : null,
     repair ? { label: 'Repair', value: repair } : null,
@@ -731,8 +749,12 @@ function responseRoute(trace: Trace) {
       label: 'Boundary',
       value: trace.completion.needs_stronger_model
         ? 'needs stronger model'
-        : hostedWording
-          ? 'Aether verified'
+        : hostedRenderer
+          ? verification?.accepted === false
+            ? 'release rejected'
+            : verification?.fully_verified
+              ? 'Aether verified'
+              : 'Aether accepted · partial checks'
           : 'local ok',
     } : null,
   ].filter((item): item is { label: string; value: string } => Boolean(item))

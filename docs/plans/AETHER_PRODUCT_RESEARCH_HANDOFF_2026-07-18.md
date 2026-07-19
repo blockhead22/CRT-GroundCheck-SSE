@@ -82,25 +82,29 @@ open loops, changed decisions, conflicting source threads, partial/rejected
 assistant output, expired authority, current-thread exclusion, cross-profile
 isolation, response contracts, restart, and unavailable/ambiguous state.
 
-### Product worktree state
+### Product checkpoint and active worktree
 
-The current product work is not a clean checkpoint.
+The prior cross-conversation and hosted-renderer work was revalidated and
+checkpointed before task-continuation work began.
 
-- Root Workbench: 11 modified files.
-- Nested `aether-core`: 11 modified backend/test files.
-- These changes include cross-conversation verification and context work plus
-  the governed hosted-renderer path.
-- The evidence reports record prior green runs, but the exact current dirty
-  worktree was not rerun while writing this handoff.
-- The research work below did not modify production Aether or Workbench files.
+- Nested `aether-core`: `28b46df`.
+- Root Workbench/docs: `964170417`.
+- The checkpoint gate passed `152` focused/adjacent backend tests, `70`
+  Workbench tests, `26` Electron tests, and a production build across its two
+  validation stages.
+- A live Electron EPIPE crash found during dogfood was repaired before the
+  checkpoint. The repaired turn rehydrated `Verified 5/5` with zero writes.
+- Frozen product-evaluation and blind-replication artifacts were not staged or
+  modified.
 
-Before adding the task-continuation slice:
+The worktree is intentionally active again for TaskContinuationPacket slice 1.
+The first packet seam, receipt, restart proof, and Workbench trace card are
+implemented; evidence is in
+`artifacts/aether-task-continuation-slice-1/RESULTS_2026-07-18.md`.
 
-1. review the current diff;
-2. run the relevant backend, Workbench, Electron, and production-build gates;
-3. dogfood one Local and one hosted turn plus a cross-conversation retrieval;
-4. verify restart and rehydration receipts;
-5. create a deliberate checkpoint commit.
+The continuity gate remains open. Ambiguous loop selection, structured
+artifact/constraint authority, and the separately frozen 30-40 case task-state
+pack remain.
 
 ### Product work after continuity
 
@@ -116,6 +120,87 @@ Before adding the task-continuation slice:
    operability.
 
 ## Bucket 2 - Research
+
+### Generative governance spike
+
+The lab now has a narrow Mirus-before-Holden spike:
+
+- `labs/meaning_compression_lab/generative_governance_spike.py`
+- `labs/meaning_compression_lab/generative_governance_render_compare.py`
+- `labs/meaning_compression_lab/generative_governance_trace_memory.py`
+- `labs/meaning_compression_lab/generative_governance_live_renderer.py`
+- `tests/test_generative_governance_spike.py`
+- `tests/test_generative_governance_render_compare.py`
+- `tests/test_generative_governance_trace_memory.py`
+- `tests/test_generative_governance_live_renderer.py`
+- `labs/meaning_compression_lab/results/generative_governance_spike_latest.json`
+- `labs/meaning_compression_lab/results/generative_governance_render_compare_latest.json`
+- `labs/meaning_compression_lab/results/generative_governance_trace_memory_latest.json`
+- `labs/meaning_compression_lab/results/generative_governance_live_renderer_scripted_latest.json`
+- `labs/meaning_compression_lab/results/generative_governance_live_renderer_qwen25_7b_latest.json`
+- `labs/meaning_compression_lab/results/generative_governance_live_renderer_expanded_scripted_latest.json`
+- `labs/meaning_compression_lab/results/generative_governance_live_renderer_expanded_qwen25_7b_latest.json`
+- `labs/meaning_compression_lab/results/generative_governance_live_renderer_expanded_qwen3_14b_nothink_latest.json`
+
+It generates a clear-text governance state before model rendering: intent,
+evidence state, answerability, USER_SELF versus AETHER_SELF boundary,
+allowed/blocked claims, response spine, governance-only boundary answer,
+model-render-needed decision, review candidates, and vectorizable trace text.
+
+Result: 5/5 spike cases passed with no memory/support/reflection/policy writes
+and `raw_chain_of_thought_stored=false`. This supports the bounded research
+claim that governance can generate meaning structure and some boundary answers
+before Holden/model rendering. It does not prove governance replaces models for
+rich synthesis, and it should not change the active product gate.
+
+The companion render-comparison lab also passed 5/5. In that deterministic
+comparison, `governance_only` won weak-evidence and memory-conflict boundary
+cases, while `governance_plus_model` won grounded personal synthesis,
+architecture synthesis, and business-planning cases. `model_only` exposed the
+expected weak personal-synthesis drift by making unsupported identity/founder
+claims. This supports the bounded split: governance can answer or refuse first
+when the boundary is the answer, while Holden/model rendering remains useful
+for rich synthesis after governance has built the spine.
+
+The trace-memory companion also passed 5/5 holdout cases. It vectorizes only
+public/clear governance trace text plus deterministic governance features
+(`intent`, `evidence_state`, `answerability`, `model_render_needed`, review
+candidate types), retrieves similar prior Mirus/governance situations, and
+uses that retrieval to choose whether governance should answer directly or hand
+off to Holden/model rendering. The result split matched the expected shape:
+two boundary/conflict cases chose `governance_only`; three grounded/rich cases
+chose `governance_plus_model`. This is not neural learning and does not write
+memory, but it is the first concrete "Mirus remembers its own governance
+shape" artifact.
+
+The live-renderer companion passed the same five holdout cases with local
+Ollama `qwen2.5:7b-instruct`. The model-only path passed 3/5 and failed the two
+risky boundary cases. The trace-memory-governed path passed 5/5, won or tied
+model-only 5/5, and avoided two governed model calls by answering
+insufficient-evidence and memory-conflict cases directly from governance. This
+is the first real local-renderer evidence that Mirus trace memory can decide
+when Holden/model should speak and when governance should answer first. It is
+still a small smoke test, not product wiring.
+
+The expanded live-renderer pack now covers 24 cases across weak personal
+receipts, memory conflicts, grounded personal synthesis, architecture,
+business, and grant/business framing. Both local models passed through the
+governed path: qwen2.5:7b-instruct governed 24/24 versus model-only 8/24, and
+qwen3:14b/no_think governed 24/24 versus model-only 9/24. Both governed runs
+avoided six model calls by answering weak-evidence/conflict cases directly and
+used one verifier-guided public repair. qwen3 required `--disable-thinking`
+and a larger `--num-predict 420` protocol; without that, many outputs were
+blank/thin after reasoning-block stripping. This is stronger local evidence,
+but remains lab-only and should not be wired into live Aether without a
+separate product gate.
+
+Verification:
+
+- `python -m pytest tests\test_generative_governance_spike.py tests\test_generative_governance_render_compare.py tests\test_generative_governance_trace_memory.py tests\test_generative_governance_live_renderer.py tests\test_generative_governance_lab.py tests\test_local_router_cli.py -q` -> 50 passed
+- `python -m py_compile labs\meaning_compression_lab\generative_governance_spike.py labs\meaning_compression_lab\generative_governance_render_compare.py labs\meaning_compression_lab\generative_governance_trace_memory.py labs\meaning_compression_lab\generative_governance_live_renderer.py` -> passed
+- `python -m labs.meaning_compression_lab.generative_governance_live_renderer --live-ollama --model qwen2.5:7b-instruct --timeout 120 --out labs\meaning_compression_lab\results\generative_governance_live_renderer_qwen25_7b_latest.json` -> passed
+- `python -m labs.meaning_compression_lab.generative_governance_live_renderer --case-set expanded --live-ollama --model qwen2.5:7b-instruct --timeout 120 --out labs\meaning_compression_lab\results\generative_governance_live_renderer_expanded_qwen25_7b_latest.json` -> passed
+- `python -m labs.meaning_compression_lab.generative_governance_live_renderer --case-set expanded --live-ollama --model qwen3:14b --disable-thinking --num-predict 420 --timeout 240 --out labs\meaning_compression_lab\results\generative_governance_live_renderer_expanded_qwen3_14b_nothink_latest.json` -> passed
 
 ### Governed renderer choice
 
@@ -271,4 +356,3 @@ Return to Aether, not research.
 
 Do not integrate the circuit breaker, reopen broad Mirus/synthesis/J-lens work,
 or start another model comparison while this gate is active.
-

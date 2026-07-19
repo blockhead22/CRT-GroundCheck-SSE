@@ -10,7 +10,7 @@ export interface RenderProviderReceipt {
   fallback_applied?: boolean
   status?: string
   authority?: 'aether' | string
-  role?: 'wording_only' | 'none' | string
+  role?: 'governed_renderer' | 'wording_only' | 'none' | string
 }
 
 export interface Health {
@@ -95,6 +95,7 @@ export interface Trace {
     status: string
     accepted?: boolean | null
     answer_released?: boolean
+    boundary_message_released?: boolean
     source?: string
     needs_stronger_model?: boolean
     fully_verified?: boolean
@@ -122,6 +123,21 @@ export interface Trace {
     writes_allowed?: boolean
     authority?: string
     role?: string
+  }
+  runtime_model_identity?: {
+    schema?: string
+    governing_system?: string
+    effective_provider?: RenderProvider
+    provider_display?: string
+    model?: string
+    maker?: string
+    location?: 'local' | 'hosted' | string
+    invoked?: boolean
+    authority?: string
+    renderer_role?: string
+    independent_retrieval?: boolean
+    tools_allowed?: boolean
+    writes_allowed?: boolean
   }
   meta_answer?: { source?: string; intents?: Record<string, boolean> }
   direct_answer?: { source?: string; slot?: string }
@@ -172,6 +188,8 @@ export interface Trace {
     }>
   }
   continuity_alignment_receipt?: ContinuityAlignmentReceipt
+  task_continuation_packet?: TaskContinuationPacket
+  task_continuation_receipt?: TaskContinuationReceipt
   mirus_governed_discovery?: MirusGovernedDiscovery | null
   completion?: {
     source?: string
@@ -187,6 +205,17 @@ export interface Trace {
     character_critic_repair?: CharacterCriticRepair
     depth?: DepthCompletion
     continuity_alignment_receipt?: ContinuityAlignmentReceipt
+    task_continuation_receipt?: TaskContinuationReceipt
+    answer_released?: boolean
+    boundary_message_released?: boolean
+    public_answer?: string
+    rejected_source?: string
+    verification_rejection?: {
+      schema?: string
+      failed_dimensions?: string[]
+      raw_rejected_draft_stored?: boolean
+      raw_rejected_draft_released?: boolean
+    }
   }
   depth_policy?: DepthPolicy
   plan?: {
@@ -280,6 +309,44 @@ export interface ContinuityOpenLoop {
   created_at: number
   updated_at: number
   revision_hash: string
+}
+
+export interface TaskContinuationStateItem {
+  loop_id: string
+  summary: string
+  source_type: string
+  status: string
+  revision_hash: string
+  updated_at: number
+}
+
+export interface TaskContinuationPacket {
+  schema: string
+  requested: boolean
+  status: string
+  request_kind: string
+  project_root: string
+  pending_steps: TaskContinuationStateItem[]
+  completed_steps: TaskContinuationStateItem[]
+  deferred_steps: TaskContinuationStateItem[]
+  selected_loop_id: string
+  next_action: string
+  next_action_authorized: boolean
+  automatic_execution_allowed: boolean
+  workspace_tool_use_allowed: boolean
+  durable_writes_allowed: boolean
+  profile_memory_write_allowed: boolean
+}
+
+export interface TaskContinuationReceipt {
+  schema: string
+  status: string
+  selected_loop_id: string
+  next_action_authorized: boolean
+  automatic_execution_allowed: boolean
+  workspace_tool_use_allowed: boolean
+  durable_write_count: number
+  profile_memory_write_count: number
 }
 
 export interface CharacterCriticFinding {
@@ -436,6 +503,7 @@ export interface CompletionVerification {
   checked_dimension_count: number
   passed_dimension_count: number
   failed_dimension_count: number
+  release_blocking_failed_dimension_count?: number
   not_checked_dimension_count: number
   dimensions: Record<string, CompletionVerificationDimension>
   raw_chain_of_thought_stored: boolean
