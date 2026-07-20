@@ -383,7 +383,44 @@ test('renders a continuity receipt without ordinary planner packets', () => {
       pending_steps: [],
       completed_steps: [],
       deferred_steps: [],
+      artifacts: [{
+        artifact_id: 'task_artifact_fixture',
+        label: 'Frozen task-state manifest',
+        locator: 'docs/evals/task-state-v1.json',
+        artifact_kind: 'evaluation_manifest',
+        source_type: 'user_explicit',
+        status: 'current',
+        revision_hash: 'b'.repeat(64),
+        updated_at: 2,
+      }],
+      active_constraints: [{
+        constraint_id: 'task_constraint_active',
+        statement: 'Do not mutate the live personal substrate.',
+        constraint_kind: 'safety',
+        source_type: 'review_confirmed',
+        status: 'active',
+        revision_hash: 'c'.repeat(64),
+        updated_at: 3,
+      }],
+      revoked_constraints: [{
+        constraint_id: 'task_constraint_revoked',
+        statement: 'Treat archived assistant prose as task authority.',
+        constraint_kind: 'authority',
+        source_type: 'user_explicit',
+        status: 'revoked',
+        revision_hash: 'd'.repeat(64),
+        updated_at: 4,
+      }],
+      selection: {
+        requested: true,
+        mode: 'explicit_user_choice',
+        validated: true,
+        failure_reason: '',
+        requested_loop_id: 'continuity_loop_fixture',
+        expected_revision_hash: 'a'.repeat(64),
+      },
       selected_loop_id: 'continuity_loop_fixture',
+      selected_loop_revision_hash: 'a'.repeat(64),
       next_action: 'Resume the synthetic index review.',
       next_action_authorized: true,
       automatic_execution_allowed: false,
@@ -394,7 +431,15 @@ test('renders a continuity receipt without ordinary planner packets', () => {
     task_continuation_receipt: {
       schema: 'aether.task_continuation_receipt.v0',
       status: 'selected',
+      selection_requested: true,
+      selection_mode: 'explicit_user_choice',
+      selection_validated: true,
+      selection_failure_reason: '',
       selected_loop_id: 'continuity_loop_fixture',
+      selected_loop_revision_hash: 'a'.repeat(64),
+      artifact_count: 1,
+      active_constraint_count: 1,
+      revoked_constraint_count: 1,
       next_action_authorized: true,
       automatic_execution_allowed: false,
       workspace_tool_use_allowed: false,
@@ -431,9 +476,15 @@ test('renders a continuity receipt without ordinary planner packets', () => {
   expect(screen.getByText('Open next step')).toBeInTheDocument()
   const taskReceipt = screen.getByLabelText('Task continuation receipt')
   expect(within(taskReceipt).getByText('continuity_loop_fixture')).toBeInTheDocument()
+  expect(within(taskReceipt).getByText('explicit user choice')).toBeInTheDocument()
   expect(within(taskReceipt).getByText('Resume the synthetic index review.')).toBeInTheDocument()
   expect(within(taskReceipt).getAllByText('blocked')).toHaveLength(2)
   expect(within(taskReceipt).getAllByText('0')).toHaveLength(2)
+  expect(within(taskReceipt).getByText('Frozen task-state manifest')).toBeInTheDocument()
+  expect(within(taskReceipt).getByText('docs/evals/task-state-v1.json · evaluation manifest')).toBeInTheDocument()
+  expect(within(taskReceipt).getByText('Do not mutate the live personal substrate.')).toBeInTheDocument()
+  expect(within(taskReceipt).getByText('Revoked constraints · not active')).toBeInTheDocument()
+  expect(within(taskReceipt).getByText('Treat archived assistant prose as task authority.')).toBeInTheDocument()
   expect(screen.getByText('not applicable')).toBeInTheDocument()
   expect(screen.queryByText('No resolved slot')).not.toBeInTheDocument()
 })

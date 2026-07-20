@@ -1,9 +1,9 @@
-import { AlertTriangle, ArrowUp, BrainCircuit, Check, CheckCircle2, CircleDashed, CircleSlash2, Clock3, Database, ExternalLink, History, LoaderCircle, Pin, Plus, ShieldCheck, Sparkles, Trash2 } from 'lucide-react'
+import { AlertTriangle, ArrowRight, ArrowUp, BrainCircuit, Check, CheckCircle2, CircleDashed, CircleSlash2, Clock3, Database, ExternalLink, History, LoaderCircle, Pin, Plus, ShieldCheck, Sparkles, Trash2 } from 'lucide-react'
 import { FormEvent, useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { api, idempotencyKey, streamChat } from '../api'
-import type { ContinuityAlignmentReceipt, Conversation, PublicGovernanceStep, RenderProvider, Trace, Turn } from '../types'
+import type { ContinuityAlignmentReceipt, Conversation, PublicGovernanceStep, RenderProvider, TaskContinuationSelection, Trace, Turn } from '../types'
 
 const VOICE_STORAGE_KEY = 'aether.voiceProfile'
 const VOICE_OPTIONS = [
@@ -102,6 +102,7 @@ export function ChatPanel({
   async function runMessage(
     text: string,
     targetConversationId: string | null = conversationId,
+    taskSelection?: TaskContinuationSelection,
   ) {
     if (!text || pendingTurn) return
     setPendingUser(text)
@@ -119,6 +120,7 @@ export function ChatPanel({
           model,
           voice_profile: voiceProfile,
           render_provider: renderProvider,
+          task_continuation_selection: taskSelection,
         },
         {
           onTurn: ({ turn_id, conversation_id }) => {
@@ -455,6 +457,11 @@ export function ChatPanel({
                 onPin={pinContinuityLoop}
                 onReview={reviewContinuityLoop}
               />
+              <TaskContinuationChoices
+                trace={trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id]}
+                disabled={Boolean(pendingTurn)}
+                onSelect={(selection) => runMessage('/resume', conversationId, selection)}
+              />
               {openThinkingTurn === turn.turn_id ? (
                 <AnswerThinkingTrace
                   loading={thinkingLoadingTurn === turn.turn_id}
@@ -623,6 +630,9 @@ function ContinuityLoopActions({
     action: 'done' | 'defer',
   ) => Promise<void>
 }) {
+  if (taskContinuationNeedsSelection(trace?.task_continuation_packet?.status)) {
+    return null
+  }
   const target = continuityLoopTarget(trace, state?.loop)
   if (!target) return null
   const closed = target.mode === 'manage' && target.loop.status !== 'open'
@@ -663,6 +673,54 @@ function ContinuityLoopActions({
       ) : null}
     </div>
   )
+}
+
+function TaskContinuationChoices({
+  trace,
+  disabled,
+  onSelect,
+}: {
+  trace?: Trace
+  disabled: boolean
+  onSelect: (selection: TaskContinuationSelection) => Promise<void>
+}) {
+  const packet = trace?.task_continuation_packet
+  if (!packet || !taskContinuationNeedsSelection(packet.status) || !packet.pending_steps.length) return null
+
+  return (
+    <section className="task-continuation-choices" aria-label="Choose work to resume">
+      <div className="task-continuation-choice-head">
+        <AlertTriangle size={13} />
+        <strong>Choose work to resume</strong>
+        <span>revision bound</span>
+      </div>
+      {packet.pending_steps.map((item) => (
+        <div className="task-continuation-choice" key={`${item.loop_id}:${item.revision_hash}`}>
+          <span>{item.summary}</span>
+          <button
+            aria-label={`Resume ${item.summary}`}
+            title="Resume this open step"
+            disabled={disabled}
+            onClick={() => void onSelect({
+              loop_id: item.loop_id,
+              revision_hash: item.revision_hash,
+            })}
+          >
+            <ArrowRight size={13} />
+            <span>Resume</span>
+          </button>
+        </div>
+      ))}
+      <small>Response alignment only · tools and durable writes remain blocked</small>
+    </section>
+  )
+}
+
+function taskContinuationNeedsSelection(status?: string) {
+  return status === 'ambiguous'
+    || status === 'stale_selection'
+    || status === 'selection_unavailable'
+    || status === 'invalid_selection'
 }
 
 function continuityLoopTarget(
@@ -829,6 +887,9 @@ function answerThinkingSections(trace: Trace) {
     ...(trace.memory_candidates || []).map((candidate) => (
       `Mirus candidate: ${formatTraceLabel(candidate.semantic_signal || candidate.candidate_kind || 'review required')}`
     )),
+    ...(trace.task_authority_candidates || []).map((candidate) => (
+      `Task candidate (${formatTraceLabel(candidate.record_kind)}): ${candidate.summary}`
+    )),
     route?.selected_route ? `Selected route: ${formatTraceLabel(route.selected_route)}` : '',
     route?.selected_model_policy ? `Model policy: ${formatTraceLabel(route.selected_model_policy)}` : '',
     trace.voice_profile ? `Voice profile: ${formatTraceLabel(trace.voice_profile)}` : '',
@@ -893,6 +954,9 @@ function answerThinkingSections(trace: Trace) {
     compliance && !compliance.passed ? 'Potential learning event: answer violated the governance spine.' : '',
     ...(trace.memory_candidates || []).map((candidate) => (
       `Review candidate: ${candidate.slot_id} (${candidate.authority || 'unconfirmed'}, ${candidate.review_required === false ? 'review optional' : 'review required'}, ${candidate.memory_write_allowed === false ? 'write blocked' : 'write policy unknown'})`
+    )),
+    ...(trace.task_authority_candidates || []).map((candidate) => (
+      `Task review candidate: ${candidate.summary} (${candidate.review_required ? 'review required' : 'review optional'}, ${candidate.task_authority_write_allowed ? 'task write allowed' : 'task write blocked'})`
     )),
     route?.model_recommendation?.observational_only ? 'Model recommendation stayed observational; no automatic switch.' : '',
     trace.governance_answer_spine?.safety_contract?.review_required_before_promotion ? 'Promotion requires review before behavior changes.' : '',

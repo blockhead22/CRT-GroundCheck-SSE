@@ -1,14 +1,15 @@
-import { ArrowRight, Clock3, GitBranch, RefreshCcw, Route, ShieldCheck, XCircle } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Clock3, GitBranch, RefreshCcw, Route, ShieldCheck, XCircle } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
 import type { ConsolidationCandidate, ConsolidationPreview, ReviewDraftHandoff } from '../types'
 
-type CandidateFilter = 'all' | 'memory' | 'support_patterns' | 'reflections'
+type CandidateFilter = 'all' | 'task_state' | 'memory' | 'support_patterns' | 'reflections'
 type LocalReviewState = 'active' | 'deferred' | 'dismissed'
 type ReviewSurface = 'memory' | 'support' | 'reflect'
 
 const FILTERS: Array<{ label: string; value: CandidateFilter }> = [
   { label: 'All', value: 'all' },
+  { label: 'Tasks', value: 'task_state' },
   { label: 'Memory', value: 'memory' },
   { label: 'Support', value: 'support_patterns' },
   { label: 'Reflect', value: 'reflections' },
@@ -19,6 +20,7 @@ function surfaceLabel(surface: string) {
 }
 
 function candidateTone(item: ConsolidationCandidate) {
+  if (item.review_route?.surface === 'task_state') return 'proposed'
   if (item.category === 'contradiction_review') return 'proposed'
   if (item.category === 'aether_self_improvement') return 'accepted'
   if (item.category === 'support_style_candidate') return 'deferred'
@@ -86,6 +88,10 @@ function isReviewOnly(item: ConsolidationCandidate) {
   )
 }
 
+function isTaskStateCandidate(item: ConsolidationCandidate) {
+  return item.review_route?.surface === 'task_state'
+}
+
 function reviewDestination(item: ConsolidationCandidate) {
   const action = item.review_route?.action || 'review'
   const surface = surfaceLabel(item.review_route?.surface || 'unknown')
@@ -111,6 +117,8 @@ export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawer
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState<CandidateFilter>('all')
   const [localReview, setLocalReview] = useState<Record<string, LocalReviewState>>({})
+  const [reviewing, setReviewing] = useState<Record<string, boolean>>({})
+  const [reviewNotice, setReviewNotice] = useState('')
 
   async function load() {
     setLoading(true)
@@ -165,6 +173,36 @@ export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawer
     ))
   }
 
+  async function reviewTaskCandidate(
+    item: ConsolidationCandidate,
+    action: 'promote' | 'reject',
+  ) {
+    setReviewing((current) => ({ ...current, [item.candidate_id]: true }))
+    setError('')
+    setReviewNotice('')
+    try {
+      const result = await api.reviewTaskCandidate(item.candidate_id, {
+        action,
+        note: action === 'promote'
+          ? 'Promoted explicitly from the Workbench learner review queue.'
+          : 'Rejected explicitly from the Workbench learner review queue.',
+        idempotency_key: `task-candidate-${action}-${crypto.randomUUID()}`,
+      })
+      setReviewNotice(action === 'promote'
+        ? `Promoted to ${result.review.created_record_kind.replace('_', ' ')} task authority.`
+        : 'Rejected candidate. No task authority or memory changed.')
+      await load()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not review task candidate.')
+    } finally {
+      setReviewing((current) => {
+        const next = { ...current }
+        delete next[item.candidate_id]
+        return next
+      })
+    }
+  }
+
   if (!preview?.candidates.length && !error) {
     return (
       <div className="drawer-empty">
@@ -181,7 +219,7 @@ export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawer
   return (
     <div className="consolidation-browser">
       <div className="reflection-intro">
-        Consolidation candidates are preview-only learner suggestions. They do not write memory, support patterns, or reflections.
+        Consolidation candidates are preview-only learner suggestions. Task candidates change task state only after explicit promotion; they never write memory.
       </div>
       <div className="consolidation-toolbar">
         <div>
@@ -232,11 +270,13 @@ export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawer
           <span>memory {preview.memory_ingestion_performed ? 'yes' : 'no'}</span>
           <span>support import {preview.support_pattern_import_performed ? 'yes' : 'no'}</span>
           <span>reflection create {preview.reflection_create_performed ? 'yes' : 'no'}</span>
+          <span>task authority {preview.task_authority_write_performed ? 'yes' : 'no'}</span>
           <span>session review only</span>
           {queueStats.adapterRequired ? <span>{queueStats.adapterRequired} adapter draft</span> : null}
         </div>
       ) : null}
       {error ? <div className="inline-notice">{error}</div> : null}
+      {reviewNotice ? <div className="inline-notice success">{reviewNotice}</div> : null}
       <div className="reflection-list">
         {visibleCandidates.map((item) => (
           <article className={`reflection-card ${candidateTone(item)}`} key={item.candidate_id}>
@@ -306,7 +346,9 @@ export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawer
             {draft ? (
               <details className="consolidation-draft">
                 <summary>Draft payload</summary>
-                <p>Preview only. The review drawer still has to adapt and submit this manually.</p>
+                <p>{isTaskStateCandidate(item)
+                  ? 'Preview only. Explicit promotion is required before this reaches task state.'
+                  : 'Preview only. The review drawer still has to adapt and submit this manually.'}</p>
                 <pre>{draft}</pre>
               </details>
             ) : null}
@@ -342,9 +384,28 @@ export function ConsolidationDrawer({ onOpenReviewSurface }: ConsolidationDrawer
                   <Clock3 size={12} />Defer Session
                 </button>
               )}
-              <button className="reject" onClick={() => setCandidateState(item.candidate_id, 'dismissed')}>
-                <XCircle size={12} />Hide Session
-              </button>
+              {isTaskStateCandidate(item) ? (
+                <>
+                  <button
+                    className="accept"
+                    disabled={Boolean(reviewing[item.candidate_id])}
+                    onClick={() => void reviewTaskCandidate(item, 'promote')}
+                  >
+                    <CheckCircle2 size={12} />Promote to Task State
+                  </button>
+                  <button
+                    className="reject"
+                    disabled={Boolean(reviewing[item.candidate_id])}
+                    onClick={() => void reviewTaskCandidate(item, 'reject')}
+                  >
+                    <XCircle size={12} />Reject Candidate
+                  </button>
+                </>
+              ) : (
+                <button className="reject" onClick={() => setCandidateState(item.candidate_id, 'dismissed')}>
+                  <XCircle size={12} />Hide Session
+                </button>
+              )}
             </div>
                 </>
               )

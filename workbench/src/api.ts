@@ -12,6 +12,8 @@
   SupportPattern,
   ConsolidationPreview,
   ContinuityOpenLoop,
+  TaskCandidateReviewResponse,
+  TaskContinuationSelection,
 } from './types'
 
 const API_BASE = window.aetherDesktop?.apiBase
@@ -117,6 +119,17 @@ export const api = {
     }),
   consolidationCandidates: (limit = 20) =>
     request<ConsolidationPreview>(`/v1/consolidation/candidates?limit=${encodeURIComponent(String(limit))}`),
+  reviewTaskCandidate: (
+    candidateId: string,
+    body: {
+      action: 'promote' | 'reject'
+      note: string
+      idempotency_key: string
+    },
+  ) => request<TaskCandidateReviewResponse>(
+    `/v1/consolidation/task-candidates/${encodeURIComponent(candidateId)}/review`,
+    { method: 'POST', body: JSON.stringify(body) },
+  ),
   continuityOpenLoops: async (status = 'open') =>
     (await request<{ open_loops: ContinuityOpenLoop[] }>(
       `/v1/continuity/open-loops?status=${encodeURIComponent(status)}`,
@@ -172,6 +185,7 @@ export async function streamChat(
     model: string
     voice_profile?: string
     render_provider: 'local' | 'grok_build'
+    task_continuation_selection?: TaskContinuationSelection
   },
   events: ChatEvents,
 ) {

@@ -472,4 +472,74 @@ describe('Continuity open-loop actions', () => {
     expect(await screen.findByText('Marked done')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Mark open next step done' })).not.toBeInTheDocument()
   })
+
+  test('resumes the explicitly chosen ambiguous loop with its displayed revision', async () => {
+    const ambiguousTrace = {
+      ...continuityTrace('explicit_open_loop'),
+      query: '/resume',
+      turn_id: 'turn-ambiguous-resume',
+      conversation_id: 'conv-ambiguous-resume',
+      task_continuation_packet: {
+        schema: 'aether.task_continuation_packet.v0',
+        requested: true,
+        status: 'ambiguous',
+        request_kind: 'resume',
+        project_root: 'D:/AI_round2',
+        pending_steps: [
+          {
+            loop_id: 'loop-first',
+            summary: 'Keep the first task waiting.',
+            source_type: 'user_explicit',
+            status: 'open',
+            revision_hash: 'a'.repeat(64),
+            updated_at: 1,
+          },
+          {
+            loop_id: 'loop-selected',
+            summary: 'Continue the selected task safely.',
+            source_type: 'review_confirmed',
+            status: 'open',
+            revision_hash: 'b'.repeat(64),
+            updated_at: 2,
+          },
+        ],
+        completed_steps: [],
+        deferred_steps: [],
+        selected_loop_id: '',
+        next_action: '',
+        next_action_authorized: false,
+        automatic_execution_allowed: false,
+        workspace_tool_use_allowed: false,
+        durable_writes_allowed: false,
+        profile_memory_write_allowed: false,
+      },
+    }
+    renderPanel({
+      conversationId: 'conv-ambiguous-resume',
+      turns: [{
+        ...continuityTurn,
+        turn_id: 'turn-ambiguous-resume',
+        user_message: '/resume',
+      }],
+      trace: ambiguousTrace,
+    })
+
+    expect(screen.queryByRole('button', { name: 'Mark open next step done' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Defer open next step' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', {
+      name: 'Resume Continue the selected task safely.',
+    }))
+
+    await waitFor(() => expect(mockedStreamChat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: '/resume',
+        conversation_id: 'conv-ambiguous-resume',
+        task_continuation_selection: {
+          loop_id: 'loop-selected',
+          revision_hash: 'b'.repeat(64),
+        },
+      }),
+      expect.any(Object),
+    ))
+  })
 })

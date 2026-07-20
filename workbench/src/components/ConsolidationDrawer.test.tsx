@@ -8,6 +8,7 @@ vi.mock('../api', async () => {
     ...actual,
     api: {
       consolidationCandidates: vi.fn(),
+      reviewTaskCandidate: vi.fn(),
     },
   }
 })
@@ -18,6 +19,8 @@ const preview = {
   memory_ingestion_performed: false,
   support_pattern_import_performed: false,
   reflection_create_performed: false,
+  task_authority_write_performed: false,
+  reviewed_task_candidate_count: 0,
   inspected_turn_count: 3,
   candidates: [{
     candidate_id: 'consolidation_candidate_1',
@@ -142,12 +145,63 @@ const preview = {
       summary: 'Repair trace showed a verifier boundary correction.',
       source_authority: 'trace_verifier',
     }],
+  }, {
+    candidate_id: 'consolidation_candidate_task',
+    candidate_type: 'background_consolidation_candidate' as const,
+    category: 'task_authority_candidate',
+    candidate_kind: 'reviewed_open_loop_candidate',
+    summary: 'Mirus noticed a possible open loop: Edit footage. It has no task authority yet.',
+    proposed_action: 'Promote this reviewed action into an explicit open loop.',
+    risk: 'The source may be temporary; require explicit promotion.',
+    review_required: true,
+    memory_write_allowed: false,
+    confirmed_fact: false,
+    review_only: true,
+    review_route: {
+      surface: 'task_state',
+      action: 'review_task_authority_candidate',
+      endpoint: '/v1/consolidation/task-candidates/{candidate_id}/review',
+      requires_adapter: false,
+      draft: {
+        source_candidate_id: 'task_candidate_edit',
+        source_turn_id: 'turn-task',
+        record_kind: 'open_loop',
+        summary: 'Edit footage.',
+        category: 'direct_planning_action',
+        source_type: 'review_confirmed',
+        review_required: true,
+        task_authority_write_allowed: false,
+        memory_write_allowed: false,
+        confirmed_fact: false,
+      },
+    },
+    evidence: [{
+      evidence_type: 'mirus_task_intake',
+      reference_id: 'turn-task',
+      summary: 'I need to edit footage.',
+      source_authority: 'user_turn',
+    }],
   }],
 }
 
 beforeEach(() => {
   vi.mocked(api.consolidationCandidates).mockClear()
   vi.mocked(api.consolidationCandidates).mockResolvedValue(preview)
+  vi.mocked(api.reviewTaskCandidate).mockClear()
+  vi.mocked(api.reviewTaskCandidate).mockResolvedValue({
+    review: {
+      review_id: 'task-review-1',
+      candidate_id: 'consolidation_candidate_task',
+      action: 'promote',
+      note: 'Promoted explicitly.',
+      created_record_kind: 'open_loop',
+      created_record_id: 'continuity_loop_1',
+      created_at: 1,
+    },
+    authority_record: { loop_id: 'continuity_loop_1' },
+    memory_write_performed: false,
+    task_authority_write_performed: true,
+  })
 })
 
 test('renders preview-only consolidation candidates and safety flags', async () => {
@@ -157,6 +211,7 @@ test('renders preview-only consolidation candidates and safety flags', async () 
   expect(screen.getByText(preview.candidates[1].summary)).toBeInTheDocument()
   expect(screen.getByText(preview.candidates[2].summary)).toBeInTheDocument()
   expect(screen.getByText(preview.candidates[3].summary)).toBeInTheDocument()
+  expect(screen.getByText(preview.candidates[4].summary)).toBeInTheDocument()
   expect(screen.getByLabelText('Consolidation safety')).toHaveTextContent('preview only')
   expect(screen.getByLabelText('Consolidation safety')).toHaveTextContent('writes no')
   expect(screen.getByLabelText('Consolidation safety')).toHaveTextContent('session review only')
@@ -178,8 +233,9 @@ test('renders preview-only consolidation candidates and safety flags', async () 
   expect(screen.getByText('trace_packet / turn-1 / trace_conflict')).toBeInTheDocument()
   expect(screen.getByText(/open_slot_review via \/v1\/slots\/user:workspace/i)).toBeInTheDocument()
   expect(screen.getAllByText('adapter required before applying')).toHaveLength(3)
-  expect(screen.getAllByText('Draft payload')).toHaveLength(3)
+  expect(screen.getAllByText('Draft payload')).toHaveLength(4)
   expect(screen.getAllByText(/Preview only. The review drawer still has to adapt and submit this manually./)).toHaveLength(3)
+  expect(screen.getByText(/Explicit promotion is required before this reaches task state./)).toBeInTheDocument()
   for (const details of document.querySelectorAll('.consolidation-draft')) {
     expect(details).not.toHaveAttribute('open')
   }
@@ -204,6 +260,7 @@ test('filters mixed learner candidates and triages in session only', async () =>
   expect(screen.getByText(preview.candidates[1].summary)).toBeInTheDocument()
   expect(screen.queryByText(preview.candidates[2].summary)).not.toBeInTheDocument()
   expect(screen.queryByText(preview.candidates[3].summary)).not.toBeInTheDocument()
+  expect(screen.queryByText(preview.candidates[4].summary)).not.toBeInTheDocument()
 
   fireEvent.click(screen.getByRole('button', { name: /^Reflect\s+2$/ }))
   expect(screen.queryByText(preview.candidates[1].summary)).not.toBeInTheDocument()
@@ -226,6 +283,69 @@ test('filters mixed learner candidates and triages in session only', async () =>
   expect(screen.getByText(preview.candidates[1].summary)).toBeInTheDocument()
   expect(screen.getByText('active this session')).toBeInTheDocument()
   expect(api.consolidationCandidates).toHaveBeenCalledTimes(1)
+})
+
+test('explicitly promotes a task candidate and refreshes the review queue', async () => {
+  vi.mocked(api.consolidationCandidates)
+    .mockResolvedValueOnce(preview)
+    .mockResolvedValueOnce({
+      ...preview,
+      reviewed_task_candidate_count: 1,
+      candidates: preview.candidates.filter(
+        (item) => item.candidate_id !== 'consolidation_candidate_task',
+      ),
+    })
+  render(<ConsolidationDrawer />)
+
+  await screen.findByText(preview.candidates[4].summary)
+  fireEvent.click(screen.getByRole('button', { name: 'Promote to Task State' }))
+
+  await waitFor(() => expect(api.reviewTaskCandidate).toHaveBeenCalledWith(
+    'consolidation_candidate_task',
+    expect.objectContaining({ action: 'promote' }),
+  ))
+  expect(await screen.findByText('Promoted to open loop task authority.')).toBeInTheDocument()
+  await waitFor(() => expect(
+    screen.queryByText(preview.candidates[4].summary),
+  ).not.toBeInTheDocument())
+})
+
+test('explicitly rejects a task candidate without claiming a task write', async () => {
+  vi.mocked(api.reviewTaskCandidate).mockResolvedValueOnce({
+    review: {
+      review_id: 'task-review-reject',
+      candidate_id: 'consolidation_candidate_task',
+      action: 'reject',
+      note: 'Rejected explicitly.',
+      created_record_kind: '',
+      created_record_id: '',
+      created_at: 1,
+    },
+    authority_record: null,
+    memory_write_performed: false,
+    task_authority_write_performed: false,
+  })
+  vi.mocked(api.consolidationCandidates)
+    .mockResolvedValueOnce(preview)
+    .mockResolvedValueOnce({
+      ...preview,
+      reviewed_task_candidate_count: 1,
+      candidates: preview.candidates.filter(
+        (item) => item.candidate_id !== 'consolidation_candidate_task',
+      ),
+    })
+  render(<ConsolidationDrawer />)
+
+  await screen.findByText(preview.candidates[4].summary)
+  fireEvent.click(screen.getByRole('button', { name: 'Reject Candidate' }))
+
+  await waitFor(() => expect(api.reviewTaskCandidate).toHaveBeenCalledWith(
+    'consolidation_candidate_task',
+    expect.objectContaining({ action: 'reject' }),
+  ))
+  expect(await screen.findByText(
+    'Rejected candidate. No task authority or memory changed.',
+  )).toBeInTheDocument()
 })
 
 test('refreshes consolidation preview on demand', async () => {

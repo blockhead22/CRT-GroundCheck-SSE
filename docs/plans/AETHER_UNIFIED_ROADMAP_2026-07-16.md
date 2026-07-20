@@ -40,9 +40,9 @@ Reusable Aeteros Core demo                    COMPLETE
 Frozen comparative product evidence           COMPLETE
 Core simplification and blinded replication   COMPLETE WITH LIMITS
 Blind generalization repair and replication 2 COMPLETE WITH LIMITS
-Persistence and product hardening             REOPENED BY LIVE CONTINUITY DOGFOOD
-Governed cross-conversation continuity        ACTIVE
-Desktop distribution readiness                PAUSED BEHIND CONTINUITY GATE
+Persistence and product hardening             COMPLETE FOR BOUNDED TASK AUTHORITY
+Governed cross-conversation continuity        COMPLETE WITH EXPLICIT REVIEW LIMITS
+Desktop distribution readiness                ACTIVE
 External pilots, grants, or company structure GATED
 ```
 
@@ -138,6 +138,81 @@ The local Continuity renderer also fell back deterministically after a
 3/4`, while the separate task-authority receipt was exact. Full evidence and
 limitations are in
 `artifacts/aether-task-continuation-slice-1/RESULTS_2026-07-18.md`.
+
+### Task-continuation slice 2 checkpoint - 2026-07-19
+
+The explicit ambiguity gap from Slice 1 is closed. Workbench now renders each
+open loop as a revision-bound `/resume` choice, sends the selected loop ID and
+exact revision to the sidecar, and exposes the resulting selection receipt in
+Trace. The sidecar fails closed for stale revisions, incomplete selections,
+and loops unavailable in the current project; it cannot silently fall through
+to another local loop.
+
+Focused backend validation passed `15` tests, the complete Workbench component
+suite passed `71`, the Electron suite passed `26`, and the production build
+passed. An isolated rendered Workbench probe produced ambiguous turn
+`turn_e810ef610e35`, then selected `continuity_loop_897d411dcdb6` in turn
+`turn_48e5e964b545` with `explicit_user_choice`, valid revision authority, zero
+durable/profile writes, and blocked automatic execution and workspace tools.
+The page was nonblank, had no error overlay, console warning, console error, or
+horizontal overflow. Automated coverage proves selected trace persistence and
+sidecar-restart rehydration.
+
+This still does not close the continuity gate. The next product slice is to add
+explicit structured sources for task artifacts and active/revoked constraints,
+then freeze and run the separate 30-40 case multi-thread task-state pack. Full
+evidence and limits are in
+`docs/plans/AETHER_TASK_CONTINUATION_SLICE_2_RESULTS_2026-07-19.md`.
+
+### Task-authority slice 3 checkpoint - 2026-07-19
+
+Structured task artifacts and active/revoked constraints now have explicit,
+persistent, revisioned authority sources. They are project/profile scoped,
+require explicit or reviewed authorship, and fail closed on stale review
+revisions. Current artifacts, active constraints, and revoked historical
+constraints enter `TaskContinuationPacket` as separate typed records; revoked
+constraints are visibly labeled not active and cannot authorize continuation.
+
+A frozen 36-case white-box product pack now covers twelve balanced task-state
+families with three synthetic wording variants each. All `36/36` cases passed
+through the real sidecar after profile restart with zero model calls, tool
+runs, memory writes, or execution grants. Focused backend validation passed
+`23` tests; Workbench passed `71` component and `26` Electron tests; the
+production build passed. An isolated rendered Workbench turn
+`turn_b17c7c2505cc` showed one artifact, one active constraint, one revoked
+constraint labeled not active, blocked tools/execution, zero writes, and a
+clean console/layout.
+
+This is deterministic white-box contract evidence, not blind generalization
+or arbitrary task recovery. The continuity gate remains narrowly open for one
+restart-rehydrated Workbench proof of the authority display and a product
+decision on whether task-authority management stays API-only or gains an
+explicit review surface. Full evidence and limitations are in
+`docs/plans/AETHER_TASK_AUTHORITY_SLICE_3_RESULTS_2026-07-19.md`.
+
+### Task-candidate authority slice 4 checkpoint - 2026-07-19
+
+The remaining management-surface decision is closed in favor of a compact
+Workbench learner-review route. Direct first-person planning language can now
+produce narrow Mirus open-loop or constraint candidates with source receipts.
+Candidates have no task or memory authority until explicit promotion. The
+server validates the persisted candidate, records promote/reject decisions,
+and creates only existing `review_confirmed` open-loop or constraint records.
+
+Focused backend coverage passed `143` tests; the complete Workbench suites
+passed `73` component and `26` Electron tests; the production build passed.
+Isolated rendered dogfood promoted one open
+loop, rejected another candidate with no authority effect, preserved zero
+memory slots, and rehydrated the reviewed queue after page reload and a fresh
+sidecar process with a clean console and layout. Backend coverage also proves
+constraint promotion, rejection non-effect, restart persistence, and later
+revocation.
+
+This is narrow deterministic intake, not general task understanding or
+autonomous execution. The bounded continuity gate is now closed for reviewed
+task authority, and desktop distribution readiness becomes active. Full
+evidence and limits are in
+`docs/plans/AETHER_TASK_CANDIDATE_AUTHORITY_SLICE_4_RESULTS_2026-07-19.md`.
 
 ### Governed hosted-renderer gate - 2026-07-18
 

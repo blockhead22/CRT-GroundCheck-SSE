@@ -159,6 +159,23 @@ const trace = {
     memory_write_allowed: false,
     confirmed_fact: false,
   }],
+  task_authority_candidates: [{
+    schema: 'aether.task_authority_candidate.v0',
+    candidate_id: 'task_candidate_edit',
+    record_kind: 'open_loop',
+    summary: 'Edit footage.',
+    category: 'direct_planning_action',
+    confidence: 0.78,
+    source: 'mirus_task_intake',
+    reference_id: 'turn-old',
+    evidence_text: 'I need to edit footage.',
+    authority: 'unconfirmed',
+    review_required: true,
+    review_only: true,
+    task_authority_write_allowed: false,
+    memory_write_allowed: false,
+    confirmed_fact: false,
+  }],
   mirus_governed_discovery: {
     schema: 'aether.mirus.governed_discovery.v0',
     enabled: true,
@@ -632,6 +649,7 @@ test('opens an inline thinking trace from a historical assistant answer', async 
   expect(thinking).toHaveTextContent('Logic graph: input -> mirus_front -> holden_current_intake -> crt_validator -> final')
   expect(thinking).toHaveTextContent('CRT repair: added review candidate:user:favorite flower reason')
   expect(thinking).toHaveTextContent('Mirus candidate: high ranked favorite not confirmed single fact')
+  expect(thinking).toHaveTextContent('Task candidate (open loop): Edit footage.')
   expect(thinking).toHaveTextContent('Selected route: context bridge broad')
   expect(thinking).toHaveTextContent('Model policy: local with context bridge')
   expect(thinking).toHaveTextContent('Repair policy: context anchor repair then fallback')
@@ -655,6 +673,7 @@ test('opens an inline thinking trace from a historical assistant answer', async 
   expect(thinking).toHaveTextContent('Learning')
   expect(thinking).toHaveTextContent('Review candidate: user:favorite_drink (unconfirmed, review required, write blocked)')
   expect(thinking).toHaveTextContent('Review candidate: user:favorite_flower_reason (unconfirmed, review required, write blocked)')
+  expect(thinking).toHaveTextContent('Task review candidate: Edit footage. (review required, task write blocked)')
   expect(thinking).toHaveTextContent('Model recommendation stayed observational')
   await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
     expect.stringContaining('/v1/traces/turn-old'),

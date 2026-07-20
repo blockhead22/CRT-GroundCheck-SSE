@@ -327,15 +327,56 @@ export function TraceDrawer({
           <div className="tool-run-heading">Task continuation</div>
           <div className="route-grid">
             <div className="route-cell"><span>Status</span><strong>{trace.task_continuation_receipt.status.replaceAll('_', ' ')}</strong></div>
+            <div className="route-cell"><span>Selection</span><strong>{trace.task_continuation_receipt.selection_mode?.replaceAll('_', ' ') || 'none'}</strong></div>
+            <div className="route-cell"><span>Selection valid</span><strong>{trace.task_continuation_receipt.selection_validated ? 'yes' : 'no'}</strong></div>
             <div className="route-cell"><span>Open loop</span><strong>{trace.task_continuation_receipt.selected_loop_id || 'none'}</strong></div>
             <div className="route-cell"><span>Next action authorized</span><strong>{trace.task_continuation_receipt.next_action_authorized ? 'yes' : 'no'}</strong></div>
             <div className="route-cell"><span>Automatic execution</span><strong>{trace.task_continuation_receipt.automatic_execution_allowed ? 'allowed' : 'blocked'}</strong></div>
             <div className="route-cell"><span>Workspace tools</span><strong>{trace.task_continuation_receipt.workspace_tool_use_allowed ? 'allowed' : 'blocked'}</strong></div>
             <div className="route-cell"><span>Durable writes</span><strong>{trace.task_continuation_receipt.durable_write_count}</strong></div>
             <div className="route-cell"><span>Profile writes</span><strong>{trace.task_continuation_receipt.profile_memory_write_count}</strong></div>
+            <div className="route-cell"><span>Artifacts</span><strong>{trace.task_continuation_receipt.artifact_count ?? trace.task_continuation_packet?.artifacts?.length ?? 0}</strong></div>
+            <div className="route-cell"><span>Active constraints</span><strong>{trace.task_continuation_receipt.active_constraint_count ?? trace.task_continuation_packet?.active_constraints?.length ?? 0}</strong></div>
+            <div className="route-cell"><span>Revoked constraints</span><strong>{trace.task_continuation_receipt.revoked_constraint_count ?? trace.task_continuation_packet?.revoked_constraints?.length ?? 0}</strong></div>
           </div>
           {trace.task_continuation_packet?.next_action ? (
             <p className="tool-output">{trace.task_continuation_packet.next_action}</p>
+          ) : null}
+          {trace.task_continuation_receipt.selection_failure_reason ? (
+            <div className="tool-notice" role="status">
+              Selection blocked: {trace.task_continuation_receipt.selection_failure_reason.replaceAll('_', ' ')}
+            </div>
+          ) : null}
+          {trace.task_continuation_packet?.artifacts?.length ? (
+            <TaskAuthorityList
+              label="Explicit task artifacts"
+              items={trace.task_continuation_packet.artifacts.map((item) => ({
+                id: item.artifact_id,
+                primary: item.label,
+                secondary: `${item.locator} · ${item.artifact_kind.replaceAll('_', ' ')}`,
+              }))}
+            />
+          ) : null}
+          {trace.task_continuation_packet?.active_constraints?.length ? (
+            <TaskAuthorityList
+              label="Active task constraints"
+              items={trace.task_continuation_packet.active_constraints.map((item) => ({
+                id: item.constraint_id,
+                primary: item.statement,
+                secondary: item.constraint_kind.replaceAll('_', ' '),
+              }))}
+            />
+          ) : null}
+          {trace.task_continuation_packet?.revoked_constraints?.length ? (
+            <TaskAuthorityList
+              label="Revoked constraints · not active"
+              muted
+              items={trace.task_continuation_packet.revoked_constraints.map((item) => ({
+                id: item.constraint_id,
+                primary: item.statement,
+                secondary: item.constraint_kind.replaceAll('_', ' '),
+              }))}
+            />
           ) : null}
         </article>
       ) : null}
@@ -537,6 +578,28 @@ function localRouterEvidenceReview(trace: Trace): LocalRouterRagEvidenceReview |
   const source = trace.local_router_trace?.evidence_review || trace.local_router_trace
   if (!isRecord(source) || source.kind !== 'local_router_rag_evidence_review') return null
   return source as unknown as LocalRouterRagEvidenceReview
+}
+
+function TaskAuthorityList({
+  label,
+  items,
+  muted = false,
+}: {
+  label: string
+  items: Array<{ id: string; primary: string; secondary: string }>
+  muted?: boolean
+}) {
+  return (
+    <section className={`task-authority-list${muted ? ' muted' : ''}`} aria-label={label}>
+      <h4>{label}</h4>
+      {items.map((item) => (
+        <div className="task-authority-row" key={item.id}>
+          <strong>{item.primary}</strong>
+          <span>{item.secondary}</span>
+        </div>
+      ))}
+    </section>
+  )
 }
 
 function governanceSpineReview(trace: Trace): {

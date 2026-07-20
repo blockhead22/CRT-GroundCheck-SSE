@@ -2,24 +2,27 @@
 
 This is the clean restart packet for a new Codex thread in `D:\AI_round2`.
 
-Start here for the current local-router, CRT trace, and lab-to-roadmap state.
+Start here for the current governed-continuity, CRT trace, and roadmap state.
 Use the older handoffs for historical context, but do not restart broad
 archaeology unless a specific missing concept requires a specific source file.
 
 ## Active Lane
 
 ```text
-Aether Core validation infrastructure:
-local router -> Mirus packet -> scaffold -> model render -> CRT verifier
--> repair/fallback -> durable thinking trace -> replay eval
+Governed cross-conversation task continuity:
+durable reviewed open loops -> explicit revision-bound selection -> bounded
+response continuation -> durable receipt and restart-safe trace
 ```
 
 Roadmap position:
 
 ```text
-Phase 1.10 route/model selection       observational in Workbench, active in lab
-Phase 2 governed learner/Mirus loop    active roadmap re-entry
-New trace lane                         durable structured thinking traces
+Local-router/RAG validation            graduated infrastructure
+Phase 2 learner/Mirus loop             baseline complete, parked by product need
+Cross-conversation continuity          complete with explicit review limits
+Task continuation Slice 2              complete with explicit selection
+Task authority Slices 3-4               complete with reviewed authority
+Desktop distribution readiness         active
 ```
 
 Current rule:
@@ -52,6 +55,10 @@ or let them silently mutate memory/policy.
 
 ```text
 D:\AI_round2\docs\plans\AETHER_CRT_WORKBENCH_HANDOFF_2026-06-29.md
+D:\AI_round2\docs\plans\AETHER_UNIFIED_ROADMAP_2026-07-16.md
+D:\AI_round2\docs\plans\AETHER_TASK_CONTINUATION_SLICE_2_RESULTS_2026-07-19.md
+D:\AI_round2\docs\plans\AETHER_TASK_AUTHORITY_SLICE_3_RESULTS_2026-07-19.md
+D:\AI_round2\docs\plans\AETHER_TASK_CANDIDATE_AUTHORITY_SLICE_4_RESULTS_2026-07-19.md
 D:\AI_round2\docs\plans\AETHER_DURABLE_THINKING_TRACE_REQUIREMENT_2026-06-29.md
 D:\AI_round2\docs\plans\AETHER_LOCAL_ROUTER_EVIDENCE_V0_2026-06-29.md
 D:\AI_round2\docs\plans\AETHER_LOCAL_ROUTER_TRACE_WORKBENCH_MAPPING_2026-06-29.md
@@ -1546,56 +1553,27 @@ scaffold, verifier, and repair matter more than "largest model" for this lane.
 
 Best next tasks, in order:
 
-1. **Return to Phase 2 governed learner heartbeat.**
-   - Use recent turns and persisted traces to produce review-only Memory,
-     Support, Reflection, Contradiction, and Evidence candidates.
-   - Current sidecar coverage includes explicit trace-backed memory fact
-     candidates, support-style candidates, agent/project reflection candidates,
-     contradiction review candidates, and local-router/RAG evidence candidates.
-   - Workbench learner candidates now show a compact why-this-exists strip:
-     first evidence receipt, review boundary, and review destination.
-   - Trace-proposed memory facts now open Memory with a review-only draft
-     panel. It shows the proposed slot, summary, confidence, and receipts, but
-     does not prefill or write memory.
-   - Nothing gets written to memory, support patterns, reflections, or policy
-     without explicit operator review.
+1. **Resume desktop distribution readiness.**
+   - Keep the existing Electron/NSIS lifecycle evidence.
+   - Finish product metadata and code-signing readiness.
+   - Detect and explain the Ollama/model prerequisite during onboarding.
+   - Define an explicit update and rollback channel before automatic updates.
 
-2. **Keep rejected and deferred candidates inert.**
-   - Backend reflection tests now prove accepted reflections enter future
-     context while deferred and rejected reflections do not.
-   - Workbench consolidation tests now prove Defer Session and Hide Session are
-     local review-queue states that do not open review routes or call
-     additional APIs.
-   - Keep this as a regression boundary while adding new learner surfaces.
+2. **Prove another-user operation.**
+   - Install on a clean Windows user or machine.
+   - Verify the user can understand Local versus governed hosted rendering,
+     memory review, task-candidate review, trace receipts, and blocked writes.
 
-3. **Promote reusable schemas toward Aeteros Core.**
-   - Identify the stable shapes that should become core primitives:
-     trace event, evidence receipt, review candidate, decision record,
-     contradiction marker, and feedback ledger row.
-   - Schema-candidate note now exists at
-     `docs/plans/AETHER_AETEROS_CORE_SCHEMA_CANDIDATES_2026-06-30.md`.
-   - First extraction now exists:
-     `aether-core/aether/sidecar/review_schema.py`.
-   - It contains EvidenceReceipt, ReviewCandidate, SafetyContract, and
-     review_only_candidate_flags.
-   - It is wired into sidecar consolidation and archive import/review
-     fixtures; keep it small and behavior-inert.
-   - Next extraction should wait for another two-call-site duplication point.
-   - Keep lab-specific pack names and evaluator details outside the core shape.
+3. **Keep the newly closed continuity boundary as regression coverage.**
+   - Reviewed task candidates remain inert until promotion.
+   - Rejected candidates and revoked constraints remain behaviorally inert.
+   - Automatic execution, workspace tools, and memory writes remain blocked.
 
-4. **Keep local-router/RAG evidence as research and product evidence.**
-   - The lab is graduated as validation infrastructure, not daily tuning work.
-   - Preserve scaffolded_rag as the serious baseline for future evidence.
-   - Do not return to raw-only comparisons.
-
-5. **Expand blind cases only for a specific evidence question.**
-   - If the Workbench review bridge reveals a weak spot, grow blind/adversarial
-     coverage while preserving source-conversation, prompt-dedupe, and
-     quality-filter boundaries.
-
-6. **Review nearby creative/business prompts only when routing appears in real use.**
-   - Check whether photo, video, event, print-shop, and camera-gear planning
-     prompts should route as business_planning instead of grant_business.
+4. **Reopen intake or research only from evidence.**
+   - Expand Mirus task extraction only for a concrete false positive or missed
+     daily planning case.
+   - Preserve scaffolded RAG as the serious future research baseline.
+   - Do not resume prompt tuning or schema extraction speculatively.
 
 ## Tangent Triage
 
@@ -1739,14 +1717,12 @@ Learner queue:
 Current next work:
 
 ```text
-1. Pause scheduled learner-queue polishing unless live Workbench dogfooding
-   reveals a concrete issue.
-2. If dogfooding finds one, fix only concrete review-queue regressions or
-   confusing UX.
-3. Keep ReviewDecision extraction paused until Memory has a durable
-   candidate/decision adapter need across live call sites.
-4. Treat generative governance as public answer-spine/rationale work, not
-   hidden chain-of-thought storage.
+1. Resume desktop distribution readiness.
+2. Finish product metadata, signing readiness, and prerequisite onboarding.
+3. Define the update/rollback channel.
+4. Prove another-user install and governed operation.
+5. Keep continuity, learner, and lab lanes as regression infrastructure unless
+   concrete evidence reopens them.
 ```
 
 ## Restart Prompt
@@ -1756,28 +1732,30 @@ Use this prompt for a new clean thread:
 ```text
 We are in D:\AI_round2. Read:
 - docs/plans/AETHER_CRT_WORKBENCH_HANDOFF_2026-06-29.md
+- docs/plans/AETHER_UNIFIED_ROADMAP_2026-07-16.md
 - docs/plans/AETHER_CURRENT_STATE.md
+- docs/plans/AETHER_TASK_CONTINUATION_SLICE_2_RESULTS_2026-07-19.md
+- docs/plans/AETHER_TASK_AUTHORITY_SLICE_3_RESULTS_2026-07-19.md
+- docs/plans/AETHER_TASK_CANDIDATE_AUTHORITY_SLICE_4_RESULTS_2026-07-19.md
 - docs/plans/AETHER_LOCAL_ROUTER_LAB_GRADUATION_2026-06-30.md
 - docs/plans/AETHER_AETEROS_CORE_SCHEMA_CANDIDATES_2026-06-30.md
 - docs/plans/AETHER_DURABLE_THINKING_TRACE_REQUIREMENT_2026-06-29.md
 - docs/plans/AETHER_LOCAL_ROUTER_EVIDENCE_V0_2026-06-29.md
 - docs/plans/AETHER_AETEROS_MASTER_PLAN_2026-06-26.md only as needed
 
-Continue the Aether roadmap-return work. The local-router / durable trace /
-RAG-baseline lab is graduated as validation infrastructure. Do not reset or
-clean the dirty worktree. Preserve untracked lab files and docs.
+Continue desktop distribution readiness. The bounded governed-continuity gate,
+local-router / durable trace / RAG-baseline lab, and learner/Mirus review loop
+are graduated infrastructure. Do not reset or clean the dirty worktree.
 
 Current task direction:
-1. Continue Phase 2 learner queue polish, not local-router lab tuning.
-2. Keep mixed Memory/Support/Reflection learner queue coverage as the current
-   checkpoint; do not add more surfaces without a dogfood regression.
-3. Fix only concrete review-queue clarity, duplicate, or routing regressions.
-4. Preserve reject/defer non-effect and review-only memory boundaries.
-5. Keep ReviewDecision, TracePacket, and ContradictionMarker extraction paused
-   until a real two-call-site duplication appears.
-6. Keep local-router/RAG evidence as Research/Product Evidence, not daily
-   tuning work. Scaffolded_rag remains the serious baseline for any future
-   blind/adversarial evidence.
+1. Slices 2-4 close bounded reviewed task authority; the frozen 36-case pack
+   and explicit promote/reject/restart path pass.
+2. Resume Electron/NSIS productization from existing lifecycle evidence.
+3. Finish product metadata, signing readiness, prerequisite onboarding, and a
+   deliberate update/rollback channel.
+4. Preserve no-write, no-tool, cross-profile, stale-revision, rejected, and
+   revoked non-effect boundaries.
+5. Prove another user can install and understand the governed review model.
 
 Important contract:
 Do not store raw hidden chain-of-thought as truth. Store structured CRT trace
@@ -1789,7 +1767,7 @@ mutation.
 
 ## One-Line Status
 
-Aether is back on the main roadmap: trace-backed learner review is visible in
-Workbench, code/tool routing is workspace-grounded, Mirus candidates stay
-review-only, mixed learner queue review has Memory/Support/Reflection coverage,
-and this lane is parked until live dogfooding produces a concrete issue.
+Aether can now resolve ambiguous durable open loops, carry revisioned artifacts
+and constraints, and let Mirus propose review-only task state that Workbench can
+explicitly promote or reject with durable receipts; the bounded continuity gate
+is closed and desktop distribution readiness is next.

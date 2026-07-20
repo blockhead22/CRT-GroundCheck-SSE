@@ -10,6 +10,24 @@ audit and generated-output staging are recorded in
 `D_PROJECT_SHELF_CLEANUP_2026-07-19.md`. This housekeeping does not change the
 current product lane below.
 
+Task-continuation checkpoint updated: 2026-07-19. Slice 2 adds an explicit,
+revision-bound Workbench choice when multiple durable open loops exist. The
+continuity gate remains active until structured artifact/constraint authority
+and the frozen task-state pack pass.
+
+Task-authority checkpoint updated: 2026-07-19. Explicit revisioned artifact
+and constraint sources now feed the continuation packet, and the frozen
+36-case white-box task-state pack passes. The remaining gate is a
+restart-rehydrated Workbench authority display plus the Task State management
+surface decision.
+
+Task-candidate authority checkpoint updated: 2026-07-19. The management-surface
+decision is closed: Mirus can emit narrow review-only open-loop and constraint
+candidates, Workbench can explicitly promote or reject them, and reviewed
+decisions survive page reload and sidecar restart without writing memory. The
+bounded governed-continuity gate is closed; desktop distribution readiness is
+the next main product lane.
+
 Canonical priorities, milestone gates, and side-lane disposition:
 
 ```text
@@ -29,15 +47,21 @@ D:\AI_round2\docs\plans\AETHER_CRT_WORKBENCH_HANDOFF_2026-06-29.md
 ## Current Lane
 
 ```text
-Phase 2 governed learner / Mirus loop:
-recent traces and turns -> review-only Memory, Support, Reflection,
-Contradiction, and Evidence candidates -> Workbench review -> durable behavior
-only after operator approval.
+Desktop distribution readiness:
+signed/productized Windows packaging -> prerequisite onboarding -> deliberate
+update/rollback channel -> another-user install and operation proof.
 ```
 
-The local-router / durable trace / RAG-baseline lab is graduated as
-Aether/Core validation infrastructure. Do not continue it as loose prompt
-tuning, model shopping, or repeated adversarial v1/v2 tuning.
+Slices 2-4 close the bounded governed-continuity gate: explicit open-loop
+selection, revisioned artifacts and constraints, and review-only Mirus task
+candidates now have durable receipts and restart coverage. Automatic execution,
+workspace tools, profile-memory writes, and unreviewed task authority remain
+blocked. Reopen task intake only for a concrete daily-use miss or false
+positive.
+
+The learner/Mirus loop and local-router/RAG lab remain graduated infrastructure.
+Do not reopen either lane without a concrete product regression or evidence
+question.
 
 ## Read First
 
@@ -1325,21 +1349,16 @@ dogfooding regressions or a concrete daily-use clarity problem.
 Do next:
 
 ```text
-1. Improve learner review queue dogfooding only where it helps daily use.
-2. Look for a real Memory candidate/decision adapter need before extracting
-   ReviewDecision.
-3. Keep regression tests around review-only and reject/defer non-effect.
-4. Treat generative governance as an answer-spine experiment, not a schema
-   extraction yet.
-5. Next test lane: optional model-generated public "planning line" only if it is
-   explicitly bounded, labeled public, never treated as truth, and checked
-   against the deterministic governance steps.
-6. Bring the old AgentThinkingStrip / PipelineTrace affordance forward into
-   Workbench as an expandable answer-formation drawer: Thinking, Memory,
-   Tools, Verifier, Learning.
-7. Improve the Thinking drawer feedstock: add explicit public rationale lines
-   and tool-consideration steps only after they are generated as public,
-   bounded, and verifier-checked trace fields.
+1. Resume desktop distribution readiness from the existing Electron/NSIS
+   lifecycle evidence.
+2. Add final product metadata and code-signing readiness without pretending an
+   unsigned local build is production-ready.
+3. Make Ollama and the selected local-model prerequisite explicit in first-run
+   detection/onboarding.
+4. Define a deliberate update and rollback channel before enabling automatic
+   updates.
+5. Prove a clean another-user install can understand and operate the governed
+   review boundaries.
 ```
 
 Do not do next:
@@ -1350,6 +1369,8 @@ do not return to raw-only model comparisons
 do not add import surfaces without product need
 do not create automatic memory/support/reflection writes
 do not expand schemas speculatively
+do not reopen learner/local-router polishing without a concrete product need
+do not treat response alignment as automatic task execution
 ```
 
 ## Safety Contract

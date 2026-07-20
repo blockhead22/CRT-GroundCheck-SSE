@@ -258,6 +258,23 @@ export interface Trace {
     memory_write_allowed?: boolean
     confirmed_fact?: boolean
   }>
+  task_authority_candidates?: Array<{
+    schema: string
+    candidate_id: string
+    record_kind: 'open_loop' | 'constraint'
+    summary: string
+    category: string
+    confidence: number
+    source: string
+    reference_id: string
+    evidence_text: string
+    authority: 'unconfirmed' | string
+    review_required: boolean
+    review_only: boolean
+    task_authority_write_allowed: boolean
+    memory_write_allowed: boolean
+    confirmed_fact: boolean
+  }>
   document_write?: {
     document_id: string
     title: string
@@ -320,6 +337,32 @@ export interface TaskContinuationStateItem {
   updated_at: number
 }
 
+export interface TaskContinuationSelection {
+  loop_id: string
+  revision_hash: string
+}
+
+export interface TaskContinuationArtifact {
+  artifact_id: string
+  label: string
+  locator: string
+  artifact_kind: string
+  source_type: string
+  status: string
+  revision_hash: string
+  updated_at: number
+}
+
+export interface TaskContinuationConstraint {
+  constraint_id: string
+  statement: string
+  constraint_kind: string
+  source_type: string
+  status: string
+  revision_hash: string
+  updated_at: number
+}
+
 export interface TaskContinuationPacket {
   schema: string
   requested: boolean
@@ -329,7 +372,19 @@ export interface TaskContinuationPacket {
   pending_steps: TaskContinuationStateItem[]
   completed_steps: TaskContinuationStateItem[]
   deferred_steps: TaskContinuationStateItem[]
+  artifacts?: TaskContinuationArtifact[]
+  active_constraints?: TaskContinuationConstraint[]
+  revoked_constraints?: TaskContinuationConstraint[]
+  selection?: {
+    requested: boolean
+    mode: string
+    validated: boolean
+    failure_reason: string
+    requested_loop_id: string
+    expected_revision_hash: string
+  }
   selected_loop_id: string
+  selected_loop_revision_hash?: string
   next_action: string
   next_action_authorized: boolean
   automatic_execution_allowed: boolean
@@ -341,7 +396,15 @@ export interface TaskContinuationPacket {
 export interface TaskContinuationReceipt {
   schema: string
   status: string
+  selection_requested?: boolean
+  selection_mode?: string
+  selection_validated?: boolean
+  selection_failure_reason?: string
   selected_loop_id: string
+  selected_loop_revision_hash?: string
+  artifact_count?: number
+  active_constraint_count?: number
+  revoked_constraint_count?: number
   next_action_authorized: boolean
   automatic_execution_allowed: boolean
   workspace_tool_use_allowed: boolean
@@ -807,8 +870,25 @@ export interface ConsolidationPreview {
   memory_ingestion_performed: boolean
   support_pattern_import_performed: boolean
   reflection_create_performed: boolean
+  task_authority_write_performed?: boolean
+  reviewed_task_candidate_count?: number
   inspected_turn_count: number
   candidates: ConsolidationCandidate[]
+}
+
+export interface TaskCandidateReviewResponse {
+  review: {
+    review_id: string
+    candidate_id: string
+    action: 'promote' | 'reject'
+    note: string
+    created_record_kind: 'open_loop' | 'constraint' | ''
+    created_record_id: string
+    created_at: number
+  }
+  authority_record: Record<string, unknown> | null
+  memory_write_performed: boolean
+  task_authority_write_performed: boolean
 }
 export interface ChatEvents {
   onTurn: (data: { turn_id: string; conversation_id: string }) => void
