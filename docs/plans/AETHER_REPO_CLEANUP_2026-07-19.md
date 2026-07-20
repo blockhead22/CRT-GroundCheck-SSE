@@ -144,3 +144,16 @@ Result:
 ```text
 0 tracked ignored files
 ```
+
+## External D: Project Shelf
+
+The follow-on shelf audit and generated-output cleanup are recorded separately:
+
+```text
+D:\AI_round2\docs\plans\D_PROJECT_SHELF_CLEANUP_2026-07-19.md
+```
+
+That pass staged about 7.04 GiB of rebuildable dependency/build output, removed
+four empty project placeholders from the shelf, and moved twenty historical
+roots intact under `D:\Project Archive\2026-07-19`. Dirty source trees were
+preserved and indexed rather than deleted.

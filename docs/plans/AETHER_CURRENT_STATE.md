@@ -4,6 +4,12 @@ Last checkpoint content: 2026-07-07
 
 Roadmap authority updated: 2026-07-16
 
+Repository cleanup checkpoint updated: 2026-07-19. The root-repo cleanup is
+recorded in `AETHER_REPO_CLEANUP_2026-07-19.md`; the external `D:\` project-shelf
+audit and generated-output staging are recorded in
+`D_PROJECT_SHELF_CLEANUP_2026-07-19.md`. This housekeeping does not change the
+current product lane below.
+
 Canonical priorities, milestone gates, and side-lane disposition:
 
 ```text
