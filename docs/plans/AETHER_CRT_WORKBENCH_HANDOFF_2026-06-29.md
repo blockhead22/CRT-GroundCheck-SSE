@@ -2,6 +2,15 @@
 
 This is the clean restart packet for a new Codex thread in `D:\AI_round2`.
 
+Canonical 2026-07-20 continuation packet:
+
+```text
+D:\AI_round2\docs\plans\AETHER_CANONICAL_CONTINUITY_LOG_2026-07-20.md
+```
+
+Read that packet first. This older handoff remains detailed implementation
+history and supporting context.
+
 Start here for the current governed-continuity, CRT trace, and roadmap state.
 Use the older handoffs for historical context, but do not restart broad
 archaeology unless a specific missing concept requires a specific source file.
@@ -59,6 +68,7 @@ D:\AI_round2\docs\plans\AETHER_UNIFIED_ROADMAP_2026-07-16.md
 D:\AI_round2\docs\plans\AETHER_TASK_CONTINUATION_SLICE_2_RESULTS_2026-07-19.md
 D:\AI_round2\docs\plans\AETHER_TASK_AUTHORITY_SLICE_3_RESULTS_2026-07-19.md
 D:\AI_round2\docs\plans\AETHER_TASK_CANDIDATE_AUTHORITY_SLICE_4_RESULTS_2026-07-19.md
+D:\AI_round2\docs\plans\AETHER_MIRUS_SEMANTIC_TASK_INTAKE_LAB_2026-07-20.md
 D:\AI_round2\docs\plans\AETHER_DURABLE_THINKING_TRACE_REQUIREMENT_2026-06-29.md
 D:\AI_round2\docs\plans\AETHER_LOCAL_ROUTER_EVIDENCE_V0_2026-06-29.md
 D:\AI_round2\docs\plans\AETHER_LOCAL_ROUTER_TRACE_WORKBENCH_MAPPING_2026-06-29.md
@@ -1572,6 +1582,8 @@ Best next tasks, in order:
 4. **Reopen intake or research only from evidence.**
    - Expand Mirus task extraction only for a concrete false positive or missed
      daily planning case.
+   - The 2026-07-20 semantic-intake v2 holdout failed with three high-risk
+     false candidates; do not wire or prompt-tune that proposer into live use.
    - Preserve scaffolded RAG as the serious future research baseline.
    - Do not resume prompt tuning or schema extraction speculatively.
 

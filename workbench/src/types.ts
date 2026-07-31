@@ -672,6 +672,13 @@ export interface PatchApplyReceipt {
   after_sha256: string
   patch: string
   idempotent_replay: boolean
+  approval_mode?: 'explicit_review' | 'policy_auto_approve' | string
+}
+
+export interface ToolApprovalPolicy {
+  schema: string
+  auto_approve_exact_patch_apply: boolean
+  updated_at?: number | null
 }
 
 export interface ContinuityAlignmentReceipt {

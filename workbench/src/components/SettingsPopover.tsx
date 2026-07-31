@@ -8,11 +8,13 @@ interface SettingsProps {
   renderProvider: RenderProvider
   pinned: boolean
   floating: boolean
+  autoApproveExactPatchApply: boolean
   trace: Trace | null
   onModel: (model: string) => void
   onRenderProvider: (provider: RenderProvider) => void
   onPinned: (value: boolean) => void
   onFloating: (value: boolean) => void
+  onAutoApproveExactPatchApply: (value: boolean) => void
 }
 
 export function SettingsPopover({
@@ -22,11 +24,13 @@ export function SettingsPopover({
   renderProvider,
   pinned,
   floating,
+  autoApproveExactPatchApply,
   trace,
   onModel,
   onRenderProvider,
   onPinned,
   onFloating,
+  onAutoApproveExactPatchApply,
 }: SettingsProps) {
   const decision = trace?.completion?.route_decision || trace?.route_decision
   const recommendation = decision?.model_recommendation
@@ -64,6 +68,17 @@ export function SettingsPopover({
         <span>Floating window</span>
         <span className={`switch ${floating ? 'on' : ''}`}><Check size={12} /></span>
       </button>
+      <button
+        className="toggle-row"
+        onClick={() => onAutoApproveExactPatchApply(!autoApproveExactPatchApply)}
+      >
+        <span>Auto-approve exact patches</span>
+        <span className={`switch ${autoApproveExactPatchApply ? 'on' : ''}`}><Check size={12} /></span>
+      </button>
+      <p className="provider-disclosure">
+        When on, ready exact file patches apply immediately after proposal.
+        Default remains manual approve. Only exact hash-bound patches qualify.
+      </p>
       <section className="settings-policy" aria-label="Route model policy">
         <div className="settings-policy-head">
           <span>Route model policy</span>

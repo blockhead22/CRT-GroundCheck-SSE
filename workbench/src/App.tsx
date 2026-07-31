@@ -35,6 +35,7 @@ export default function App() {
   const [traceError, setTraceError] = useState('')
   const [pinned, setPinned] = useState(true)
   const [floating, setFloating] = useState(false)
+  const [autoApproveExactPatchApply, setAutoApproveExactPatchApply] = useState(false)
   const [memoryRefresh, setMemoryRefresh] = useState(0)
   const [memoryPreselectSlot, setMemoryPreselectSlot] = useState<string | null>(null)
   const [memoryDraftHandoff, setMemoryDraftHandoff] = useState<ReviewDraftHandoff | null>(null)
@@ -46,7 +47,12 @@ export default function App() {
   }, [renderProvider])
 
   useEffect(() => {
-    Promise.allSettled([api.health(), api.models(), api.conversations()]).then(([healthResult, modelsResult, conversationsResult]) => {
+    Promise.allSettled([
+      api.health(),
+      api.models(),
+      api.conversations(),
+      api.toolApprovalPolicy(),
+    ]).then(([healthResult, modelsResult, conversationsResult, policyResult]) => {
       if (healthResult.status === 'fulfilled') {
         setHealth(healthResult.value)
         setModel(healthResult.value.model)
@@ -60,12 +66,25 @@ export default function App() {
           setConversationId(null)
         }
       }
+      if (policyResult.status === 'fulfilled') {
+        setAutoApproveExactPatchApply(Boolean(policyResult.value.auto_approve_exact_patch_apply))
+      }
     })
     const unsubscribe = window.aetherDesktop?.onSidecarStatus(() => {
       api.health().then(setHealth).catch(() => setHealth(null))
     })
     return unsubscribe
   }, [])
+
+  async function setAutoApprovePolicy(next: boolean) {
+    setAutoApproveExactPatchApply(next)
+    try {
+      const policy = await api.setToolApprovalPolicy(next)
+      setAutoApproveExactPatchApply(Boolean(policy.auto_approve_exact_patch_apply))
+    } catch {
+      setAutoApproveExactPatchApply(!next)
+    }
+  }
 
   useEffect(() => {
     if (!conversationId) {
@@ -173,9 +192,11 @@ export default function App() {
             renderProvider={renderProvider}
             pinned={pinned}
             floating={floating}
+            autoApproveExactPatchApply={autoApproveExactPatchApply}
             trace={trace}
             onModel={setModel}
             onRenderProvider={setRenderProvider}
+            onAutoApproveExactPatchApply={(value) => { void setAutoApprovePolicy(value) }}
             onPinned={(value) => {
               setPinned(value)
               void window.aetherDesktop?.setAlwaysOnTop(value)

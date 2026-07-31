@@ -220,7 +220,7 @@ Local assistant that: answers from stored evidence, **holds multi-truth**, doesn
 
 | Claim | Status |
 |-------|--------|
-| Ordinary multi-turn conversation is reliable | **Failed dogfood** — history often missing from voice/hybrid; bare “why” → hybrid poetry; lexical irrelevant release; “Checked” overclaims |
+| Ordinary multi-turn conversation is reliable | **Phase 1–3 control-flow landed in code (2026-07):** `conversation_context.py` packet (accepted turns + completion receipts) is injected into local/voice/hybrid prompts; bare `why` no longer forces hybrid; regression suite `tests/test_conversation_context.py` + `tests/test_phase1_conversation_control_flow.py` (21 passed as of verification). Live dogfood still recommended. Lexical relevance and honest “Checked” remain partial. |
 | NL Continuity routing | Explicitly **not** enabled |
 | Full SSE multimodal “meaning compression family” as product | Largely aspirational / lab |
 | DNNT as primary mind | Lab; Workbench uses Ollama |

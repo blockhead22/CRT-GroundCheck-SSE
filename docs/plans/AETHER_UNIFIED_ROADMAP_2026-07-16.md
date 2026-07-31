@@ -11,6 +11,10 @@ optional. Older roadmap, handoff, current-state, lab, and repair documents remai
 useful as evidence and implementation history, but they do not independently set
 the next priority.
 
+The cross-agent operational restart packet is
+`docs/plans/AETHER_CANONICAL_CONTINUITY_LOG_2026-07-20.md`. It summarizes this
+roadmap without replacing its priority authority.
+
 ## Product Direction
 
 ```text
@@ -104,6 +108,22 @@ The dated restart and evidence map is
 `docs/plans/AETHER_PRODUCT_RESEARCH_HANDOFF_2026-07-18.md`. Resume the product
 lane from the governed cross-conversation task/open-loop continuation gate; do
 not reopen research merely because an optional experiment remains unfinished.
+
+### Mirus semantic task-intake checkpoint - 2026-07-20
+
+A bounded shadow lab tested `qwen2.5:7b-instruct` as a structured semantic task
+proposer around the live deterministic intake. The governed hybrid improved
+development-pack recall from `0.2857` to `0.7619` at perfect precision. After
+speaker/modality hardening, the repaired first holdout reached `1.0000`
+precision and `0.9167` recall, but that was post-reveal evidence.
+
+The untouched second holdout failed the promotion gate: recall was `1.0000`,
+precision was `0.7143`, and three high-risk false candidates survived. Review
+containment held with zero authority-contract violations, but the semantic
+proposer remains disconnected from live trace, Workbench, and learner intake.
+Do not tune further against these packs. Reopen only with a stronger
+speaker/modality mechanism and another untouched holdout. Full evidence is in
+`docs/plans/AETHER_MIRUS_SEMANTIC_TASK_INTAKE_LAB_2026-07-20.md`.
 
 ### Task-continuation slice 1 checkpoint - 2026-07-18
 

@@ -267,6 +267,16 @@ beforeEach(() => {
     const url = String(input)
     if (url.endsWith('/health')) return new Response(JSON.stringify(health), { status: 200 })
     if (url.endsWith('/v1/models')) return new Response(JSON.stringify({ models: [{ name: health.model }] }), { status: 200 })
+    if (url.endsWith('/v1/settings/tool-approval')) {
+      return new Response(
+        JSON.stringify({
+          schema: 'aether.tool_approval_policy.v0',
+          auto_approve_exact_patch_apply: false,
+          updated_at: null,
+        }),
+        { status: 200 },
+      )
+    }
     if (url.endsWith('/v1/conversations')) return new Response(JSON.stringify({ conversations }), { status: 200 })
     if (url.endsWith('/v1/conversations/conv-1/turns')) return new Response(JSON.stringify({ turns }), { status: 200 })
     if (url.endsWith('/v1/traces/turn-old')) return new Response(JSON.stringify({ trace }), { status: 200 })

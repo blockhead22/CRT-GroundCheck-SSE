@@ -121,7 +121,7 @@ function toolNotice(status: string, output: Record<string, unknown>) {
     return 'Patch is not ready; exact replacement text is required.'
   }
   if (output.applied === false && output.ready === true && typeof output.sha256 === 'string') {
-    return 'Patch is preview-only. Approval is required, and apply will be blocked if the file hash changes.'
+    return 'Patch is preview-only. Approval is required (or enable auto-approve exact patches), and apply will be blocked if the file hash changes.'
   }
   if (output.timed_out === true) return 'Test timed out before completion.'
   return ''
@@ -492,7 +492,14 @@ export function TraceDrawer({
                     </button>
                   ) : null}
                   {run.output.applied === true ? (
-                    <div className="patch-applied">Applied · receipt {String(run.output.receipt_id || '')}</div>
+                    <div className="patch-applied">
+                      Applied
+                      {run.output.approval_mode === 'policy_auto_approve'
+                        ? ' · auto-approve policy'
+                        : ' · explicit review'}
+                      {' · receipt '}
+                      {String(run.output.receipt_id || '')}
+                    </div>
                   ) : null}
                 </>
               ) : null}

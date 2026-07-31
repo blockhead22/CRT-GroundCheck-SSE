@@ -8,6 +8,7 @@
   Trace,
   Turn,
   PatchApplyReceipt,
+  ToolApprovalPolicy,
   Reflection,
   SupportPattern,
   ConsolidationPreview,
@@ -81,6 +82,14 @@ export const api = {
     request<PatchApplyReceipt>(`/v1/tools/${encodeURIComponent(toolRunId)}/apply`, {
       method: 'POST',
       body: JSON.stringify({ approved: true, idempotency_key: idempotencyKey }),
+    }),
+  toolApprovalPolicy: () => request<ToolApprovalPolicy>('/v1/settings/tool-approval'),
+  setToolApprovalPolicy: (autoApproveExactPatchApply: boolean) =>
+    request<ToolApprovalPolicy>('/v1/settings/tool-approval', {
+      method: 'PUT',
+      body: JSON.stringify({
+        auto_approve_exact_patch_apply: autoApproveExactPatchApply,
+      }),
     }),
   reflections: async (status = '', subject = '') => {
     const params = new URLSearchParams()

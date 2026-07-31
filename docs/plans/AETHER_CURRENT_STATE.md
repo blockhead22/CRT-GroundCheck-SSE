@@ -28,6 +28,13 @@ decisions survive page reload and sidecar restart without writing memory. The
 bounded governed-continuity gate is closed; desktop distribution readiness is
 the next main product lane.
 
+Mirus semantic-intake lab checkpoint updated: 2026-07-20. A shadow
+`qwen2.5:7b-instruct` proposer materially improved task recall, but an untouched
+20-case holdout produced three high-risk false candidates and failed the live
+integration gate. The proposer remains disconnected from Aether and Workbench.
+The live deterministic intake received only narrow quote/example safety fixes.
+See `AETHER_MIRUS_SEMANTIC_TASK_INTAKE_LAB_2026-07-20.md`.
+
 Canonical priorities, milestone gates, and side-lane disposition:
 
 ```text
@@ -41,6 +48,7 @@ roadmap.
 Start new Codex threads here:
 
 ```text
+D:\AI_round2\docs\plans\AETHER_CANONICAL_CONTINUITY_LOG_2026-07-20.md
 D:\AI_round2\docs\plans\AETHER_CRT_WORKBENCH_HANDOFF_2026-06-29.md
 ```
 
@@ -86,6 +94,7 @@ D:\AI_round2\docs\plans\AETHER_WEIGHTED_FEEDBACK_LEDGER_2026-06-29.md
 D:\AI_round2\docs\plans\AETHER_AETEROS_MASTER_PLAN_2026-06-26.md
 D:\AI_round2\docs\plans\AETHER_WORKBENCH_V1.md
 D:\AI_round2\docs\plans\AETHER_REPO_CLEANUP_2026-07-19.md
+D:\AI_round2\docs\plans\AETHER_MIRUS_SEMANTIC_TASK_INTAKE_LAB_2026-07-20.md
 ```
 
 ## Current Decision
@@ -1371,6 +1380,7 @@ do not create automatic memory/support/reflection writes
 do not expand schemas speculatively
 do not reopen learner/local-router polishing without a concrete product need
 do not treat response alignment as automatic task execution
+do not wire the semantic task proposer into live intake after its failed v2 holdout
 ```
 
 ## Safety Contract
