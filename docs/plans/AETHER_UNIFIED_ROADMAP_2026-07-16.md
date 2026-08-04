@@ -11,9 +11,10 @@ optional. Older roadmap, handoff, current-state, lab, and repair documents remai
 useful as evidence and implementation history, but they do not independently set
 the next priority.
 
-The cross-agent operational restart packet is
-`docs/plans/AETHER_CANONICAL_CONTINUITY_LOG_2026-07-20.md`. It summarizes this
-roadmap without replacing its priority authority.
+The current cross-agent operational restart packet is
+`docs/plans/AETHER_CANONICAL_CONTINUITY_LOG_2026-08-04.md`. The July 20 packet
+remains detailed historical context. Neither packet replaces this roadmap's
+priority authority.
 
 ## Product Direction
 

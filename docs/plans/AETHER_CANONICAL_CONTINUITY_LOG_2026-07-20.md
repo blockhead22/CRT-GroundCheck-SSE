@@ -2,6 +2,10 @@
 
 **Snapshot date:** 2026-07-20
 
+**Operationally superseded:** 2026-08-04 by
+`AETHER_CANONICAL_CONTINUITY_LOG_2026-08-04.md`. Retain this file as detailed
+historical product and research context.
+
 **Workspace:** `D:\AI_round2`
 
 **Purpose:** Give Grok, Codex, or another AI engineering agent enough verified

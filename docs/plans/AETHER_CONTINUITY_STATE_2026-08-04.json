@@ -1,0 +1,64 @@
+{
+  "schema": "aether.continuity_state.v1",
+  "snapshot_date": "2026-08-04",
+  "timezone": "America/Chicago",
+  "workspace": "D:\\AI_round2",
+  "repositories": {
+    "root": {
+      "path": "D:\\AI_round2",
+      "branch": "codex/repo-cleanup-archive",
+      "head": "5dba33df8",
+      "origin_ref": "origin/codex/repo-cleanup-archive",
+      "origin_matches": true,
+      "clean_before_continuity_update": true
+    },
+    "aether_core": {
+      "path": "D:\\AI_round2\\aether-core",
+      "branch": "master",
+      "head": "7689f38",
+      "origin_ref": "origin/master",
+      "origin_matches": true,
+      "clean": true
+    }
+  },
+  "runtime": {
+    "workbench_5175": "stopped",
+    "sidecar_8765": "stopped",
+    "ollama_11434": "stopped"
+  },
+  "substrate": {
+    "state_path": "C:\\Users\\block\\.aether\\mcp_state.json",
+    "memory_count": 438,
+    "edge_count": 3732,
+    "belnap_states": {
+      "T": 436,
+      "Both": 2
+    },
+    "edge_types": {
+      "related_to": 3692,
+      "contradicts": 40
+    },
+    "held_contradictions": 1,
+    "evolving_contradictions": 1,
+    "embeddings_available": true,
+    "embeddings_loaded": false,
+    "embeddings_warming": true
+  },
+  "latest_live_gate": {
+    "date": "2026-07-30",
+    "verdict": "pass",
+    "isolated_profile": "golden-path",
+    "production_profile_touched": false,
+    "backend_tests_passed": 33,
+    "workbench_tests_passed": 73,
+    "electron_tests_passed": 26,
+    "production_build": "pass",
+    "receipt": "C:\\Users\\block\\AppData\\Local\\Temp\\AetherGoldenPath-20260730\\golden-path-acceptance-receipt.json"
+  },
+  "active_lane": null,
+  "recommended_next": [
+    "automate the isolated golden-path acceptance gate",
+    "reduce exact-patch proposal latency without weakening governance",
+    "select one recurring daily-use loop for dogfood"
+  ]
+}

@@ -1,5 +1,13 @@
 # Aether Current State
 
+Continuity checkpoint updated: 2026-08-04. The July 30 isolated live
+golden-path gate passed runtime identity, memory correction and restart,
+held-contradiction handling, manual/stale/auto patch governance, archive
+non-write boundaries, rendered UI, and cleanup. Both repositories were clean
+and synchronized before this documentation update; all local services were
+stopped on August 4. Start with
+`AETHER_CANONICAL_CONTINUITY_LOG_2026-08-04.md`.
+
 Last checkpoint content: 2026-07-07
 
 Roadmap authority updated: 2026-07-16
@@ -48,6 +56,7 @@ roadmap.
 Start new Codex threads here:
 
 ```text
+D:\AI_round2\docs\plans\AETHER_CANONICAL_CONTINUITY_LOG_2026-08-04.md
 D:\AI_round2\docs\plans\AETHER_CANONICAL_CONTINUITY_LOG_2026-07-20.md
 D:\AI_round2\docs\plans\AETHER_CRT_WORKBENCH_HANDOFF_2026-06-29.md
 ```

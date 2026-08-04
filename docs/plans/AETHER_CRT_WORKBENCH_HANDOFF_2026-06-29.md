@@ -2,7 +2,13 @@
 
 This is the clean restart packet for a new Codex thread in `D:\AI_round2`.
 
-Canonical 2026-07-20 continuation packet:
+Canonical current continuation packet:
+
+```text
+D:\AI_round2\docs\plans\AETHER_CANONICAL_CONTINUITY_LOG_2026-08-04.md
+```
+
+Prior detailed continuation packet:
 
 ```text
 D:\AI_round2\docs\plans\AETHER_CANONICAL_CONTINUITY_LOG_2026-07-20.md
