@@ -8,6 +8,7 @@ vi.mock('../api', () => ({
   api: {
     turns: vi.fn(async () => []),
     trace: vi.fn(),
+    cancelRun: vi.fn(),
     escalate: vi.fn(),
     createContinuityOpenLoop: vi.fn(),
     reviewContinuityOpenLoop: vi.fn(),
@@ -100,6 +101,39 @@ beforeEach(() => {
   localStorage.clear()
   vi.clearAllMocks()
   mockedApi.turns.mockResolvedValue([])
+  mockedApi.cancelRun.mockResolvedValue({
+    schema: 'aether.run_cancellation.v0',
+    turn_id: 'turn-resume',
+    accepted: true,
+    already_requested: false,
+    run_state: {
+      schema: 'aether.run_state.v0',
+      status: 'running',
+      phase: 'render',
+      round_budget: {
+        base_rounds: 1,
+        repair_rounds_allowed: 2,
+        repair_rounds_used: 0,
+        total_rounds_allowed: 3,
+        total_rounds_used: 1,
+        exhausted: false,
+      },
+      cancellation: { requested: true, status: 'requested', supported: true },
+      tool_lifecycle: { run_count: 0, statuses: [] },
+      raw_chain_of_thought_stored: false,
+    },
+    run_event: {
+      schema: 'aether.run_event.v0',
+      event_id: 'run-event-0004-cancel-requested',
+      index: 4,
+      phase: 'cancel',
+      status: 'requested',
+      summary: 'Cancellation requested',
+      detail: 'The run will stop at the next bounded round checkpoint.',
+      public: true,
+      raw_chain_of_thought: false,
+    },
+  })
   mockedApi.createContinuityOpenLoop.mockResolvedValue({
     loop_id: 'loop-created',
     project_root: 'D:/AI_round2/aether-core',
@@ -137,6 +171,33 @@ beforeEach(() => {
         clauses: [],
       },
       packets: [],
+      run_state: {
+        schema: 'aether.run_state.v0',
+        status: 'complete',
+        phase: 'complete',
+        round_budget: {
+          base_rounds: 1,
+          repair_rounds_allowed: 2,
+          repair_rounds_used: 1,
+          total_rounds_allowed: 3,
+          total_rounds_used: 2,
+          exhausted: false,
+        },
+        cancellation: { requested: false, status: 'not_requested', supported: false },
+        tool_lifecycle: { run_count: 0, statuses: [] },
+        raw_chain_of_thought_stored: false,
+      },
+      run_events: [{
+        schema: 'aether.run_event.v0',
+        event_id: 'run-event-complete',
+        index: 6,
+        phase: 'complete',
+        status: 'done',
+        summary: 'Turn completed',
+        detail: 'The final answer and public process receipt were persisted.',
+        public: true,
+        raw_chain_of_thought: false,
+      }],
       public_governance_steps: [{
         schema: 'aether.public_governance_step.v0',
         step_id: 'gov-step-09-answer_fallback',
@@ -281,6 +342,66 @@ describe('Continuity Resume action', () => {
 
     expect(screen.getByText('Verified 4/4')).toBeInTheDocument()
     expect(screen.queryByText('Checks unavailable')).not.toBeInTheDocument()
+  })
+
+  test('labels the public receipt as Process and rehydrates its durable timeline', () => {
+    const persistedTrace = {
+      ...continuityTrace('explicit_open_loop'),
+      run_events: [{
+        schema: 'aether.run_event.v0',
+        event_id: 'run-event-repair-round-1',
+        index: 4,
+        phase: 'repair',
+        status: 'done',
+        summary: 'Coverage repair round 1 improved coverage',
+        detail: 'Missing obligations changed from 1 to 0; rejected drafts were not stored.',
+        public: true,
+        raw_chain_of_thought: false,
+      }],
+    }
+    renderPanel({
+      conversationId: 'conv-next',
+      turns: [continuityTurn],
+      trace: persistedTrace,
+    })
+
+    expect(screen.getByRole('button', { name: 'Toggle process for turn turn-next' })).toHaveTextContent('Process')
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle process for turn turn-next' }))
+
+    expect(screen.getByLabelText('Process timeline')).toBeInTheDocument()
+    expect(screen.getByText('Coverage repair round 1 improved coverage')).toBeInTheDocument()
+    expect(screen.queryByText('Thinking')).not.toBeInTheDocument()
+  })
+
+  test('requests cooperative cancellation and shows the persisted checkpoint receipt', async () => {
+    mockedStreamChat.mockImplementation(async (_body, events) => {
+      events.onTurn({ turn_id: 'turn-resume', conversation_id: 'conv-resume' })
+      events.onTrace({
+        query: 'Take your time.',
+        status: 'answerable',
+        turn_id: 'turn-resume',
+        conversation_id: 'conv-resume',
+        model: 'qwen3:14b',
+        plan: { status: 'complete', coverage: 1, unresolved_clauses: [], clauses: [] },
+        packets: [],
+        run_events: [],
+        memory_writes: [],
+      })
+      await new Promise<void>(() => undefined)
+    })
+    renderPanel()
+    fireEvent.change(screen.getByLabelText('Message Aether'), {
+      target: { value: 'Take your time.' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
+
+    const cancel = await screen.findByRole('button', { name: 'Cancel run' })
+    fireEvent.click(cancel)
+
+    await waitFor(() => expect(mockedApi.cancelRun).toHaveBeenCalledWith('turn-resume'))
+    expect(screen.getByRole('button', { name: 'Cancellation requested' })).toBeDisabled()
+    expect(screen.getByText('Cancellation requested', { selector: '.governance-live-step-copy > span' })).toBeInTheDocument()
+    expect(screen.getByText('The run will stop at the next bounded round checkpoint.')).toBeInTheDocument()
   })
 
   test('sends the exact governed command through the normal chat stream', async () => {

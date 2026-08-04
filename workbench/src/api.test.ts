@@ -69,12 +69,34 @@ test('creates reflection draft payloads through the proposed reflection endpoint
   )
 })
 
+test('requests cooperative cancellation for an active run', async () => {
+  const receipt = {
+    schema: 'aether.run_cancellation.v0',
+    turn_id: 'turn-1',
+    accepted: true,
+    already_requested: false,
+    run_state: { status: 'running' },
+    run_event: { phase: 'cancel', status: 'requested' },
+  }
+  const fetchMock = vi.fn(async () => new Response(JSON.stringify(receipt), { status: 200 }))
+  vi.stubGlobal('fetch', fetchMock)
+
+  const result = await api.cancelRun('turn-1')
+
+  expect(result.accepted).toBe(true)
+  expect(fetchMock).toHaveBeenCalledWith(
+    expect.stringContaining('/v1/runs/turn-1/cancel'),
+    expect.objectContaining({ method: 'POST' }),
+  )
+})
+
 test('streamChat dispatches public governance steps before answer tokens', async () => {
   const encoder = new TextEncoder()
   const body = [
     'event: turn\ndata: {"turn_id":"turn-1","conversation_id":"conv-1"}\n\n',
     'event: trace\ndata: {"turn_id":"turn-1","public_governance_steps":[]}\n\n',
     'event: governance_step\ndata: {"schema":"aether.public_governance_step.v0","step_id":"gov-step-01-memory_check","index":1,"phase":"memory_check","status":"done","summary":"Checked governed memory","detail":"1 released packet.","public":true,"raw_chain_of_thought":false}\n\n',
+    'event: run_event\ndata: {"schema":"aether.run_event.v0","event_id":"run-event-render","index":3,"phase":"render","status":"in_progress","summary":"Rendering with the selected provider","detail":"qwen renders the answer.","public":true,"raw_chain_of_thought":false}\n\n',
     'event: token\ndata: {"text":"Hello"}\n\n',
     'event: done\ndata: {"answer":"Hello","needs_stronger_model":false}\n\n',
   ]
@@ -100,6 +122,9 @@ test('streamChat dispatches public governance steps before answer tokens', async
       onGovernanceStep: (step) => {
         events.push(`governance:${step.phase}:${step.raw_chain_of_thought}`)
       },
+      onRunEvent: (event) => {
+        events.push(`run:${event.phase}:${event.status}`)
+      },
       onToken: (text) => events.push(`token:${text}`),
       onDone: () => events.push('done'),
       onError: (message) => events.push(`error:${message}`),
@@ -110,6 +135,7 @@ test('streamChat dispatches public governance steps before answer tokens', async
     'turn',
     'trace',
     'governance:memory_check:false',
+    'run:render:in_progress',
     'token:Hello',
     'done',
   ])

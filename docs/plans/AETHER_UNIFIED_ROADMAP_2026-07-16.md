@@ -48,6 +48,7 @@ Blind generalization repair and replication 2 COMPLETE WITH LIMITS
 Persistence and product hardening             COMPLETE FOR BOUNDED TASK AUTHORITY
 Governed cross-conversation continuity        COMPLETE WITH EXPLICIT REVIEW LIMITS
 Desktop distribution readiness                ACTIVE
+Iterative agent and autobiographical substrate DIRECTION APPROVED; PHASED PLAN QUEUED
 External pilots, grants, or company structure GATED
 ```
 
@@ -109,6 +110,70 @@ The dated restart and evidence map is
 `docs/plans/AETHER_PRODUCT_RESEARCH_HANDOFF_2026-07-18.md`. Resume the product
 lane from the governed cross-conversation task/open-loop continuation gate; do
 not reopen research merely because an optional experiment remains unfinished.
+
+### Iterative agent and autobiographical substrate direction - 2026-08-04
+
+The next major product direction is now defined in
+`docs/plans/AETHER_ITERATIVE_AGENT_AUTOBIOGRAPHICAL_SUBSTRATE_PLAN_2026-08-04.md`.
+It addresses the current one-shot completion limit, selected-renderer
+participation, governed multi-round tools, large profile imports, passive user
+memory, and personality development.
+
+The plan adds a first-class **Aether autobiographical substrate** distinct from
+user memory. User memory records governed claims about the user. The
+autobiographical substrate records Aether's evidence-backed episodes,
+self-model beliefs, strategies, commitments, curiosities, relationship history,
+and character development. Aether authors and maintains that history within
+constitutional limits; the user retains inspection, containment, export, reset,
+and deletion powers. It is inspectable without requiring the user to author
+every learned disposition.
+
+This decision does not authorize hidden chain-of-thought storage, autonomous
+policy mutation, user-fact promotion from agent reflection, tool escalation, or
+unbounded self-modification. The underlying model remains replaceable. Growth
+means improved continuity, strategy, judgment, and character through governed
+experience.
+
+Implementation is phased. Atomic obligation coverage and truthful iterative
+completion precede the evented UI and provider/tool loop. Passive user learning
+and structured About Me ingestion precede the autobiographical store. Bounded
+autonomous reflection precedes personality adaptation. Long-horizon
+consolidation and adversarial hardening come last.
+
+The first bounded Phase 0/1 implementation slice started on August 4. The live
+sidecar now records an `aether.obligation_ledger.v0` compatibility contract for
+declared answer jobs plus an explicit evidence-provenance obligation, preserves
+`how` and `why` clauses, blocks false completion when provenance is missing, and
+attempts one selected-provider repair. Focused/adjacent validation passed 154
+tests and the complete character/renderer file passed 104 tests. This does not
+complete Phase 0 or Phase 1: general semantic obligation extraction, arbitrary
+prompt actions and format constraints, multi-round budgets, and partial status
+remain open.
+
+Phase 1 slice 2 now records request-shaped compound clauses, adds checkable
+explicit-topic obligations, limits coverage repair to two rounds, and carries a
+truthful obligation status through completion, trace result, and the final
+event. Arbitrary clauses remain `semantic_pending`: they make the obligation
+state partial but do not block release until a real semantic verifier exists.
+Incidental topic mentions, background context, vocatives, and format clauses
+are excluded from deterministic obligation promotion. Validation passed 159
+focused/adjacent tests and the complete 105-test character/renderer file.
+
+This closes neither Phase 1 nor the iterative-agent gate. Semantic coverage and
+the action/research obligation contract remain open. At explicit user direction,
+Phase 2 slice 1 proceeded before that gate closed: the sidecar now persists and
+streams `aether.run_state.v0` plus stable `aether.run_event.v0` public lifecycle
+receipts for gather, tools, render, verification, repair rounds, and completion.
+Workbench replaces the visible `Thinking` label with `Process`, upserts streamed
+phase state, and rehydrates the durable final timeline from the trace endpoint.
+The state exposes round-budget use, tool summary, and terminal status. Phase 2
+slice 2 adds `RunCoordinator`, an append-only event journal, incremental
+render/verify/repair events, `POST /v1/runs/{turn_id}/cancel`, and a Workbench
+`Cancel run` control. Cancellation is cooperative at bounded checkpoints,
+idempotently persisted, and withholds the buffered model draft. Validation
+passed 219 affected backend tests, 76 Workbench Vitest tests, 26 Electron tests,
+and the production build. The Phase 2 exit gate remains open pending live
+multi-round browser/restart acceptance and per-transition tool lifecycle events.
 
 ### Mirus semantic task-intake checkpoint - 2026-07-20
 

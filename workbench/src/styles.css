@@ -211,8 +211,19 @@ button { color: inherit; }
 .governance-live-step.flagged svg { color: #ef9d91; }
 .governance-live-step.failed em,
 .governance-live-step.flagged em { color: #ef9d91; border-color: rgba(239,157,145,.28); }
-.governance-live-step.started svg { color: #a8cf5a; }
-.governance-live-step.started em { color: #a8cf5a; }
+.governance-live-step.attention svg { color: #efb76f; }
+.governance-live-step.attention em { color: #efb76f; border-color: rgba(239,183,111,.28); }
+.governance-live-step.requested svg { color: #efb76f; }
+.governance-live-step.requested em { color: #efb76f; border-color: rgba(239,183,111,.28); }
+.governance-live-step.started svg,
+.governance-live-step.in_progress svg { color: #a8cf5a; }
+.governance-live-step.started em,
+.governance-live-step.in_progress em { color: #a8cf5a; }
+.governance-live-step.pending { opacity: .72; }
+.answer-thinking-panel > .governance-live-trace { margin: 8px; }
+.run-cancel-button { display: inline-flex; align-items: center; gap: 6px; width: fit-content; margin: 0 0 10px; border: 1px solid rgba(239,157,145,.28); border-radius: 5px; background: rgba(239,157,145,.06); color: #d6a29a; padding: 5px 8px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; cursor: pointer; }
+.run-cancel-button:hover:not(:disabled) { border-color: rgba(239,157,145,.5); background: rgba(239,157,145,.1); color: #efb0a6; }
+.run-cancel-button:disabled { cursor: default; opacity: .58; }
 .thinking-line { display: block; width: 64%; height: 8px; margin-top: 15px; background: linear-gradient(90deg, #29312d 20%, #3b463f 50%, #29312d 80%); background-size: 180% 100%; animation: shimmer 1.1s infinite; border-radius: 4px; }
 .spin { animation: spin 1s linear infinite; }
 .chat-error, .inline-notice { color: #ef9d91; border: 1px solid rgba(230,108,92,.32); background: rgba(230,108,92,.08); padding: 9px 10px; border-radius: 6px; font-size: 11px; margin-top: 10px; }

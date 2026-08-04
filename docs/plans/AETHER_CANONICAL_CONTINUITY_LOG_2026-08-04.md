@@ -2,7 +2,8 @@
 
 **Snapshot date:** 2026-08-04
 **Workspace:** `D:\AI_round2`
-**Status:** Saved continuity checkpoint; no implementation lane is implicitly active
+**Status:** Saved continuity checkpoint; iterative-agent direction approved;
+Phase 1 slices 1-2 and Phase 2 evented-run slices 1-2 implemented in the working tree
 
 This is the operational restart packet after the July 30 live golden-path
 acceptance. It supersedes the July 20 packet for current Git, runtime, and
@@ -32,8 +33,17 @@ repair, and durable public trace wrapped around replaceable models, not an
 attempt to beat foundation-model progress or claim AGI.
 
 The bounded continuity/task-authority gate and the July 30 live golden-path
-gate are closed. No product code has changed since that acceptance. There is no
-silent active lane as of this checkpoint.
+gate are closed. No product code had changed between that acceptance and the
+initial August 4 checkpoint inspection. Later on August 4, the product direction
+was extended with a phased iterative-agent and autobiographical-substrate plan,
+and the first bounded obligation-ledger slice was implemented in the nested
+runtime worktree. It has not been committed by this continuity update.
+
+Canonical new plan:
+
+```text
+D:\AI_round2\docs\plans\AETHER_ITERATIVE_AGENT_AUTOBIOGRAPHICAL_SUBSTRATE_PLAN_2026-08-04.md
+```
 
 ## Verified Repository State
 
@@ -63,6 +73,102 @@ state:  clean
 enough to establish the runtime state.
 
 ## Changes Since the July 20 Packet
+
+### Atomic obligation-ledger slice
+
+The first iterative-agent compatibility slice is present in the nested
+`aether-core` working tree. It adds `aether.obligation_ledger.v0`, preserves
+`how` and `why` interrogatives during clause splitting, derives an explicit
+evidence-provenance obligation when it accompanies governed answer jobs, and
+checks that obligation before final acceptance.
+
+When the bounded answer contains the requested values but omits `how do you
+know`, the sidecar performs one bounded repair attempt. The selected provider
+receives that repair attempt; a selected Grok path does not silently fall back
+to local generation. The repair contract preserves authoritative facts,
+forbids new personal claims and authority expansion, and stores no rejected raw
+draft or chain-of-thought.
+
+Verified in the current worktree:
+
+```text
+focused/adjacent backend tests:       154 passed
+complete character/renderer tests:   104 passed
+git diff check:                       passed
+```
+
+This is not a general semantic planner yet. It covers existing declared answer
+jobs and explicit provenance. General action, format, research, and arbitrary
+`why` obligations; multi-round budgets; partial completion; and the evented
+Workbench runtime remain queued.
+
+### Phase 1 obligation slice 2
+
+The next working-tree slice broadens the ledger conservatively. Explicit topic
+enumerations and known deterministic jobs are checkable and may trigger up to
+two selected-provider repair rounds. Other request-shaped compound clauses are
+persisted as `semantic_pending`; completion and the final event report them as
+`partial`, but they cannot reject an answer through unreliable keyword
+matching.
+
+The first broad implementation failed 24 character/renderer regressions because
+it promoted background statements, stylistic language, vocatives, and
+incidental words into mandatory deterministic checks. That approach was
+discarded. The narrowed implementation preserves existing response-contract,
+deterministic-constructor, answer-job, and specialized character verifiers.
+
+Current working-tree validation:
+
+```text
+focused/adjacent backend tests:       159 passed
+complete character/renderer tests:   105 passed
+git diff check:                       passed
+```
+
+Phase 1 remains active. The next missing mechanism is semantic coverage for
+`semantic_pending` clauses plus typed action and research/evidence obligations.
+At the user's explicit direction, the first Phase 2 vertical slice was started
+before that remaining Phase 1 gate closed.
+
+### Phase 2 evented-run slices 1-2
+
+The sidecar now saves a provider-neutral `aether.run_state.v0` and append-only
+`aether.run_event.v0` journal on every governed trace. The public lifecycle
+covers gather, tool, render, verify, repair rounds, and terminal completion.
+The state records the three-round base-plus-repair budget, tool lifecycle
+summary, partial/blocked/failed/cancelled outcomes, and cooperative cancellation
+at bounded verifier/repair checkpoints.
+
+The stream emits initial running events before answer tokens and incremental
+render, verify, repair, cancellation, and completion transitions. Workbench
+consumes those events, replaces the ambiguous visible `Thinking` label with
+`Process`, and renders the same final timeline after trace readback. Existing public governance
+steps remain available as audit receipts; the run timeline does not claim to be
+raw model reasoning and stores `raw_chain_of_thought: false` on every event.
+
+Current working-tree validation:
+
+```text
+affected backend regression:          219 passed
+Workbench Vitest regression:           76 passed
+Workbench Electron regression:         26 passed
+Workbench production build:        passed
+git diff check:                     passed
+```
+
+Slice 2 adds `RunCoordinator`, `POST /v1/runs/{turn_id}/cancel`, an immediate
+Workbench `Cancel run` control, persisted idempotent cancellation requests, and
+terminal acknowledgement at the next bounded checkpoint. A concurrent
+acceptance test proves the buffered model draft is not released after a cancel
+request and the saved trace finishes as `cancelled`.
+
+The Phase 2 exit gate is not closed. A live multi-round browser run and sidecar
+restart acceptance remain to be executed; in-app Browser automation was blocked
+from controlling the loopback URL by its URL security policy during this
+checkpoint. Per-transition tool events are also a future slice. This is an
+automation limitation, not evidence of a product UI
+failure; component, integration, persistence-readback, and production-build
+checks passed.
 
 ### Governed exact-patch approval
 
@@ -218,18 +324,37 @@ Not decided by this checkpoint:
 - whether exact-patch auto-approval should ever be recommended beyond isolated
   or explicitly trusted workspaces.
 
+Decided after the original checkpoint inspection:
+
+- Aether should move from one-shot completion toward a bounded iterative run
+  engine with atomic obligation coverage and public process events;
+- ordinary user memory should support passive evidence accumulation while
+  preserving explicit correction and sensitive-release boundaries;
+- Aether should receive a separate autobiographical substrate for its own
+  episodes, strategies, commitments, curiosities, self-model, and character
+  development;
+- Aether substantially authors that autobiography, while the user retains
+  inspection, limits, quarantine, export, reset, and deletion;
+- truthful obligation/outcome representation must exist before autonomous
+  post-turn reflection or personality learning begins.
+
 ## Recommended Next Work
 
-The smallest evidence-backed ladder is:
+The newly approved phased ladder is:
 
-1. Automate the July 30 isolated golden-path gate into one repeatable command
-   that creates a synthetic profile, runs the checks, emits a receipt, and
-   cleans up only its own processes.
-2. Reduce the observed 30-32 second local `qwen3:14b` exact-patch proposal
-   latency without weakening hash binding, verification, or approval receipts.
-3. Select and dogfood one real recurring daily loop:
-   `capture -> governed memory/task -> reminder/continuity -> review`.
-4. Resume distribution readiness only after an explicit lane decision.
+1. Freeze obligation, event, and autobiographical schemas plus the
+   complaint-derived evaluation pack.
+2. Implement atomic obligation coverage and bounded completion repair.
+3. Add the evented run engine and truthful Workbench process timeline.
+4. Add selected-provider iteration and governed typed tool proposals.
+5. Add passive user-memory scoring and structured About Me ingestion.
+6. Add the autobiographical substrate, then bounded autonomous reflection.
+7. Add evidence-backed personality/strategy growth and long-horizon
+   consolidation.
+
+The July 30 isolated golden-path gate should still be automated as a Phase 0
+regression prerequisite. Distribution readiness and local latency work remain
+valid, but they no longer define the only recommended next slice.
 
 Do not substitute another broad research lab for a selected product miss.
 
@@ -280,9 +405,14 @@ not used for the gate.
 All three local services were stopped on August 4. Do not infer a live runtime
 from a stale browser tab.
 
-No implementation lane is implicitly active. The recommended next slice is to
-automate the isolated gate, then choose a concrete daily-use loop or explicitly
-resume distribution. Preserve all authority and no-write boundaries.
+The iterative-agent and autobiographical-substrate direction is approved. Phase
+1 obligation slices 1-2 and Phase 2 evented-run slices 1-2 are implemented and
+validated in the working tree. Continue Phase 2 with live restart acceptance
+and evented tool transitions; Phase 1
+semantic coverage and typed action/research obligations remain open and must
+not be mistaken for complete. Automate the isolated golden-path gate as a
+regression prerequisite. Preserve all authority, provenance, profile isolation,
+and no-hidden-reasoning boundaries.
 ```
 
 ## Final Continuity Statement

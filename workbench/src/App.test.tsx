@@ -643,17 +643,17 @@ test('opens a historical turn trace from the assistant answer', async () => {
   expect(route).toHaveTextContent('deterministic')
 })
 
-test('opens an inline thinking trace from a historical assistant answer', async () => {
+test('opens an inline process receipt from a historical assistant answer', async () => {
   localStorage.setItem('aether.currentConversation', 'conv-1')
   const fetchMock = vi.mocked(fetch)
   render(<App />)
   await screen.findByText('old answer')
 
-  fireEvent.click(screen.getByRole('button', { name: 'Toggle thinking trace for turn turn-old' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Toggle process for turn turn-old' }))
 
-  const thinking = await screen.findByLabelText('Answer thinking trace')
+  const thinking = await screen.findByLabelText('Answer process')
   expect(thinking).toHaveTextContent('How this answer formed')
-  expect(thinking).toHaveTextContent('Thinking / Process')
+  expect(thinking).toHaveTextContent('Governance receipts')
   expect(thinking).toHaveTextContent('Mirus front packet: mirus extract candidates')
   expect(thinking).toHaveTextContent('Candidate hints: user:favorite_drink, user:favorite_flower_reason')
   expect(thinking).toHaveTextContent('Logic graph: input -> mirus_front -> holden_current_intake -> crt_validator -> final')

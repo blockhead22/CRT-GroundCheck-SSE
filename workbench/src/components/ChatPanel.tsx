@@ -3,7 +3,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { api, idempotencyKey, streamChat } from '../api'
-import type { ContinuityAlignmentReceipt, Conversation, PublicGovernanceStep, RenderProvider, TaskContinuationSelection, Trace, Turn } from '../types'
+import type { ContinuityAlignmentReceipt, Conversation, PublicGovernanceStep, RenderProvider, RunEvent, TaskContinuationSelection, Trace, Turn } from '../types'
 
 const VOICE_STORAGE_KEY = 'aether.voiceProfile'
 const VOICE_OPTIONS = [
@@ -59,11 +59,14 @@ export function ChatPanel({
   const [message, setMessage] = useState('')
   const [streaming, setStreaming] = useState('')
   const [governanceSteps, setGovernanceSteps] = useState<PublicGovernanceStep[]>([])
+  const [runEvents, setRunEvents] = useState<RunEvent[]>([])
   const [thinkingTraceCache, setThinkingTraceCache] = useState<Record<string, Trace>>({})
   const [openThinkingTurn, setOpenThinkingTurn] = useState<string | null>(null)
   const [thinkingLoadingTurn, setThinkingLoadingTurn] = useState<string | null>(null)
   const [pendingTurn, setPendingTurn] = useState<string | null>(null)
   const [pendingUser, setPendingUser] = useState('')
+  const [cancellingRun, setCancellingRun] = useState(false)
+  const [cancelRequested, setCancelRequested] = useState(false)
   const [needsStronger, setNeedsStronger] = useState(false)
   const [escalating, setEscalating] = useState(false)
   const [frontierAnswer, setFrontierAnswer] = useState('')
@@ -85,7 +88,7 @@ export function ChatPanel({
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-  }, [turns, streaming, frontierAnswer, governanceSteps])
+  }, [turns, streaming, frontierAnswer, governanceSteps, runEvents])
 
   useEffect(() => {
     window.localStorage.setItem(VOICE_STORAGE_KEY, voiceProfile)
@@ -106,8 +109,11 @@ export function ChatPanel({
   ) {
     if (!text || pendingTurn) return
     setPendingUser(text)
+    setCancellingRun(false)
+    setCancelRequested(false)
     setStreaming('')
     setGovernanceSteps([])
+    setRunEvents([])
     setFrontierAnswer('')
     setNeedsStronger(false)
     setError('')
@@ -131,6 +137,7 @@ export function ChatPanel({
           },
           onTrace: (trace) => {
             activeTraceRef.current = trace
+            setRunEvents(trace.run_events || [])
             onTrace(trace)
             dispatchWisconsinMapActions(trace, dispatchedMapActionsRef.current)
           },
@@ -139,6 +146,10 @@ export function ChatPanel({
               if (current.some((item) => item.step_id === step.step_id)) return current
               return [...current, step]
             })
+          },
+          onRunEvent: (event) => {
+            setRunEvents((current) => upsertRunEvent(current, event))
+            if (event.phase === 'cancel' && event.status === 'done') setCancelRequested(true)
           },
           onToken: (token) => setStreaming((current) => current + token),
           onDone: async (done) => {
@@ -186,6 +197,9 @@ export function ChatPanel({
               setPendingUser('')
               setStreaming('')
               setGovernanceSteps([])
+              setRunEvents([])
+              setCancellingRun(false)
+              setCancelRequested(false)
             }
           },
           onError: async (reason) => {
@@ -199,6 +213,9 @@ export function ChatPanel({
               setPendingUser('')
               setStreaming('')
               setGovernanceSteps([])
+              setRunEvents([])
+              setCancellingRun(false)
+              setCancelRequested(false)
             }
           },
         },
@@ -210,6 +227,24 @@ export function ChatPanel({
       setPendingUser('')
       setStreaming('')
       setGovernanceSteps([])
+      setRunEvents([])
+      setCancellingRun(false)
+      setCancelRequested(false)
+    }
+  }
+
+  async function cancelActiveRun() {
+    if (!pendingTurn || cancellingRun || cancelRequested) return
+    setCancellingRun(true)
+    setError('')
+    try {
+      const receipt = await api.cancelRun(pendingTurn)
+      setCancelRequested(receipt.accepted)
+      setRunEvents((current) => upsertRunEvent(current, receipt.run_event))
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not cancel the active run.')
+    } finally {
+      setCancellingRun(false)
     }
   }
 
@@ -257,7 +292,7 @@ export function ChatPanel({
       setThinkingTraceCache((current) => ({ ...current, [turnId]: result.trace }))
       onTrace(result.trace)
     } catch (reason) {
-      setError(reason instanceof Error ? `Thinking trace failed: ${reason.message}` : 'Thinking trace failed.')
+      setError(reason instanceof Error ? `Process receipt failed: ${reason.message}` : 'Process receipt failed.')
     } finally {
       setThinkingLoadingTurn(null)
     }
@@ -422,12 +457,12 @@ export function ChatPanel({
                 <div className="assistant-actions">
                   <button
                     className="turn-thinking-button"
-                    aria-label={`Toggle thinking trace for turn ${turn.turn_id}`}
-                    title="Thinking trace"
+                    aria-label={`Toggle process for turn ${turn.turn_id}`}
+                    title="How this answer formed"
                     onClick={() => void toggleThinkingTrace(turn.turn_id)}
                   >
                     <BrainCircuit size={13} />
-                    <span>Thinking</span>
+                    <span>Process</span>
                   </button>
                   <button
                     className="turn-trace-button"
@@ -463,7 +498,7 @@ export function ChatPanel({
                 onSelect={(selection) => runMessage('/resume', conversationId, selection)}
               />
               {openThinkingTurn === turn.turn_id ? (
-                <AnswerThinkingTrace
+                <AnswerProcessTrace
                   loading={thinkingLoadingTurn === turn.turn_id}
                   trace={trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id]}
                 />
@@ -482,24 +517,33 @@ export function ChatPanel({
             <div className="user-message">{pendingUser}</div>
             <div className="assistant-message streaming">
               <div className="assistant-label"><LoaderCircle className="spin" size={14} /> Governing {renderProvider === 'grok_build' ? 'hosted ' : ''}response</div>
-              {governanceSteps.length ? (
-                <div className="governance-live-trace" aria-label="Live governance trace">
-                  {governanceSteps.map((step) => (
-                    <GovernanceLiveStep step={step} key={step.step_id} />
-                  ))}
+              {runEvents.length ? (
+                <RunEventTimeline events={runEvents} live />
+              ) : governanceSteps.length ? (
+                <div className="governance-live-trace" aria-label="Live governance receipts">
+                  {governanceSteps.map((step) => <GovernanceLiveStep step={step} key={step.step_id} />)}
                 </div>
               ) : (
-                <div className="governance-live-trace" aria-label="Live governance trace">
+                <div className="governance-live-trace" aria-label="Live process timeline">
                   <div className="governance-live-step started">
                     <LoaderCircle className="spin" size={12} />
                     <span className="governance-live-step-copy">
-                      <span>Waiting for governance trace</span>
-                      <small>Route, memory, tools, and verifier checks have not reported yet.</small>
+                      <span>Starting governed run</span>
+                      <small>The sidecar has not reported its first public phase yet.</small>
                     </span>
                     <em>pending</em>
                   </div>
                 </div>
               )}
+              <button
+                className="run-cancel-button"
+                type="button"
+                disabled={!pendingTurn || cancellingRun || cancelRequested}
+                onClick={() => void cancelActiveRun()}
+              >
+                <CircleSlash2 size={12} />
+                {cancelRequested ? 'Cancellation requested' : cancellingRun ? 'Requesting cancellation…' : 'Cancel run'}
+              </button>
               {streaming ? <AnswerMarkdown>{streaming}</AnswerMarkdown> : <span className="thinking-line" />}
             </div>
           </div>
@@ -768,11 +812,41 @@ function GovernanceLiveStep({ step }: { step: PublicGovernanceStep }) {
   )
 }
 
+function upsertRunEvent(current: RunEvent[], event: RunEvent) {
+  const next = current.filter((item) => item.event_id !== event.event_id)
+  return [...next, event].sort((left, right) => left.index - right.index)
+}
+
+function RunEventTimeline({ events, live = false }: { events: RunEvent[]; live?: boolean }) {
+  return (
+    <div className="governance-live-trace" aria-label={live ? 'Live process timeline' : 'Process timeline'}>
+      {events.map((event) => (
+        <RunEventStep event={event} key={event.event_id} />
+      ))}
+    </div>
+  )
+}
+
+function RunEventStep({ event }: { event: RunEvent }) {
+  const Icon = governanceStepIcon(event.status)
+  const spinning = event.status === 'in_progress'
+  return (
+    <div className={`governance-live-step ${event.status}`} title={event.detail}>
+      <Icon className={spinning ? 'spin' : undefined} size={12} />
+      <span className="governance-live-step-copy">
+        <span>{event.summary}</span>
+        <small>{event.detail}</small>
+      </span>
+      <em>{governanceStepStatusLabel(event.status)}</em>
+    </div>
+  )
+}
+
 function governanceStepIcon(status: string) {
   if (status === 'done') return CheckCircle2
   if (status === 'skipped') return CircleSlash2
-  if (status === 'failed' || status === 'flagged') return AlertTriangle
-  if (status === 'started') return LoaderCircle
+  if (status === 'failed' || status === 'flagged' || status === 'attention') return AlertTriangle
+  if (status === 'started' || status === 'in_progress') return LoaderCircle
   return CircleDashed
 }
 
@@ -781,7 +855,7 @@ function governanceStepStatusLabel(status: string) {
   if (status === 'skipped') return 'skipped'
   if (status === 'failed') return 'failed'
   if (status === 'flagged') return 'flagged'
-  if (status === 'started') return 'pending'
+  if (status === 'started' || status === 'in_progress') return 'working'
   return status.replace(/_/g, ' ')
 }
 
@@ -816,7 +890,7 @@ function inferTraceSource(trace: Trace) {
     || ''
 }
 
-function AnswerThinkingTrace({
+function AnswerProcessTrace({
   trace,
   loading,
 }: {
@@ -825,25 +899,26 @@ function AnswerThinkingTrace({
 }) {
   if (loading && !trace) {
     return (
-      <div className="answer-thinking-panel" aria-label="Answer thinking trace">
+      <div className="answer-thinking-panel" aria-label="Answer process">
         <div className="answer-thinking-loading">
-          <LoaderCircle className="spin" size={13} /> Loading thinking trace
+          <LoaderCircle className="spin" size={13} /> Loading process
         </div>
       </div>
     )
   }
   if (!trace) {
     return (
-      <div className="answer-thinking-panel" aria-label="Answer thinking trace">
-        <div className="answer-thinking-loading">No thinking trace is available for this turn yet.</div>
+      <div className="answer-thinking-panel" aria-label="Answer process">
+        <div className="answer-thinking-loading">No public process receipt is available for this turn yet.</div>
       </div>
     )
   }
 
   const sections = answerThinkingSections(trace)
   return (
-    <div className="answer-thinking-panel" aria-label="Answer thinking trace">
+    <div className="answer-thinking-panel" aria-label="Answer process">
       <div className="answer-thinking-heading">How this answer formed</div>
+      {trace.run_events?.length ? <RunEventTimeline events={trace.run_events} /> : null}
       <div className="answer-thinking-sections">
         {sections.map((section) => (
           <section className="answer-thinking-section" key={section.label}>
@@ -865,6 +940,7 @@ function AnswerThinkingTrace({
 }
 
 function completionCheckLabel(trace?: Trace, persistedVerification?: Turn['completion_verification']) {
+  if (trace?.run_state?.status === 'cancelled') return 'Cancelled'
   const verification = trace?.completion?.verification_summary || persistedVerification
   if (!verification) return 'Checks unavailable'
   if (!verification.accepted) return 'Rejected by checks'
@@ -964,7 +1040,7 @@ function answerThinkingSections(trace: Trace) {
   const heldTension = tensionPacketLines(trace)
 
   return [
-    { label: 'Thinking / Process', items: process, empty: 'No public process steps were stored for this turn.' },
+    { label: 'Governance receipts', items: process, empty: 'No public governance receipts were stored for this turn.' },
     ...(heldTension.length
       ? [{ label: 'Held Tension', items: heldTension, empty: 'No tension packet was stored for this turn.' }]
       : []),

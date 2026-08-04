@@ -15,6 +15,7 @@
   ContinuityOpenLoop,
   TaskCandidateReviewResponse,
   TaskContinuationSelection,
+  RunCancellationReceipt,
 } from './types'
 
 const API_BASE = window.aetherDesktop?.apiBase
@@ -58,6 +59,10 @@ export const api = {
     ),
   slot: (slotId: string) => request<SlotDetail>(`/v1/slots/${encodeURIComponent(slotId)}`),
   trace: (turnId: string) => request<{ trace: Trace } & Record<string, unknown>>(`/v1/traces/${turnId}`),
+  cancelRun: (turnId: string) => request<RunCancellationReceipt>(
+    `/v1/runs/${encodeURIComponent(turnId)}/cancel`,
+    { method: 'POST' },
+  ),
   confirm: (slotId: string, body: Record<string, string>) =>
     request(`/v1/slots/${encodeURIComponent(slotId)}/confirm`, {
       method: 'POST',
@@ -182,6 +187,7 @@ function dispatchEvent(block: string, events: ChatEvents) {
   if (eventName === 'turn') events.onTurn(payload)
   else if (eventName === 'trace') events.onTrace(payload)
   else if (eventName === 'governance_step') events.onGovernanceStep?.(payload)
+  else if (eventName === 'run_event') events.onRunEvent?.(payload)
   else if (eventName === 'token') events.onToken(payload.text)
   else if (eventName === 'done') events.onDone(payload)
   else if (eventName === 'error') events.onError(payload.message)

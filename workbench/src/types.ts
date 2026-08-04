@@ -167,6 +167,8 @@ export interface Trace {
   route_decision?: RouteDecision
   governance_answer_spine?: GovernanceAnswerSpine
   public_governance_steps?: PublicGovernanceStep[]
+  run_state?: RunState
+  run_events?: RunEvent[]
   continuity_claim_atoms?: {
     schema: string
     request_kind: string
@@ -497,6 +499,55 @@ export interface PublicGovernanceStep {
   detail: string
   public: boolean
   raw_chain_of_thought: boolean
+}
+
+export interface RunEvent {
+  schema: string
+  event_id: string
+  index: number
+  phase: 'gather' | 'tools' | 'render' | 'verify' | 'repair' | 'cancel' | 'complete' | string
+  status: 'done' | 'in_progress' | 'pending' | 'requested' | 'skipped' | 'attention' | 'failed' | string
+  summary: string
+  detail: string
+  round?: number
+  provider?: string
+  model?: string
+  public: boolean
+  raw_chain_of_thought: boolean
+}
+
+export interface RunState {
+  schema: string
+  status: 'running' | 'complete' | 'partial' | 'blocked' | 'cancelled' | 'failed' | string
+  phase: string
+  round_budget: {
+    base_rounds: number
+    repair_rounds_allowed: number
+    repair_rounds_used: number
+    total_rounds_allowed: number
+    total_rounds_used: number
+    exhausted: boolean
+  }
+  cancellation: {
+    requested: boolean
+    status: string
+    supported: boolean
+    reason?: string
+  }
+  tool_lifecycle: {
+    run_count: number
+    statuses: string[]
+  }
+  raw_chain_of_thought_stored: boolean
+}
+
+export interface RunCancellationReceipt {
+  schema: string
+  turn_id: string
+  accepted: boolean
+  already_requested: boolean
+  run_state: RunState
+  run_event: RunEvent
 }
 
 export interface GovernanceAnswerSpine {
@@ -916,6 +967,7 @@ export interface ChatEvents {
   onTurn: (data: { turn_id: string; conversation_id: string }) => void
   onTrace: (trace: Trace) => void
   onGovernanceStep?: (step: PublicGovernanceStep) => void
+  onRunEvent?: (event: RunEvent) => void
   onToken: (text: string) => void
   onDone: (data: {
     answer: string
@@ -927,6 +979,7 @@ export interface ChatEvents {
     guidance_repaired?: boolean | null
     guidance_repair_failed?: boolean | null
     character_critic_repair?: CharacterCriticRepair
+    cancelled?: boolean
     depth?: DepthCompletion
     memory_writes?: Array<{ slot_id: string; value: string }>
     document_write?: { document_id: string; title: string; chunk_count: number } | null
