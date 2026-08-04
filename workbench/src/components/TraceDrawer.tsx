@@ -795,6 +795,8 @@ function formatRouteValue(value: string) {
 function responseRoute(trace: Trace) {
   const generationModel = trace.completion?.generation_model || trace.generation_model || trace.model
   const renderProvider = trace.completion?.render_provider
+  const externalRenderer = trace.external_renderer
+  const rendererApplication = trace.selected_renderer_application
   const hostedRenderer = renderProvider?.effective === 'grok_build'
   const verification = trace.completion?.verification_summary
   const guidanceKind = trace.completion?.guidance_kind || trace.character_answer?.kind || ''
@@ -811,6 +813,18 @@ function responseRoute(trace: Trace) {
     { label: 'Source', value: hostedRenderer ? 'Aether governed' : source.replaceAll('_', ' ') },
     { label: 'Selected', value: trace.model },
     { label: 'Generated', value: generationModel },
+    externalRenderer?.requested ? {
+      label: 'Requested provider',
+      value: externalRenderer.requested_provider === 'grok_build' ? 'Grok 4.5' : 'Local',
+    } : null,
+    externalRenderer?.requested ? {
+      label: 'Render proof',
+      value: `${externalRenderer.attempts || 0} attempt${externalRenderer.attempts === 1 ? '' : 's'}; ${formatRouteValue(externalRenderer.status || 'unknown')}`,
+    } : null,
+    rendererApplication?.attempted ? {
+      label: 'Selection receipt',
+      value: formatRouteValue(rendererApplication.status || 'unknown'),
+    } : null,
     hostedRenderer ? { label: 'Provider', value: 'Grok governed renderer' } : null,
     renderProvider?.fallback_applied ? { label: 'Provider', value: 'Local fallback' } : null,
     guidanceKind ? { label: 'Guidance', value: guidanceKind.replaceAll('_', ' ') } : null,

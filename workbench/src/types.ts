@@ -124,6 +124,21 @@ export interface Trace {
     authority?: string
     role?: string
   }
+  selected_renderer_application?: {
+    schema?: string
+    requested_provider?: RenderProvider
+    canonical_source?: string
+    fact_selection?: string
+    attempted?: boolean
+    status?: string
+    identity_checked?: boolean
+    identity_repair_attempted?: boolean
+    identity_repaired?: boolean
+    deterministic_fallback_applied?: boolean
+    effective_provider?: RenderProvider
+    effective_model?: string
+    failure?: string
+  }
   runtime_model_identity?: {
     schema?: string
     governing_system?: string

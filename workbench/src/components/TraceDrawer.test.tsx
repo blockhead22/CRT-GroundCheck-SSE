@@ -187,6 +187,16 @@ test('labels hosted governed rendering without claiming local generation authori
       authority: 'aether',
       role: 'governed_renderer',
     },
+    selected_renderer_application: {
+      requested_provider: 'grok_build',
+      canonical_source: 'aether_direct',
+      fact_selection: 'aether_governance',
+      attempted: true,
+      status: 'selected_provider_rendered',
+      deterministic_fallback_applied: false,
+      effective_provider: 'grok_build',
+      effective_model: 'grok-4.5',
+    },
     completion: {
       ...trace.completion,
       source: 'local_generation',
@@ -205,6 +215,12 @@ test('labels hosted governed rendering without claiming local generation authori
 
   const route = screen.getByLabelText('Response route')
   expect(within(route).getByText('Aether governed')).toBeInTheDocument()
+  expect(within(route).getByText('Requested provider')).toBeInTheDocument()
+  expect(within(route).getByText('Grok 4.5')).toBeInTheDocument()
+  expect(within(route).getByText('Render proof')).toBeInTheDocument()
+  expect(within(route).getByText('1 attempt; rendered')).toBeInTheDocument()
+  expect(within(route).getByText('Selection receipt')).toBeInTheDocument()
+  expect(within(route).getByText('selected provider rendered')).toBeInTheDocument()
   expect(within(route).getByText('Grok governed renderer')).toBeInTheDocument()
   expect(within(route).getByText('Aether accepted · partial checks')).toBeInTheDocument()
   expect(within(route).queryByText('local generation')).not.toBeInTheDocument()
