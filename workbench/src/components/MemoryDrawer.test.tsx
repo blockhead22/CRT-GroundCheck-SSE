@@ -69,7 +69,7 @@ beforeEach(() => {
 
 test('opens a slot and writes an explicit correction', async () => {
   const onMutated = vi.fn()
-  render(<MemoryDrawer refreshKey={0} onMutated={onMutated} />)
+  render(<MemoryDrawer refreshKey={0} onMutated={onMutated} uiMode="lab" />)
   fireEvent.click(await screen.findByRole('button', { name: /user:hobby/ }))
   expect(await screen.findByLabelText('Memory contradiction disposition')).toHaveTextContent(
     'resolvable'
@@ -96,6 +96,7 @@ test('loads a learner-preselected slot and draft without mutating memory', async
   render(
     <MemoryDrawer
       refreshKey={0}
+      uiMode="lab"
       preselectedSlotId="user:hobby"
       draftHandoff={{
         source_candidate_id: 'consolidation_candidate_memory',
@@ -171,6 +172,7 @@ test('shows favorite flower reason draft as review-only before correction', asyn
   render(
     <MemoryDrawer
       refreshKey={0}
+      uiMode="lab"
       preselectedSlotId="user:favorite_flower_reason"
       draftHandoff={{
         source_candidate_id: 'mirus_favorite_flower_reason_turn-orange',

@@ -311,6 +311,15 @@ export interface Trace {
     reason: string
     source?: string
   }>
+  /** Optional profile bridge payload used by Simple-mode "Why this answer". */
+  context_bridge?: {
+    profile_summary?: Array<{
+      slot_id?: string
+      label?: string
+      value?: string
+      values?: string[]
+    }>
+  } | null
 }
 
 export interface ContinuityClaimAtom {
@@ -981,6 +990,7 @@ export interface ChatEvents {
     character_critic_repair?: CharacterCriticRepair
     cancelled?: boolean
     depth?: DepthCompletion
+    render_provider?: RenderProviderReceipt
     memory_writes?: Array<{ slot_id: string; value: string }>
     document_write?: { document_id: string; title: string; chunk_count: number } | null
     tool_runs?: Array<{ tool: string; status: string }>

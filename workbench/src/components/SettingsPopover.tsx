@@ -1,17 +1,20 @@
 import { Check, MonitorUp } from 'lucide-react'
 import type { Health, ModelInfo, RenderProvider, Trace } from '../types'
+import type { UiMode } from '../uiMode'
 
 interface SettingsProps {
   health: Health | null
   models: ModelInfo[]
   model: string
   renderProvider: RenderProvider
+  uiMode: UiMode
   pinned: boolean
   floating: boolean
   autoApproveExactPatchApply: boolean
   trace: Trace | null
   onModel: (model: string) => void
   onRenderProvider: (provider: RenderProvider) => void
+  onUiMode: (mode: UiMode) => void
   onPinned: (value: boolean) => void
   onFloating: (value: boolean) => void
   onAutoApproveExactPatchApply: (value: boolean) => void
@@ -22,12 +25,14 @@ export function SettingsPopover({
   models,
   model,
   renderProvider,
+  uiMode,
   pinned,
   floating,
   autoApproveExactPatchApply,
   trace,
   onModel,
   onRenderProvider,
+  onUiMode,
   onPinned,
   onFloating,
   onAutoApproveExactPatchApply,
@@ -40,6 +45,20 @@ export function SettingsPopover({
         <MonitorUp size={16} />
         Workbench settings
       </div>
+      <label className="field-label" htmlFor="ui-mode-select">Interface</label>
+      <select
+        id="ui-mode-select"
+        value={uiMode}
+        onChange={(event) => onUiMode(event.target.value as UiMode)}
+      >
+        <option value="simple">Simple — chat first, plain labels</option>
+        <option value="lab">Lab — full trace, learn, reflect</option>
+      </select>
+      <p className="provider-disclosure">
+        {uiMode === 'simple'
+          ? 'Simple mode shows Chat, Why this answer, and What Aether knows. Lab tools stay under More.'
+          : 'Lab mode shows every review drawer and technical release details.'}
+      </p>
       <label className="field-label" htmlFor="model-select">Local model</label>
       <select id="model-select" value={model} onChange={(event) => onModel(event.target.value)}>
         {models.length ? models.map((item) => (

@@ -1,4 +1,4 @@
-﻿import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import App from './App'
 import { localRouterFeedbackPreview } from './fixtures/localRouterFeedbackPreview'
 import { localRouterRagEvidencePreview } from './fixtures/localRouterRagEvidencePreview'
@@ -253,6 +253,8 @@ let consolidationPreview: Record<string, unknown>
 
 beforeEach(() => {
   localStorage.clear()
+  // Existing App tests assert Lab chrome (Trace, voice, route grid).
+  localStorage.setItem('aether.uiMode', 'lab')
   vi.restoreAllMocks()
   consolidationPreview = {
     mode: 'preview_only',
@@ -331,6 +333,32 @@ test('makes hosted rendering an explicit disclosed setting', async () => {
   expect(screen.getByText(/governed packet is sent to Grok for rendering/)).toBeInTheDocument()
   expect(screen.getByText(/may contribute general knowledge for non-personal questions/)).toBeInTheDocument()
   await waitFor(() => expect(localStorage.getItem('aether.renderProvider')).toBe('grok_build'))
+})
+
+test('defaults floating on and persists window chrome across restarts', async () => {
+  // First run (no stored keys): floating defaults on for QoL.
+  const first = render(<App />)
+  await screen.findByText('Local')
+  expect(screen.getByRole('button', { name: 'Dock window' })).toBeInTheDocument()
+  expect(window.aetherDesktop?.setFloating).toHaveBeenCalledWith(true)
+  expect(window.aetherDesktop?.setAlwaysOnTop).toHaveBeenCalledWith(true)
+  await waitFor(() => expect(localStorage.getItem('aether.window.floating')).toBe('true'))
+  await waitFor(() => expect(localStorage.getItem('aether.window.pinned')).toBe('true'))
+
+  fireEvent.click(screen.getByRole('button', { name: 'Dock window' }))
+  await waitFor(() => expect(localStorage.getItem('aether.window.floating')).toBe('false'))
+  expect(screen.getByRole('button', { name: 'Float window' })).toBeInTheDocument()
+  first.unmount()
+
+  vi.mocked(window.aetherDesktop!.setFloating).mockClear()
+  vi.mocked(window.aetherDesktop!.setAlwaysOnTop).mockClear()
+
+  // Restart: restore docked (false) preference.
+  render(<App />)
+  await screen.findByText('Local')
+  expect(screen.getByRole('button', { name: 'Float window' })).toBeInTheDocument()
+  expect(window.aetherDesktop?.setFloating).toHaveBeenCalledWith(false)
+  expect(window.aetherDesktop?.setAlwaysOnTop).toHaveBeenCalledWith(true)
 })
 
 test('opens the reflect drawer from bottom navigation', async () => {
@@ -622,7 +650,7 @@ test('deletes only the current chat after explicit confirmation', async () => {
     expect.stringContaining('/v1/conversations/conv-1'),
     expect.objectContaining({ method: 'DELETE' }),
   ))
-  expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('Governed memory'))
+  expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('memory'))
 })
 
 test('opens a historical turn trace from the assistant answer', async () => {

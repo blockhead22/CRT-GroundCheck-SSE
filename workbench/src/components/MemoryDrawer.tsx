@@ -1,11 +1,13 @@
 import { AlertOctagon, Check, ChevronRight, History, Search, ShieldX } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api, idempotencyKey } from '../api'
 import type { ReviewDraftHandoff, SlotDetail, SlotSummary } from '../types'
+import { humanSlotLabel, memoryGroupForSlot, type UiMode } from '../uiMode'
 
 interface MemoryDrawerProps {
   refreshKey: number
   onMutated: () => void
+  uiMode?: UiMode
   preselectedSlotId?: string | null
   draftHandoff?: ReviewDraftHandoff | null
 }
@@ -26,13 +28,33 @@ function memoryDraftValue(draftHandoff: ReviewDraftHandoff) {
   }
 }
 
-export function MemoryDrawer({ refreshKey, onMutated, preselectedSlotId = null, draftHandoff = null }: MemoryDrawerProps) {
+export function MemoryDrawer({
+  refreshKey,
+  onMutated,
+  uiMode = 'simple',
+  preselectedSlotId = null,
+  draftHandoff = null,
+}: MemoryDrawerProps) {
   const [query, setQuery] = useState('')
   const [slots, setSlots] = useState<SlotSummary[]>([])
   const [selected, setSelected] = useState<SlotDetail | null>(null)
   const [correction, setCorrection] = useState('')
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
+  const isSimple = uiMode === 'simple'
+
+  const grouped = useMemo(() => {
+    const groups: Record<'identity' | 'favorites' | 'work' | 'other', SlotSummary[]> = {
+      identity: [],
+      favorites: [],
+      work: [],
+      other: [],
+    }
+    for (const slot of slots) {
+      groups[memoryGroupForSlot(slot.slot_id)].push(slot)
+    }
+    return groups
+  }, [slots])
 
   useEffect(() => {
     let active = true
@@ -97,11 +119,12 @@ export function MemoryDrawer({ refreshKey, onMutated, preselectedSlotId = null, 
         <button className="back-button" onClick={() => setSelected(null)}>← All memory</button>
         <div className="memory-title">
           <div>
-            <span>Memory slot</span>
-            <h3>{selected.slot_id}</h3>
+            <span>{isSimple ? 'What Aether knows' : 'Memory slot'}</span>
+            <h3>{isSimple ? humanSlotLabel(selected.slot_id) : selected.slot_id}</h3>
+            {isSimple ? <small className="memory-slot-id">{selected.slot_id}</small> : null}
           </div>
           <span className={`memory-state ${selected.quarantined ? 'quarantined' : selected.conflict ? 'conflict' : 'stable'}`}>
-            {selected.quarantined ? 'Quarantined' : selected.conflict ? 'Conflict' : 'Stable'}
+            {selected.quarantined ? 'Needs review' : selected.conflict ? 'Conflict' : 'Confirmed'}
           </span>
         </div>
         {notice ? <div className="inline-notice">{notice}</div> : null}
@@ -183,7 +206,7 @@ export function MemoryDrawer({ refreshKey, onMutated, preselectedSlotId = null, 
               selected.slot_id,
             )}
           >
-            <Check size={15} /> Save confirmed correction
+            <Check size={15} /> {isSimple ? 'Save as true' : 'Save confirmed correction'}
           </button>
         </div>
         <div className="memory-actions">
@@ -199,7 +222,7 @@ export function MemoryDrawer({ refreshKey, onMutated, preselectedSlotId = null, 
               selected.slot_id,
             )}
           >
-            <Check size={15} /> Confirm current candidate
+            <Check size={15} /> {isSimple ? 'Confirm this value' : 'Confirm current candidate'}
           </button>
           <button
             className="danger-action"
@@ -213,10 +236,10 @@ export function MemoryDrawer({ refreshKey, onMutated, preselectedSlotId = null, 
               selected.slot_id,
             )}
           >
-            <ShieldX size={15} /> Quarantine slot
+            <ShieldX size={15} /> {isSimple ? 'Mark not trusted' : 'Quarantine slot'}
           </button>
         </div>
-        <div className="history-heading"><History size={15} /> Provenance history</div>
+        <div className="history-heading"><History size={15} /> {isSimple ? 'History' : 'Provenance history'}</div>
         <div className="history-list">
           {selected.history.map((item) => (
             <article className={`history-item ${item.current ? 'current' : ''}`} key={item.state_id}>
@@ -229,6 +252,59 @@ export function MemoryDrawer({ refreshKey, onMutated, preselectedSlotId = null, 
             </article>
           ))}
         </div>
+      </div>
+    )
+  }
+
+  if (isSimple) {
+    const sections: Array<{ key: keyof typeof grouped; title: string }> = [
+      { key: 'identity', title: 'You' },
+      { key: 'favorites', title: 'Favorites' },
+      { key: 'work', title: 'Work & projects' },
+      { key: 'other', title: 'Other' },
+    ]
+    return (
+      <div className="memory-browser memory-profile">
+        <p className="memory-profile-lead">
+          Facts Aether is allowed to use about you. Confirm or correct anything wrong.
+        </p>
+        <label className="search-box">
+          <Search size={15} />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search what Aether knows…" />
+        </label>
+        {notice ? <div className="inline-notice">{notice}</div> : null}
+        {sections.map((section) => {
+          const items = grouped[section.key]
+          if (!items.length) return null
+          return (
+            <div className="memory-profile-section" key={section.key}>
+              <h4>{section.title}</h4>
+              <div className="memory-card-grid">
+                {items.map((slot) => (
+                  <button
+                    type="button"
+                    className={`memory-card ${slot.quarantined ? 'quarantined' : slot.conflict ? 'conflict' : 'stable'}`}
+                    key={slot.slot_id}
+                    onClick={() => loadSlot(slot.slot_id)}
+                  >
+                    <span className="memory-card-label">{humanSlotLabel(slot.slot_id)}</span>
+                    <strong className="memory-card-value">
+                      {slot.current_values.join(' · ') || 'No value yet'}
+                    </strong>
+                    <span className="memory-card-status">
+                      {slot.quarantined ? 'Needs review' : slot.conflict ? 'Conflict' : 'OK'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+        {!slots.length ? (
+          <div className="drawer-empty compact">
+            <p>Nothing stored yet. Tell Aether a preference in chat, then confirm it here if you want it kept.</p>
+          </div>
+        ) : null}
       </div>
     )
   }

@@ -24,6 +24,8 @@ function renderPanel(overrides: Partial<ComponentProps<typeof ChatPanel>> = {}) 
   const props = {
     model: 'qwen3:14b',
     renderProvider: 'local' as const,
+    // Tests target Lab chrome/labels unless a case opts into Simple mode.
+    uiMode: 'lab' as const,
     conversationId: null,
     conversations: [],
     turns: [],
@@ -360,6 +362,7 @@ describe('Continuity Resume action', () => {
       }],
     }
     renderPanel({
+      uiMode: 'lab',
       conversationId: 'conv-next',
       turns: [continuityTurn],
       trace: persistedTrace,

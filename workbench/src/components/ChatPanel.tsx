@@ -4,6 +4,14 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { api, idempotencyKey, streamChat } from '../api'
 import type { ContinuityAlignmentReceipt, Conversation, PublicGovernanceStep, RenderProvider, RunEvent, TaskContinuationSelection, Trace, Turn } from '../types'
+import type { UiMode } from '../uiMode'
+import { buildAnswerFooterLine, humanVerificationLabel } from './WhyThisAnswer'
+
+const STARTER_PROMPTS = [
+  { label: 'What do you know about me?', text: 'What do you know about me?' },
+  { label: 'My favorite color?', text: 'What is my favorite color?' },
+  { label: 'Search for holden', text: 'do a workspace search for holden in ai_round2' },
+]
 
 const VOICE_STORAGE_KEY = 'aether.voiceProfile'
 const VOICE_OPTIONS = [
@@ -28,6 +36,7 @@ interface ContinuityLoopRef {
 interface ChatPanelProps {
   model: string
   renderProvider: RenderProvider
+  uiMode?: UiMode
   conversationId: string | null
   conversations: Conversation[]
   turns: Turn[]
@@ -39,11 +48,14 @@ interface ChatPanelProps {
   onTrace: (trace: Trace) => void
   onOpenTrace: (turnId: string) => void
   onTurns: (turns: Turn[]) => void
+  /** Keep hosted renderer selected after a successful Grok turn in-thread. */
+  onRenderProvider?: (provider: RenderProvider) => void
 }
 
 export function ChatPanel({
   model,
   renderProvider,
+  uiMode = 'simple',
   conversationId,
   conversations,
   turns,
@@ -55,7 +67,9 @@ export function ChatPanel({
   onTrace,
   onOpenTrace,
   onTurns,
+  onRenderProvider,
 }: ChatPanelProps) {
+  const isSimple = uiMode === 'simple'
   const [message, setMessage] = useState('')
   const [streaming, setStreaming] = useState('')
   const [governanceSteps, setGovernanceSteps] = useState<PublicGovernanceStep[]>([])
@@ -155,6 +169,18 @@ export function ChatPanel({
           onDone: async (done) => {
             const { needs_stronger_model } = done
             setNeedsStronger(needs_stronger_model)
+            // Conversation sticky: keep hosted Grok selected after a successful
+            // hosted turn so follow-ups don't silently drop to local in the UI.
+            const effectiveProvider = done.render_provider?.effective
+            const fallbackApplied = Boolean(done.render_provider?.fallback_applied)
+            if (
+              onRenderProvider
+              && effectiveProvider === 'grok_build'
+              && !fallbackApplied
+              && renderProvider !== 'grok_build'
+            ) {
+              onRenderProvider('grok_build')
+            }
             if (activeTraceRef.current) {
               let completedTrace: Trace = {
                 ...activeTraceRef.current,
@@ -367,14 +393,18 @@ export function ChatPanel({
       <div className="model-strip">
         <div>
           <BrainCircuit size={16} />
-          <span>{renderProvider === 'grok_build' ? 'Grok 4.5 · governed renderer' : model}</span>
+          <span>
+            {isSimple
+              ? (renderProvider === 'grok_build' ? 'Hosted wording · Aether in charge' : 'Local on this PC')
+              : (renderProvider === 'grok_build' ? 'Grok 4.5 · governed renderer' : model)}
+          </span>
         </div>
         <div className={`strength-indicator ${showStronger ? 'needs' : ''}`}>
           {showStronger
-            ? 'Needs stronger model'
+            ? (isSimple ? 'May need a stronger model' : 'Needs stronger model')
             : renderProvider === 'grok_build'
-              ? 'Aether governed'
-              : 'Locally answerable'}
+              ? (isSimple ? 'Aether still governs facts' : 'Aether governed')
+              : (isSimple ? 'Ready' : 'Locally answerable')}
         </div>
       </div>
       <div
@@ -382,7 +412,7 @@ export function ChatPanel({
         data-testid="model-policy-summary-placeholder"
         aria-hidden="true"
       />
-      <div className="conversation-toolbar">
+      <div className={`conversation-toolbar ${isSimple ? 'simple' : ''}`}>
         <select
           aria-label="Conversation"
           value={conversationId || ''}
@@ -397,34 +427,40 @@ export function ChatPanel({
             </option>
           ))}
         </select>
-        <select
-          aria-label="Aether voice"
-          value={voiceProfile}
-          onChange={(event) => setVoiceProfile(event.target.value)}
-          title="Aether voice"
-        >
-          {VOICE_OPTIONS.map((option) => (
-            <option value={option.value} key={option.value}>{option.label}</option>
-          ))}
-        </select>
-        <button
-          className="continuity-resume-button"
-          aria-label="Resume work from governed evidence"
-          title="Resume work from governed evidence"
-          disabled={Boolean(pendingTurn)}
-          onClick={() => void runMessage('/resume')}
-        >
-          <History size={14} />
-        </button>
-        <button
-          className="cross-conversation-button"
-          aria-label="Continue current chat in a new aligned chat"
-          title="Continue current chat in a new aligned chat"
-          disabled={!conversationId || Boolean(pendingTurn)}
-          onClick={() => conversationId && continueFromConversation(conversationId)}
-        >
-          <ExternalLink size={14} />
-        </button>
+        {!isSimple ? (
+          <select
+            aria-label="Aether voice"
+            value={voiceProfile}
+            onChange={(event) => setVoiceProfile(event.target.value)}
+            title="Aether voice"
+          >
+            {VOICE_OPTIONS.map((option) => (
+              <option value={option.value} key={option.value}>{option.label}</option>
+            ))}
+          </select>
+        ) : null}
+        {!isSimple ? (
+          <>
+            <button
+              className="continuity-resume-button"
+              aria-label="Resume work from governed evidence"
+              title="Resume work from governed evidence"
+              disabled={Boolean(pendingTurn)}
+              onClick={() => void runMessage('/resume')}
+            >
+              <History size={14} />
+            </button>
+            <button
+              className="cross-conversation-button"
+              aria-label="Continue current chat in a new aligned chat"
+              title="Continue current chat in a new aligned chat"
+              disabled={!conversationId || Boolean(pendingTurn)}
+              onClick={() => conversationId && continueFromConversation(conversationId)}
+            >
+              <ExternalLink size={14} />
+            </button>
+          </>
+        ) : null}
         <button aria-label="New chat" onClick={onNewConversation}>
           <Plus size={15} />
         </button>
@@ -440,11 +476,29 @@ export function ChatPanel({
         {!turns.length && !pendingUser ? (
           <div className="welcome">
             <div className="welcome-mark"><Sparkles size={23} /></div>
-            <h1>Talk to your governed memory.</h1>
-            <p>Aether releases only evidence it can defend. Open the trace when you want to see the line it held.</p>
+            <h1>{isSimple ? 'Your local AI that won’t invent who you are.' : 'Talk to your governed memory.'}</h1>
+            <p>
+              {isSimple
+                ? 'Ask about yourself or your project. Aether only uses facts and files it can show you. Open Why to see what it used.'
+                : 'Aether releases only evidence it can defend. Open the trace when you want to see the line it held.'}
+            </p>
             <div className="welcome-signals">
-              <span><Database size={14} /> Local substrate</span>
-              <span><ShieldCheck size={14} /> Clause-level release</span>
+              <span><Database size={14} /> {isSimple ? 'Stored on this PC' : 'Local substrate'}</span>
+              <span><ShieldCheck size={14} /> {isSimple ? 'Won’t invent your life' : 'Clause-level release'}</span>
+            </div>
+            {/* Starters always on empty chat (Simple + Lab) so they are hard to miss. */}
+            <div className="welcome-starters" aria-label="Suggested prompts">
+              {STARTER_PROMPTS.map((starter) => (
+                <button
+                  type="button"
+                  key={starter.text}
+                  className="welcome-starter"
+                  disabled={Boolean(pendingTurn)}
+                  onClick={() => void runMessage(starter.text)}
+                >
+                  {starter.label}
+                </button>
+              ))}
             </div>
           </div>
         ) : null}
@@ -453,61 +507,90 @@ export function ChatPanel({
             <div className="user-message">{turn.user_message}</div>
             <div className="assistant-message">
               <div className="assistant-head">
-                <div className="assistant-label"><span className="tiny-mark">Æ</span> {answerProviderLabel(turn)}</div>
+                <div className="assistant-label"><span className="tiny-mark">Æ</span> {answerProviderLabel(turn, isSimple)}</div>
                 <div className="assistant-actions">
-                  <button
-                    className="turn-thinking-button"
-                    aria-label={`Toggle process for turn ${turn.turn_id}`}
-                    title="How this answer formed"
-                    onClick={() => void toggleThinkingTrace(turn.turn_id)}
-                  >
-                    <BrainCircuit size={13} />
-                    <span>Process</span>
-                  </button>
+                  {!isSimple ? (
+                    <button
+                      className="turn-thinking-button"
+                      aria-label={`Toggle process for turn ${turn.turn_id}`}
+                      title="How this answer formed"
+                      onClick={() => void toggleThinkingTrace(turn.turn_id)}
+                    >
+                      <BrainCircuit size={13} />
+                      <span>Process</span>
+                    </button>
+                  ) : null}
                   <button
                     className="turn-trace-button"
-                    aria-label={`Open trace for turn ${turn.turn_id}`}
-                    title="Open trace"
+                    aria-label={isSimple ? `Why this answer for turn ${turn.turn_id}` : `Open trace for turn ${turn.turn_id}`}
+                    title={isSimple ? 'Why this answer' : 'Open trace'}
                     onClick={() => onOpenTrace(turn.turn_id)}
                   >
                     <ShieldCheck size={13} />
+                    {isSimple ? <span>Why</span> : null}
                   </button>
                 </div>
               </div>
               <AnswerMarkdown>{turn.local_answer}</AnswerMarkdown>
-              <ConversationAlignmentChip
-                receipt={
-                  turn.continuity_alignment_receipt
-                  || (trace?.turn_id === turn.turn_id
-                    ? trace.continuity_alignment_receipt
-                    : thinkingTraceCache[turn.turn_id]?.continuity_alignment_receipt)
-                }
-                onOpen={onConversation}
-                onContinue={continueFromConversation}
-              />
-              <ContinuityLoopActions
-                turnId={turn.turn_id}
-                trace={trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id]}
-                state={continuityActions[turn.turn_id]}
-                onPin={pinContinuityLoop}
-                onReview={reviewContinuityLoop}
-              />
-              <TaskContinuationChoices
-                trace={trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id]}
-                disabled={Boolean(pendingTurn)}
-                onSelect={(selection) => runMessage('/resume', conversationId, selection)}
-              />
-              {openThinkingTurn === turn.turn_id ? (
+              {!isSimple ? (
+                <>
+                  <ConversationAlignmentChip
+                    receipt={
+                      turn.continuity_alignment_receipt
+                      || (trace?.turn_id === turn.turn_id
+                        ? trace.continuity_alignment_receipt
+                        : thinkingTraceCache[turn.turn_id]?.continuity_alignment_receipt)
+                    }
+                    onOpen={onConversation}
+                    onContinue={continueFromConversation}
+                  />
+                  <ContinuityLoopActions
+                    turnId={turn.turn_id}
+                    trace={trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id]}
+                    state={continuityActions[turn.turn_id]}
+                    onPin={pinContinuityLoop}
+                    onReview={reviewContinuityLoop}
+                  />
+                  <TaskContinuationChoices
+                    trace={trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id]}
+                    disabled={Boolean(pendingTurn)}
+                    onSelect={(selection) => runMessage('/resume', conversationId, selection)}
+                  />
+                </>
+              ) : null}
+              {/* Lab only: full process dump. Simple uses Why drawer instead. */}
+              {!isSimple && openThinkingTurn === turn.turn_id ? (
                 <AnswerProcessTrace
                   loading={thinkingLoadingTurn === turn.turn_id}
                   trace={trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id]}
                 />
               ) : null}
               <div className="answer-meta">
-                <span>{turn.render_provider?.effective === 'grok_build' ? 'Grok 4.5' : 'Local'}</span><span>Governed</span><span>{completionCheckLabel(
-                  trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id],
-                  turn.completion_verification,
-                )}</span>
+                {isSimple ? (
+                  <>
+                    <span>{turn.render_provider?.effective === 'grok_build' ? 'Hosted wording' : 'Local'}</span>
+                    <span>
+                      {buildAnswerFooterLine(
+                        trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id],
+                      )}
+                    </span>
+                    <span>
+                      {humanVerificationLabel(
+                        trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id],
+                        turn.completion_verification,
+                      )}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span>{turn.render_provider?.effective === 'grok_build' ? 'Grok 4.5' : 'Local'}</span>
+                    <span>Governed</span>
+                    <span>{completionCheckLabel(
+                      trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id],
+                      turn.completion_verification,
+                    )}</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -516,8 +599,21 @@ export function ChatPanel({
           <div className="turn">
             <div className="user-message">{pendingUser}</div>
             <div className="assistant-message streaming">
-              <div className="assistant-label"><LoaderCircle className="spin" size={14} /> Governing {renderProvider === 'grok_build' ? 'hosted ' : ''}response</div>
-              {runEvents.length ? (
+              <div className="assistant-label">
+                <LoaderCircle className="spin" size={14} />
+                {isSimple
+                  ? (renderProvider === 'grok_build' ? 'Working (hosted wording)…' : 'Working…')
+                  : `Governing ${renderProvider === 'grok_build' ? 'hosted ' : ''}response`}
+              </div>
+              {isSimple ? (
+                <div className="simple-live-status" aria-label="Working status">
+                  <LoaderCircle className="spin" size={12} />
+                  <span>
+                    <strong>{simpleLiveHeadline(runEvents, governanceSteps)}</strong>
+                    <small>Aether checks memory and tools, then words the answer. Open Why after for a plain summary.</small>
+                  </span>
+                </div>
+              ) : runEvents.length ? (
                 <RunEventTimeline events={runEvents} live />
               ) : governanceSteps.length ? (
                 <div className="governance-live-trace" aria-label="Live governance receipts">
@@ -542,7 +638,13 @@ export function ChatPanel({
                 onClick={() => void cancelActiveRun()}
               >
                 <CircleSlash2 size={12} />
-                {cancelRequested ? 'Cancellation requested' : cancellingRun ? 'Requesting cancellation…' : 'Cancel run'}
+                {isSimple
+                  ? (cancelRequested || cancellingRun ? 'Stopping…' : 'Stop')
+                  : (cancelRequested
+                    ? 'Cancellation requested'
+                    : cancellingRun
+                      ? 'Requesting cancellation…'
+                      : 'Cancel run')}
               </button>
               {streaming ? <AnswerMarkdown>{streaming}</AnswerMarkdown> : <span className="thinking-line" />}
             </div>
@@ -556,7 +658,7 @@ export function ChatPanel({
         ) : null}
         {error ? <div className="chat-error">{error}</div> : null}
       </div>
-      {showStronger && escalationTurn ? (
+      {showStronger && escalationTurn && !isSimple ? (
         <button className="escalation-bar" disabled={!codexAvailable || escalating} onClick={escalate}>
           <span>
             <strong>Local model reached its boundary</strong>
@@ -568,7 +670,7 @@ export function ChatPanel({
       <form className="composer" onSubmit={submit}>
         <textarea
           aria-label="Message Aether"
-          placeholder="Ask Aether…"
+          placeholder={isSimple ? 'Ask about you, your project, or what Aether knows…' : 'Ask Aether…'}
           rows={2}
           value={message}
           onChange={(event) => setMessage(event.target.value)}
@@ -583,7 +685,12 @@ export function ChatPanel({
           <ArrowUp size={17} />
         </button>
         <div className="composer-foot">
-          <span><span className="status-dot" /> Aether governs context before {renderProvider === 'grok_build' ? 'hosted ' : ''}inference</span>
+          <span>
+            <span className="status-dot" />
+            {isSimple
+              ? 'Won’t invent personal facts · tools leave receipts'
+              : `Aether governs context before ${renderProvider === 'grok_build' ? 'hosted ' : ''}inference`}
+          </span>
           <span>Enter to send</span>
         </div>
       </form>
@@ -591,10 +698,29 @@ export function ChatPanel({
   )
 }
 
-function answerProviderLabel(turn: Turn) {
-  if (turn.render_provider?.effective === 'grok_build') return 'Hosted Grok answer'
-  if (turn.render_provider?.fallback_applied) return 'Local fallback answer'
-  return 'Local answer'
+function answerProviderLabel(turn: Turn, simple = false) {
+  if (turn.render_provider?.effective === 'grok_build') {
+    return simple ? 'Aether · hosted wording' : 'Hosted Grok answer'
+  }
+  if (turn.render_provider?.fallback_applied) {
+    return simple ? 'Aether · local fallback' : 'Local fallback answer'
+  }
+  return simple ? 'Aether' : 'Local answer'
+}
+
+function simpleLiveHeadline(events: RunEvent[], steps: PublicGovernanceStep[]) {
+  const lastEvent = events[events.length - 1]
+  if (lastEvent?.phase === 'render' || /render|wording|grok/i.test(lastEvent?.summary || '')) {
+    return 'Writing the answer…'
+  }
+  if (lastEvent?.phase === 'tools' || /tool|search|read/i.test(lastEvent?.summary || '')) {
+    return 'Using tools…'
+  }
+  if (lastEvent?.phase === 'verify' || /coverage|check|verif/i.test(lastEvent?.summary || '')) {
+    return 'Checking the answer…'
+  }
+  if (lastEvent || steps.length) return 'Still working…'
+  return 'Starting…'
 }
 
 function ConversationAlignmentChip({
