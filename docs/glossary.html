@@ -738,9 +738,9 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="term-entry" id="belief-backprop">
     <div class="term-name">Backward Influence Propagation <span class="badge badge-original">CORE-Original</span></div>
-    <div class="term-origin">CORE-original (April 2026). Previously referred to as "belief backpropagation" and "reverse cascade" in early drafts. Renamed to avoid conflation with neural network backpropagation (gradient descent via chain rule). This mechanism is damped influence propagation on a weighted directed graph, not calculus-based gradient computation. No direct precedent identified in literature searches to date.</div>
+    <div class="term-origin">Project term (April 2026). Previously referred to as "belief backpropagation" and "reverse cascade" in early drafts. Renamed to avoid conflation with neural network backpropagation (gradient descent via chain rule). This mechanism is damped influence propagation on a weighted directed graph, not calculus-based gradient computation. A systematic comparative novelty review has not been completed.</div>
     <div class="term-def">
-      When a correction event resolves a contradiction, the resolution generates an <a href="#epistemic-loss">epistemic loss</a> signal that flows <em>backward</em> through the <a href="#brg">BRG</a>'s dependency edges, adjusting trust scores on every upstream belief that contributed to the incorrect output. The inverse of a forward <a href="#cascade">cascade</a>: cascades answer "if I change X, what else changes?" while backpropagation answers "the output was wrong  - what beliefs caused it?" Three behaviors emerge naturally: <a href="#self-pruning">self-pruning</a>, <a href="#domain-volatility">domain volatility</a> measurement, and <a href="#reflexive-self-model">reflexive self-model</a> calibration. Validated with 30/30 lab checks; bidirectional convergence confirmed with contraction ratio 0.13.
+      When a correction event resolves a contradiction, the proposed resolution signal flows <em>backward</em> through the <a href="#brg">BRG</a>'s dependency edges, adjusting trust scores on upstream beliefs that contributed to the incorrect output. The inverse of a forward <a href="#cascade">cascade</a>: cascades answer "if I change X, what else changes?" while backward influence asks "the output was wrong—what beliefs contributed?" The documented synthetic lab passed 30/30 checks and reported a contraction ratio of 0.13; current Workbench benefit and real-history behavior remain untested.
     </div>
     <div class="term-math">
       Backward gradient per upstream node \(A\):
@@ -808,7 +808,7 @@ tbody tr:hover td { background: rgba(129,140,248,0.03); }
 
   <div class="term-entry" id="reflexive-self-model">
     <div class="term-name">Reflexive Self-Model <span class="badge badge-original">CORE-Original</span></div>
-    <div class="term-origin">Consequent behavior of <a href="#belief-backprop">belief backpropagation</a>. No direct precedent identified for self-model beliefs participating in the same trust graph as world-beliefs.</div>
+    <div class="term-origin">Proposed consequence of <a href="#belief-backprop">backward influence propagation</a>. Related work exists across agent self-modeling, user modeling, cognitive architectures, and metacognition; comparative novelty remains to be established.</div>
     <div class="term-def">
       The system's beliefs about itself  - "I am reliable on employment facts," "my confidence tracks my accuracy"  - are nodes in the <a href="#brg">BRG</a> like any other belief, subject to the same backward pass and trust dynamics. When the system is repeatedly wrong about employment, the backward pass erodes "I am reliable on employment facts" while leaving "I am reliable on identity facts" untouched. This is personality as a consequence of epistemic history: the system becomes cautious where it has been wrong, not where a rule tells it to hedge.
     </div>

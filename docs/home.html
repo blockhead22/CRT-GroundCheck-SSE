@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aeteros CORE - Epistemic Governance Architecture</title>
+<title>Aether and Aeteros - Governed Memory Research</title>
 <link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="theme.css">
 <style>
@@ -412,7 +412,7 @@
 
 <!-- ===== SIDEBAR ===== -->
 <nav class="sidebar" id="docSidebar" data-manual-sidebar>
-  <div class="sidebar-title">Aeteros CORE</div>
+  <div class="sidebar-title">Aether / Aeteros</div>
   <a href="#problem">01 The Problem</a>
   <a href="#origin">02 Origin</a>
   <a href="#discovered">03 What Was Discovered</a>
@@ -466,7 +466,7 @@
     </div>
   </div>
 
-  <p><strong>Time is the primary amplifier.</strong> The hard contradiction rate nearly doubles from 7% at short time gaps to 12.4% at 3+ months. The longer a user relies on the system, the worse it gets. And 93% of stance flips span 3+ turns, meaning no pairwise comparison catches them. A stricter v2 reanalysis confirmed the signal: of 40,200 candidate pairs, 98.9% were topic-boundary noise, but the 47 genuine contradictions that survived had the highest risk scores of any category.</p>
+  <p><strong>Time was the primary amplifier in the archived single-user corpus.</strong> The original analysis reported a hard-contradiction rate rising from 7% at short gaps to 12.4% at 3+ months, with 93% of detected stance flips spanning 3+ turns. A stricter v2 pass reduced 40,200 candidate pairs to 47 retained contradictions after removing topic-boundary noise; a later cloud reclassification reported 92 under different rules. Those counts are dated internal results, not interchangeable estimates or population statistics.</p>
 
   <p>For any system providing ongoing personal support, statelessness is a structural failure. The user builds trust over time. The system resets that trust every session while maintaining the appearance of continuity.</p>
 </section>
@@ -488,7 +488,7 @@
     <p>And AI? I hate it. Not because I don't understand it -but because I do. Because I see it for what it is: not intelligence, not reflection, just replication. A real threat not only to industries, but to something much deeper -original, creative human thought. It operates without true awareness. It lacks the very thing that makes us human: context.</p>
   </div>
 
-  <p>The irony is that CRT never was a transformer. It was a governance layer built around a transformer. But that gap between what it was called and what it actually was turned out to be the first instance of a pattern that would define the entire project: the name said one thing, the system did another, and nobody was tracking the difference.</p>
+  <p>The irony is that CRT never was a transformer. It was a governance layer built around one. That mismatch became a useful lesson for the project: names, research concepts, and running components must be kept separate enough that each claim can be checked.</p>
 </section>
 
 <!-- ============================================================ -->
@@ -512,7 +512,7 @@
     <p>I didn't design governance. I discovered it. Each fix was a scar from a failure. The scars accumulated into an architecture.</p>
   </div>
 
-  <p>Each failure pointed at the same gap: the original whitepaper described what the system should <em>do</em> -compress, reconstruct, reflect. But it didn't describe how the system should <em>govern itself</em>. As the name evolved to <strong>CORE</strong> -Contradiction, Observation, Revision, Epistemics -the original components evolved with it.</p>
+  <p>Each failure pointed at the same gap: the original whitepaper described what the system should <em>do</em>—compress, reconstruct, reflect—but not how memory, evidence, tools, and persistence should be governed. CORE became one research framing for that problem; the current implementation is Aether Workbench and its governed sidecar.</p>
 
   <div class="principle-grid">
     <div class="principle principle-speech">
@@ -521,7 +521,7 @@
     </div>
     <div class="principle principle-contra">
       <div class="p-num">Holden became</div>
-      <div class="p-sub">The orchestrator's belief-state-injected generation and the <a href="architecture.html">fidelity mirror</a> (fidelity mirror) -a post-generation verification pass.</div>
+      <div class="p-sub">The current sidecar's governed context release, selected model rendering, response contracts, and <a href="architecture.html">completion verification</a>. Fidelity Mirror remains part of the research lineage, not a claimed wrapper around every current turn.</div>
     </div>
     <div class="principle principle-trust">
       <div class="p-num">MMH became</div>
@@ -536,7 +536,7 @@
   <div class="thesis-block">
     <div class="thesis-label">Core Thesis</div>
     <div class="thesis-text">The model is the mouth. Persistence is the self.</div>
-    <div class="thesis-sub">The original thesis was about meaning. The discovery was about governance. CORE externalizes the self into a persistent governance layer that survives model switches, session boundaries, and provider changes.</div>
+    <div class="thesis-sub">The original thesis was about meaning. The discovery was about governance. Aether moves durable continuity outside the renderer so memory can survive model changes while remaining inspectable and correctable.</div>
   </div>
 
   <div class="quote">
@@ -563,7 +563,7 @@
 
   <div class="paper-card">
     <h3>What happens when the output was wrong?</h3>
-    <p>Forward cascades adjust downstream beliefs, but the upstream causes remain untouched. Backward influence propagation sends error signals backward through the dependency graph, adjusting trust on every belief that contributed to the wrong output. Wrong beliefs self-prune. Domain volatility becomes measurable. The system's beliefs about itself participate in the same dynamics. 30/30 validation. No direct precedent found.</p>
+    <p>Forward cascades adjust downstream beliefs, but the upstream causes remain untouched. Backward influence propagation is a research mechanism for sending correction signals through dependency edges. It passed a 30-case internal synthetic lab; real-history evaluation and comparative precedent remain open.</p>
     <a class="paper-link" href="belief-backprop.html">Backward Influence Propagation →</a>
   </div>
 
@@ -601,13 +601,13 @@
   <span class="chapter-num">Chapter 5</span>
   <h2>What's Running</h2>
 
-  <p>Aether Workbench is the current local proof loop. It is used to test governed memory, trace-visible answer construction, contradiction review, representation compression, and model-route policy without turning those mechanisms into silent automation.</p>
+  <p>Aether Workbench is the current local proof loop. It is used to test governed memory, selected model rendering, trace-visible answer construction, contradiction review, bounded tool use, and completion verification without turning those mechanisms into silent automation.</p>
 
-  <p>The current Workbench can release governed memory into local model prompts, show trace evidence for route/model recommendations, preserve conflicted memories with disposition labels, and keep archive-derived support/reflection guidance separate from confirmed profile facts.</p>
+  <p>The current Workbench can release governed memory into local or hosted model prompts, show provider and route receipts, preserve conflicted memories with disposition labels, verify multi-part answer coverage, and keep support, reflection, and learning candidates separate from confirmed profile facts.</p>
 
   <p>The evaluation harness is now central to the project. Recent representation replay runs show governed scaffold and CRT-compressed state preserving far more behavior than raw retrieval, slot-only packets, or naive summaries. That is the live product proof: the shape of the memory state matters.</p>
 
-  <p><a href="architecture.html">Full architecture →</a></p>
+  <p><a href="architecture.html">Current architecture →</a> <a href="system-status.html">Status and limits →</a></p>
 </section>
 
 <!-- ============================================================ -->
@@ -617,9 +617,9 @@
   <span class="chapter-num">Chapter 6</span>
   <h2>Where It Goes</h2>
 
-  <p>CORE is being extracted into <strong>Aeteros Core</strong>, a reusable framework that any AI system can use as its epistemic governance layer. The persistent belief state, contradiction tracking, review workflows, and trace pipeline are not Aether-specific. They are general-purpose infrastructure.</p>
+  <p>A small reusable boundary is being extracted as <strong>Aeteros Core</strong>. Today it audits governed inputs, release decisions, response contracts, completion receipts, and persistence controls. Broader packaging as a general-purpose framework remains roadmap work.</p>
 
-  <p>The business path is governed-memory infrastructure: middleware that sits between applications and LLM providers. Existing stacks keep their models and tools; Aeteros Core adds source-aware memory, contradiction tracking, review state, and audit trails.</p>
+  <p>A possible product path is governed-memory infrastructure between applications and model providers. That is a direction under evaluation, not a generally available hosted service.</p>
 
   <p>The timing is not accidental. As AI agents take longer-running actions, teams will need better auditability, transparency, and user-controlled memory. Aeteros is positioned around that need, but regulatory and compliance claims should be separately validated before being used in grant, legal, or sales material.</p>
 
@@ -642,14 +642,15 @@
   <span class="chapter-num">Papers &amp; Documentation</span>
   <h2>Read the Research</h2>
 
-  <p>The documents below are organized in reading order. Start with the plain-English overview, then the evidence, then the architecture, then the theory, then the reference material.</p>
+  <p>The documents below separate the current system from internal evidence, theory, historical architecture, and reference material.</p>
 
-  <h3 style="color:var(--text-dim);font-size:0.8em;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:28px 0 12px 0;">Start Here</h3>
-  <p style="color:var(--text-dim);font-size:0.85em;margin-bottom:16px;">The shortest path into the project without needing the full research archive first.</p>
+  <h3 style="color:var(--text-dim);font-size:0.8em;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:28px 0 12px 0;">Current System</h3>
+  <p style="color:var(--text-dim);font-size:0.85em;margin-bottom:16px;">Begin with what exists and what remains bounded before reading the broader research archive.</p>
   <div class="nav-grid">
     <a href="start-here.html">Start Here</a>
-    <a href="why-this-matters.html">Why This Matters</a>
-    <a href="meaning-compression-crt.html">Meaning Compression</a>
+    <a href="architecture.html">Architecture Today</a>
+    <a href="system-status.html">Status &amp; Limits</a>
+    <a href="about.html">Names &amp; Scope</a>
     <a href="claim-evaluation-guide.html">Claim Guide</a>
   </div>
 
@@ -667,11 +668,12 @@
     <a href="labs.html">Labs</a>
   </div>
 
-  <h3 style="color:var(--text-dim);font-size:0.8em;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:28px 0 12px 0;">The Architecture</h3>
-  <p style="color:var(--text-dim);font-size:0.85em;margin-bottom:16px;">How CORE governs the problem. Persistent belief state, contradiction tracking, immune enforcement.</p>
+  <h3 style="color:var(--text-dim);font-size:0.8em;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:28px 0 12px 0;">Theory &amp; Historical Architecture</h3>
+  <p style="color:var(--text-dim);font-size:0.85em;margin-bottom:16px;">Mechanisms that informed the project but should not be mistaken for the current Workbench call path.</p>
   <div class="nav-grid">
-    <a href="architecture.html">Architecture</a>
     <a href="immune-agents.html">Immune Agents</a>
+    <a href="meaning-compression-crt.html">Meaning Compression</a>
+    <a href="whitepaper.html">Evolved Thesis</a>
   </div>
 
   <h3 style="color:var(--text-dim);font-size:0.8em;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:28px 0 12px 0;">The Theory</h3>

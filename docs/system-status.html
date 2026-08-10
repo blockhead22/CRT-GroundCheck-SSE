@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Current Aether capabilities, limitations, and research boundaries.">
+<title>Aether System Status and Limits</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="theme.css">
+<style>
+  .summary-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin:24px 0; }
+  .summary-card { background:var(--bg-raised); border:1px solid var(--border); border-radius:9px; padding:20px; }
+  .summary-card .kicker { font:700 .64em var(--mono); letter-spacing:1px; text-transform:uppercase; color:var(--text-faint); }
+  .summary-card strong { display:block; margin:7px 0; color:var(--text); font-size:1.05em; }
+  .summary-card p { margin:0; color:var(--text-secondary); font-size:.84em; line-height:1.6; }
+  .live { color:#34d399; font-weight:700; }
+  .bounded { color:#fbbf24; font-weight:700; }
+  .research { color:#c084fc; font-weight:700; }
+  .absent { color:#f472b6; font-weight:700; }
+  .status-note { padding:18px 20px; border:1px solid var(--border); border-left:4px solid #818cf8; border-radius:8px; background:var(--bg-raised); margin:22px 0; }
+  @media(max-width:760px){.summary-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="page-layout">
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="hero-badge">Current source status · August 10, 2026</div>
+      <h1>System <span class="grad">Status &amp; Limits</span></h1>
+      <p class="sub">What is usable now, what is intentionally bounded, and what remains research.</p>
+      <div class="finding-box"><p><strong>Aether is a working local proof loop, not a finished general-purpose autonomous agent or a validated safety standard.</strong></p></div>
+    </div>
+  </div>
+  <nav class="sidebar" id="docSidebar">
+    <div class="sidebar-title">Status &amp; Limits</div>
+    <div class="sidebar-spacer"></div>
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme"><span class="theme-toggle-icon" id="themeIcon">&#9790;</span><span id="themeLabel">Light</span></button>
+    <div class="sidebar-footer">No roadmap claims in current status</div>
+  </nav>
+  <main class="main">
+    <section id="snapshot">
+      <div class="accent-line"></div><h2>1. Snapshot</h2>
+      <div class="summary-grid">
+        <div class="summary-card"><div class="kicker">Product</div><strong>Aether Workbench</strong><p>Local desktop chat and inspection UI with Simple and Lab surfaces.</p></div>
+        <div class="summary-card"><div class="kicker">Authority</div><strong>Aether sidecar</strong><p>Controls governed context, route policy, bounded tools, persistence, and completion receipts.</p></div>
+        <div class="summary-card"><div class="kicker">Rendering</div><strong>Local or hosted model</strong><p>The selected renderer generates normal answers from the governed packet.</p></div>
+      </div>
+      <p>This status is source-based. It distinguishes a production call site from an isolated module, a test fixture, a paper, or a future design.</p>
+    </section>
+
+    <section id="current-capabilities">
+      <div class="accent-line"></div><h2>2. Current capabilities</h2>
+      <table>
+        <thead><tr><th>Capability</th><th>Status</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>Local Workbench chat</td><td><span class="live">Current</span></td><td>Conversation, renderer selection, streaming output, and inspectable drawers are implemented.</td></tr>
+          <tr><td>Canonical local substrate</td><td><span class="live">Current</span></td><td>Persistent slot states, history, edges, contradiction dispositions, and query-scoped release are available.</td></tr>
+          <tr><td>Governed model rendering</td><td><span class="live">Current</span></td><td>Normal answers are model-generated from released evidence rather than replaced by canned factual responses.</td></tr>
+          <tr><td>Local and Grok renderers</td><td><span class="live">Current</span></td><td>The selected renderer is carried through the route, with a provider and route receipt.</td></tr>
+          <tr><td>Multi-part prompt obligations</td><td><span class="live">Implemented</span></td><td>Requests are decomposed and completion is checked against requested coverage.</td></tr>
+          <tr><td>Semantic completion coverage</td><td><span class="live">Implemented</span></td><td>A bounded model check can distinguish semantically answered clauses from generic lexical overlap.</td></tr>
+          <tr><td>Read-only model-proposable tools</td><td><span class="bounded">Bounded</span></td><td>Workspace and document search/read/list proposals are validated and receipted by Aether.</td></tr>
+          <tr><td>Reflection, support, and learning candidates</td><td><span class="bounded">Review-only</span></td><td>Suggestions can be surfaced without silently becoming confirmed durable memory.</td></tr>
+          <tr><td>Simple and Lab modes</td><td><span class="live">Current</span></td><td>Simple mode uses plain language; Lab mode exposes the underlying trace and governance vocabulary.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="limits">
+      <div class="accent-line"></div><h2>3. Current limitations</h2>
+      <table>
+        <thead><tr><th>Limit</th><th>Status</th><th>Consequence</th></tr></thead>
+        <tbody>
+          <tr><td>External validation</td><td><span class="absent">Not established</span></td><td>Most evidence is repository-internal, synthetic, single-user, or based on archived corpora.</td></tr>
+          <tr><td>Broad autonomous tooling</td><td><span class="absent">Not granted</span></td><td>Normal renderers do not receive shell, write, patch, policy, or unrestricted memory-write authority.</td></tr>
+          <tr><td>Perfect passive learning</td><td><span class="bounded">Incomplete</span></td><td>Repeated and explicit evidence can affect scoring, but false extraction and confirmation remain active research problems.</td></tr>
+          <tr><td>General natural-language contradiction detection</td><td><span class="bounded">Incomplete</span></td><td>Structured slot contradictions are stronger than open-ended contradictions across arbitrary prose.</td></tr>
+          <tr><td>Provider-private reasoning traces</td><td><span class="absent">Not exposed</span></td><td>Public progress and verification events are available; hidden chain-of-thought is not treated as a product surface.</td></tr>
+          <tr><td>Hosted public API or proxy</td><td><span class="absent">Not a current product</span></td><td>The primary proof loop is local Workbench plus sidecar, not a generally available governed API.</td></tr>
+          <tr><td>Legal or regulatory compliance</td><td><span class="absent">Not assessed</span></td><td>Receipts may support auditability, but Aether is not presented as certified under the EU AI Act or another regime.</td></tr>
+          <tr><td>Seamless continuity everywhere</td><td><span class="bounded">Partial</span></td><td>Continuity structures exist, but automatic transfer across every new thread, device, or product surface is not proven.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="research-boundary">
+      <div class="accent-line"></div><h2>4. Research boundary</h2>
+      <p>Wobble, Fidelity Mirror, belief backpropagation, geometric memory, immune agents, structural tension, meaning compression, Mirus, Holden, and related CRT/SSE work remain part of the project's intellectual and experimental lineage.</p>
+      <div class="status-note"><strong>They should not be removed merely because they are not in the current request path.</strong> They should be labeled by evidence level and retested before a page upgrades them to a current production capability.</div>
+      <p>Existing experiment values are preserved on their dated pages. This documentation update changes their status framing, not their measurements.</p>
+    </section>
+
+    <section id="claim-rules">
+      <div class="accent-line"></div><h2>5. Claim rules used on this site</h2>
+      <ul>
+        <li><strong>Current:</strong> verified in the active product call path or current source boundary.</li>
+        <li><strong>Implemented:</strong> present and tested in current source, but runtime activation may depend on a relaunch or configuration.</li>
+        <li><strong>Bounded:</strong> available only through an explicit capability, review, or policy boundary.</li>
+        <li><strong>Research:</strong> an internal experiment, prototype, or theoretical mechanism; not automatically a product feature.</li>
+        <li><strong>Historical:</strong> useful lineage that no longer describes the current architecture.</li>
+        <li><strong>Proposed:</strong> roadmap material, not a capability claim.</li>
+      </ul>
+    </section>
+
+    <section id="retest-queue">
+      <div class="accent-line"></div><h2>6. Research retest queue</h2>
+      <p>These are useful results or mechanisms whose public wording should not be upgraded until they are rerun against the current code path or a stronger study design.</p>
+      <table>
+        <thead><tr><th>Priority</th><th>Research item</th><th>What a fresh test must answer</th></tr></thead>
+        <tbody>
+          <tr><td>P0</td><td>Governed vs ungoverned outcomes</td><td>Does Aether improve factual coverage, contradiction handling, and correction behavior against the same models and prompts—not merely produce better receipts?</td></tr>
+          <tr><td>P0</td><td>Contradiction corpus reconciliation</td><td>Reproduce the 47-case and 92-case results from one versioned corpus, publish inclusion rules, and report precision and recall on a manually labeled holdout.</td></tr>
+          <tr><td>P0</td><td>Current Workbench end-to-end path</td><td>Verify local and hosted renderers, multi-question coverage, tool cycles, memory release, and completion repair across a fixed regression pack.</td></tr>
+          <tr><td>P1</td><td>Fidelity Mirror and Wobble</td><td>Decide whether these mechanisms improve the current response-contract verifier enough to integrate; do not call them production before a verified call site and ablation.</td></tr>
+          <tr><td>P1</td><td>Immune-agent design</td><td>Run adversarial boundary tests around the current sidecar and compare small observers against the existing deterministic governance spine.</td></tr>
+          <tr><td>P1</td><td>Meaning compression</td><td>Expand beyond the small internal case pack, add fair retrieval and summary baselines, and measure authority, contradiction, and requested-coverage retention.</td></tr>
+          <tr><td>P1</td><td>Belief backpropagation</td><td>Repeat the synthetic checks on real correction histories and measure whether upstream trust changes improve later answers without destabilizing unrelated beliefs.</td></tr>
+          <tr><td>P2</td><td>Geometric and epistemic compression results</td><td>Replicate across multiple corpora, encoders, graph constructions, and quantization settings before treating a reported cliff as general.</td></tr>
+          <tr><td>P2</td><td>Variance probing</td><td>Rerun on current model versions with blind labels and report which findings survive model, encoder, prompt, and clustering changes.</td></tr>
+          <tr><td>P2</td><td>Autobiographical substrate</td><td>Measure whether self-authored candidates improve continuity and personality without creating self-reinforcing false beliefs or bypassing user controls.</td></tr>
+        </tbody>
+      </table>
+      <p>No result in this queue was recomputed as part of the August documentation reconciliation.</p>
+    </section>
+  </main>
+</div>
+<script src="docs.js"></script>
+</body>
+</html>

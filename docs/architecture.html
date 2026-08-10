@@ -3,930 +3,163 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CORE Architecture - How the Whitepaper Is Actually Implemented</title>
-<style>
-/* ===== LAYOUT ===== */
-/* ===== STAT CARDS ===== */
-.stat-card:hover { border-color: rgba(129,140,248,0.3); transform: translateY(-2px); }
-  .stat-card
-.stat-card
-.stat-card
-.stat-card
-.stat-card
-.stat-card
-.stat-card
-/* ===== TABLES ===== */
-  .table-wra
-tbody tr:hover td { background: rgba(129,140,248,0.03); }
-  td
-/* ===== QUOTE BLOCK ===== */
-.quote-block
-/* ===== LAW CARD ===== */
-  .law-card {
-    background: linear-gradient(135deg, rgba(129,140,248,0.08), rgba(192,132,252,0.06));
-    border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 32px; margin: 40px 0;
-    text-align: center;
-  }
-  .law-card .law-number { font-size: 0.7em; color: #818cf8; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
-  .law-card .law-text { font-size: 1.4em; color: #fff; font-weight: 700; letter-spacing: -0.5px; }
-  .law-card .law-sub { font-size: 0.88em; color: #7a82a6; margin-top: 12px; max-width: 620px; margin-left: auto; margin-right: auto; }
-
-  /* ===== PRINCIPLE CARDS ===== */
-  .principle-grid { display: grid; gap: 16px; margin: 24px 0; }
-  .principle-grid-2 { grid-template-columns: 1fr 1fr; }
-  .principle {
-    background: rgba(255,255,255,0.02); border-left: 3px solid rgba(255,255,255,0.08);
-    padding: 24px 28px; border-radius: 0 10px 10px 0;
-  }
-  .principle .p-num { color: #5a6080; font-size: 0.65em; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
-  .principle .p-text { color: #fff; font-size: 1.05em; margin-top: 8px; font-weight: 600; }
-  .principle .p-sub { color: #8a90b0; font-size: 0.86em; margin-top: 10px; line-height: 1.7; }
-  .principle .p-
-.principle-contr
-.principle-trust { border-left-color: #34d399; }
-  .principle-speech { border-left-color: #818cf8; }
-  .principle-belief { border-left-color: #c084fc; }
-  .principle-variance { border-left-color: #fbbf24; }
-
-  /* ===== LAYER STACK ===== */
-  .layer-stack { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 24px 0; }
-  .layer {
-    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 10px; padding: 24px 20px; text-align: center;
-  }
-  .layer .layer-name { color: #e0e4f0; font-weight: 600; font-size: 1em; }
-  .layer .layer-sub { color: #5a6080; font-size: 0.68em; margin-top: 6px; text-transform: uppercase; letter-spacing: 1.5px; }
-  .layer .layer-desc { color: #8a90b0; font-size: 0.84em; margin-top: 12px; line-height: 1.65; }
-
-  /* ===== PIPELINE STACK ===== */
-  .pipeline-stack { max-width: 700px; margin: 24px auto; display: flex; flex-direction: column; gap: 0; }
-  .pipeline-layer {
-    display: flex; align-items: stretch;
-    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
-    border-bottom: none; transition: background 0.3s;
-  }
-  .pipeline-layer:first-child { border-radius: 10px 10px 0 0; }
-  .pipeline-layer:last-child { border-bottom: 1px solid rgba(255,255,255,0.06); border-radius: 0 0 10px 10px; }
-  .pipeline-layer:hover { background: rgba(255,255,255,0.03); }
-  .pipeline-layer-accent { width: 4px; flex-shrink: 0; }
-  .pipeline-layer-content { flex: 1; padding: 14px 20px; }
-  .pipeline-layer-name { color: #e0e4f0; font-weight: 600; font-size: 0.9em; margin-bottom: 3px; }
-  .pipeline-layer-desc { color: #7a82a6; font-size: 0.8em; line-height: 1.5; }
-  .pipeline-layer-annotation {
-    display: flex; align-items: center; padding: 0 16px;
-    font-size: 0.7em; color: #5a6080; font-style: italic; white-space: nowrap;
-    border-left: 1px solid rgba(255,255,255,0.04); min-width: 140px;
-  }
-  /* Color accents for pipeline layers */
-  .pl-indigo .pipeline-layer-accent { background: #818cf8; }
-  .pl-green .pipeline-layer-accent { background: #34d399; }
-  .pl-amber .pipeline-layer-accent { background: #fbbf24; }
-  .pl-pink .pipeline-layer-accent { background: #f472b6; }
-  .pl-purple .pipeline-layer-accent { background: #c084fc; }
-
-  /* ===== REGIME CARDS ===== */
-  .regime-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 32px 0; }
-  .regime-card {
-    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
-    border-top: 3px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 28px 24px; text-align: center;
-    transition: border-color 0.3s, transform 0.3s;
-  }
-  .regime-card:hover { transform: translateY(-2px); }
-  .regime-card .regime-label { font-size: 0.62em; color: #5a6080; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; font-weight: 600; }
-  .regime-card .regime-name { font-size: 1.1em; font-weight: 700; margin-bottom: 6px; color: #fff; }
-  .regime-card .regime-model { font-size: 0.72em; color: #5a6080; margin-bottom: 14px; letter-spacing: 1px; }
-  .regime-card .regime-desc { font-size: 0.84em; color: #8a90b0; line-height: 1.65; }
-  .card-local { border-top-color: #34d399; }
-  .card-local .regime-name { color: #34d399; }
-  .card-cloud { border-top-color: #818cf8; }
-  .card-cloud .regime-name { color: #818cf8; }
-  .card-dee
-.card-deep .regime-name { color: #c084fc; }
-
-  /* ===== METHOD CARDS ===== */
-  .method-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 24px 0; }
-  .method-card {
-    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
-    border-radius: 10px; padding: 20px;
-  }
-  .method-card
-.method-card
-/* ===== NOTE / REMARK ===== */
-.remark {
-    background: rgba(129,140,248,0.04); border: 1px solid rgba(129,140,248,0.1);
-    border-radius: 8px; padding: 14px 18px; margin: 16px 0; font-size: 0.86em;
-    color: #8a90b0;
-  }
-  .remark
-/* ===== LINK BUTTONS ===== */
-/* ===== FOOTER ===== */
-.footer
-.footer
-/* ===== RESPONSIVE ===== */
-  @media (max-width: 700px) {
-    .hero h1 { font-size: 1.9em; }
-.method-grid { grid-template-columns: 1fr; }
-    .regime-grid { grid-template-columns: 1fr; }
-    .layer-stack { grid-template-columns: 1fr; }
-    .principle-grid-2 { grid-template-columns: 1fr; }
-    .pipeline-layer { flex-direction: column; }
-    .pipeline-layer-accent { width: 100%; height: 3px; }
-    .pipeline-layer-annotation { border-left: none; border-top: 1px solid rgba(255,255,255,0.04); padding: 10px 20px; min-width: auto; }
-  }
-</style>
+<meta name="description" content="The verified current architecture of Aether Workbench and its governed memory sidecar.">
+<title>Aether Architecture Today</title>
+<link rel="icon" href="data:,">
 <link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="theme.css">
+<style>
+  .truth-note { border-left: 4px solid #22d3ee; background: rgba(34,211,238,.06); padding: 20px 22px; border-radius: 8px; margin: 24px 0; }
+  .truth-note strong { color: #67e8f9; }
+  .flow { display: grid; gap: 8px; max-width: 780px; margin: 28px auto; }
+  .flow-step { display: grid; grid-template-columns: 52px 1fr; gap: 15px; align-items: center; padding: 16px 18px; background: var(--bg-raised); border: 1px solid var(--border); border-radius: 8px; }
+  .flow-num { font: 700 .72em var(--mono); color: #818cf8; letter-spacing: 1px; }
+  .flow-step strong { display: block; color: var(--text); margin-bottom: 3px; }
+  .flow-step span { color: var(--text-secondary); font-size: .87em; line-height: 1.55; }
+  .flow-arrow { text-align: center; color: var(--text-faint); font-family: var(--mono); }
+  .card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 22px 0; }
+  .scope-card { padding: 20px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg-raised); }
+  .scope-card h3 { margin: 0 0 8px; color: var(--text); font-size: 1em; }
+  .scope-card p { margin: 0; color: var(--text-secondary); font-size: .86em; line-height: 1.6; }
+  .cap-table td:first-child { color: var(--text); font-weight: 600; }
+  .status-live { color: #34d399; font-weight: 700; }
+  .status-bounded { color: #fbbf24; font-weight: 700; }
+  .status-not-live { color: #f472b6; font-weight: 700; }
+  .source-map code { white-space: normal; word-break: break-word; }
+  @media (max-width: 720px) { .card-grid { grid-template-columns: 1fr; } }
+</style>
 </head>
 <body>
 <div class="page-layout">
-
-<!-- ===== HERO ===== -->
-<div class="hero">
-  <div class="hero-inner">
-    <div class="hero-badge">Architecture · Implementation Guide</div>
-    <h1>How <span class="grad">CORE</span> Is Actually<br>Implemented</h1>
-    <p class="sub">From whitepaper theory to running system: 6 governance layers, 10 transformations, real pipeline flow, agent dispatch, self-awareness loop, and drift governance</p>
-    <div class="finding-box">
-      <!-- TODO: verify "~22,500 responses across 3 model families" — no supporting evidence found in codebase -->
-      <p>This document maps every theoretical concept from the <strong>CORE whitepaper</strong> to its actual implementation. Every claim is backed by a module, every principle by running code.</p>
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="hero-badge">Current system · August 2026</div>
+      <h1>Aether <span class="grad">Architecture Today</span></h1>
+      <p class="sub">The request path that is actually implemented in Workbench, separated from the wider research archive.</p>
+      <div class="finding-box"><p><strong>The model generates the answer. Aether governs what context, memory, tools, and persistence are allowed around it.</strong></p></div>
     </div>
-    <!-- Hero viz: pipeline flow -->
-    <div id="hero-pipeline" style="margin-top:28px;max-width:600px;margin-left:auto;margin-right:auto;">
-      <svg id="hp-svg" viewBox="0 0 600 180" style="width:100%;height:auto;display:block;"></svg>
-    </div>
-  </div>
-  <div class="scroll-cue">&#9660; SCROLL</div>
-</div>
-
-<script>
-(function() {
-  function buildHeroPipeline() {
-    if (!window.gsap) return;
-    var svg = document.getElementById('hp-svg');
-    if (!svg) return;
-    var ns = 'http://www.w3.org/2000/svg';
-
-    var layers = [
-      { label: 'Input', color: '#60a5fa' },
-      { label: 'Route', color: '#818cf8' },
-      { label: 'Memory', color: '#34d399' },
-      { label: 'Govern', color: '#c084fc' },
-      { label: 'Generate', color: '#fbbf24' },
-      { label: 'Verify', color: '#f472b6' }
-    ];
-
-    var barW = 75, barH = 22, gap = 12, startX = 32;
-    var totalW = layers.length * (barW + gap) - gap;
-    startX = (600 - totalW) / 2;
-
-    var bars = [], labels = [], packet;
-
-    layers.forEach(function(l, i) {
-      var x = startX + i * (barW + gap);
-      var y = 80;
-
-      // Bar
-      var rect = document.createElementNS(ns, 'rect');
-      rect.setAttribute('x', x); rect.setAttribute('y', y);
-      rect.setAttribute('width', barW); rect.setAttribute('height', barH);
-      rect.setAttribute('rx', 4);
-      rect.setAttribute('fill', l.color);
-      rect.setAttribute('opacity', '0.15');
-      svg.appendChild(rect);
-      bars.push(rect);
-
-      // Label
-      var txt = document.createElementNS(ns, 'text');
-      txt.setAttribute('x', x + barW/2); txt.setAttribute('y', y + barH/2 + 4);
-      txt.setAttribute('text-anchor', 'middle');
-      txt.setAttribute('font-family', "'IBM Plex Mono', monospace");
-      txt.setAttribute('font-size', '10');
-      txt.setAttribute('fill', l.color);
-      txt.setAttribute('opacity', '0');
-      txt.textContent = l.label;
-      svg.appendChild(txt);
-      labels.push(txt);
-    });
-
-    // Data packet (glowing dot)
-    packet = document.createElementNS(ns, 'circle');
-    packet.setAttribute('cx', startX - 20);
-    packet.setAttribute('cy', 91);
-    packet.setAttribute('r', 6);
-    packet.setAttribute('fill', '#fff');
-    packet.setAttribute('opacity', '0');
-    // Glow filter
-    var defs = document.createElementNS(ns, 'defs');
-    var filter = document.createElementNS(ns, 'filter');
-    filter.setAttribute('id', 'glow');
-    var blur = document.createElementNS(ns, 'feGaussianBlur');
-    blur.setAttribute('stdDeviation', '3');
-    blur.setAttribute('result', 'blur');
-    var merge = document.createElementNS(ns, 'feMerge');
-    var mn1 = document.createElementNS(ns, 'feMergeNode'); mn1.setAttribute('in', 'blur');
-    var mn2 = document.createElementNS(ns, 'feMergeNode'); mn2.setAttribute('in', 'SourceGraphic');
-    merge.appendChild(mn1); merge.appendChild(mn2);
-    filter.appendChild(blur); filter.appendChild(merge);
-    defs.appendChild(filter);
-    svg.appendChild(defs);
-    packet.setAttribute('filter', 'url(#glow)');
-    svg.appendChild(packet);
-
-    // Animation
-    var tl = gsap.timeline({ delay: 1 });
-
-    // Bars appear
-    tl.to(bars, { attr: { opacity: 0.25 }, duration: 0.3, stagger: 0.08 }, 0);
-    tl.to(labels, { attr: { opacity: 0.8 }, duration: 0.3, stagger: 0.08 }, 0.2);
-
-    // Packet appears and flows through
-    tl.to(packet, { attr: { opacity: 1 }, duration: 0.2 }, 0.8);
-    layers.forEach(function(l, i) {
-      var x = startX + i * (barW + gap) + barW/2;
-      tl.to(packet, { attr: { cx: x }, duration: 0.35, ease: 'power2.inOut' }, 1.0 + i * 0.4);
-      // Light up the bar as packet passes
-      tl.to(bars[i], { attr: { opacity: 0.7 }, duration: 0.15 }, 1.0 + i * 0.4);
-      tl.to(bars[i], { attr: { opacity: 0.25 }, duration: 0.4 }, 1.2 + i * 0.4);
-    });
-
-    // Packet exits
-    tl.to(packet, { attr: { cx: startX + totalW + 30, opacity: 0 }, duration: 0.5, ease: 'power2.in' }, 1.0 + layers.length * 0.4);
-
-    // Final state: all bars settle at medium opacity
-    tl.to(bars, { attr: { opacity: 0.4 }, duration: 0.5 }, 3.8);
-  }
-
-  if (window.gsap) { buildHeroPipeline(); }
-  else { (window.__gsapCallbacks = window.__gsapCallbacks || []).push(buildHeroPipeline); }
-})();
-</script>
-
-<nav class="sidebar" id="docSidebar">
-  <div class="sidebar-title">Architecture · Implemen</div>
-  <div class="sidebar-spacer"></div>
-  <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme">
-    <span class="theme-toggle-icon" id="themeIcon">&#9790;</span>
-    <span id="themeLabel">Light</span>
-  </button>
-  <div class="sidebar-footer">2026 Aeteros Research</div>
-</nav>
-
-
-<!-- ===== CONTENT ===== -->
-<main class="main">
-
-<!-- ===== KEY NUMBERS ===== -->
-<section>
-  <div class="stat-row">
-    <div class="stat-card">
-      <div class="stat-value accent">6</div>
-      <div class="stat-label">Governance Layers</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value purple">10</div>
-      <div class="stat-label">CORE Transformations</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value green">6</div>
-      <div class="stat-label">Immune Agents</div>
-    </div>
-  </div>
-  <div class="stat-row">
-    <div class="stat-card">
-      <!-- TODO: verify MCP tool count — code shows ~6 @mcp.tool() registrations, not 18. Was 18 including sub-tools? -->
-      <div class="stat-value pink">18</div>
-      <div class="stat-label">MCP Tools Exposed</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value amber">7</div>
-      <div class="stat-label">Self-Model Slots</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value accent">3</div>
-      <div class="stat-label">Generation Tiers</div>
-    </div>
-  </div>
-</section>
-
-<!-- ===== CORE PRINCIPLES ===== -->
-<section id="principles">
-  <div class="accent-line"></div>
-  <span class="section-number">Foundation</span>
-  <h2>Core Architectural Principles</h2>
-
-  <div class="law-card">
-    <div class="law-number">The Central Thesis</div>
-    <div class="law-text">Generation is stateless. Governance is persistent.</div>
-    <div class="law-sub">Models are interchangeable generation engines. Identity, memory, trust, and contradiction live in the persistence layer, governed by CORE, not by any single model.</div>
+    <div class="scroll-cue">&#9660; SCROLL</div>
   </div>
 
-  <div class="principle-grid principle-grid-2">
-    <div class="principle principle-trust">
-      <div class="p-num">Principle 1</div>
-      <div class="p-text">Memory First</div>
-      <div class="p-sub">Coherence over time matters more than single-query accuracy. A response grounded in trusted memory outranks a brilliant hallucination.</div>
-    </div>
-    <div class="principle principle-speech">
-      <div class="p-num">Principle 2</div>
-      <div class="p-text">Append-Only Ledger</div>
-      <div class="p-sub">Contradictions are preserved as ledger entries, never silent deletions. The system remembers that it changed its mind, and why.</div>
-    </div>
-    <div class="principle principle-belief">
-      <div class="p-num">Principle 3</div>
-      <div class="p-text">Trust &ne; Confidence</div>
-      <div class="p-sub">Trust evolves slowly through drift-aware decay. Confidence is the epistemic state at creation. A model can be confident about something the system doesn't trust.</div>
-    </div>
-    <div class="principle principle-contra">
-      <div class="p-num">Principle 4</div>
-      <div class="p-text">Auditable Gaps</div>
-      <div class="p-sub">Every time the system says something different from what it believes, the gap is logged with a reason. Deceptive alignment becomes a transparent, monitorable signal.</div>
-    </div>
-    <div class="principle principle-variance">
-      <div class="p-num">Principle 5</div>
-      <div class="p-text">Proactive Gating</div>
-      <div class="p-sub">Don't show the gun. Intent-gated tools mean the model never sees tools it shouldn't use. Reconstruction gates mean it hedges rather than hallucinating.</div>
-    </div>
-    <div class="principle principle-trust">
-      <div class="p-num">Principle 6</div>
-      <div class="p-text">Swappable Brains</div>
-      <div class="p-sub">Brain provider abstraction decouples the orchestrator from any specific LLM. Local Ollama, OpenAI, Claude, or a future model; the governance layer is the same.</div>
-    </div>
-  </div>
-</section>
+  <nav class="sidebar" id="docSidebar">
+    <div class="sidebar-title">Architecture Today</div>
+    <div class="sidebar-spacer"></div>
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme"><span class="theme-toggle-icon" id="themeIcon">&#9790;</span><span id="themeLabel">Light</span></button>
+    <div class="sidebar-footer">Verified source boundary</div>
+  </nav>
 
-<!-- ===== REQUEST PIPELINE ===== -->
-<section id="pipeline">
-  <div class="accent-line"></div>
-  <span class="section-number">Section 1</span>
-  <h2>The Request Pipeline</h2>
-
-  <p>Every user message flows through a governed pipeline. No step is optional. The pipeline produces not just a response, but a full epistemic audit trail.</p>
-
-  <div class="pipeline-stack">
-    <div class="pipeline-layer pl-indigo">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">1. Intent Classification</div>
-        <div class="pipeline-layer-desc">Local model classifies intent (conversational, research, code_task, correction, meta). Gates which tools are visible.</div>
+  <main class="main">
+    <section id="scope">
+      <div class="accent-line"></div>
+      <h2>1. Scope and truth boundary</h2>
+      <p>This page documents the current Aether Workbench and sidecar request path. It does not claim that every module, experiment, or mathematical idea in the Aeteros archive is active in that path.</p>
+      <div class="truth-note"><strong>Important distinction:</strong> research code can exist, import successfully, or pass an isolated test without being part of a normal Workbench turn. Current capability claims here are limited to verified source call sites and user-visible receipts.</div>
+      <div class="card-grid">
+        <div class="scope-card"><h3>Aether</h3><p>The current dogfooded personal-agent product: Workbench UI, local sidecar, governed context release, renderer selection, traces, and review surfaces.</p></div>
+        <div class="scope-card"><h3>Aether Core repository</h3><p>The local codebase containing the substrate, sidecar, governance mechanisms, tests, adapters, and research lineage.</p></div>
+        <div class="scope-card"><h3>Aeteros Core boundary</h3><p>A small reusable audit contract currently being extracted. It does not yet represent every mechanism described across the research archive.</p></div>
+        <div class="scope-card"><h3>Aeteros</h3><p>The umbrella identity for the project and research. It is not presented here as an established company, certification authority, or finished hosted platform.</p></div>
       </div>
-      <div class="pipeline-layer-annotation">tool_gate.py</div>
-    </div>
-    <div class="pipeline-layer pl-indigo">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">2. Escalation Decision</div>
-        <div class="pipeline-layer-desc">Stateful routing: local, OpenAI, or Claude. Circuit breaker state, token budget, deep reasoning patterns, conversation momentum.</div>
+    </section>
+
+    <section id="request-path">
+      <div class="accent-line"></div>
+      <h2>2. A normal Workbench turn</h2>
+      <div class="flow">
+        <div class="flow-step"><div class="flow-num">01</div><div><strong>User request</strong><span>Workbench sends the current message, conversation identifier, selected renderer policy, and UI context to the local sidecar.</span></div></div>
+        <div class="flow-arrow">&#8595;</div>
+        <div class="flow-step"><div class="flow-num">02</div><div><strong>Planning and obligations</strong><span>Aether decomposes the request into answer obligations so multi-part prompts are not considered complete after only the first answerable clause.</span></div></div>
+        <div class="flow-arrow">&#8595;</div>
+        <div class="flow-step"><div class="flow-num">03</div><div><strong>Governed context release</strong><span>The substrate and recent accepted conversation are queried. Evidence is classified, bounded, and released or withheld before rendering.</span></div></div>
+        <div class="flow-arrow">&#8595;</div>
+        <div class="flow-step"><div class="flow-num">04</div><div><strong>Optional bounded tools</strong><span>A selected model may propose a small read-only tool set. Aether validates the proposal, grants or denies it, executes approved reads, and records receipts.</span></div></div>
+        <div class="flow-arrow">&#8595;</div>
+        <div class="flow-step"><div class="flow-num">05</div><div><strong>Selected model renders</strong><span>For normal generative turns, the renderer chosen in Workbench is preferred. Governance supplies the packet; it does not silently replace the selected hosted model with a canned local answer.</span></div></div>
+        <div class="flow-arrow">&#8595;</div>
+        <div class="flow-step"><div class="flow-num">06</div><div><strong>Completion verification</strong><span>The final answer is checked against authority, evidence relevance, requested coverage, conversational references, and the response contract. A bounded repair or failure state is recorded when needed.</span></div></div>
+        <div class="flow-arrow">&#8595;</div>
+        <div class="flow-step"><div class="flow-num">07</div><div><strong>Answer and public receipts</strong><span>Workbench receives the answer plus route, provider, memory, tool, and completion information suitable for the Why or Trace views.</span></div></div>
       </div>
-      <div class="pipeline-layer-annotation">escalation_policy.py</div>
-    </div>
-    <div class="pipeline-layer pl-green">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">3. Memory Retrieval (CORE-RAG)</div>
-        <div class="pipeline-layer-desc">Trust-weighted retrieval. Indirect probe expansion for "mention" / "reference" queries. PCA projection computed for epistemic graph.</div>
+    </section>
+
+    <section id="components">
+      <div class="accent-line"></div>
+      <h2>3. Running components</h2>
+      <table class="cap-table">
+        <thead><tr><th>Component</th><th>Responsibility</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Workbench</td><td>Chat, renderer selection, Simple/Lab modes, Why, Knows, Trace, Memory, Reflection, Support, and Learning review.</td><td><span class="status-live">Current</span></td></tr>
+          <tr><td>Local sidecar</td><td>Streaming endpoint, route policy, context assembly, governed tool loop, rendering adapters, completion verification, and durable turn receipts.</td><td><span class="status-live">Current</span></td></tr>
+          <tr><td>SubstrateGraph</td><td>Persistent states, slot history, edges, contradictions, dispositions, and query-scoped evidence release.</td><td><span class="status-live">Current</span></td></tr>
+          <tr><td>Renderer adapters</td><td>Local model rendering and hosted Grok rendering while Aether retains context and tool authority.</td><td><span class="status-live">Current</span></td></tr>
+          <tr><td>Completion verifier</td><td>Deterministic checks plus bounded semantic coverage checks for multi-part answer obligations.</td><td><span class="status-live">Implemented</span></td></tr>
+          <tr><td>Aeteros Core boundary</td><td>Audits a governed completion without choosing a model, adding personality, or granting writes.</td><td><span class="status-bounded">Narrow seam</span></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="memory">
+      <div class="accent-line"></div>
+      <h2>4. Continuity and memory</h2>
+      <p>Aether does not paste an unrestricted archive into each prompt. It distinguishes several roles:</p>
+      <div class="card-grid">
+        <div class="scope-card"><h3>Governed evidence</h3><p>Durable substrate states that are relevant and released for the current question. Contradictions can be held instead of flattened into false certainty.</p></div>
+        <div class="scope-card"><h3>Recent conversation</h3><p>A bounded same-conversation packet used for references and conversational continuity. It is not automatically treated as durable factual evidence.</p></div>
+        <div class="scope-card"><h3>Review-only candidates</h3><p>Reflection, support, learning, and autobiographical suggestions can be surfaced without silently becoming confirmed memory.</p></div>
+        <div class="scope-card"><h3>Confirmed writes</h3><p>Durable changes require route and persistence authority and leave a receipt. Passive learning can accumulate evidence, but the review boundary remains inspectable.</p></div>
       </div>
-      <div class="pipeline-layer-annotation">crt_rag.py</div>
-    </div>
-    <div class="pipeline-layer pl-green">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">4. Contradiction Check</div>
-        <div class="pipeline-layer-desc">Retrieved memories checked for pairwise tension. NLI critic scores. Disposition classified: resolvable, held, evolving, contextual.</div>
-      </div>
-      <div class="pipeline-layer-annotation">crt_ledger.py</div>
-    </div>
-    <div class="pipeline-layer pl-amber">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">5. Prompt Assembly</div>
-        <div class="pipeline-layer-desc">Static epistemology prefix (cache boundary) + dynamic evidence below. Source authority adjusts confidence per assertion type. Session state injected.</div>
-      </div>
-      <div class="pipeline-layer-annotation">source_authority.py</div>
-    </div>
-    <div class="pipeline-layer pl-purple">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">6. Generation</div>
-        <div class="pipeline-layer-desc">Selected brain generates response. Reconstruction gates enforce alignment with memory intent (&theta;=0.5) and content (&theta;=0.38). Hedge on failure.</div>
-      </div>
-      <div class="pipeline-layer-annotation">cookie_orchestrator.py</div>
-    </div>
-    <div class="pipeline-layer pl-pink">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">7. Drift Governance</div>
-        <div class="pipeline-layer-desc">Live alignment monitoring. Rule 1: alignment &lt; 0.15 → force memory re-retrieval. Rule 2: 3+ consecutive drifts &lt; 0.3 → halt and ask user.</div>
-      </div>
-      <div class="pipeline-layer-annotation">governance.py</div>
-    </div>
-    <div class="pipeline-layer pl-pink">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">8. Memory Write-Back</div>
-        <div class="pipeline-layer-desc">New memories created with source tracking. Trust delta computed. Contradiction ledger updated. Session state records turn snapshot.</div>
-      </div>
-      <div class="pipeline-layer-annotation">crt_memory.py</div>
-    </div>
-  </div>
-</section>
+      <p>Raw hidden chain-of-thought is not the continuity substrate. Aether stores bounded public traces, decisions, evidence packets, and outcomes instead.</p>
+    </section>
 
-<!-- ===== GENERATION TIERS ===== -->
-<section id="tiers">
-  <div class="accent-line"></div>
-  <span class="section-number">Section 2</span>
-  <h2>Generation Tiers &amp; Escalation</h2>
+    <section id="renderers">
+      <div class="accent-line"></div>
+      <h2>5. Renderer policy</h2>
+      <p>The selected model is the answer renderer for normal generative turns. Local and hosted models receive the same governed role separation: the model proposes language and, when allowed, tool requests; Aether owns context release, capability grants, persistence, and receipts.</p>
+      <div class="truth-note"><strong>What “Thinking” means:</strong> Workbench can show public progress events, planning state, tool activity, and verification state. It does not expose or claim to store a provider's private chain-of-thought.</div>
+    </section>
 
-  <p>The escalation policy is a stateful routing system with circuit breaker patterns. Each tier has a distinct role; the system selects based on query complexity, not user preference.</p>
+    <section id="tools">
+      <div class="accent-line"></div>
+      <h2>6. Tool boundary</h2>
+      <p>The normal model-proposable catalog is intentionally small:</p>
+      <table class="cap-table">
+        <thead><tr><th>Tool</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>workspace_search</code></td><td>Search workspace files for a query or symbol.</td></tr>
+          <tr><td><code>workspace_read</code></td><td>Read a bounded line range under configured workspace roots.</td></tr>
+          <tr><td><code>workspace_list</code></td><td>List one directory under configured workspace roots.</td></tr>
+          <tr><td><code>document_search</code></td><td>Search saved Workbench documents and notes.</td></tr>
+        </tbody>
+      </table>
+      <p>Proposals are capped, queries and read spans are bounded, and shell, writes, patches, policy changes, and memory writes are excluded from this model grant. Separate deterministic and approval-controlled paths can perform broader actions.</p>
+      <p>MCP exposes a different substrate-management surface. MCP availability must not be confused with tools automatically available to a Workbench renderer.</p>
+    </section>
 
-  <div class="regime-grid">
-    <div class="regime-card card-local">
-      <div class="regime-label">Tier 1</div>
-      <div class="regime-name">Local</div>
-      <div class="regime-model">Ollama · llama3.2 / gemma3</div>
-      <div class="regime-desc">Fast routing, simple queries, classification. Intent detection runs here. Fallback source; can speak but creates only low-trust memories.</div>
-    </div>
-    <div class="regime-card card-cloud">
-      <div class="regime-label">Tier 2</div>
-      <div class="regime-name">Cloud</div>
-      <div class="regime-model">OpenAI · GPT-4o-mini</div>
-      <div class="regime-desc">Speed + quality balance. Token budget overflow (&gt;6000 tokens). Used when local would degrade but Claude depth isn't needed.</div>
-    </div>
-    <div class="regime-card card-deep">
-      <div class="regime-label">Tier 3</div>
-      <div class="regime-name">Deep</div>
-      <div class="regime-model">Anthropic · Claude</div>
-      <div class="regime-desc">Architecture questions, probability assessment, comparative analysis, AGI topics. 14 regex patterns trigger escalation. Self-reflection routes here.</div>
-    </div>
-  </div>
+    <section id="not-live">
+      <div class="accent-line"></div>
+      <h2>7. Research mechanisms not claimed as live</h2>
+      <p>The repository contains substantial work on Wobble, Fidelity Mirror, belief backpropagation, GroundCheck, geometric memory, immune agents, structural tension, and older CRT/personal-agent pipelines. Those remain useful research and implementation history.</p>
+      <p><span class="status-not-live">This page does not claim</span> that those mechanisms wrap every current Workbench response, that Claude Code is autonomously dispatched, that an OpenAI-compatible public proxy exists, or that the system is legally certified or externally validated.</p>
+      <p>See the Research and Theory &amp; History navigation groups for those artifacts with their status boundary preserved.</p>
+    </section>
 
-  <h3>Escalation Triggers</h3>
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>Trigger</th><th>Condition</th><th>Target</th></tr></thead>
-    <tbody>
-      <tr><td><strong>Token overflow</strong></td><td>&gt;6000 estimated tokens</td><td>Cloud or Deep</td></tr>
-      <tr><td><strong>Reflection blindspot</strong></td><td>Blindspot boost &gt; 0.10</td><td>Cloud or Deep</td></tr>
-      <tr><td><strong>Deep reasoning patterns</strong></td><td>14 regex patterns (architecture, probability, comparative, AGI...)</td><td>Deep</td></tr>
-      <tr><td><strong>Conversation momentum</strong></td><td>2+ of last 3 turns used cloud</td><td>Maintain cloud tier</td></tr>
-      <tr><td><strong>Circuit breaker open</strong></td><td>Consecutive failures at current tier</td><td>Fallback to next tier</td></tr>
-    </tbody>
-  </table>
-  </div>
-  <div class="remark">
-    <strong>Conversation momentum</strong> (Trigger #5) prevents mid-conversation degradation. If you're discussing architecture and send "what about the other approach?", the system maintains Claude depth rather than dropping to local because the follow-up is short.
-  </div>
-</section>
-
-<!-- ===== MEMORY SYSTEM ===== -->
-<section id="memory">
-  <div class="accent-line"></div>
-  <span class="section-number">Section 3</span>
-  <h2>Memory &amp; Trust</h2>
-
-  <h3>Trust-Weighted Retrieval</h3>
-  <p>CORE-RAG retrieves memories using a <strong>trust-weighted scoring function</strong>, not just cosine similarity. A highly relevant memory with low trust scores lower than a moderately relevant memory with high trust. This prevents the system from confidently citing memories it has learned to distrust.</p>
-
-  <h3>Indirect Probe Expansion</h3>
-  <p>When a query contains markers like "mention", "reference", or "dreams about", the system extracts the topic noun phrase and runs a second retrieval pass. This is how "Have I ever mentioned a Beechcraft Bonanza?" surfaces a memory about aviation dreams even though "Bonanza" never appears in the original query embedding's nearest neighbors.</p>
-
-  <h3>Query Resonance (Wobble)</h3>
-  <p>Beyond cosine similarity and probe expansion, retrieval uses <strong>BRG edge propagation</strong> to surface cross-domain facts. A query vector lands in the graph and activates directly similar memories. That activation propagates through SUPPORTS edges with geometric damping. A health query ("How is your cGVHD?") directly finds health memories, but the wobble also activates: "overnight shifts were hard" → "left Walmart" → "self-employed"  - work facts reachable through causal chains, invisible to cosine. Validated on 867 production memories: 26 extra relevant facts surfaced across 5 test queries. Originated as the <a href="belief-backprop.html#wobble">Semantic String Engine (2025)</a>.</p>
-
-  <h3>Fidelity Mirror</h3>
-  <p>After generation, a lightweight post-generation check verifies that the response faithfully represents the belief state. Three checks: belief fidelity (did it use the injected memories?), request alignment (did it answer the question?), and factual grounding (are claims traceable?). The memory set is <strong>wobble-expanded</strong>  - the fidelity check runs against the full resonance pattern, not just the cosine-retrieved memories. Below threshold, the response is flagged (not blocked). Originated as the Holden fidelity mirror (compress → inflate → collapse → validate, 2025).</p>
-
-  <!-- Updated 2026-04-13: CRT Math Upgrades -->
-  <h3>Trust Evolution</h3>
-  <div class="method-grid">
-    <div class="method-card">
-      <h4>Decay</h4>
-      <p>Exponential recency curve: &rho; = e<sup>-&Delta;t/&lambda;</sup>. Never below TRUST_FLOOR (0.20) or above TRUST_CEILING (0.95). 7-day grace period for new memories. <em>(Apr 2026: decay rate now scales with domain volatility — high-volatility domains decay faster via &eta;<sub>neg</sub> &middot; (1 + &gamma; &middot; vol<sub>d</sub>). Beta confidence further modulates — high-evidence memories resist decay.)</em></p>
-    </div>
-    <div class="method-card">
-      <h4>Reinforcement</h4>
-      <p>On reference uses, drift-aware boost: low semantic drift = large boost; high drift (tangential reference) = small boost. Prevents gaming through repeated tangential citations. <em>(Apr 2026: gain rate now domain-volatility-modulated: &eta;<sub>pos</sub> &middot; (1 &minus; &beta; &middot; vol<sub>d</sub>). Opinions gain trust slowly; names gain fast.)</em></p>
-    </div>
-    <div class="method-card">
-      <h4>Beta Distribution Trust</h4>
-      <p><em>(Apr 2026)</em> Each memory carries Beta(&alpha;, &beta;) parameters alongside its scalar trust score. Mean = &alpha;/(&alpha;+&beta;) = trust level; variance = uncertainty. New memories (Beta(2,2)) have high variance and are easily shifted by evidence. Old confirmed memories accumulate &alpha; and become stable. Conjugate Bayesian updates: aligned evidence increments &alpha;, contradicting evidence increments &beta;. <a href="geometric-memory.html">Geometric details →</a></p>
-    </div>
-    <div class="method-card">
-      <h4>Source Authority</h4>
-      <p>Direct first-person assertions: 0.95 confidence. Reported speech ("Mike says..."): 0.70. Journal entries: 0.60. Meta-corrections resolve rather than create contradictions.</p>
-    </div>
-    <div class="method-card">
-      <h4>Unified Gate</h4>
-      <p><em>(Apr 2026)</em> gate(v) = I(R &gt; &theta; + &lambda;&middot;drift) &middot; exp(&minus;&gamma;&middot;depth). Collapses salience gate + trust gate + marble drift check into one continuous function. Depth attenuation means deep cascade nodes require stronger relevance to pass. Drift raises the threshold — drifting beliefs face a higher bar.</p>
-    </div>
-    <div class="method-card">
-      <h4>Consolidation</h4>
-      <p>Batch NLI sweep: k-nearest + similarity filtering avoids O(n&sup2;). Disposition classified (resolvable/held/evolving/contextual). Auto-resolve only on overwhelming evidence.</p>
-    </div>
-    <div class="method-card">
-      <h4>Backward Pass (Reverse Cascade)</h4>
-      <p>When a correction resolves a contradiction, the error signal flows <em>backward</em> through the BRG, adjusting trust on every upstream belief that contributed to the wrong output. Produces self-pruning (wrong beliefs die from accumulated error signals), domain volatility (correction frequency drives adaptive adjustment rates), and reflexive self-model calibration. <em>(Apr 2026: cascade now uses typed-edge damping — SUPERSEDES edges propagate at 0.85, CONTRADICTS at 0.60, SUPPORTS at 0.30.)</em> <a href="belief-backprop.html">Full paper →</a></p>
-    </div>
-  </div>
-
-  <h3>Contradiction Lifecycle</h3>
-  <div class="pipeline-stack">
-    <div class="pipeline-layer pl-indigo">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">Detection</div>
-        <div class="pipeline-layer-desc">Pairwise NLI on retrieved memories. Cosine similarity &gt; 0.40 → candidate pair. NLI score above threshold → contradiction.</div>
-      </div>
-      <div class="pipeline-layer-annotation">crt_ledger.py</div>
-    </div>
-    <div class="pipeline-layer pl-amber">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">Classification</div>
-        <div class="pipeline-layer-desc">Five types: Refinement (more specific), Revision (explicit correction), Temporal (time progression), Conflict (mutually exclusive), Denial (gaslighting detection).</div>
-      </div>
-      <div class="pipeline-layer-annotation">disposition_classifier.py</div>
-    </div>
-    <div class="pipeline-layer pl-green">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">Disposition</div>
-        <div class="pipeline-layer-desc">Resolvable → auto-resolve on evidence. Held → preserve tension as cascade firewall. Evolving → track drift. Contextual → both valid in different contexts. <em>(Apr 2026: each contradiction now carries a continuous disposition simplex [p<sub>resolve</sub>, p<sub>hold</sub>, p<sub>evolve</sub>, p<sub>dormant</sub>] that drifts with evidence instead of jumping between discrete states.)</em></div>
-      </div>
-      <div class="pipeline-layer-annotation">disposition_classifier.py</div>
-    </div>
-    <div class="pipeline-layer pl-pink">
-      <div class="pipeline-layer-accent"></div>
-      <div class="pipeline-layer-content">
-        <div class="pipeline-layer-name">Resolution</div>
-        <div class="pipeline-layer-desc">Trust-dominant dedup: auto-resolve when trust delta &ge; 0.30. Everything logged to append-only ledger. The system remembers it changed its mind.</div>
-      </div>
-      <div class="pipeline-layer-annotation">crt_ledger.py</div>
-    </div>
-  </div>
-</section>
-
-<!-- ===== BELIEF/SPEECH ===== -->
-<section id="belief-speech">
-  <div class="accent-line"></div>
-  <span class="section-number">Section 4</span>
-  <h2>Belief / Speech Separation</h2>
-
-  <div class="law-card">
-    <div class="law-number">Law 1</div>
-    <div class="law-text">Speech does not automatically become belief.</div>
-    <div class="law-sub">A model can say something without the system believing it. Generated text is speech. Memory with earned trust is belief. The gap between them is auditable.</div>
-  </div>
-
-  <div class="method-grid">
-    <div class="method-card">
-      <h4>Belnap Four-Valued Logic</h4>
-      <p><strong>TRUE</strong>, evidence supports. <strong>FALSE</strong>, evidence contradicts. <strong>BOTH</strong>, held contradiction (genuine tension). <strong>NEITHER</strong>, no evidence either way.</p>
-    </div>
-    <div class="method-card">
-      <h4>Gap Audit Log</h4>
-      <p>Every time the system says something different from what it believes, the gap is recorded with reason. If the gap widens over time, the audit trail shows it.</p>
-    </div>
-    <div class="method-card">
-      <h4>Disclosure Policy</h4>
-      <p>Held contradictions (BOTH state) need explicit policy for which side to present. Both sides and the policy choice are recorded, not hidden.</p>
-    </div>
-    <div class="method-card">
-      <h4>Safety Implication</h4>
-      <p>Deceptive alignment becomes a transparent, inspectable mechanism rather than a failure mode to prevent. The system can't hide that it knows something it isn't saying.</p>
-    </div>
-  </div>
-
-  <div class="quote-block">
-    <p>The belief/speech gap converts "deceptive alignment" from a danger to prevent into a transparent gap to monitor. The system logs every instance where it knows something it doesn't say, and why.</p>
-  </div>
-</section>
-
-<!-- ===== SELF-AWARENESS ===== -->
-<section id="self-awareness">
-  <div class="accent-line"></div>
-  <span class="section-number">Section 5</span>
-  <h2>Self-Awareness Loop</h2>
-
-  <p>The system maintains a persistent self-model across 7 slots. Each slot is stored as a CORE memory, which means it inherits trust decay and contradiction detection. The system can disagree with its own self-assessment, and that disagreement is logged.</p>
-
-  <div class="principle-grid">
-    <div class="principle principle-belief">
-      <div class="p-num">Slot 1</div>
-      <div class="p-text">Uncertainty Domains</div>
-      <div class="p-sub">Topics where the system knows it underperforms. Updated by reflection on correction patterns and retrieval failures.</div>
-    </div>
-    <div class="principle principle-contra">
-      <div class="p-num">Slot 2</div>
-      <div class="p-text">Correction Pattern</div>
-      <div class="p-sub">Observed pattern in user corrections (e.g., "tends to over-state recency"). Evidence-based self-diagnosis.</div>
-    </div>
-    <div class="principle principle-trust">
-      <div class="p-num">Slot 3</div>
-      <div class="p-text">Trust Trajectory</div>
-      <div class="p-sub">Narrative of recent trust movements across the memory system. Are beliefs stabilizing or churning?</div>
-    </div>
-    <div class="principle principle-variance">
-      <div class="p-num">Slot 4</div>
-      <div class="p-text">Known Blindspots</div>
-      <div class="p-sub">Structural weaknesses identified through reflection. "Poor temporal reasoning" or "overconfident on low-evidence topics."</div>
-    </div>
-    <div class="principle principle-trust">
-      <div class="p-num">Slot 5</div>
-      <div class="p-text">Growing Confidence</div>
-      <div class="p-sub">Areas with consistent reinforcement. The system knows where it's getting better, not just where it's failing.</div>
-    </div>
-    <div class="principle principle-speech">
-      <div class="p-num">Slot 6</div>
-      <div class="p-text">User Relationship</div>
-      <div class="p-sub">Character of interaction style. Communication preferences, correction patterns, topic interests.</div>
-    </div>
-    <div class="principle principle-belief">
-      <div class="p-num">Slot 7</div>
-      <div class="p-text">Response Style</div>
-      <div class="p-sub">Current calibration notes. "User prefers concise responses" or "more technical depth needed."</div>
-    </div>
-  </div>
-
-  <h3>Reflection Mechanism</h3>
-  <p>The reflection loop scheduler runs asynchronously at configurable intervals. It gathers recent chat context, top 5 memories, and recent corrections, then routes through <strong>ClaudeCliBrain</strong> for quality reflection (local models produce boilerplate). A <strong>change gate</strong> (60% word overlap threshold) prevents identical reflections from being written. If the reflection didn't say anything new, it's discarded silently.</p>
-
-  <h3>Execution State Verification</h3>
-  <p>On startup, <code>verify_execution_state()</code> performs runtime checks: is the agent loop importable? Is the escalation policy active? Are models reachable? Results are written as operational memories with a 7-day review window, preventing stale claims about system capabilities.</p>
-</section>
-
-<!-- ===== AGENT DISPATCH ===== -->
-<section id="dispatch">
-  <div class="accent-line"></div>
-  <span class="section-number">Section 6</span>
-  <h2>Agent Dispatch Architecture</h2>
-
-  <div class="law-card">
-    <div class="law-number">Separation of Concerns</div>
-    <div class="law-text">Aether reads. Claude Code writes.</div>
-    <div class="law-sub">Aether is the epistemic governance layer (read-only). When file modifications are needed, Aether dispatches Claude Code as an external execution agent with full metric capture.</div>
-  </div>
-
-  <div class="layer-stack">
-    <div class="layer">
-      <div class="layer-name">Aether</div>
-      <div class="layer-sub">Governance</div>
-      <div class="layer-desc">Read-only epistemic orchestrator. Memory retrieval, contradiction detection, trust evolution, drift monitoring. Never modifies files directly.</div>
-    </div>
-    <div class="layer">
-      <div class="layer-name">MCP Bridge</div>
-      <div class="layer-sub">18 Tools / 6 Tiers</div>
-      <div class="layer-desc">FastMCP server exposing Aether's full capability surface. Read, analyze, write, dispatch, ask, and admin tiers. Registered with Claude Code.</div>
-    </div>
-    <div class="layer">
-      <div class="layer-name">Claude Code</div>
-      <div class="layer-sub">Execution</div>
-      <div class="layer-desc">External write agent. Receives task + scope files. Returns full output with token metrics (input, output, cost). Aether captures everything for governance tracking.</div>
-    </div>
-  </div>
-
-  <h3>MCP Tool Tiers</h3>
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>Tier</th><th>Purpose</th><th>Tools</th></tr></thead>
-    <tbody>
-      <tr><td><strong>1. Read</strong></td><td>Query belief state</td><td><code>aether_search</code>, <code>aether_profile</code>, <code>aether_contradictions</code>, <code>aether_context</code></td></tr>
-      <tr><td><strong>2. Analyze</strong></td><td>Deep inspection</td><td><code>aether_belief_history</code>, <code>aether_opinion_variance</code>, <code>aether_volatile</code>, <code>aether_self_model</code></td></tr>
-      <tr><td><strong>3. Write</strong></td><td>Modify beliefs</td><td><code>aether_remember</code>, <code>aether_correct</code>, <code>aether_resolve</code></td></tr>
-      <tr><td><strong>4. Ingest</strong></td><td>Document processing</td><td><code>aether_ingest</code></td></tr>
-      <tr><td><strong>5. Dispatch</strong></td><td>Agent execution</td><td><code>aether_dispatch</code>, <code>aether_dispatch_async</code>, <code>aether_dispatch_status</code>, <code>aether_dispatch_list</code>, <code>aether_dispatch_metrics</code></td></tr>
-      <tr><td><strong>6. Ask</strong></td><td>Full response</td><td><code>aether_ask</code></td></tr>
-    </tbody>
-  </table>
-  </div>
-
-  <h3>Dispatch Flow</h3>
-  <p>When Aether encounters a coding task: (1) formulate task description + optional scope files, (2) call <code>dispatch_agent</code> tool in the orchestrator, (3) orchestrator spawns Claude CLI subprocess, (4) subprocess returns JSON with output + metrics, (5) Aether captures token usage (input/output), cost, model name, and success status, (6) metrics stored in memory for governance tracking. The entire flow has been validated end-to-end: Aether dispatching Claude Code to modify a file, then reading back the result to confirm the change.</p>
-</section>
-
-<!-- ===== DRIFT GOVERNANCE ===== -->
-<section id="drift">
-  <div class="accent-line"></div>
-  <span class="section-number">Section 7</span>
-  <h2>Drift Governance</h2>
-
-  <div class="quote-block">
-    <p>You built the sensor. You haven't wired it to the steering wheel yet.</p>
-  </div>
-
-  <p>Drift governance converts passive monitoring into active course correction. The system continuously measures alignment between the current generation direction and the original user objective. Two rules transform this signal into action:</p>
-
-  <div class="principle-grid">
-    <div class="principle principle-contra">
-      <div class="p-num">Rule 1: Re-Ground</div>
-      <div class="p-text">Alignment &lt; 0.15 → Force memory re-retrieval</div>
-      <div class="p-sub">When the response drifts far from the original objective, the system forces a new memory retrieval pass using the original query. A <code>[DRIFT CORRECTION]</code> context injection re-grounds the generation. This is the "gentle nudge"; the generation continues but with fresh evidence.</div>
-      <div class="p-code">cookie_orchestrator.py → DRIFT_FLAG check after each agent step</div>
-    </div>
-    <div class="principle principle-contra">
-      <div class="p-num">Rule 2: Halt</div>
-      <div class="p-text">3+ consecutive drifts &lt; 0.3 → Halt and ask user</div>
-      <div class="p-sub">Sustained drift below the acceptable threshold triggers an emergency stop. The system halts the agent loop and asks the user: "Should I restart or is this direction useful?" This prevents runaway divergence where the system confidently goes the wrong direction for many steps.</div>
-      <div class="p-code">cookie_orchestrator.py → consecutive drift counter in agent loop</div>
-    </div>
-  </div>
-
-  <h3>Frontend Indicators</h3>
-  <p>The pipeline collapse panel shows drift state visually: the progress bar shifts from <strong>amber to red</strong> based on drift severity. A pulsing overlay activates when drift is detected. The status text changes to "generating (drift detected)..." so the user sees the system is aware of the problem even before it acts.</p>
-</section>
-
-<!-- ===== 10 TRANSFORMATIONS ===== -->
-<section id="transformations">
-  <div class="accent-line"></div>
-  <span class="section-number">Section 8</span>
-  <h2>The 10 CORE Transformations</h2>
-
-  <p>These are the 10 concrete transformations that take CORE from theory to running system. Each maps a whitepaper concept to an implemented module with measurable behavior.</p>
-
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>#</th><th>Transformation</th><th>Module</th><th>What It Does</th></tr></thead>
-    <tbody>
-      <tr><td><strong>1</strong></td><td>Belief-Aware Compaction</td><td><code>belief_compaction.py</code></td><td>Trust-tiered compression: high-trust verbatim, medium-trust summarized, low-trust dropped. Locked beliefs immutable. Active contradictions preserved as pairs.</td></tr>
-      <tr><td><strong>2</strong></td><td>Density Extraction</td><td><code>session_state.py</code></td><td>Replaces 30-min timer with density signal: (slots + contradictions + trust_shifts) / tokens &gt; 0.02 triggers extraction. Session-flagged contradictions prioritized.</td></tr>
-      <tr><td><strong>3</strong></td><td>Prompt Boundary</td><td><code>source_authority.py</code></td><td>Static epistemology prefix (cached) + dynamic evidence below. Source type adjusts confidence: direct assertion 0.95, reported speech 0.70, journal 0.60.</td></tr>
-      <tr><td><strong>4</strong></td><td>Inspectable Index</td><td><code>crt_rag.py</code></td><td>PCA 2D/3D projection of memory embeddings. Every memory gets coordinates + edges to semantic neighbors. Visible in frontend as epistemic graph.</td></tr>
-      <tr><td><strong>5</strong></td><td>Context Decay</td><td><code>trust_decay.py</code></td><td>Exponential recency: &rho; = e<sup>-&Delta;t/&lambda;</sup>. Floor 0.20, ceiling 0.95. 7-day grace period. Drift-aware reinforcement on reference.</td></tr>
-      <tr><td><strong>6</strong></td><td>Restricted Authority</td><td><code>source_authority.py</code></td><td>Fallback sources can speak but create low-trust memories. Third-party assertions get lower confidence. Meta-corrections resolve (not create) contradictions.</td></tr>
-      <tr><td><strong>7</strong></td><td>Execution Belief Verification</td><td><code>execution_beliefs.py</code></td><td>Tracks patterns from agent_runs.db. Minimum 5 runs before beliefs emerge. "I under-verify file writes (evidence=0.33, n=12)." Improving/worsening/stable.</td></tr>
-      <tr><td><strong>8</strong></td><td>Away/Resume Diff</td><td><code>session_state.py</code></td><td>After idle gap: render belief delta. Which memories shifted, which contradictions resolved, what emerged. Injected at top of context feed.</td></tr>
-      <tr><td><strong>9</strong></td><td>Memory Consolidation</td><td><code>memory_consolidation.py</code></td><td>Batch NLI sweep with k-nearest + similarity filtering. Disposition classified. Auto-resolve only on overwhelming evidence. Everything logged to ledger.</td></tr>
-      <tr><td><strong>10</strong></td><td>Intent-Gated Tools</td><td><code>tool_gate.py</code></td><td>Static intent-to-toolset map. Conversational → memory only. Research → web + files. Code → dispatch + file_read. Execution beliefs can promote/demote tools.</td></tr>
-    </tbody>
-  </table>
-  </div>
-</section>
-
-<!-- ===== IMMUNE AGENTS ===== -->
-<section id="immune">
-  <div class="accent-line"></div>
-  <span class="section-number">Section 9</span>
-  <h2>Immune Agents</h2>
-
-  <!-- TODO: this entire section was rewritten to match actual code. The old names (Mirus, Holden, Sentinel, Drift Monitor, Trust Auditor) were conceptual — the implemented agents have different names and roles. Verify descriptions against immune_agents/ source. -->
-  <p>Six constitutional agents wrap pipeline boundaries. They inspect inputs and outputs, emit verdicts (SAFE, FLAG, HEDGE, ESCALATE), but <strong>never silently modify</strong> content. The governance layer acts on verdicts; the agents only observe.</p>
-
-  <div class="principle-grid">
-    <div class="principle principle-trust">
-      <div class="p-num">Agent 1</div>
-      <div class="p-text">SpeechLeakDetector</div>
-      <div class="p-sub">Catches LLM output bleeding into belief state. Prevents the model's generated speech from being stored as trusted belief without evidence.</div>
-    </div>
-    <div class="principle principle-speech">
-      <div class="p-num">Agent 2</div>
-      <div class="p-text">TemplateDetector</div>
-      <div class="p-sub">Flags rote, templated responses that bypass reasoning. Detects when the model is pattern-matching rather than engaging with the actual query.</div>
-    </div>
-    <div class="principle principle-belief">
-      <div class="p-num">Agent 3</div>
-      <div class="p-text">PrematureResolutionGuard</div>
-      <div class="p-sub">Blocks contradictions from resolving without sufficient evidence. Ensures auto-resolution only occurs with overwhelming corroboration.</div>
-    </div>
-    <div class="principle principle-variance">
-      <div class="p-num">Agent 4</div>
-      <div class="p-text">MemoryCorruptionGuard</div>
-      <div class="p-sub">Prevents writes that would degrade memory integrity. Guards against hallucinated facts, duplicate storage, and trust inflation.</div>
-    </div>
-    <div class="principle principle-contra">
-      <div class="p-num">Agent 5</div>
-      <div class="p-text">GapAuditor</div>
-      <div class="p-sub">Measures and reports belief/speech divergence per response. Logs every instance where the system says something different from what it believes.</div>
-    </div>
-    <div class="principle principle-speech">
-      <div class="p-num">Agent 6</div>
-      <div class="p-text">ContinuityAuditor</div>
-      <div class="p-sub">Verifies cross-session consistency of claims and preferences. Detects when the system contradicts its own prior positions across session boundaries.</div>
-    </div>
-  </div>
-</section>
-
-<!-- ===== FRONTEND ===== -->
-<section id="frontend">
-  <div class="accent-line"></div>
-  <span class="section-number">Section 10</span>
-  <h2>Frontend: Making Governance Visible</h2>
-
-  <p>Every pipeline event is surfaced through Server-Sent Events (SSE) and WebSocket channels. The frontend doesn't just show responses; it shows the <em>epistemic process</em> that produced them.</p>
-
-  <div class="principle-grid principle-grid-2">
-    <div class="principle principle-speech">
-      <div class="p-num">Pipeline Collapse</div>
-      <div class="p-text">Real-Time Pipeline Panel</div>
-      <div class="p-sub">Collapsible panel showing: retrieval count, belief confidence, verification status, generation cost, latency. PCA epistemic graph with cosine edges. Drift color shift (amber → red). Mascot with context-aware animations.</div>
-    </div>
-    <div class="principle principle-trust">
-      <div class="p-num">Trust Delta Strip</div>
-      <div class="p-text">Compact Inline Trust Changes</div>
-      <div class="p-sub">Single-line display: trust ↑ favorite color +6.2% · ↑ system working +3.8%. Smart label extraction from memory text.</div>
-    </div>
-    <div class="principle principle-belief">
-      <div class="p-num">Belief Map</div>
-      <div class="p-text">2D/3D Epistemic Space</div>
-      <div class="p-sub">PCA projection of all memories. 2D canvas with pan/zoom/hover tooltips. 3D mode via vanilla Three.js with OrbitControls and auto-rotate. Topic centroids with sprite labels.</div>
-    </div>
-    <div class="principle principle-contra">
-      <div class="p-num">Contradiction Graph</div>
-      <div class="p-text">Mini SVG on Detection</div>
-      <div class="p-sub">When a contradiction is detected mid-response, an inline SVG shows winner/loser nodes, dashed red edge, trust scores, and resolution arrow.</div>
-    </div>
-  </div>
-
-  <h3>Pipeline Summary Line</h3>
-  <p>Every response footer: <code>&#9656; 5 mem · &#9673; 0.73 · &check; verified · $0.01 · 2.1s</code>: memory count, belief confidence, verification status, cost, and latency in a single scannable line.</p>
-</section>
-
-<!-- ===== CLOSING ===== -->
-<section>
-  <div class="law-card">
-    <div class="law-number">Architecture Summary</div>
-    <div class="law-text">Governance is not a wrapper. It is the architecture.</div>
-    <div class="law-sub">Every layer (routing, retrieval, generation, memory write-back) is governed. The model generates; the persistence layer remembers; the governance layer keeps both honest.</div>
-  </div>
-
-  <div style="text-align: center; margin-top: 40px;">
-    <a href="whitepaper.html" class="link-btn" style="margin-right: 12px;">CORE Whitepaper</a>
-    <a href="cascade-complexity.html" class="link-btn" style="margin-right: 12px;">Cascade Paper</a>
-    <a href="index.html" class="link-btn">All Docs</a>
-  </div>
-</section>
-
-<!-- ===== DESIGN EVOLUTION: BELIEF SLOTS ===== -->
-<section>
-  <span class="section-number">Design Evolution</span>
-  <h2>Belief Slot Evolution</h2>
-  <div class="accent-line"></div>
-
-  <div class="remark">
-    <strong>Live testing finding (April 7, 2026):</strong> A deliberate contradiction test (changing favorite drink from orange juice to water) exposed a fundamental design gap. The contradiction detection pipeline ran but did not fire. The old memory was not demoted. The new memory was stored alongside the old one with no ledger entry. This section documents what was found and the architectural response.
-  </div>
-
-  <h3>The Problem: Single-Value Slots</h3>
-  <p>The current slot model treats belief slots as single-value fields: <code>favorite_drink = orange juice</code>. When a new value arrives (<code>favorite_drink = water</code>), the system should detect the conflict, record the transition, and adjust trust. Instead, it stored both values as independent memories with no connection between them.</p>
-
-  <!-- TODO: verify line number — crt_rag.py is 10K+ lines, this reference may have shifted -->
-  <p>The detection code exists (line 6620+ in <code>crt_rag.py</code>). The slot extraction works correctly; both <code>favorite_drink = orange juice</code> and <code>favorite_drink = actually water</code> are properly extracted. But one of the intermediate gates (ML detector or CRTMath paraphrase check) is suppressing the flag before it reaches the ledger. Debug instrumentation has been added to identify which gate.</p>
-
-  <h3>The Deeper Issue: People Live in Contradiction</h3>
-  <p>The test exposed something more fundamental than a detection threshold: <strong>belief slots are not single-value fields.</strong> A person's favorite drink is not a database column. It is a weighted, temporal, multi-valued state:</p>
-
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>Value</th><th>Status</th><th>Trust</th><th>Relationship</th></tr></thead>
-    <tbody>
-      <tr><td>Water</td><td><strong>Current</strong></td><td>0.75</td><td>User's most recent explicit statement</td></tr>
-      <tr><td>Coffee</td><td><strong>Concurrent</strong></td><td>0.71</td><td>Also true, not contradicted</td></tr>
-      <tr><td>Orange juice</td><td><strong>Deprecated</strong></td><td>0.40 (demoted)</td><td>User explicitly said they don't drink it anymore</td></tr>
-    </tbody>
-  </table>
-  </div>
-
-  <p>Three values for one slot, all valid, with different trust levels and temporal statuses. The system already supports this at the memory level; multiple memories coexist with different trust scores. But the slot extraction and contradiction detection layer treats slots as single-valued, which means it doesn't know that "water" supersedes "orange juice" while "coffee" coexists.</p>
-
-  <h3>What Should Happen</h3>
-  <p>When the user says "My favorite drink is actually water, I don't really drink orange juice anymore":</p>
-
-  <ol style="color:var(--text-secondary);font-size:0.9em;line-height:1.8;margin:16px 0 16px 20px;">
-    <li><strong>Detection fires:</strong> System detects <code>favorite_drink = water</code> conflicts with existing <code>favorite_drink = orange juice</code></li>
-    <li><strong>Ledger entry created:</strong> "User corrected favorite_drink from orange juice to water"</li>
-    <li><strong>Old memory demoted:</strong> OJ trust drops from 0.73 to ~0.40 with reason <code>user_correction</code></li>
-    <li><strong>New memory stored:</strong> Water at current trust level</li>
-    <li><strong>Concurrent values untouched:</strong> Coffee stays at 0.71 (no conflict)</li>
-    <li><strong>Response continues normally:</strong> Soft acknowledgment woven into the natural response, not a hard block</li>
-  </ol>
-
-  <div class="quote-block">
-    <p>Contradiction detection should produce a soft signal: an acknowledgment injected into context, a trust adjustment, a ledger entry. Not a hard block that freezes generation. The system should hold the contradiction, weight it, and keep talking. This is what the design laws say: contradictions are signals, not errors.</p>
-  </div>
-
-  <h3>Architecture Target: Multi-Valued Belief Slots</h3>
-  <p>The long-term fix is a slot model that supports multiple values with temporal and priority weighting:</p>
-
-  <pre>{
-  "slot": "favorite_drink",
-  "values": [
-    {"value": "water",        "trust": 0.75, "status": "current",    "since": "2026-04-07"},
-    {"value": "coffee",       "trust": 0.71, "status": "concurrent", "since": "2025-12-06"},
-    {"value": "orange juice", "trust": 0.40, "status": "deprecated", "reason": "user_correction",
-                                              "deprecated_at": "2026-04-07"}
-  ]
-}</pre>
-
-  <p>This captures the full epistemic state of a single slot: what is currently true, what is also true, and what used to be true but was explicitly corrected. The contradiction ledger links the transition. The trust scores reflect the evidence. Nothing is deleted.</p>
-
-  <div class="impl-block">
-    <span class="impl-label">Status (updated April 8, 2026)</span>
-    <p><strong>Write-path fix deployed:</strong> Contradiction ledger entries are now created inside <code>store_memory()</code>'s slot exclusivity loop. This fires regardless of intent routing (agent loop, legacy pipeline, any path). The detection logic works. Age reversal (34→35) produced a full-chain detection (metadata flag + ledger entry + trust demotion) in the Contradiction Pipeline Lab.</p>
-    <p><strong>Current bottleneck: fact extraction.</strong> The Contradiction Pipeline Lab (v1, April 8) scored 7/10. All 5 should-NOT-fire probes passed (zero false positives). Of 5 should-fire probes, 2 passed. The 3 failures share one root cause: <code>extract_fact_slots</code> (regex-based) cannot parse indirect phrasing ("my name is Adrian now"), facts buried in long paragraphs ("left Anthropic, joined OpenAI" in a 70-word daily narration), or contextual declarations ("it's definitely my favorite color now, green"). The write-path contradiction logic is correct; the upstream extraction is the limiting factor.</p>
-    <p><strong>Escalation path complete, all gaps closed.</strong> Regex-only (2/5) → local LLM (untestable, 300s timeouts) → regex + guards (3/4, zero false positives) → <strong>standalone regex + cloud (10/10)</strong>. Cloud extraction (gpt-4o-mini, ~1.5s/call) detects contextual declarations, buried facts in long paragraphs, and casual mentions that regex misses. Third-person filter prevents attribution of others' facts. Separately, v3 cloud reclassification of the GPT corpus found 45 hidden contradictions (47→92 genuine, 10.4%→20.3%).</p>
-    <p><strong>Long-term:</strong> Multi-valued slot schema with temporal weighting. This is an architecture evolution and a potential paper contribution. No existing AI memory system supports multi-valued belief slots with contradiction-aware temporal weighting.</p>
-  </div>
-</section>
-
-</main>
+    <section id="source-map" class="source-map">
+      <div class="accent-line"></div>
+      <h2>8. Source map</h2>
+      <table>
+        <thead><tr><th>Area</th><th>Primary source</th></tr></thead>
+        <tbody>
+          <tr><td>Workbench UI</td><td><code>workbench/src/App.tsx</code> and <code>workbench/src/components/ChatPanel.tsx</code></td></tr>
+          <tr><td>Streaming sidecar</td><td><code>aether-core/aether/sidecar/app.py</code></td></tr>
+          <tr><td>Governed substrate</td><td><code>aether-core/aether/substrate.py</code> and <code>aether-core/aether/runtime/query.py</code></td></tr>
+          <tr><td>Tool proposals</td><td><code>aether-core/aether/sidecar/tool_proposals.py</code></td></tr>
+          <tr><td>Completion checks</td><td><code>aether-core/aether/sidecar/completion_verification.py</code> and <code>semantic_coverage.py</code></td></tr>
+          <tr><td>Reusable boundary</td><td><code>aether-core/aether/aeteros_core/boundary.py</code></td></tr>
+        </tbody>
+      </table>
+      <div class="truth-note"><strong>Last reconciled:</strong> August 10, 2026. This page should change when the production call path changes, not merely when a new research module is added.</div>
+    </section>
+  </main>
 </div>
 <script src="docs.js"></script>
 </body>

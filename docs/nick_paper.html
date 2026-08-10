@@ -227,7 +227,7 @@
 
 <p>Then I realized that correcting a wrong answer didn't fix what caused it. The correction was absorbed at the leaf. The root cause survived. So I built a backward pass: when a correction happens, the error signal flows upstream through the dependency graph, adjusting trust on every belief that contributed to the wrong output.</p>
 
-<div class="became">This became → <a href="belief-backprop.html">backward influence propagation</a>, validated 30/30, no direct precedent identified</div>
+<div class="became">This became → <a href="belief-backprop.html">backward influence propagation</a>, which passed a 30-case internal synthetic lab. Comparative precedent and real-world benefit remain open research questions.</div>
 
 <div class="origin-voice">
   <span class="origin-date">Original whitepaper, page 18</span>
@@ -246,31 +246,31 @@
 
 <p>Aeteros is positioned at the intersection of three converging forces:</p>
 
-<p><strong>Regulatory pressure.</strong> The EU AI Act (Articles 13 and 50, effective August 2026) requires traceability, auditability, and transparency for AI systems. CORE's contradiction density metrics, belief audit trails, and drift governance are concrete implementations of that requirement.</p>
+<p><strong>Regulatory pressure.</strong> The EU AI Act includes specific transparency and information duties for some AI systems. Aether's receipts and review trails may support auditability, but the project has not been legally assessed or certified as an implementation of those requirements.</p>
 
 <!-- TODO: cite Anthropic's April 2026 interpretability paper specifically if this claim stays -->
-<p><strong>Interpretability.</strong> Anthropic has identified 171 emotion-like vectors that causally drive model behavior. When these internal states become API-accessible, CORE is already designed to consume them. The governance layer exists. The interpretability APIs to connect them are still maturing.</p>
+<p><strong>Interpretability.</strong> Anthropic has published work on a 171-concept emotion-related set and causally meaningful internal representations. Aether does not currently consume provider activation signals; connecting them to governance remains a proposed research integration.</p>
 
 <p><strong>The agentic explosion.</strong> Every major AI company is building agents that take actions in the real world. But agents without epistemic governance are agents that can't be trusted with ongoing responsibility. The more autonomous the system, the more it needs a belief state that persists, a contradiction tracker that flags drift, and an immune system that prevents self-corruption.</p>
 
 <p><strong>The memory problem.</strong> Everyone is adding "memory" to AI systems. RAG, long context, memory databases. But memory without governance compounds drift rather than resolving it. The industry is solving the wrong problem. The problem isn't storage. It's epistemic integrity.</p>
 
-<p class="callout">Governance-as-a-service. CORE as middleware between any application and any LLM provider. You keep your existing stack. CORE adds the belief layer, the contradiction detection, the drift governance, and the immune system.</p>
+<p class="callout">Possible direction: governed-memory infrastructure between an application and its model provider. The current proof loop is local, and the reusable Aeteros Core boundary is still narrow.</p>
 
 <h2 id="path">The Path Forward</h2>
 
 <ul class="phase-list">
   <li>
     <span class="phase-label">Phase 1</span>
-    <strong>Open-source framework (aeteros-core).</strong> Persistent belief state, contradiction tracking, immune agents, governance pipeline. Free. Permissive license. Establish credibility, build community, get adoption from developers who care about reliability.
+    <strong>Broaden the reusable Aeteros Core boundary.</strong> Extract tested memory, release, contradiction, review, and completion contracts without implying that research-only mechanisms are already packaged.
   </li>
   <li>
     <span class="phase-label">Phase 2</span>
-    <strong>Hosted API.</strong> CORE governance as a service. Drop-in middleware. OpenAI-compatible proxy endpoint. Pay per governed request. Target: teams building AI products who need compliance-grade audit trails.
+    <strong>Evaluate a hosted API.</strong> Test whether the local governed-completion boundary can become reliable middleware. An OpenAI-compatible proxy is a proposal, not a current endpoint or compliance claim.
   </li>
   <li>
     <span class="phase-label">Phase 3</span>
-    <strong>Enterprise dashboard.</strong> Contradiction density monitoring, drift alerts, belief audit visualization, compliance reporting. The observability layer for AI belief state.
+    <strong>Evaluate an operations dashboard.</strong> Contradiction monitoring, drift review, and belief audit visualization would require customer validation and a defined deployment model.
   </li>
   <li>
     <span class="phase-label">Phase 4</span>

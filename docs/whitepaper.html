@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CORE / Aether - Whitepaper</title>
+<title>CORE / Aether - Evolved Thesis and Research Lineage</title>
 <style>
 /* ===== LAYOUT ===== */
 /* ===== STAT CARDS ===== */
@@ -162,9 +162,9 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
 <!-- ===== HERO ===== -->
 <div class="hero">
   <div class="hero-inner">
-    <div class="hero-badge">Whitepaper</div>
-    <h1>The <span class="grad">CORE</span> Whitepaper</h1>
-    <p class="sub">What it set out to solve. What it discovered along the way. And how the discoveries reshaped the architecture.</p>
+    <div class="hero-badge">Historical thesis · not current architecture</div>
+    <h1>The <span class="grad">CORE</span> Thesis</h1>
+    <p class="sub">What the project set out to solve, what it discovered, and which ideas remain research rather than current Workbench behavior.</p>
   </div>
   <div class="scroll-cue">&#9660; SCROLL</div>
 </div>
@@ -294,7 +294,7 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
     </div>
     <div class="method-card">
       <h4>MMH became</h4>
-      <p>The <a href="immune-agents.html">immune agents</a>, the contradiction ledger, and <a href="belief-backprop.html">backward influence propagation</a>. The reflection idea survived; the implementation split into six autonomous enforcement agents.</p>
+      <p>The research lineage produced <a href="immune-agents.html">immune-agent</a> designs, contradiction ledgers, and <a href="belief-backprop.html">backward influence propagation</a>. These were explored as enforcement mechanisms; the current Workbench does not run six autonomous immune agents around every response.</p>
     </div>
     <div class="method-card">
       <h4>SSE became</h4>
@@ -364,7 +364,7 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
   <p>Details: <a href="glossary.html#beta-trust">glossary</a>, <a href="cascade-complexity.html">cascade paper</a>, <a href="belief-backprop.html">backprop paper</a>, <a href="geometric-memory.html">geometric memory</a>.</p>
 
   <h3>Grounding and Verification</h3>
-  <p>After generation, the fidelity mirror checks whether the response faithfully represents the belief state. Claims are extracted, matched against stored evidence, and scored. Language models sound most confident exactly when governance is weakest — the verification layer catches this gap. When a correction resolves a contradiction, the error signal flows <em>backward</em> through the Belief Dependency Graph, adjusting trust on every upstream belief that contributed to the wrong output. <a href="belief-backprop.html">Full paper →</a></p>
+  <p>The research architecture proposed a Fidelity Mirror and backward influence through a Belief Dependency Graph. The current sidecar instead uses governed evidence release, response contracts, obligation coverage, and completion verification. Fidelity and backpropagation remain separate research mechanisms unless a current call site is documented. <a href="belief-backprop.html">Research paper →</a></p>
 </section>
 
 <!-- ===== 06. WHAT THE RESEARCH FOUND ===== -->
@@ -402,7 +402,7 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
     <div class="attr">Nick Block</div>
   </div>
 
-  <p>Every finding tested across 16 analyzer configurations. A result must survive all perturbations to be considered confirmed. <a href="variance-probing.html">Full variance probing research →</a></p>
+  <p>The referenced variance study tested its findings across 16 analyzer configurations. That robustness statement applies to that experiment, not to every claim in the Aeteros archive. <a href="variance-probing.html">Full variance probing research →</a></p>
 </section>
 
 <!-- ===== 07. STRUCTURAL ENFORCEMENT ===== -->
@@ -410,7 +410,7 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
   <div class="accent-line"></div>
   <h2>Structural Enforcement</h2>
 
-  <p>Governance rules are useless if the system being governed can override them. Six autonomous immune agents enforce constitutional laws across the pipeline in real time. They are structural, not advisory. The system cannot violate its own principles even if the LLM wants to.</p>
+  <p>This research design proposed six immune agents to observe and enforce boundaries at different pipeline stages. The design is preserved because it influenced later governance work, but it is not the current Workbench runtime and does not prove that a system cannot violate its principles.</p>
 
   <div class="immune-grid">
     <div class="immune-card">
@@ -494,9 +494,9 @@ th { text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; fon
   <div class="accent-line"></div>
   <h2>Where It Goes</h2>
 
-  <p>CORE is being extracted into <strong>aeteros-core</strong>, an open-source framework that any AI system can use as its epistemic governance layer. The persistent belief state, contradiction tracking, immune agents, and governance pipeline are general-purpose infrastructure — not tied to any specific assistant.</p>
+  <p>A small boundary is being extracted as <strong>Aeteros Core</strong>. It currently audits governed inputs, release decisions, response contracts, completion receipts, and persistence controls. A broad standalone open-source framework remains proposed work.</p>
 
-  <p>The business path is <strong>governance-as-a-service</strong>: CORE as middleware that sits between any application and any LLM provider. You keep your existing stack. CORE adds the belief layer, the contradiction detection, the drift governance, and the immune system.</p>
+  <p>One possible business path is <strong>governed-memory infrastructure</strong>: reusable mechanisms between an application and its model providers. The current reusable boundary is intentionally narrow; a hosted middleware product remains roadmap work.</p>
 
   <p>The long-range vision goes further: systems whose memory is not merely persistent but meaning-aware and contradiction-accountable. Identity that emerges from memory history rather than hardcoded persona. Memory structures that preserve plural states without collapsing them prematurely. These are long-range goals, not current claims. They are informed by everything being built now, but they are not proven yet.</p>
 

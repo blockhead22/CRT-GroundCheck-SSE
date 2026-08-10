@@ -6,38 +6,53 @@
 (function() {
 
   // ── Doc manifest (reading order) ──
-  // Reading order: Start Here -> Evidence -> Architecture -> Theory -> Reference
+  // Reading order deliberately separates the current product from the research
+  // archive. A module appearing in the archive does not imply that it runs in
+  // the current Workbench request path.
   var DOCS = [
     { href: 'home.html',                  label: 'Home',                   group: null },
-    { href: 'start-here.html',            label: 'Start Here',             group: 'Start Here' },
-    { href: 'why-this-matters.html',      label: 'Why This Matters',       group: 'Start Here' },
-    { href: 'meaning-compression-crt.html', label: 'Meaning Compression',  group: 'Start Here' },
-    { href: 'claim-evaluation-guide.html', label: 'Claim Guide',           group: 'Start Here' },
-    // Evidence (what's broken, proof, and pipeline validation)
-    { href: 'experiments.html',            label: 'Evidence Overview',      group: 'Evidence' },
-    { href: 'contradiction-density.html',  label: 'Contradiction Density',  group: 'Evidence' },
-    { href: 'sensitive-domains.html',      label: 'Sensitive Domains',      group: 'Evidence' },
-    { href: 'continuity-blind.html',       label: 'Continuity-Blind',       group: 'Evidence' },
-    { href: 'variance-probing.html',       label: 'Variance Probing',       group: 'Evidence' },
-    { href: 'governance-validation.html',  label: 'Governance Validation',  group: 'Evidence' },
-    { href: 'bdg-reasoning-scaffolds.html', label: 'BRG Reasoning Scaffolds', group: 'Evidence' },
-    { href: 'scaffolded_escape_research.html', label: 'Scaffolded Exploration', group: 'Evidence' },
-    { href: 'labs.html',                   label: 'Labs',                   group: 'Evidence' },
-    // Architecture (how CORE works)
-    { href: 'architecture.html',           label: 'Architecture',           group: 'Architecture' },
-    { href: 'immune-agents.html',          label: 'Immune Agents',          group: 'Architecture' },
-    // Theory (formal foundations)
-    { href: 'cascade-complexity.html',     label: 'Cascade Complexity',     group: 'Theory' },
-    { href: 'belief-backprop.html',        label: 'Backward Influence Propagation', group: 'Theory' },
-    { href: 'epistemic-compression.html',  label: 'Epistemic Compression',  group: 'Theory' },
-    { href: 'geometric-memory.html',       label: 'Geometric Memory',       group: 'Theory' },
-    { href: 'emotion-governance.html',     label: 'Emotion Governance',     group: 'Theory' },
-    { href: 'structural-tension.html',    label: 'Structural Tension',     group: 'Theory' },
-    // Reference
+    { href: 'start-here.html',            label: 'Start Here',             group: 'Current System' },
+    { href: 'architecture.html',          label: 'Architecture Today',     group: 'Current System' },
+    { href: 'system-status.html',         label: 'Status & Limits',         group: 'Current System' },
+    { href: 'about.html',                 label: 'Names & Scope',           group: 'Current System' },
+    { href: 'why-this-matters.html',      label: 'Why This Matters',       group: 'Research' },
+    { href: 'experiments.html',           label: 'Evidence Overview',      group: 'Research' },
+    { href: 'contradiction-density.html', label: 'Contradiction Density',  group: 'Research' },
+    { href: 'sensitive-domains.html',     label: 'Sensitive Domains',      group: 'Research' },
+    { href: 'continuity-blind.html',      label: 'Continuity-Blind',       group: 'Research' },
+    { href: 'variance-probing.html',      label: 'Variance Probing',       group: 'Research' },
+    { href: 'governance-validation.html', label: 'Governance Validation',  group: 'Research' },
+    { href: 'bdg-reasoning-scaffolds.html', label: 'BRG Scaffolds',        group: 'Research' },
+    { href: 'scaffolded_escape_research.html', label: 'Scaffolded Exploration', group: 'Research' },
+    { href: 'labs.html',                  label: 'Lab Archive',            group: 'Research' },
+    { href: 'meaning-compression-crt.html', label: 'Meaning Compression',  group: 'Theory & History' },
+    { href: 'cascade-complexity.html',    label: 'Cascade Complexity',     group: 'Theory & History' },
+    { href: 'belief-backprop.html',       label: 'Backward Influence',     group: 'Theory & History' },
+    { href: 'epistemic-compression.html', label: 'Epistemic Compression',  group: 'Theory & History' },
+    { href: 'geometric-memory.html',      label: 'Geometric Memory',       group: 'Theory & History' },
+    { href: 'emotion-governance.html',    label: 'Emotion Governance',     group: 'Theory & History' },
+    { href: 'structural-tension.html',    label: 'Structural Tension',     group: 'Theory & History' },
+    { href: 'immune-agents.html',         label: 'Immune Agents',          group: 'Theory & History' },
+    { href: 'whitepaper.html',            label: 'Evolved Thesis',         group: 'Theory & History' },
     { href: 'glossary.html',              label: 'Glossary',                group: 'Reference' },
-    { href: 'about.html',                label: 'About Aeteros',           group: 'Reference' },
+    { href: 'claim-evaluation-guide.html', label: 'Claim Guide',           group: 'Reference' },
     { href: 'nick_paper.html',           label: 'Personal Narrative',       group: 'Reference' },
   ];
+
+  var RESEARCH_PAGES = [
+    'why-this-matters.html', 'experiments.html', 'contradiction-density.html',
+    'sensitive-domains.html', 'continuity-blind.html', 'variance-probing.html',
+    'governance-validation.html', 'bdg-reasoning-scaffolds.html',
+    'scaffolded_escape_research.html', 'labs.html'
+  ];
+  var THEORY_PAGES = [
+    'meaning-compression-crt.html', 'cascade-complexity.html',
+    'belief-backprop.html', 'epistemic-compression.html', 'geometric-memory.html',
+    'emotion-governance.html', 'structural-tension.html', 'immune-agents.html',
+    'whitepaper.html', 'geometry.html', 'project_writeup.html',
+    'WHY_CORE_IS_DIFFERENT_CODE_SNIPPETS.html'
+  ];
+  var DATED_RESULT_PAGES = ['governance-validation.html', 'claim-evaluation-guide.html'];
 
   // Detect subdirectory (labs/) and adjust prefix
   var inSubdir = window.location.pathname.replace(/\\/g, '/').includes('/labs/');
@@ -190,6 +205,43 @@
     document.body.insertBefore(nav, document.body.firstChild);
     // Mobile menu right after nav
     nav.insertAdjacentElement('afterend', mobileMenu);
+  }
+
+  function injectDocumentStatus() {
+    if (['home.html', 'start-here.html', 'architecture.html', 'system-status.html', 'about.html', 'index.html'].includes(currentFile)) return;
+
+    var main = document.querySelector('main.main');
+    if (!main) return;
+
+    var kind = 'reference';
+    var title = 'Reference document';
+    var statusText = 'Use this page as background material. Current runtime behavior is documented under Current System.';
+
+    if (RESEARCH_PAGES.includes(currentFile)) {
+      kind = 'research';
+      title = 'Repository-internal research';
+      statusText = 'This page reports an experiment or research interpretation. It is not a statement that every described mechanism runs in the current Aether Workbench.';
+    }
+    if (THEORY_PAGES.includes(currentFile)) {
+      kind = 'theory';
+      title = 'Theory or historical architecture';
+      statusText = 'This page preserves the project\'s research lineage. Concepts here may be experimental, unintegrated, superseded, or proposed; see Architecture Today for the live request path.';
+    }
+    if (DATED_RESULT_PAGES.includes(currentFile)) {
+      kind = 'dated';
+      title = 'Dated result snapshot';
+      statusText = 'The measurements on this page are preserved as originally reported. They have not been silently recomputed for this documentation update. In particular, the published 47-case and 92-case contradiction counts came from different filtering or reclassification passes and must not be combined as one result.';
+    }
+
+    var banner = document.createElement('aside');
+    banner.className = 'document-status document-status-' + kind;
+    banner.setAttribute('aria-label', 'Document status');
+    banner.innerHTML =
+      '<div class="document-status-label">Document status</div>' +
+      '<strong>' + title + '</strong>' +
+      '<p>' + statusText + '</p>' +
+      '<a href="' + prefix + 'architecture.html">Read the current architecture &rarr;</a>';
+    main.insertBefore(banner, main.firstChild);
   }
 
   // ── Inject prev/next pager into main ──
@@ -379,6 +431,7 @@
   injectBootstrap();
   injectGSAP();
   injectDocNav();
+  injectDocumentStatus();
   injectPager();
   injectFooter();
   injectChangelog();

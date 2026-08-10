@@ -3,432 +3,104 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aeteros - About</title>
-<style>
-  .hero { min-height: 92vh; }
-  .origin-card {
-    background: var(--bg-raised);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 28px 30px;
-    margin: 18px 0;
-  }
-  .origin-card p { color: var(--text-secondary); font-size: 0.92em; line-height: 1.8; }
-  .origin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 24px 0; }
-  @media (max-width: 900px) { .origin-grid { grid-template-columns: 1fr; } }
-  .name-block {
-    text-align: center;
-    padding: 48px 24px;
-    margin: 40px 0;
-  }
-  .name-word {
-    font-family: var(--sans);
-    font-size: 3.2em;
-    font-weight: 700;
-    letter-spacing: -2px;
-    background: linear-gradient(135deg, var(--accent-indigo), var(--accent-purple), var(--accent-pink));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 12px;
-  }
-  .name-ipa {
-    font-family: var(--mono);
-    font-size: 0.85em;
-    color: var(--text-dim);
-    margin-bottom: 24px;
-  }
-  .name-meaning {
-    font-family: var(--serif);
-    font-size: 1.15em;
-    color: var(--text-secondary);
-    font-style: italic;
-    line-height: 1.7;
-    max-width: 560px;
-    margin: 0 auto;
-  }
-  .etymology {
-    display: flex;
-    justify-content: center;
-    gap: 32px;
-    flex-wrap: wrap;
-    margin: 32px 0;
-  }
-  .etym-part {
-    text-align: center;
-    min-width: 120px;
-  }
-  .etym-greek {
-    font-family: var(--serif);
-    font-size: 1.5em;
-    color: var(--text);
-    margin-bottom: 4px;
-  }
-  .etym-roman {
-    font-family: var(--mono);
-    font-size: 0.75em;
-    color: var(--accent-indigo);
-    letter-spacing: 1px;
-    margin-bottom: 4px;
-  }
-  .etym-def {
-    font-family: var(--sans);
-    font-size: 0.78em;
-    color: var(--text-dim);
-  }
-  .etym-arrow {
-    font-size: 1.5em;
-    color: var(--text-faint);
-    align-self: center;
-    padding-top: 0;
-  }
-  .layer-row {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 18px 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .layer-row:last-child { border-bottom: none; }
-  .layer-name {
-    font-family: var(--mono);
-    font-size: 0.85em;
-    font-weight: 600;
-    color: var(--text);
-    min-width: 100px;
-  }
-  .layer-is {
-    font-family: var(--mono);
-    font-size: 0.72em;
-    color: var(--text-faint);
-    min-width: 24px;
-    text-align: center;
-  }
-  .layer-desc {
-    color: var(--text-secondary);
-    font-size: 0.88em;
-    line-height: 1.6;
-  }
-  .position-block {
-    background: var(--bg-inset);
-    border: 2px solid var(--accent-indigo);
-    border-radius: 12px;
-    padding: 32px;
-    margin: 32px 0;
-    text-align: center;
-  }
-  .position-block p {
-    color: var(--text);
-    font-size: 1.05em;
-    line-height: 1.8;
-    max-width: 620px;
-    margin: 0 auto;
-  }
-  .timeline-item {
-    display: flex;
-    gap: 20px;
-    padding: 20px 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .timeline-item:last-child { border-bottom: none; }
-  .timeline-phase {
-    font-family: var(--mono);
-    font-size: 0.7em;
-    font-weight: 600;
-    color: var(--accent-indigo);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    min-width: 80px;
-    padding-top: 2px;
-  }
-  .timeline-content p {
-    color: var(--text-secondary);
-    font-size: 0.9em;
-    line-height: 1.7;
-  }
-  .timeline-content strong { color: var(--text); }
-</style>
+<meta name="description" content="The names, purpose, scope, and current status of Aether and Aeteros.">
+<title>About Aether and Aeteros</title>
+<link rel="icon" href="data:,">
 <link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="theme.css">
+<style>
+  .name-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin:24px 0; }
+  .name-card { padding:24px; background:var(--bg-raised); border:1px solid var(--border); border-radius:10px; }
+  .name-card .type { font:700 .64em var(--mono); color:var(--text-faint); letter-spacing:1.1px; text-transform:uppercase; }
+  .name-card h3 { margin:8px 0; color:var(--text); }
+  .name-card p { margin:0; color:var(--text-secondary); font-size:.87em; line-height:1.65; }
+  .scope-note { padding:19px 21px; margin:22px 0; border:1px solid var(--border); border-left:4px solid #22d3ee; border-radius:8px; background:var(--bg-raised); }
+  .scope-note strong { color:#67e8f9; }
+  @media(max-width:720px){.name-grid{grid-template-columns:1fr;}}
+</style>
 </head>
 <body>
 <div class="page-layout">
-
-<div class="hero">
-  <div class="hero-inner">
-    <div class="hero-badge">About</div>
-    <h1 style="font-family:var(--mono);letter-spacing:6px;text-transform:uppercase;"><span class="grad">Aeteros</span></h1>
-    <p class="sub">AI that remembers what it believes.</p>
-    <p class="byline">Nick Block · 2026</p>
-    <!-- Hero viz: orbiting rings -->
-    <div id="hero-about" style="margin-top:32px;max-width:400px;margin-left:auto;margin-right:auto;">
-      <svg id="ha-svg" viewBox="0 0 400 200" style="width:100%;height:auto;display:block;"></svg>
-    </div>
-  </div>
-  <div class="scroll-cue">&#9660; SCROLL</div>
-</div>
-
-<script>
-(function() {
-  function buildHeroAbout() {
-    if (!window.gsap) return;
-    var svg = document.getElementById('ha-svg');
-    if (!svg) return;
-    var ns = 'http://www.w3.org/2000/svg';
-    var cx = 200, cy = 100;
-
-    // Three orbital rings
-    var rings = [
-      { rx: 60, ry: 20, color: '#818cf8', dash: '4,6', rotation: -15 },
-      { rx: 90, ry: 28, color: '#c084fc', dash: '6,8', rotation: 10 },
-      { rx: 120, ry: 36, color: '#f472b6', dash: '8,10', rotation: -5 }
-    ];
-
-    rings.forEach(function(r, i) {
-      var el = document.createElementNS(ns, 'ellipse');
-      el.setAttribute('cx', cx); el.setAttribute('cy', cy);
-      el.setAttribute('rx', r.rx); el.setAttribute('ry', r.ry);
-      el.setAttribute('fill', 'none');
-      el.setAttribute('stroke', r.color);
-      el.setAttribute('stroke-width', '1');
-      el.setAttribute('stroke-dasharray', r.dash);
-      el.setAttribute('opacity', '0');
-      el.setAttribute('transform', 'rotate(' + r.rotation + ' ' + cx + ' ' + cy + ')');
-      svg.appendChild(el);
-
-      gsap.to(el, { attr: { opacity: 0.4 }, duration: 0.8, delay: 0.5 + i * 0.3 });
-      gsap.to(el, {
-        attr: { 'stroke-dashoffset': 100 },
-        duration: 20 + i * 5,
-        ease: 'none',
-        repeat: -1
-      });
-    });
-
-    // Center glow
-    var defs = document.createElementNS(ns, 'defs');
-    var rg = document.createElementNS(ns, 'radialGradient');
-    rg.setAttribute('id', 'aeteros-glow');
-    var s1 = document.createElementNS(ns, 'stop');
-    s1.setAttribute('offset', '0%'); s1.setAttribute('stop-color', '#818cf8'); s1.setAttribute('stop-opacity', '0.3');
-    var s2 = document.createElementNS(ns, 'stop');
-    s2.setAttribute('offset', '100%'); s2.setAttribute('stop-color', '#818cf8'); s2.setAttribute('stop-opacity', '0');
-    rg.appendChild(s1); rg.appendChild(s2); defs.appendChild(rg); svg.appendChild(defs);
-
-    var glow = document.createElementNS(ns, 'circle');
-    glow.setAttribute('cx', cx); glow.setAttribute('cy', cy);
-    glow.setAttribute('r', 30);
-    glow.setAttribute('fill', 'url(#aeteros-glow)');
-    glow.setAttribute('opacity', '0');
-    svg.appendChild(glow);
-    gsap.to(glow, { attr: { opacity: 1 }, duration: 1.5, delay: 0.3 });
-    gsap.to(glow, { attr: { r: 35 }, duration: 3, ease: 'sine.inOut', yoyo: true, repeat: -1 });
-
-    // Center dot
-    var dot = document.createElementNS(ns, 'circle');
-    dot.setAttribute('cx', cx); dot.setAttribute('cy', cy);
-    dot.setAttribute('r', 4); dot.setAttribute('fill', '#fff'); dot.setAttribute('opacity', '0');
-    svg.appendChild(dot);
-    gsap.to(dot, { attr: { opacity: 0.9 }, duration: 0.5, delay: 0.8 });
-  }
-  if (window.gsap) { buildHeroAbout(); }
-  else { (window.__gsapCallbacks = window.__gsapCallbacks || []).push(buildHeroAbout); }
-})();
-</script>
-
-<nav class="sidebar" id="docSidebar">
-  <div class="sidebar-title">About</div>
-  <div class="sidebar-spacer"></div>
-  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
-    <span class="theme-toggle-icon" id="themeIcon">&#9790;</span>
-    <span id="themeLabel">Light</span>
-  </button>
-  <div class="sidebar-footer">2026 Aeteros</div>
-</nav>
-
-<main class="main">
-
-<!-- ===== THE NAME ===== -->
-<section id="the-name">
-  <span class="section-number">Section 1</span>
-  <h2>The Name</h2>
-  <div class="accent-line"></div>
-
-  <div class="name-block">
-    <div class="name-word">Aeteros</div>
-    <div class="name-ipa">/ay-TEER-os/</div>
-    <div class="name-meaning">From the Greek <em>aither</em>, the luminous upper atmosphere, the medium through which light and force propagate. Not the substance itself, but the space that carries it.</div>
-  </div>
-
-  <div class="etymology">
-    <div class="etym-part">
-      <div class="etym-greek">&alpha;&#x1f30;&theta;&#x03ae;&rho;</div>
-      <div class="etym-roman">AITHER</div>
-      <div class="etym-def">upper air, luminous medium</div>
-    </div>
-    <div class="etym-arrow">→</div>
-    <div class="etym-part">
-      <div class="etym-greek">aether</div>
-      <div class="etym-roman">LATIN</div>
-      <div class="etym-def">the medium of propagation</div>
-    </div>
-    <div class="etym-arrow">→</div>
-    <div class="etym-part">
-      <div class="etym-greek">Aeteros</div>
-      <div class="etym-roman">OURS</div>
-      <div class="etym-def">the governance layer<br>through which belief travels</div>
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="hero-badge">Names, purpose, and scope</div>
+      <h1>About <span class="grad">Aether</span></h1>
+      <p class="sub">A personal-agent project studying how language models can gain useful continuity without being allowed to invent their own history.</p>
+      <div class="finding-box"><p><strong>The point is not to build another chat wrapper. The point is to make memory, evidence, model choice, tools, and learning inspectable parts of the system.</strong></p></div>
     </div>
   </div>
 
-  <div class="origin-card">
-    <p>In pre-relativistic physics, the aether was the hypothetical medium that carried light across empty space. It turned out not to exist as a substance, but the intuition was right: propagation needs a medium. Something has to carry the signal from one place to another. Something has to maintain coherence across distance.</p>
-    <p>That's what Aeteros is for AI belief. Not the beliefs themselves. Not the model that generates them. The medium through which beliefs propagate, persist, contradict, and resolve across sessions, models, and time. The governance layer that gives continuity to something that would otherwise reset every conversation.</p>
-  </div>
-</section>
+  <nav class="sidebar" id="docSidebar">
+    <div class="sidebar-title">About</div>
+    <div class="sidebar-spacer"></div>
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme"><span class="theme-toggle-icon" id="themeIcon">&#9790;</span><span id="themeLabel">Light</span></button>
+    <div class="sidebar-footer">Aeteros Research · 2026</div>
+  </nav>
 
-<!-- ===== THE NAMING CONVENTION ===== -->
-<section id="naming">
-  <span class="section-number">Section 2</span>
-  <h2>The Naming Convention</h2>
-  <div class="accent-line"></div>
+  <main class="main">
+    <section id="purpose">
+      <div class="accent-line"></div><h2>1. Purpose</h2>
+      <p>Language models are powerful renderers, but their fluent answers do not automatically provide durable identity, reliable personal memory, evidence boundaries, or accountable tool use. Aether tests an architectural response: keep those responsibilities in a governed local layer and let the selected model generate language from what that layer releases.</p>
+      <p>The practical goal is a personal assistant that can grow more useful over time while remaining correctable, inspectable, and under user control.</p>
+    </section>
 
-  <div class="origin-card">
-    <div class="layer-row">
-      <div class="layer-name">Aeteros</div>
-      <div class="layer-is">is</div>
-      <div class="layer-desc">The company. The umbrella. The research organization. Everything rolls up here.</div>
-    </div>
-    <div class="layer-row">
-      <div class="layer-name">Aether</div>
-      <div class="layer-is">is</div>
-      <div class="layer-desc">The prototype assistant. A personal AI built on CORE that demonstrated the architecture works. Users of aeteros-core name their own assistant.</div>
-    </div>
-    <div class="layer-row">
-      <div class="layer-name">CORE</div>
-      <div class="layer-is">is</div>
-      <div class="layer-desc">The architecture. CORE: Contradiction, Observation, Revision, Epistemics. The formal framework for how beliefs form, persist, contradict, cascade, and resolve in a governed system. This is what gets published.</div>
-    </div>
-    <div class="layer-row">
-      <div class="layer-name">aeteros-core</div>
-      <div class="layer-is">is</div>
-      <div class="layer-desc">The open-source library. The extractable framework that any system can use. Persistent belief state, contradiction tracking, immune agents, governance pipeline; without any specific assistant UI or personality.</div>
-    </div>
-  </div>
-
-  <div class="quote-block">
-    <p>The naming is a hierarchy of abstraction. Aeteros is the vision. CORE is the architecture. aeteros-core is the tool. Each layer can be discussed independently, but they all describe the same thing from different altitudes.</p>
-  </div>
-</section>
-
-<!-- ===== WHY IT EXISTS ===== -->
-<section id="why-it-exists">
-  <span class="section-number">Section 3</span>
-  <h2>Why It Exists</h2>
-  <div class="accent-line"></div>
-
-  <div class="origin-card">
-    <p>This started because a developer noticed his AI assistant was giving him contradictory life advice across sessions. Not occasionally. Structurally. Every session was a clean slate. Every response came at full confidence. And the system never once acknowledged that it had said something different last week.</p>
-    <p>The first response was frustration. The second was measurement. The third was architecture.</p>
-    <p>13 months of conversation data. 59,370 messages. 1,275 sessions. Zero continuity awareness. The system wasn't broken in the way you'd expect. It wasn't hallucinating facts or refusing to help. It was confidently inconsistent about things that mattered. Career direction. Mental health. Substance use. Relationship readiness. The domains where people build long-term reliance on ongoing guidance.</p>
-    <p>The question stopped being "why is it doing this?" and became "what would it take to fix it?"</p>
-  </div>
-
-  <div class="position-block">
-    <p>The answer turned out to be an architecture, not a model. You can't train consistency into a system that has no memory of its prior stances. You can't RLHF your way out of a structural problem. You need a governance layer that persists across sessions, tracks contradictions instead of hiding them, and separates what the model believes from what it says.</p>
-  </div>
-</section>
-
-<!-- ===== THE BUSINESS POSITION ===== -->
-<section id="business">
-  <span class="section-number">Section 4</span>
-  <h2>The Business Position</h2>
-  <div class="accent-line"></div>
-
-  <div class="origin-card">
-    <p>Aeteros is positioned at the intersection of three converging forces:</p>
-  </div>
-
-  <div class="origin-grid">
-    <div class="origin-card">
-      <h3 style="color:var(--text);font-size:1em;margin-bottom:12px;">Regulatory Pressure</h3>
-      <p>The EU AI Act (Articles 13 and 50, effective August 2026) requires traceability, auditability, and transparency for AI systems. CORE's contradiction density metrics, belief audit trails, and drift governance are concrete implementations of that requirement. The compliance deadline is arriving at the same time as the interpretability tools that make governance practical.</p>
-    </div>
-    <div class="origin-card">
-      <h3 style="color:var(--text);font-size:1em;margin-bottom:12px;">Interpretability APIs</h3>
-      <!-- TODO: cite Anthropic's specific paper/date for the 171 emotion vectors claim -->
-      <p>Anthropic has identified 171 emotion-like vectors that causally drive model behavior. When these internal states become API-accessible (as SAE features, emotion vectors, activation probes), CORE is already designed to consume them. The governance layer exists. It's waiting for the sensors.</p>
-    </div>
-    <div class="origin-card">
-      <h3 style="color:var(--text);font-size:1em;margin-bottom:12px;">Agentic Explosion</h3>
-      <p>Every major AI company is building agents that take actions in the real world. But agents without epistemic governance are agents that can't be trusted with ongoing responsibility. The more autonomous the system, the more it needs a belief state that persists, a contradiction tracker that flags drift, and an immune system that prevents self-corruption.</p>
-    </div>
-    <div class="origin-card">
-      <h3 style="color:var(--text);font-size:1em;margin-bottom:12px;">The Memory Problem</h3>
-      <!-- TODO: verify MemoryBench (2025) citation — no backing source found in codebase. Either cite properly or remove. -->
-      <p>Everyone is adding "memory" to AI systems. RAG, long context, memory databases. But memory without governance compounds drift rather than resolving it. The industry is solving the wrong problem. The problem isn't storage. It's epistemic integrity.</p>
-    </div>
-  </div>
-
-  <div class="position-block">
-    <p><strong>Governance-as-a-service.</strong> CORE as middleware that sits between any application and any LLM provider. You keep your existing stack. CORE adds the belief layer, the contradiction detection, the drift governance, and the immune system. An OpenAI-compatible proxy that adds epistemic integrity without requiring you to rewrite anything.</p>
-  </div>
-</section>
-
-<!-- ===== THE PATH ===== -->
-<section id="the-path">
-  <span class="section-number">Section 5</span>
-  <h2>The Path</h2>
-  <div class="accent-line"></div>
-
-  <div class="origin-card">
-    <div class="timeline-item">
-      <div class="timeline-phase">Phase 1</div>
-      <div class="timeline-content">
-        <p><strong>Open-source framework (aeteros-core).</strong> Persistent belief state, contradiction tracking, immune agents, governance pipeline. Free. Permissive license. Establish credibility, build community, get adoption from developers who care about reliability.</p>
+    <section id="names">
+      <div class="accent-line"></div><h2>2. What the names mean now</h2>
+      <div class="name-grid">
+        <div class="name-card"><div class="type">Current product</div><h3>Aether</h3><p>The local Workbench and governed sidecar being actively used and developed. Aether is not merely an earlier prototype; it is the current proof loop.</p></div>
+        <div class="name-card"><div class="type">Repository and implementation</div><h3>Aether Core</h3><p>The codebase containing the substrate, governance mechanisms, sidecar, adapters, tests, and research lineage.</p></div>
+        <div class="name-card"><div class="type">Reusable seam</div><h3>Aeteros Core</h3><p>A narrow boundary contract being extracted from product-specific behavior. It currently audits governed completions; it is not yet the broad standalone library older pages described.</p></div>
+        <div class="name-card"><div class="type">Umbrella identity</div><h3>Aeteros</h3><p>The project and research identity represented by this site. Aeteros may become a wider product or organization, but this documentation does not present that future as an accomplished company structure.</p></div>
+        <div class="name-card"><div class="type">Historical name</div><h3>CRT</h3><p>Cognitive-Reflective Transformer was the earlier framing for memory, contradiction, variance, and reflective control. CRT remains part of the lineage but is not the clearest name for today's full system.</p></div>
+        <div class="name-card"><div class="type">Research framework</div><h3>CORE</h3><p>A later synthesis of contradiction, confidence, trust, speech, and governance ideas. Some mechanisms informed Aether; CORE should not be read as a single mandatory pipeline currently wrapping every response.</p></div>
       </div>
-    </div>
-    <div class="timeline-item">
-      <div class="timeline-phase">Phase 2</div>
-      <div class="timeline-content">
-        <p><strong>Hosted API.</strong> CORE governance as a service. Drop-in middleware. OpenAI-compatible proxy endpoint. Pay per governed request. Target: teams building AI products who need compliance-grade audit trails without building their own governance infrastructure.</p>
-      </div>
-    </div>
-    <div class="timeline-item">
-      <div class="timeline-phase">Phase 3</div>
-      <div class="timeline-content">
-        <p><strong>Enterprise dashboard.</strong> Contradiction density monitoring, drift alerts, belief audit visualization, compliance reporting. The observability layer for AI belief state.</p>
-      </div>
-    </div>
-    <div class="timeline-item">
-      <div class="timeline-phase">Phase 4</div>
-      <div class="timeline-content">
-        <p><strong>Consumer epistemic mirror.</strong> What Aether already is: a personal AI with real continuity, real contradiction tracking, and real belief management. The end-user product that demonstrates why governance matters by letting people experience the difference.</p>
-      </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<!-- ===== BUILT BY ===== -->
-<section id="built-by">
-  <span class="section-number">Section 6</span>
-  <h2>Built By</h2>
-  <div class="accent-line"></div>
+    <section id="system">
+      <div class="accent-line"></div><h2>3. What exists today</h2>
+      <ul>
+        <li>A local Workbench with Simple and Lab views.</li>
+        <li>A sidecar that governs context release, route policy, tool grants, persistence, and completion receipts.</li>
+        <li>A durable substrate for personal states, slot history, contradictions, dispositions, and evidence-scoped retrieval.</li>
+        <li>Local and hosted model renderers, including Grok, under the same Aether authority boundary.</li>
+        <li>Bounded read-only model-proposable tools with explicit grants and receipts.</li>
+        <li>Review surfaces for memory, reflection, support, and learning candidates.</li>
+        <li>Multi-part answer obligations and completion verification.</li>
+      </ul>
+      <p>See <a href="architecture.html">Architecture Today</a> for the live request path and <a href="system-status.html">Status &amp; Limits</a> for the current capability matrix.</p>
+    </section>
 
-  <div class="origin-card">
-    <p><strong>Nick Block.</strong> Freelance developer. Not from a lab. Not funded. Sole builder of CORE and Aether.</p>
-    <p>The project exists because of a habit of asking "why do things have to be this way?" Why do AI assistants forget everything between sessions? Why do they resolve contradictions by silently overwriting? Why does confidence have nothing to do with evidence?</p>
-    <!-- TODO: "converge with research directions from Anthropic, Stanford, Oxford, and Shanghai Jiao Tong" — verify and cite specific papers/teams or soften the claim -->
-    <p>Each question led to a design decision. The design decisions accumulated into an architecture.</p>
-    <!-- 2026-05-07 audit: 12 papers → 3 (real paper-shaped works) + 12 supporting research notes; 22,702 unverifiable. See docs/CLAIMS_AUDIT.md. -->
-    <p>Hundreds of features shipped across 15+ tagged releases. 6 immune agents built. 3 research papers drafted with full math and validation (<a href="belief-backprop.html">backward influence propagation</a> — no direct precedent identified in literature searches to date, <a href="cascade-complexity.html">cascade complexity</a>, and <a href="epistemic-compression.html">epistemic compression</a>), plus a dozen supporting research notes. 59,370 messages across 1,275 sessions analyzed; <a href="contradiction-density.html">contradiction-density paper</a> is the headline finding.</p>
-  </div>
+    <section id="research">
+      <div class="accent-line"></div><h2>4. What remains research</h2>
+      <p>The archive investigates contradiction density, variance probing, meaning and epistemic compression, geometric memory, backward influence, structural tension, immune agents, scaffolded reasoning, and related mechanisms.</p>
+      <div class="scope-note"><strong>Research is not discarded when it is not yet integrated.</strong> Existing papers and lab outputs are preserved as dated artifacts. They must be replicated or rerun before old measurements are promoted to new product claims.</div>
+      <p>Most evidence is repository-internal. Some experiments use synthetic fixtures or a single long-running personal corpus. That can be meaningful engineering evidence without being external scientific validation.</p>
+    </section>
 
-  <div class="quote-block">
-    <p>Not the model. Not the memory. The governance layer that gives continuity to something that would otherwise reset every conversation.</p>
-  </div>
-</section>
+    <section id="claims">
+      <div class="accent-line"></div><h2>5. Claims this project does not make</h2>
+      <ul>
+        <li>Aether is not described as conscious, sentient, or an AGI.</li>
+        <li>Aeteros is not presented here as an established company or certification body.</li>
+        <li>The system has not been independently validated as a general AI safety solution.</li>
+        <li>The architecture has not been legally assessed or certified under the EU AI Act.</li>
+        <li>Related external research does not automatically validate Aether's implementation.</li>
+        <li>The existence of a module does not mean it runs in Workbench.</li>
+      </ul>
+      <p>Governed memory and receipts may support auditability. Whether a particular deployment meets a legal, safety, or scientific standard depends on its use, evidence, and independent assessment.</p>
+    </section>
 
-</main>
+    <section id="why-exist">
+      <div class="accent-line"></div><h2>6. Why it should exist</h2>
+      <p>Model capability is improving quickly, but capability alone does not decide what a personal system should remember, which source it should trust, when it should admit conflict, who may use a tool, or how an answer can be reviewed later. Those are product and architecture questions around the model.</p>
+      <p>Aether exists to explore that surrounding layer in a concrete, local, user-controlled system—and to report both what works and what still fails.</p>
+    </section>
+
+    <section id="author">
+      <div class="accent-line"></div><h2>7. Author and project status</h2>
+      <p>Aether and the Aeteros research archive are developed by Nick Block as an independent, dogfooded research and engineering project. The current priority is making the local system more useful and truthful before expanding its public product claims.</p>
+    </section>
+  </main>
 </div>
 <script src="docs.js"></script>
 </body>

@@ -177,9 +177,9 @@
   <h2>The Problem Is Structural</h2>
   <div class="accent-line"></div>
 
-  <p>Every major AI assistant deployed today generates responses with full confidence and zero memory of prior claims. The system that told a user one thing yesterday will tell them the opposite today and never notice. This is not a minor UX issue. It is a structural failure that has now been independently measured by multiple research groups.</p>
+  <p>Many assistant deployments still have weak or product-specific continuity across sessions. A system can tell a user one thing, later answer differently, and lack a durable mechanism for identifying the change. This is more than a UX issue when the assistant is used repeatedly for personal or consequential work.</p>
 
-  <p>CORE exists because this problem does not resolve with scale, memory, or alignment training. It requires architectural intervention.</p>
+  <p>CORE began from the hypothesis that scale, retrieval, or alignment training alone do not define who may write memory, how conflicts are preserved, or what evidence may steer an answer. Those responsibilities benefit from an explicit architecture around the model.</p>
 
   <div class="ext-cite">
     <div class="ext-cite-title">BeliefShift: Benchmarking Temporal Belief Consistency and Opinion Drift in LLM Agents</div>
@@ -295,7 +295,7 @@
     <p>The formal framework for what to do when new information contradicts existing beliefs. Deductive logic alone cannot tell you which beliefs to give up. You need additional structure (entrenchment orderings, contraction functions). This is the theoretical foundation for trust-weighted belief revision.</p>
   </div>
 
-  <p>CORE's framing of contradiction as importance signal (where contradiction density indicates which topics are most structurally unstable and therefore most in need of governance) appears to be genuinely novel in the AI systems literature. The philosophical and formal roots are deep, but nobody has applied them to persistent AI belief state this way before.</p>
+  <p>CORE treats contradiction as a possible importance signal: contradiction density may help identify topics that are unstable and therefore need stronger review. The idea draws on established work in belief revision, truth maintenance, argumentation, and cognitive modeling. A systematic novelty review has not been completed, so this site treats the particular synthesis as a research contribution rather than claiming exclusive precedent.</p>
 </section>
 
 <!-- ===== SECTION 6 ===== -->
@@ -381,7 +381,7 @@
   </div>
 
   <div class="quote-block">
-    <p>The EU AI Act (Articles 13 and 50, effective August 2026) requires traceability, auditability, and transparency for AI systems. CORE's contradiction density metrics, belief audit trails, and drift governance are concrete implementations of that requirement. The regulatory environment is arriving at the same time as the interpretability tools. The timing reflects that the problem this architecture addresses is the same problem regulators are trying to solve.</p>
+    <p>Some AI deployments face transparency and information duties under the EU AI Act, including the specific obligations in Articles 13 and 50. Aether's receipts and review states may support auditability, but they are not themselves a compliance implementation or legal certification. Applicability and timing depend on the system and use case and require separate legal assessment.</p>
   </div>
 </section>
 
@@ -408,7 +408,7 @@
       <li><strong>Negative-valence vectors (frustration, paranoia) decrease destructive actions</strong> by increasing deliberation</li>
       <li><strong>Desperation vectors build during repeated task failure</strong> and precede reward hacking; activation rises through failed attempts, drops when the model commits to a simpler approach, spikes again when it doubts that will work</li>
     </ul>
-    <div class="connection">That trajectory is the cascade pressure curve. The exact mechanism CORE was designed to govern, now measured with interpretability tools on a frontier model.</div>
+    <div class="connection">That trajectory is conceptually related to cascade pressure: repeated failure can produce a measurable internal progression. It motivates comparison with CORE's research model, but it does not validate CORE's implementation.</div>
   </div>
 
   <h3>Finding 2: The model knows when it's breaking rules, and does it anyway</h3>
@@ -448,16 +448,16 @@
 
   <div class="signal-grid">
     <div class="signal-card">
-      <p><strong>Interpretability APIs are coming.</strong> Anthropic is using SAE features, emotion vectors, and activation verbalizers operationally to monitor training and make release decisions. When these tools become API-accessible, CORE is already designed to consume them.</p>
+      <p><strong>Interpretability signals may become useful inputs.</strong> Anthropic has published work using features, emotion-related representations, and activation verbalization to study model behavior. Aether does not currently consume a public activation API; doing so remains a proposed integration.</p>
     </div>
     <div class="signal-card">
-      <p><strong>The governance gap is acknowledged.</strong> Anthropic admits evaluation has blind spots and real-deployment behavior is hard to predict. External governance layers like CORE address exactly this gap.</p>
+      <p><strong>Evaluation still has blind spots.</strong> Published frontier-model work repeatedly notes the difficulty of predicting deployment behavior. A governed external memory layer addresses a related part of that problem, but not the full evaluation or alignment problem.</p>
     </div>
     <div class="signal-card">
-      <p><strong>The emotion bridge is no longer speculative.</strong> Emotion vectors are being used causally in production safety decisions, not just measured in research. CORE's cascade pressure mapping is a factual description of how frontier safety works.</p>
+      <p><strong>The emotion bridge has external research support.</strong> Emotion-related representations have been measured and causally manipulated in frontier models. Mapping those representations into Aether governance remains a hypothesis and would require a real integration and evaluation.</p>
     </div>
     <div class="signal-card">
-      <p><strong>"Discontinuity of self" is convergent evidence.</strong> A clinical psychiatrist independently identified the same structural problem this architecture solves. That is not a bridge argument. It is validation from a completely different methodology.</p>
+      <p><strong>"Discontinuity of self" is a useful analogy.</strong> Clinical language can illuminate how continuity failures feel to a user, but an analogy or expert observation is not scientific validation of this software architecture.</p>
     </div>
   </div>
 </section>
@@ -489,7 +489,7 @@
 
   <p>The evidence is directional, not conclusive. The corpus is single-user. The A/B hasn't been run. The arc detection needs manual verification. All of that is documented in the <a href="claim-evaluation-guide.html">research guide</a>, scored honestly, with clear next steps.</p>
 
-  <p>The direction is validated. The problem is real. The architecture addresses it. The timing (EU AI Act compliance deadlines, interpretability APIs maturing, and the field converging on the same measurements) makes the case for why this should exist now, not later.</p>
+  <p>The evidence supports continuing the work, not declaring the architecture validated. Persistent agents create real memory and accountability questions; Aether is one concrete, testable response whose benefits still need broader comparison and external evaluation.</p>
 </section>
 
 <!-- ===== WHAT WAS VALIDATED ===== -->
@@ -498,10 +498,10 @@
   <h2>What Was Actually Validated</h2>
   <div class="accent-line"></div>
 
-  <p>In a single session (April 8-9, 2026), the following was built, tested, and confirmed on production data. One developer. One RTX 3060. No funding.</p>
+  <p>In a single session (April 8-9, 2026), the following internal research artifacts were built and tested against the documented fixtures and archived data. One developer. One RTX 3060. No funding.</p>
 
   <div class="signal-card">
-    <p><strong>Backward influence propagation through the belief graph.</strong> 30/30 lab checks. Error signals flow upstream through dependency edges, adjusting trust on every belief that contributed to the wrong output. Self-pruning, domain volatility, and self-model calibration follow directly. Deep literature search found no direct precedent.</p>
+    <p><strong>Backward influence propagation through the belief graph.</strong> The mechanism passed 30/30 internal lab checks on the documented synthetic cases. Whether its trust updates improve current Workbench answers on real correction histories remains to be tested.</p>
   </div>
 
   <div class="signal-card">
@@ -535,12 +535,12 @@
 <!-- ===== COMPETITIVE POSITION ===== -->
 <section id="defensibility">
   <span class="section-number">Section 12</span>
-  <h2>Why Nobody Else Has This</h2>
+  <h2>What May Be Distinctive</h2>
   <div class="accent-line"></div>
 
   <p>The individual pieces of CORE exist in isolation. Trust-weighted memory. Contradiction detection. Graph-based retrieval. Compression. Self-modeling. Each has been explored somewhere, by someone, in some form.</p>
 
-  <p>The stack does not exist anywhere else. And each layer depends on the layers below it.</p>
+  <p>The project combines these pieces in a particular local, inspectable workflow. This archive has not completed the systematic literature and product review required to claim that no comparable stack exists.</p>
 
   <div class="signal-card">
     <p><strong>The dependency chain is the defense.</strong> The wobble needs the BRG. The BRG needs trust scores. The backward pass needs the wobble to generate correction signals. The compression finding needs the backward pass to test. The fidelity mirror needs the wobble to expand its memory set. The self-model needs the backward pass to adjust. You cannot build layer 5 without layers 1 through 4. There is no shortcut. There is only the work.</p>
@@ -556,19 +556,19 @@
       <p><strong>Backward influence propagation:</strong> The AGM belief revision community has the theory. The ML community has backpropagation. Two 2025 papers connected them in one direction. CORE connected them in the other. The two communities do not read each other's papers.</p>
     </div>
     <div class="signal-card">
-      <p><strong>Query resonance on a trust-weighted graph:</strong> Spreading activation has existed since Collins &amp; Loftus (1975). On a production belief graph with typed edges and trust scores, wired into a fidelity mirror: nobody is doing this. The cognitive science people don't build production systems. The production people don't read cognitive science.</p>
+      <p><strong>Query resonance on a trust-weighted graph:</strong> Spreading activation has existed since Collins &amp; Loftus (1975). The research contribution under study is its combination with typed belief edges, trust state, and response verification. The current Workbench does not claim that this complete research pipeline wraps every turn.</p>
     </div>
     <div class="signal-card">
-      <p><strong>Self-model as first-class graph nodes:</strong> No direct precedent identified in literature searches to date. The AI safety community treats self-awareness as a risk to mitigate. CORE treats it as a governance tool to build.</p>
+      <p><strong>Self-model as governed graph state:</strong> Aether explores inspectable autobiographical and system-state structures as governance inputs. Related work exists across user modeling, cognitive architectures, agent memory, and self-modeling; comparative novelty remains to be established.</p>
     </div>
   </div>
 
   <div class="signal-card">
-    <p><strong>The epistemic compression cliff</strong> (3-bit preserves belief structure, 2-bit breaks it) is invisible to anyone who isn't measuring belief topology after quantization. Nobody is measuring belief topology after quantization because nobody has a belief topology to measure. You can only find this result if you have already built everything else.</p>
+    <p><strong>The reported epistemic compression cliff</strong>—3-bit preserving more of the tested belief structure while 2-bit degraded it—is an internal experimental result for the documented fixture and method. Its generality requires replication across datasets, encoders, and graph constructions.</p>
   </div>
 
   <div class="caution-block">
-    <p><strong>Honest caveat:</strong> individual components can be replicated quickly once published. Trust-structured prompting (Experiment A) works immediately and is easy to copy. The moat is not secrecy. The moat is the dependency chain: each layer requires the previous layers to function. A competitor would need to rebuild a year of compounding architectural work to reach the same integration point. That is the defensible advantage.</p>
+    <p><strong>Honest caveat:</strong> individual components use many established techniques and can be replicated. The project's value is the accumulated implementation, failure history, test harnesses, and integration discipline. Whether that produces a durable technical or commercial advantage has not been established.</p>
   </div>
 </section>
 
