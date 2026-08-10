@@ -3,155 +3,497 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Aether gives language models governed continuity, inspectable evidence, bounded tools, and answers with receipts.">
+<meta name="theme-color" content="#030811">
 <title>Aether and Aeteros</title>
-<link rel="stylesheet" href="base.css">
-<link rel="stylesheet" href="theme.css">
+<link rel="icon" href="data:,">
 <style>
-  body { padding-top: 0; }
-  .splash {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: var(--hero-bg);
-    position: relative;
-    overflow: hidden;
-    isolation: isolate;
+  :root {
+    color-scheme: dark;
+    --bg: #030811;
+    --bg-deep: #02060c;
+    --surface: rgba(7, 15, 26, 0.84);
+    --surface-strong: #07111d;
+    --line: #1a2a3d;
+    --line-bright: #294562;
+    --text: #f5f7fb;
+    --muted: #9ca7b8;
+    --faint: #637084;
+    --cyan: #61c9ff;
+    --blue: #4b7dff;
+    --indigo: #4937e8;
+    --green: #4ed8a8;
+    --amber: #f2a82d;
+    --sans: Inter, "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+    --page-gutter: clamp(22px, 3vw, 54px);
+    --max-width: 1540px;
   }
-  .splash::before {
-    content: '';
-    position: absolute;
-    top: -50%; left: -50%;
-    width: 200%; height: 200%;
+
+  * { box-sizing: border-box; }
+  html { background: var(--bg); scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    min-width: 320px;
     background:
-      radial-gradient(ellipse at 30% 50%, var(--hero-grad1) 0%, transparent 50%),
-      radial-gradient(ellipse at 70% 30%, var(--hero-grad2) 0%, transparent 50%),
-      radial-gradient(ellipse at 50% 80%, var(--hero-grad3) 0%, transparent 50%);
-    animation: heroDrift 14s ease-in-out infinite alternate;
+      radial-gradient(circle at 67% 30%, rgba(28, 83, 138, 0.11), transparent 34%),
+      linear-gradient(135deg, var(--bg-deep) 0%, var(--bg) 48%, #020914 100%);
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
   }
-  .splash-inner {
+
+  a { color: inherit; }
+  .landing {
+    width: min(100%, var(--max-width));
+    min-height: 100svh;
+    margin: 0 auto;
+    padding: 0 var(--page-gutter);
+    display: grid;
+    grid-template-rows: 82px minmax(510px, 1fr) auto;
+  }
+
+  .site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid transparent;
+  }
+  .brand {
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: clamp(0.9rem, 1.25vw, 1.12rem);
+    font-weight: 600;
+    letter-spacing: 0.48em;
+    text-decoration: none;
+  }
+  .site-nav { display: flex; align-items: stretch; height: 100%; gap: clamp(24px, 4vw, 60px); }
+  .site-nav a {
+    position: relative;
+    display: flex;
+    align-items: center;
+    color: #d8dde6;
+    font-size: 0.92rem;
+    text-decoration: none;
+    transition: color 160ms ease;
+  }
+  .site-nav a::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 100%;
+    bottom: 11px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cyan), var(--indigo));
+    transition: right 180ms ease;
+  }
+  .site-nav a:hover, .site-nav a:focus-visible { color: #fff; }
+  .site-nav a:hover::after, .site-nav a:focus-visible::after, .site-nav a.active::after { right: 0; }
+  .site-nav a:focus-visible, .action:focus-visible, .continuation-link:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
+
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(360px, 0.82fr) minmax(620px, 1.38fr);
+    gap: clamp(38px, 4vw, 78px);
+    align-items: center;
+    padding: clamp(38px, 5vh, 70px) 0 clamp(26px, 4vh, 52px);
+  }
+  .hero-copy { max-width: 600px; padding-bottom: 10px; }
+  .hero h1 {
+    max-width: 590px;
+    margin: 0;
+    color: #fff;
+    font-size: clamp(4rem, 6vw, 6.3rem);
+    font-weight: 420;
+    letter-spacing: -0.055em;
+    line-height: 0.94;
+  }
+  .hero-lead {
+    max-width: 590px;
+    margin: clamp(28px, 4vh, 42px) 0 0;
+    color: var(--muted);
+    font-size: clamp(1.08rem, 1.5vw, 1.38rem);
+    line-height: 1.7;
+  }
+  .actions { display: flex; flex-wrap: wrap; gap: 18px; margin-top: clamp(34px, 5vh, 58px); }
+  .action {
+    min-height: 62px;
+    min-width: 230px;
+    padding: 0 24px;
+    display: inline-flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    border: 1px solid var(--line-bright);
+    border-radius: 3px;
+    color: #eef3fb;
+    font-size: 1rem;
+    text-decoration: none;
+    transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+  }
+  .action svg { width: 22px; height: 22px; transition: transform 160ms ease; }
+  .action:hover { transform: translateY(-2px); border-color: #5877b7; background: rgba(36, 59, 91, 0.18); }
+  .action:hover svg { transform: translateX(3px); }
+  .action-primary {
+    border-color: transparent;
+    background: linear-gradient(120deg, #268df5 0%, #3048e5 58%, #4532cf 100%);
+    box-shadow: 0 18px 48px rgba(35, 76, 220, 0.2);
+  }
+  .action-primary:hover { border-color: transparent; background: linear-gradient(120deg, #34a0ff 0%, #3d58ef 58%, #513bdd 100%); }
+
+  .receipt {
+    position: relative;
+    min-height: 500px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: linear-gradient(145deg, rgba(7, 17, 29, 0.94), rgba(3, 10, 18, 0.9));
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.26);
+    overflow: hidden;
+  }
+  .receipt::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(115deg, rgba(61, 173, 255, 0.035), transparent 38%, rgba(68, 57, 229, 0.03));
+  }
+  .receipt-bar {
+    position: relative;
+    z-index: 2;
+    height: 48px;
+    padding: 0 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--line);
+    color: var(--cyan);
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .receipt-session { color: #6eafd8; font-size: 0.6rem; letter-spacing: 0.07em; }
+  .receipt-body {
     position: relative;
     z-index: 1;
-    text-align: center;
-    max-width: 680px;
-    padding: 60px 30px;
+    display: grid;
+    grid-template-columns: 1fr 0.8fr 1.42fr;
+    gap: clamp(18px, 2vw, 34px);
+    padding: 18px 18px 166px;
   }
-  .splash-title {
-    font-family: 'Montserrat', var(--sans);
-    font-size: clamp(2.8em, 6vw, 4.5em);
-    font-weight: 800;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    background: linear-gradient(100deg, #fff 0%, #818cf8 25%, #c084fc 50%, #f472b6 75%, #fff 100%);
-    background-size: 300% 300%;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    animation: gradientShift 8s ease-in-out infinite;
-    margin-bottom: 12px;
-  }
-  .splash-title .e {
-    display: inline-block;
-    transform: skewX(23deg);
-    margin: 0 -0.05em;
-    background: inherit;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  @keyframes gradientShift {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-  }
-  .splash-tagline {
+  .receipt-column { position: relative; z-index: 2; min-width: 0; }
+  .column-title {
+    margin-bottom: 14px;
+    color: #b9c4d3;
     font-family: var(--mono);
-    font-size: clamp(0.7em, 1.4vw, 0.95em);
-    letter-spacing: 0.4em;
+    font-size: 0.63rem;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--hero-sub);
-    opacity: 0.5;
-    margin-bottom: 48px;
   }
-  .disclaimer-box {
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 10px;
-    padding: 28px 32px;
-    text-align: left;
-    backdrop-filter: blur(12px);
-    margin-bottom: 40px;
+  .evidence-list { display: grid; gap: 9px; }
+  .evidence {
+    position: relative;
+    min-height: 58px;
+    padding: 9px 13px 9px 46px;
+    border: 1px solid #223a54;
+    border-radius: 5px;
+    background: rgba(7, 20, 34, 0.74);
   }
-  .disclaimer-box h2 {
-    font-family: var(--mono);
-    font-size: 0.65em;
-    font-weight: 600;
-    color: var(--amber);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 16px;
-  }
-  .disclaimer-box p {
-    font-size: 0.88em;
-    color: var(--hero-box-text);
-    line-height: 1.8;
-    margin-bottom: 12px;
-  }
-  .disclaimer-box p:last-child { margin-bottom: 0; }
-  .disclaimer-box strong { color: var(--hero-box-strong); }
-  .enter-btn {
-    display: inline-block;
-    font-family: var(--mono);
-    font-size: 0.78em;
-    font-weight: 500;
-    color: var(--accent-indigo);
-    border: 1px solid rgba(129,140,248,0.3);
-    border-radius: 6px;
-    padding: 12px 32px;
-    text-decoration: none;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    transition: background 0.2s, border-color 0.2s, color 0.2s;
-  }
-  .enter-btn:hover {
-    background: rgba(129,140,248,0.1);
-    border-color: rgba(129,140,248,0.5);
-    color: #fff;
-  }
-  .splash-footer {
+  .evidence-icon {
     position: absolute;
-    bottom: 24px;
-    left: 0;
-    right: 0;
-    text-align: center;
+    left: 13px;
+    top: 16px;
+    width: 20px;
+    height: 20px;
+    color: #c8d5e5;
+  }
+  .evidence strong, .answer-id {
+    display: block;
+    color: #cbd7e7;
     font-family: var(--mono);
-    font-size: 0.6em;
-    color: var(--text-faint);
-    letter-spacing: 1px;
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .evidence span {
+    display: block;
+    margin-top: 3px;
+    color: #7f8da0;
+    font-family: var(--mono);
+    font-size: 0.56rem;
+    line-height: 1.35;
+  }
+  .evidence-dot {
+    position: absolute;
+    right: -6px;
+    top: calc(50% - 6px);
+    width: 12px;
+    height: 12px;
+    border: 2px solid #62baff;
+    border-radius: 50%;
+    background: #07111d;
+  }
+  .governance {
+    padding: 7px 13px;
+    border: 1px dashed #47617b;
+    border-radius: 4px;
+    background: rgba(7, 18, 30, 0.64);
+  }
+  .gate {
+    position: relative;
+    padding: 10px 20px 10px 0;
+    border-bottom: 1px solid #1c2c3e;
+    font-family: var(--mono);
+  }
+  .gate:last-child { border-bottom: 0; }
+  .gate strong { display: block; color: #d2d9e4; font-size: 0.58rem; font-weight: 500; text-transform: uppercase; }
+  .gate span { display: block; margin-top: 4px; color: #738196; font-size: 0.56rem; }
+  .gate-check { position: absolute; right: 1px; top: 15px; color: var(--green); font-size: 0.78rem; }
+  .answer {
+    min-height: 246px;
+    padding: 18px;
+    border: 1px solid #2b455f;
+    border-radius: 5px;
+    background: rgba(6, 18, 31, 0.72);
+  }
+  .answer-id { color: var(--cyan); text-transform: uppercase; }
+  .answer p { margin: 14px 0 0; color: #c6cfda; font-family: var(--mono); font-size: 0.66rem; line-height: 1.65; }
+  .answer-meta {
+    margin: 16px -18px -18px;
+    padding: 13px 18px;
+    border-top: 1px solid #1f3449;
+    color: #65bdf2;
+    font-family: var(--mono);
+    font-size: 0.56rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .receipt-flow {
+    position: absolute;
     z-index: 1;
+    inset: 76px 0 0;
+    width: 100%;
+    height: 320px;
+    pointer-events: none;
+    overflow: visible;
+  }
+  .flow-line {
+    fill: none;
+    stroke: #4c9eff;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    opacity: 0.84;
+    stroke-dasharray: 7 7;
+    animation: flow 4s linear infinite;
+  }
+  .flow-line-release { stroke: #4f68ff; stroke-width: 2; }
+  .held-line { stroke: var(--amber); opacity: 0.9; }
+  .held {
+    position: absolute;
+    z-index: 3;
+    right: 5.5%;
+    bottom: 16px;
+    width: 48%;
+    min-height: 108px;
+    padding: 15px 17px 15px 50px;
+    border: 1px dashed rgba(242, 168, 45, 0.8);
+    border-radius: 5px;
+    background: rgba(29, 19, 5, 0.42);
+    font-family: var(--mono);
+  }
+  .held svg { position: absolute; left: 16px; top: 38px; width: 24px; height: 24px; color: var(--amber); }
+  .held-title { color: var(--amber); font-size: 0.61rem; letter-spacing: 0.07em; text-transform: uppercase; }
+  .held-body { display: grid; grid-template-columns: 1fr 1.3fr; gap: 16px; margin-top: 13px; }
+  .held-body span { color: #9aa5b4; font-size: 0.56rem; line-height: 1.5; }
+  .held-body span:last-child { padding-left: 14px; border-left: 1px solid rgba(242,168,45,0.25); color: #d99b32; }
+  @keyframes flow { to { stroke-dashoffset: -28; } }
+
+  .continuation {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(42px, 8vw, 120px);
+    padding: clamp(28px, 4vh, 48px) 3% clamp(38px, 5vh, 64px);
+    border-top: 1px solid var(--line);
+  }
+  .continuation-link {
+    position: relative;
+    padding-left: 30px;
+    text-decoration: none;
+  }
+  .continuation-link::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 1px;
+    bottom: 1px;
+    width: 2px;
+    background: linear-gradient(180deg, var(--cyan), #5d7dff);
+    transform-origin: top;
+    transition: transform 180ms ease;
+  }
+  .continuation-link:hover::before { transform: scaleY(0.72); }
+  .continuation strong {
+    display: block;
+    color: #eef3f9;
+    font-family: var(--mono);
+    font-size: clamp(0.9rem, 1.25vw, 1.12rem);
+    font-weight: 600;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+  }
+  .continuation span { display: block; max-width: 520px; margin-top: 11px; color: var(--muted); font-family: var(--mono); font-size: clamp(0.74rem, 1vw, 0.9rem); line-height: 1.6; }
+
+  @media (max-width: 1180px) {
+    .landing { grid-template-rows: 76px auto auto; }
+    .hero { grid-template-columns: 1fr; padding-top: 52px; }
+    .hero-copy { max-width: 760px; }
+    .hero h1, .hero-lead { max-width: 720px; }
+    .receipt { min-height: 510px; }
+    .continuation { margin-top: 32px; }
+  }
+
+  @media (max-width: 760px) {
+    .landing { padding: 0 18px; }
+    .site-header { height: 68px; }
+    .brand { letter-spacing: 0.32em; }
+    .site-nav { gap: 16px; }
+    .site-nav a { font-size: 0.73rem; }
+    .hero { gap: 42px; padding: 44px 0 20px; }
+    .hero h1 { font-size: clamp(3.35rem, 16vw, 5rem); }
+    .hero-lead { font-size: 1.02rem; line-height: 1.65; }
+    .actions { display: grid; grid-template-columns: 1fr; margin-top: 34px; }
+    .action { width: 100%; min-width: 0; min-height: 56px; }
+    .receipt { min-height: 0; }
+    .receipt-session { display: none; }
+    .receipt-body { grid-template-columns: 1fr; gap: 20px; padding: 18px 16px 144px; }
+    .receipt-flow { display: none; }
+    .evidence-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .evidence-dot { display: none; }
+    .answer { min-height: 0; }
+    .held { left: 16px; right: 16px; width: auto; bottom: 16px; }
+    .held-body { grid-template-columns: 1fr; gap: 6px; }
+    .held-body span:last-child { padding: 0; border: 0; }
+    .continuation { grid-template-columns: 1fr; gap: 34px; padding-left: 0; padding-right: 0; }
+  }
+
+  @media (max-width: 460px) {
+    .brand { font-size: 0.78rem; }
+    .site-nav a:nth-child(2) { display: none; }
+    .hero h1 { font-size: clamp(3rem, 15vw, 4rem); }
+    .evidence-list { grid-template-columns: 1fr; }
+    .receipt-body { padding-bottom: 158px; }
+    .held { min-height: 124px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
   }
 </style>
 </head>
 <body>
+<div class="landing">
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="Aeteros home">AETEROS</a>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a class="active" href="architecture.html">Current System</a>
+      <a href="labs.html">Research</a>
+      <a href="about.html">About</a>
+    </nav>
+  </header>
 
-<div class="splash">
-  <div class="splash-inner">
-    <h1 class="splash-title">A<span class="e">E</span>TEROS</h1>
-    <p class="splash-tagline">Working System + Research Archive</p>
-
-    <div class="disclaimer-box">
-      <h2>Notice</h2>
-      <p><strong>Aether is a working local personal-agent system.</strong> This site also contains the much larger Aeteros research archive that informed it. Current product behavior, historical architecture, theory, and experimental results are labeled separately.</p>
-      <p>The research has <strong>not been peer-reviewed or independently validated</strong> as a general AI safety solution. Dated internal results are preserved rather than silently rewritten when the product changes.</p>
-      <p>Nothing on this site constitutes professional advice, regulatory certification, or a guarantee. Research code, data, and conclusions are provided <strong>as-is</strong> and remain subject to revision or retraction.</p>
+  <main class="hero">
+    <div class="hero-copy">
+      <h1>AI memory<br>with receipts.</h1>
+      <p class="hero-lead">Aether gives local and hosted language models governed continuity, inspectable evidence, bounded tools, and answers you can trace.</p>
+      <div class="actions">
+        <a class="action action-primary" href="architecture.html">
+          <span>See Aether today</span>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a class="action" href="labs.html">
+          <span>Explore the research</span>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
     </div>
 
-    <a href="start-here.html" class="enter-btn">Start Here</a>
-    <a href="architecture.html" class="enter-btn" style="margin-left:10px">Current Architecture</a>
-  </div>
+    <section class="receipt" aria-label="Illustration of a governed Aether answer">
+      <div class="receipt-bar">
+        <span>Governed memory receipt</span>
+        <span class="receipt-session">Turn 7f3c9a · accepted completion</span>
+      </div>
+      <svg class="receipt-flow" viewBox="0 0 900 320" preserveAspectRatio="none" aria-hidden="true">
+        <path class="flow-line" d="M220 26 C290 26 278 104 352 104"/>
+        <path class="flow-line" d="M220 94 C286 94 290 126 352 126"/>
+        <path class="flow-line" d="M220 162 C286 162 290 146 352 146"/>
+        <path class="flow-line" d="M220 230 C286 230 290 166 352 166"/>
+        <path class="flow-line flow-line-release" d="M520 136 C570 136 575 136 640 136"/>
+        <path class="flow-line held-line" d="M220 162 C278 162 272 286 476 286"/>
+      </svg>
+      <div class="receipt-body">
+        <div class="receipt-column">
+          <div class="column-title">Evidence (inputs)</div>
+          <div class="evidence-list">
+            <div class="evidence">
+              <svg class="evidence-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 3h8l4 4v14H6V3Z" stroke="currentColor" stroke-width="1.5"/><path d="M14 3v5h5M9 13h6M9 17h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              <strong>EV-1A2B</strong><span>project_brief.md<br>user-approved source</span><i class="evidence-dot"></i>
+            </div>
+            <div class="evidence">
+              <svg class="evidence-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><ellipse cx="12" cy="5" rx="7" ry="3" stroke="currentColor" stroke-width="1.5"/><path d="M5 5v7c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 12v7c0 1.7 3.1 3 7 3s7-1.3 7-3v-7" stroke="currentColor" stroke-width="1.5"/></svg>
+              <strong>EV-3C4D</strong><span>governed substrate<br>supported state</span><i class="evidence-dot"></i>
+            </div>
+            <div class="evidence">
+              <svg class="evidence-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m8 9-4 3 4 3m8-6 4 3-4 3m-2-9-4 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <strong>EV-5E6F</strong><span>workspace source<br>bounded read</span><i class="evidence-dot"></i>
+            </div>
+            <div class="evidence">
+              <svg class="evidence-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M3 12h18M12 3c2.2 2.5 3.3 5.5 3.3 9S14.2 18.5 12 21c-2.2-2.5-3.3-5.5-3.3-9S9.8 5.5 12 3Z" stroke="currentColor" stroke-width="1.5"/></svg>
+              <strong>EV-7G8H</strong><span>public reference<br>query-relevant</span><i class="evidence-dot"></i>
+            </div>
+          </div>
+        </div>
 
-  <div class="splash-footer">&copy; 2026 Aeteros Research</div>
+        <div class="receipt-column">
+          <div class="column-title">Governance boundary</div>
+          <div class="governance">
+            <div class="gate"><strong>Access policy</strong><span>allowlisted</span><b class="gate-check">&#10003;</b></div>
+            <div class="gate"><strong>Relevance filter</strong><span>query-scoped</span><b class="gate-check">&#10003;</b></div>
+            <div class="gate"><strong>Scope limiter</strong><span>session-bounded</span><b class="gate-check">&#10003;</b></div>
+            <div class="gate"><strong>Persistence</strong><span>review required</span><b class="gate-check">&#10003;</b></div>
+            <div class="gate"><strong>Tool budget</strong><span>2 / 3 proposed</span><b class="gate-check">&#10003;</b></div>
+          </div>
+        </div>
+
+        <div class="receipt-column">
+          <div class="column-title">Rendered answer (released)</div>
+          <div class="answer">
+            <span class="answer-id">Answer · RND-9K2L</span>
+            <p>The selected model receives only the evidence Aether released for this request. The answer remains model-generated; the route, sources, tools, and completion state remain inspectable.</p>
+            <p>One conflicting state was held for review instead of being flattened into the prompt.</p>
+            <div class="answer-meta">Provider selected · coverage verified</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="held">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 2.8 20h18.4L12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 9v5m0 3v.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <div class="held-title">Contradiction (held)</div>
+        <div class="held-body"><span>CT-1X9Z<br>conflicting prior state</span><span>Withheld from release.<br>Review remains open.</span></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="continuation">
+    <a class="continuation-link" href="system-status.html">
+      <strong>Working system</strong>
+      <span>Workbench, governed memory, selected renderers, completion receipts.</span>
+    </a>
+    <a class="continuation-link" href="labs.html">
+      <strong>Research archive</strong>
+      <span>Dated experiments, theory, failures, and open questions.</span>
+    </a>
+  </footer>
 </div>
-
 </body>
 </html>
