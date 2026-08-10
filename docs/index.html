@@ -89,7 +89,7 @@
   }
   .site-nav a:hover, .site-nav a:focus-visible { color: #fff; }
   .site-nav a:hover::after, .site-nav a:focus-visible::after, .site-nav a.active::after { right: 0; }
-  .site-nav a:focus-visible, .action:focus-visible, .continuation-link:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
+  .site-nav a:focus-visible, .continuation-link:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
 
   .hero {
     display: grid;
@@ -115,32 +115,6 @@
     font-size: clamp(1.08rem, 1.5vw, 1.38rem);
     line-height: 1.7;
   }
-  .actions { display: flex; flex-wrap: wrap; gap: 18px; margin-top: clamp(34px, 5vh, 58px); }
-  .action {
-    min-height: 62px;
-    min-width: 230px;
-    padding: 0 24px;
-    display: inline-flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 24px;
-    border: 1px solid var(--line-bright);
-    border-radius: 3px;
-    color: #eef3fb;
-    font-size: 1rem;
-    text-decoration: none;
-    transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
-  }
-  .action svg { width: 22px; height: 22px; transition: transform 160ms ease; }
-  .action:hover { transform: translateY(-2px); border-color: #5877b7; background: rgba(36, 59, 91, 0.18); }
-  .action:hover svg { transform: translateX(3px); }
-  .action-primary {
-    border-color: transparent;
-    background: linear-gradient(120deg, #268df5 0%, #3048e5 58%, #4532cf 100%);
-    box-shadow: 0 18px 48px rgba(35, 76, 220, 0.2);
-  }
-  .action-primary:hover { border-color: transparent; background: linear-gradient(120deg, #34a0ff 0%, #3d58ef 58%, #513bdd 100%); }
-
   .receipt {
     position: relative;
     min-height: 500px;
@@ -361,8 +335,6 @@
     .hero { gap: 42px; padding: 44px 0 20px; }
     .hero h1 { font-size: clamp(3.35rem, 16vw, 5rem); }
     .hero-lead { font-size: 1.02rem; line-height: 1.65; }
-    .actions { display: grid; grid-template-columns: 1fr; margin-top: 34px; }
-    .action { width: 100%; min-width: 0; min-height: 56px; }
     .receipt { min-height: 0; }
     .receipt-session { display: none; }
     .receipt-body { grid-template-columns: 1fr; gap: 20px; padding: 18px 16px 144px; }
@@ -406,16 +378,6 @@
     <div class="hero-copy">
       <h1>AI memory<br>with receipts.</h1>
       <p class="hero-lead">Aether gives local and hosted language models governed continuity, inspectable evidence, bounded tools, and answers you can trace.</p>
-      <div class="actions">
-        <a class="action action-primary" href="architecture.html">
-          <span>See Aether today</span>
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </a>
-        <a class="action" href="labs.html">
-          <span>Explore the research</span>
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </a>
-      </div>
     </div>
 
     <section class="receipt" aria-label="Illustration of a governed Aether answer">
