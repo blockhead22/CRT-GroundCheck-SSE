@@ -36,7 +36,6 @@
     { href: 'whitepaper.html',            label: 'Evolved Thesis',         group: 'Theory & History' },
     { href: 'glossary.html',              label: 'Glossary',                group: 'Reference' },
     { href: 'claim-evaluation-guide.html', label: 'Claim Guide',           group: 'Reference' },
-    { href: 'nick_paper.html',           label: 'Personal Narrative',       group: 'Reference' },
   ];
 
   var RESEARCH_PAGES = [
