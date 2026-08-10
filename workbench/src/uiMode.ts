@@ -4,13 +4,29 @@ export type UiMode = 'simple' | 'lab'
 
 export const UI_MODE_STORAGE_KEY = 'aether.uiMode'
 
+/**
+ * One-time product migration key. Stuck Lab sessions from dogfood/tests
+ * get forced back to Simple so stranger-week does not open Process dumps.
+ * After this runs once, Settings → Lab still works and persists.
+ */
+export const UI_MODE_SIMPLE_DEFAULT_KEY = 'aether.uiMode.simpleDefault.v1'
+
 export function readUiMode(): UiMode {
+  // Product default: Simple. Force once so stoner Nick is not left on Lab
+  // chrome from an old localStorage value.
+  if (localStorage.getItem(UI_MODE_SIMPLE_DEFAULT_KEY) !== '1') {
+    localStorage.setItem(UI_MODE_SIMPLE_DEFAULT_KEY, '1')
+    localStorage.setItem(UI_MODE_STORAGE_KEY, 'simple')
+    return 'simple'
+  }
   const raw = localStorage.getItem(UI_MODE_STORAGE_KEY)
   return raw === 'lab' ? 'lab' : 'simple'
 }
 
 export function writeUiMode(mode: UiMode) {
   localStorage.setItem(UI_MODE_STORAGE_KEY, mode)
+  // Choosing either mode after migration counts as intentional.
+  localStorage.setItem(UI_MODE_SIMPLE_DEFAULT_KEY, '1')
 }
 
 /** Human label for a substrate slot id. */

@@ -1,201 +1,173 @@
 # Aether — What’s Next (Resume Packet)
 
-**Saved:** 2026-08-05  
-**Audience:** Future you (“stoner Nick”) opening a cold session  
-**One line:** Product acceleration is the job. Integrity path is strong. Soft tools + soft language still suck. Don’t invent a new thesis.
+**Saved:** 2026-08-05 (reformatted same day; holder inventory appended)
+**Pretty page:** [`AETHER_ROADMAP_NOW.html`](./AETHER_ROADMAP_NOW.html) ← open in browser
+**Audience:** Cold session / stoner Nick
+**One line:** Product acceleration is the job. Diversions must loop back. No new thesis as day job.
 
 ---
 
 ## Start here (read order)
 
-1. This file  
-2. `docs/plans/AETHER_PRODUCT_ACCELERATION_2026-08-05.md`  
-3. `docs/AETHER_PRODUCT_ENTRY.md`  
+1. **`docs/plans/AETHER_ROADMAP_NOW.html`** (this moment, visual)
+2. This file
+3. `docs/plans/AETHER_PRODUCT_ACCELERATION_2026-08-05.md`
 4. Optional money: `docs/plans/AETEROS_GRANTS_EXPLORATION_2026-08-05.md`  
-5. Optional long arc: `docs/plans/AETHER_ITERATIVE_AGENT_AUTOBIOGRAPHICAL_SUBSTRATE_PLAN_2026-08-04.md`  
 
-**Do not** open CRT as primary. **Do not** fork Grok Build. **Do not** start Phase 5 autobiography until stranger-week (or ruthless self-week) is green.
+**Do not** open CRT as primary. **Do not** fork Grok Build. **Do not** build full heartbeat / agent autobiography until stranger-week is green.
 
 ---
 
-## What the project is (mentality)
+## North star
+
+> Local governed companion + bounded workspace tools
+> (search → read → answer with receipts; no inventing identity)
 
 | Name | Role |
 |------|------|
 | **Aeteros** | Umbrella / future entity |
-| **Aether** | Product: governed personal AI |
-| **Workbench** | Local UI proof surface |
-| **Model (local / Grok)** | Voice only |
-| **Aether** | Authority: release, tools, memory, Process |
-
-**Job of the product:** useful continuity **without inventing who you are**, with inspectable Process and granted tools.
+| **Aether** | Product authority: release, tools, memory, Process |
+| **Workbench** | Local UI (Simple default) |
+| **Model** | Voice only |
 
 ---
 
-## Progress already landed (don’t rebuild)
+## Where we are (2026-08-05)
 
 | Area | Status |
 |------|--------|
-| Workbench + aether-core sidecar | Primary product path |
-| Conversation context packet / continuity | Largely in |
-| Obligation ledger + wording repair | In (full semantic verifier still soft) |
-| Process / run events + cancel | In |
-| Governed tools (search/read/list/patch-propose) | In |
-| Model tool propose → Aether grant → execute | In |
-| Cross-turn preferred reads + packaging search hygiene | In |
-| **Agentic tool loop (≤2 post-draft rounds)** | Landed ~2026-08 |
-| Grok wording-only + conversation sticky | In |
-| Floating / pin restore on restart | In |
-| Search design-name + exact basename boost | Landed 2026-08-05 |
-| Product entry + acceleration + grants MDs | Written |
+| Soft workspace / workbench search phrases | **Done** |
+| Soft multi-fact (correlations / in common / colorations) | **Done** |
+| Search ranking hygiene (ai_round2 stopword, design boost) | **Done** |
+| Search → explain multi-turn (receipt-backed) | **Done** |
+| Session continuity / correction | **Done** |
+| Workbench Simple mode (Chat · Why · Knows · More) | **Done** |
+| Why honesty (personal facts vs project/self) | **Done** |
+| Simple UI product jump (footer→Why, Stop, Knows links, honesty) | **Done** (2026-08-05) |
+| Integrity self-answers | **Strong** |
+| Identity misroute on “model memory” design Qs | **Done** (design exclude in runtime_identity) |
+| Cancel live | **Partial** (unit OK) |
+| Stranger-week / Nick uses alone a week | **Open** |
+| 3‑min demo / grants | **Later** |
 
 ---
 
-## Latest dogfood (honest snapshot)
+## What’s next (ordered)
 
-### Personal / integrity path — **strong (demo-worthy)**
+### NOW / THIS WEEK
 
-- Spine answers (“what matters”) hold.  
-- Name / orange / marigolds confirm.  
-- “Explore deeper” refuses invention.  
-- Leukemia + orange awareness: correct color, **no forced personal “because.”**  
-- “Assume why”: labeled guesswork.
+1. **Nick lives in Simple Workbench** — real tasks; fix only what confuses you.
+2. Re-run main-path dogfood if you change routing/tools (`labs/self_dogfood_main_path_now.py`).
 
-**Bugs in that path:**  
-- “Colorations” missed soft “color” and denied color memory while orange was released.  
-- “What do color and flower have in common?” restated facts, missed orange/marigolds surface link.
+### DONE THIS ARC (keep)
 
-### Code / tools path — **improved (2026-08-05 self-dogfood)**
+- Soft tools + soft multi-fact + search→explain + session correction
+- Simple UI + Why honesty
+- Identity design-exclude (model-memory Q answers architecture)
 
-- Explicit `workspace search for holden…`: tools run; design-boost noise still possible.  
-- Soft `use the workbench search… holden concept`: **PASS** after soft-phrase gate (workspace_search + local synthesis).  
-- Soft `explore for mirus in the project`: **PASS**.  
-- Soft multi-fact (`correlations` / `in common` / typo `colorations`): **PASS** — orange↔marigolds surface link, no camera dead-end, no invent leukemia motive.  
-- `explore deeper… what else you know about me`: **PASS** dossier path (was `Unknown` / empty).
+### NEXT
 
-Log: `aether-core/labs/SELF_DOGFOOD_PRODUCT_2026-08-05.json`  
-Script: `aether-core/labs/self_dogfood_product_2026-08-05.py`
+4. Polish only week-surfaced fails (cancel, search depth, length).
 
-**Still open:** agentic search→explain multi-turn; cancel once; Workbench profile root vs default `~/.aether` when restarting sidecar cold.
+### THEN (optional, after boring Simple)
+
+5. **Thin** `system:*` / agent review-only candidates (same laws as user). Not full heartbeat freeroam.
+
+### LATER
+
+6. 3‑min demo · one-pager · LLC/CTC after demo exists.
 
 ---
 
-## What was “proved” (labs + product) — short
+## Diversion rule (hold Blockie true)
 
-**Proved (limited):**  
-- Governed release can beat raw unsafe dumps on lab packs (meaning-compression graduation).  
-- Scaffold/hybrid beat temporal RAG on *their* pack (not universal).  
-- Belief variance / belief≠speech is measurable research work.  
-- Earned personalization lab: stop Nick-hardcode cheats.  
-- Multi-facet D0: no invent health without prior.  
-- Live system can refuse inventing identity under pressure.
+Every side path must return to the wedge **within one session**.
 
-**Not proved:**  
-- Unique science monopoly.  
-- Stranger-proof product.  
-- All labs graduated to runtime.
+| Allowed | Not allowed |
+|---------|-------------|
+| Fix a dogfood fail | CRT as primary |
+| Simple UI clarity | Fork Grok Build |
+| Thin regression test | Phase 5 autobiography mainline |
+| Answer “what if model memory?” | Scaffold full heartbeat product |
+| Talk grants | Fundraise as day job before demo |
 
-**Codebase “shits and giggles” value (pure asset fantasy):** tens of k, not millions. Value multiplies with dogfood + entity + users.
+If Nick asks “build X?” and X is frozen → **answer, don’t cathedral.**
 
 ---
 
-## What’s next (bounded — do this)
+## Frozen
 
-### Goal
-
-One wedge, without manifesto:
-
-> Local governed companion + bounded workspace tools  
-> (search → read → answer with receipts; no inventing identity)
-
-### P0 — This week (after any restart)
-
-```text
-[ ] Restart sidecar + Workbench (pick up loop + search boosts)
-[ ] Dogfood script:
-    [ ] workspace search mirus/holden → source paths, not packaging
-    [ ] explain from code → tool rounds + reads + Grok sticky
-    [ ] multi-turn continuity + correction
-    [ ] cancel once
-[ ] Fix ONLY failures from that script
-```
-
-### P1 — Highest ROI fixes from last full chat log
-
-1. **Soft tool phrases → workspace tools** — **done 2026-08-05**  
-   “use the workbench search”, “explore for X in the project/ai_round2”
-
-2. **Soft profile language** — **done 2026-08-05**  
-   colorations→correlations; “in common” surface orange↔marigolds (no invent health)
-
-3. **Search/read ranking**  
-   Prefer real term excerpts over design-boost ghosts (Holden still thin literacy)
-
-4. **Then** polish Process clarity + one demo recording + remaining P0 multi-turn/cancel
-
-### Explicit freeze (not now)
-
-- CRT as primary  
+- CRT as primary product
 - Fork Grok Build  
-- Phase 4 full passive memory / Phase 5 autobiography as mainline  
-- Unbounded multi-agent freeroam  
-- Broad monorepo archaeology for fun  
+- Phase 4–5 as mainline
+- Full personal_agent heartbeat freeroam
+- Unbounded multi-agent
+- Monorepo archaeology for fun
+- Port CogniForge autoencoder / DNNT / GFN train as substrate
+- Treat `diy_transformer` as product path (teaching only)
 
 Labs = inventory. Product = Workbench dogfood.
 
-### Parallel light (optional)
+---
 
-- Aeteros LLC when cheap  
-- CTC / NSF SBIR stack after 3-min demo exists  
-- See grants MD — don’t fundraise as day job  
+## Archive inventory (H:\holder) — 2026-08-05
 
-**Energy:** ~70% product · ~15% packaging · ~15% admin/grants
+**Question answered:** What on `H:\holder` transfers into current Aether product path?
+
+### Locations (map, not mainline)
+
+| Path | What it is |
+|------|------------|
+| `H:\holder\diy_transformer` | Mini LLM pedagogy: `01_tokenizer` → `05_mini_llm` + README |
+| `H:\holder\CogniForge` | CRT-lineage **Cognitive Compression OS** (encoder/decoder, GFN router, CogniMap, quarantine ladder) |
+| `H:\holder\CogniForge\archive\original_core` | Older Holden / Mirus / contradiction / fallback_quarantine |
+| `H:\holder\lumi_ai` | Pre-CogniForge Lumi lineage |
+| Claude worktrees | `D:\AI_round2\.claude\worktrees\{wonderful-ride,keen-lehmann,angry-feynman-2f25fa,trusting-dirac-330edf}` |
+| Other | `D:\AI_round2\personal_agent\`, `D:\NickBlock.dev\new_repo\CRT\`, `D:\Project Archive\2026-07-19\` |
+
+**Lineage shorthand:** Lumi → CogniForge (Mirus encode / Holden decode) → CRT laws → Aether governed product path.
+**Names still live:** Mirus ≈ intake/encode; Holden ≈ render/decode — already in Aether language, not a reason to re-port cores.
+
+### diy_transformer — teaching only
+
+- **Transfer:** mental model of tokenizer → embeddings → attention → block → mini LLM.
+- **Also useful:** “stale dist vs live Vite” lesson (rebuild after UI changes).
+- **Do not:** productize as Workbench brain, train weights as day job, or replace Ollama/qwen.
+
+### CogniForge — salvage checklist (ideas, not bulk port)
+
+| Rank | Steal later (when Simple week is green) | Do **not** port now |
+|------|----------------------------------------|---------------------|
+| **1** | **Fault ladder / Why language** — multi-layer degrade with human-readable reason (maps to Simple Why + Lab Process) | Full dual-codec autoencoder train loop |
+| **2** | **Safe-mode / degraded quarantine** — fail soft, hold for review, never silent overwrite | DNNT / codec transformer training as substrate |
+| **3** | **Observer → review** (CogniMap-style log → candidate, not auto-write) — already Aether’s review gate story | GFN graph train as default router |
+| **4** | **Central thresholds config** — one place for confidence/trust/quarantine knobs | Replace sidecar authority with archive cores |
+| **5** | Naming continuity only (Mirus/Holden literacy in answers) | Rebuild full Holden self-reflect freeroam |
+
+**Rule:** Steal *behavior and vocabulary* into Workbench/sidecar. Do **not** replace the substrate or make archive archaeology the day job.
+
+### Diversion affordance (this thread)
+
+One short inventory session OK. **Loop back** to Simple stranger-week. Transformer follow-ups = talk / notes only unless Nick grants a scoped build that still returns to the wedge.
 
 ---
+
+## Energy
+
+~70% product dogfood + fixes · ~15% Simple polish · ~15% admin/grants after demo
 
 ## Success = stranger-week lite
 
-1. Tools: search → read → answer without “please open the file.”  
-2. Honesty: withhold / partial / correction visible.  
-3. Continuity: multi-turn stable; provider doesn’t randomly drop.  
-4. Restart: floating + resume OK.  
-5. You use it a real week without coaxing.
-
-Then Phase 4 / harder funding push.
+1. Tools: search → explain without coaxing
+2. Honesty: Why / withhold / correction visible
+3. Continuity: multi-turn stable
+4. Restart: floating + resume
+5. **You** use it a week without coaxing
 
 ---
 
-## If you only remember three things
+## Three things only
 
-1. **Accelerate product, not new philosophy.**  
-2. **Integrity dogfood is the demo; soft tools are the bug.**  
-3. **Restart → dogfood script → fix fails only.**
-
----
-
-## Related files
-
-| File | Purpose |
-|------|---------|
-| `docs/plans/AETHER_PRODUCT_ACCELERATION_2026-08-05.md` | Full acceleration checklist + log |
-| `docs/AETHER_PRODUCT_ENTRY.md` | Happy-path product entry |
-| `docs/plans/AETEROS_GRANTS_EXPLORATION_2026-08-05.md` | Grants + Wisconsin stack |
-| `docs/plans/AETHER_ITERATIVE_AGENT_AUTOBIOGRAPHICAL_SUBSTRATE_PLAN_2026-08-04.md` | Long ladder (Phase 3+ later) |
-| `docs/AETHER_AGENT_PROJECT_BRIEF.md` | Stack / authority map |
-
----
-
-## Session note (2026-08-05)
-
-Cold “what’s next” answer for future Nick:
-
-> Restart sidecar. Run product dogfood script. Fix soft workspace-search routing and soft profile links. Do not open new research fronts. Product acceleration plan is the source of truth.
-
-### Life check (research aside, same night)
-
-See `labs/LIFE_CHECK_2026-08-05.md`.
-
-- Belief map lab **on disk, tests green, 10/10 safety** — not in Workbench UI.  
-- Grok judge: Aether **3** vs frontier **2** vs tie **1** on integrity pack.  
-- Wins: explore_deeper, leukemia, assume_why. Losses: colorations, soft tool holden.  
-- Verdict: seatbelt has life; soft routing still stalls.
+1. **Accelerate product, not new philosophy.**
+2. **Fix fails from dogfood only.**
+3. **Every diversion loops back to the wedge.**

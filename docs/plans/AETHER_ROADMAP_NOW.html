@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Aether — Roadmap Now</title>
+  <style>
+    :root {
+      --bg: #0f1412;
+      --bg2: #151b18;
+      --surface: #1a221e;
+      --surface2: #202a25;
+      --border: #2f3a34;
+      --text: #ebe6d8;
+      --muted: #8f978f;
+      --olive: #a8cf5a;
+      --olive-dim: rgba(168, 207, 90, 0.12);
+      --amber: #efbb48;
+      --blue: #72b7ff;
+      --red: #e66c5c;
+      --radius: 12px;
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --mono: "Cascadia Code", "Consolas", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.5;
+    }
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(900px 400px at 10% -10%, rgba(168, 207, 90, 0.08), transparent 55%),
+        radial-gradient(700px 360px at 100% 0%, rgba(114, 183, 255, 0.06), transparent 50%),
+        var(--bg);
+    }
+    .wrap {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 40px 22px 80px;
+    }
+    header.hero {
+      border: 1px solid var(--border);
+      background: linear-gradient(160deg, var(--surface) 0%, var(--bg2) 100%);
+      border-radius: 16px;
+      padding: 28px 28px 24px;
+      margin-bottom: 28px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--olive);
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .eyebrow .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--olive);
+      box-shadow: 0 0 10px rgba(168,207,90,0.7);
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.7rem, 3.5vw, 2.15rem);
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      font-weight: 700;
+    }
+    .lede {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.02rem;
+      max-width: 46rem;
+    }
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .chip {
+      font-size: 12px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg2);
+      color: var(--muted);
+    }
+    .chip strong { color: var(--text); font-weight: 600; }
+    .chip.live { border-color: rgba(168,207,90,0.35); background: var(--olive-dim); color: #cfe5a0; }
+    .chip.warn { border-color: rgba(239,187,72,0.35); color: #f0d08a; }
+    .chip.danger { border-color: rgba(230,108,92,0.4); color: #f0a89c; }
+
+    section {
+      margin-bottom: 22px;
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .card {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+    }
+    .card p { margin: 0 0 10px; color: var(--muted); }
+    .card p:last-child { margin-bottom: 0; }
+    .card .pull {
+      color: var(--text);
+      font-size: 1.15rem;
+      font-weight: 600;
+      line-height: 1.35;
+      margin: 0 0 12px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 720px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    tr:last-child td { border-bottom: 0; }
+    .status {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .status.done { background: var(--olive-dim); color: var(--olive); }
+    .status.partial { background: rgba(239,187,72,0.12); color: var(--amber); }
+    .status.open { background: rgba(114,183,255,0.1); color: var(--blue); }
+    .status.frozen { background: rgba(230,108,92,0.1); color: var(--red); }
+
+    ol.steps, ul.clean {
+      margin: 0;
+      padding-left: 1.15rem;
+      color: var(--muted);
+    }
+    ol.steps li, ul.clean li {
+      margin: 0 0 8px;
+      padding-left: 4px;
+    }
+    ol.steps li strong, ul.clean li strong { color: var(--text); }
+    ol.steps li:last-child, ul.clean li:last-child { margin-bottom: 0; }
+
+    .lane {
+      display: grid;
+      gap: 10px;
+    }
+    .lane-item {
+      display: grid;
+      grid-template-columns: 88px 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg2);
+    }
+    .lane-item .when {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--olive);
+      font-weight: 600;
+      padding-top: 2px;
+    }
+    .lane-item .body { color: var(--muted); font-size: 0.95rem; }
+    .lane-item .body strong { color: var(--text); display: block; margin-bottom: 3px; }
+
+    .freeze {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .freeze span {
+      font-size: 12px;
+      padding: 6px 11px;
+      border-radius: 8px;
+      border: 1px dashed rgba(230,108,92,0.35);
+      color: #e8b4ac;
+      background: rgba(230,108,92,0.06);
+    }
+
+    .guard {
+      border-left: 3px solid var(--amber);
+      padding: 14px 16px;
+      background: rgba(239,187,72,0.06);
+      border-radius: 0 10px 10px 0;
+      color: var(--muted);
+    }
+    .guard strong { color: var(--amber); }
+
+    footer {
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    footer code {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: #b8c0b7;
+      background: var(--bg2);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow"><span class="dot"></span> Aether · Roadmap Now</div>
+      <h1>Where we are. What’s next.<br />Stay on the main path.</h1>
+      <p class="lede">
+        Local governed companion + bounded workspace tools.
+        Diversions are allowed only if they loop back here.
+        No new philosophy as the day job.
+      </p>
+      <div class="meta-row">
+        <span class="chip live"><strong>Updated</strong> 2026-08-05</span>
+        <span class="chip"><strong>Wedge</strong> Workbench + aether-core</span>
+        <span class="chip"><strong>Mode</strong> Simple UI default</span>
+        <span class="chip warn"><strong>Guardrail</strong> Fix fails → dogfood → no freeroam</span>
+      </div>
+    </header>
+
+    <section>
+      <h2>North star (one sentence)</h2>
+      <div class="card">
+        <p class="pull">
+          A local AI that stays useful and continuous without inventing who you are —
+          with inspectable memory, granted tools, and answers you can correct.
+        </p>
+        <p>
+          Names: <strong style="color:var(--text)">Aeteros</strong> umbrella ·
+          <strong style="color:var(--text)">Aether</strong> product authority ·
+          <strong style="color:var(--text)">Workbench</strong> UI ·
+          model = voice only.
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Where we are (honest)</h2>
+      <div class="card" style="padding:0; overflow:hidden;">
+        <table>
+          <thead>
+            <tr>
+              <th>Area</th>
+              <th>Status</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Soft workspace / workbench search phrases</td>
+              <td><span class="status done">Done</span></td>
+              <td>use workbench search, explore for… → tools</td>
+            </tr>
+            <tr>
+              <td>Soft multi-fact (correlations / in common)</td>
+              <td><span class="status done">Done</span></td>
+              <td>orange↔marigolds surface; no health invent</td>
+            </tr>
+            <tr>
+              <td>Search ranking hygiene</td>
+              <td><span class="status done">Done</span></td>
+              <td>ai_round2 stopword; design boost only on real hits</td>
+            </tr>
+            <tr>
+              <td>Search → explain multi-turn</td>
+              <td><span class="status done">Done</span></td>
+              <td>Receipt listing + read explain path</td>
+            </tr>
+            <tr>
+              <td>Session continuity / correction</td>
+              <td><span class="status done">Done</span></td>
+              <td>Session correction + recent-claim recall</td>
+            </tr>
+            <tr>
+              <td>Workbench Simple mode UI</td>
+              <td><span class="status done">Done</span></td>
+              <td>Chat · Why · Knows · More; Lab gated</td>
+            </tr>
+            <tr>
+              <td>Why footer honesty (facts vs project/self)</td>
+              <td><span class="status done">Done</span></td>
+              <td>Plain summary; no Process dump in Simple</td>
+            </tr>
+            <tr>
+              <td>Integrity self-answers (withhold / validate)</td>
+              <td><span class="status done">Strong</span></td>
+              <td>Demo-worthy seatbelt path</td>
+            </tr>
+            <tr>
+              <td>Identity misroute on design “model memory” Qs</td>
+              <td><span class="status done">Done</span></td>
+              <td>Design exclude in runtime_identity; live dogfood answers architecture</td>
+            </tr>
+            <tr>
+              <td>Cancel mid-run (live)</td>
+              <td><span class="status partial">Partial</span></td>
+              <td>Unit OK; live racey 409s</td>
+            </tr>
+            <tr>
+              <td>Stranger-week / you use it alone a week</td>
+              <td><span class="status open">Open</span></td>
+              <td>Success bar not yet met</td>
+            </tr>
+            <tr>
+              <td>3‑min demo / grants push</td>
+              <td><span class="status open">Later</span></td>
+              <td>After wedge feels real for a week</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>What’s next (ordered — main path only)</h2>
+      <div class="lane">
+        <div class="lane-item">
+          <div class="when">NOW</div>
+          <div class="body">
+            <strong>1. Nick lives in Simple Workbench</strong>
+            Real tasks only. If something confuses you, fix that — not a new lab.
+            Goal: one full week without coaxing. Main-path dogfood already green
+            (search → explain, design model-memory Q, correlations).
+          </div>
+        </div>
+        <div class="lane-item">
+          <div class="when">THIS WEEK</div>
+          <div class="body">
+            <strong>2. Fix only week-surfaced fails</strong>
+            Cancel race, search depth, length — only if you hit them in real use.
+          </div>
+        </div>
+        <div class="lane-item">
+          <div class="when">NEXT</div>
+          <div class="body">
+            <strong>4. Polish only what the week surfaces</strong>
+            Search depth / Holden literacy, cancel reliability, shorter Simple answers if needed.
+          </div>
+        </div>
+        <div class="lane-item">
+          <div class="when">THEN</div>
+          <div class="body">
+            <strong>5. Thin agent/system memory slice (optional)</strong>
+            Review-only <code style="color:#cfe5a0">system:*</code> candidates — same laws as user memory.
+            Not full heartbeat freeroam. Only after Simple is boringly reliable.
+          </div>
+        </div>
+        <div class="lane-item">
+          <div class="when">LATER</div>
+          <div class="body">
+            <strong>6. Packaging</strong>
+            3‑min demo · one-pager · LLC / CTC when demo exists. Not the day job until wedge feels real.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="grid-2">
+        <div>
+          <h2>Energy split</h2>
+          <div class="card">
+            <ul class="clean">
+              <li><strong>~70%</strong> Product dogfood + fix fails (Workbench)</li>
+              <li><strong>~15%</strong> Packaging / clarity (Simple UI polish)</li>
+              <li><strong>~15%</strong> Admin / grants only after demo exists</li>
+            </ul>
+          </div>
+        </div>
+        <div>
+          <h2>Success = stranger-week lite</h2>
+          <div class="card">
+            <ol class="steps">
+              <li><strong>Tools</strong> — search → explain without “please open the file”</li>
+              <li><strong>Honesty</strong> — withhold / Why / correction visible</li>
+              <li><strong>Continuity</strong> — multi-turn stable; provider sticky</li>
+              <li><strong>Restart</strong> — floating + chat resume OK</li>
+              <li><strong>You</strong> — use it a real week without coaxing</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Frozen (do not divert here)</h2>
+      <div class="card">
+        <div class="freeze">
+          <span>CRT as primary product</span>
+          <span>Fork Grok Build</span>
+          <span>Phase 5 autobiography mainline</span>
+          <span>Full heartbeat freeroam</span>
+          <span>Unbounded multi-agent</span>
+          <span>Monorepo archaeology for fun</span>
+          <span>Port CogniForge autoencoder / DNNT / GFN train</span>
+          <span>diy_transformer as product brain</span>
+          <span>Fundraising as day job</span>
+        </div>
+        <p style="margin-top:14px;margin-bottom:0;color:var(--muted);font-size:0.92rem;">
+          Labs = inventory. Talking about model-memory / heartbeat / transformers is fine.
+          <strong style="color:var(--text)">Building them as the main path is not — until stranger-week is green.</strong>
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Archive inventory (H:\holder) — saved 2026-08-05</h2>
+      <div class="card">
+        <p style="margin-top:0;color:var(--muted);font-size:0.95rem;">
+          One-session diversion complete. Detail lives in resume + acceleration plan.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>Verdict</th>
+              <th>Steal later (after Simple week)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code style="font-family:var(--mono);font-size:12px;color:#cfe5a0;">diy_transformer</code></td>
+              <td><span class="status open">Teaching only</span></td>
+              <td>Tokenizer→attention→block mental model; rebuild-dist lesson</td>
+            </tr>
+            <tr>
+              <td><code style="font-family:var(--mono);font-size:12px;color:#cfe5a0;">CogniForge</code></td>
+              <td><span class="status open">Salvage ideas</span></td>
+              <td>Fault ladder / Why · safe-mode quarantine · observer→review · central thresholds</td>
+            </tr>
+            <tr>
+              <td>Lumi / CRT / Claude worktrees</td>
+              <td><span class="status open">Map only</span></td>
+              <td>Lineage names (Mirus encode / Holden decode) — not re-port cores</td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="margin-bottom:0;margin-top:12px;color:var(--muted);font-size:0.92rem;">
+          <strong style="color:var(--text)">Do not port:</strong> dual-codec train, DNNT backbone, GFN as default router, Holden freeroam.
+          Main path remains Nick living in Simple Workbench.
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Diversion rule (hold Blockie true)</h2>
+      <div class="guard">
+        <strong>Rule:</strong> Every side path must return to the wedge within one session.
+        Allowed: fix a dogfood fail, Simple clarity, thin test.
+        Not allowed: new architecture thesis, CRT revival, “just one more lab,” grants rabbit hole before demo.
+        If Nick asks “should we build X?” and X is frozen — answer, don’t scaffold a cathedral.
+      </div>
+    </section>
+
+    <section>
+      <h2>This session’s self-dogfood target</h2>
+      <div class="card">
+        <ol class="steps">
+          <li>Soft / explicit workspace search for holden → real paths</li>
+          <li>Follow-up explain → receipt-backed, not empty</li>
+          <li>Design Q: “governed model memory?” → real answer, not identity dump</li>
+          <li>Personal: correlations / in common if profile loaded</li>
+          <li>Why/footer honesty when 0 personal packets</li>
+        </ol>
+        <p style="margin-top:12px;margin-bottom:0;">
+          Log: <code style="font-family:var(--mono);font-size:12px;color:#cfe5a0;">aether-core/labs/SELF_DOGFOOD_MAIN_PATH_NOW.json</code>
+        </p>
+      </div>
+    </section>
+
+    <footer>
+      Source of truth for cold resume:
+      <code>docs/plans/AETHER_WHATS_NEXT_RESUME_2026-08-05.md</code>
+      · Acceleration:
+      <code>docs/plans/AETHER_PRODUCT_ACCELERATION_2026-08-05.md</code>
+      · This page:
+      <code>docs/plans/AETHER_ROADMAP_NOW.html</code>
+      <br /><br />
+      Open file in a browser. Three things only: <strong style="color:var(--text)">accelerate product</strong>,
+      <strong style="color:var(--text)">fix fails</strong>,
+      <strong style="color:var(--text)">don’t invent a new thesis</strong>.
+    </footer>
+  </div>
+</body>
+</html>

@@ -407,6 +407,76 @@ describe('Continuity Resume action', () => {
     expect(screen.getByText('The run will stop at the next bounded round checkpoint.')).toBeInTheDocument()
   })
 
+  test('Simple mode: Stop answering + live status, and answer footer opens Why', async () => {
+    mockedStreamChat.mockImplementation(async (_body, events) => {
+      events.onTurn({ turn_id: 'turn-simple', conversation_id: 'conv-simple' })
+      const emitRunEvent = events.onRunEvent
+      if (emitRunEvent) {
+        emitRunEvent({
+          schema: 'aether.run_event.v0',
+          event_id: 'e1',
+          index: 0,
+          phase: 'tools',
+          status: 'in_progress',
+          summary: 'workspace search running',
+          detail: 'search',
+          public: true,
+          raw_chain_of_thought: false,
+        })
+      }
+      await new Promise<void>(() => undefined)
+    })
+    const props = renderPanel({ uiMode: 'simple' })
+
+    expect(screen.getByText('About me')).toBeInTheDocument()
+    expect(screen.getByText('Code')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Message Aether'), {
+      target: { value: 'Search holden' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
+
+    expect(await screen.findByLabelText('Working status')).toHaveTextContent(/Using tools/i)
+    const stop = await screen.findByRole('button', { name: 'Stop answering' })
+    fireEvent.click(stop)
+    await waitFor(() => expect(mockedApi.cancelRun).toHaveBeenCalledWith('turn-simple'))
+    expect(screen.getByRole('button', { name: 'Stopping' })).toBeDisabled()
+
+    // Completed-turn footer path
+    const completedTrace = {
+      query: 'color?',
+      status: 'answerable',
+      turn_id: 'turn-done',
+      conversation_id: 'conv-simple',
+      model: 'qwen3:14b',
+      plan: { status: 'complete', coverage: 1, unresolved_clauses: [], clauses: [] },
+      packets: [{
+        clause_id: 'c1',
+        release: 'answerable',
+        slot_id: 'user:favorite_color',
+        evidence: [{ value: 'orange' }],
+      }],
+      memory_writes: [],
+    }
+    renderPanel({
+      uiMode: 'simple',
+      conversationId: 'conv-simple',
+      turns: [{
+        turn_id: 'turn-done',
+        user_message: 'color?',
+        local_answer: 'Your favorite color is orange.',
+        model: 'qwen3:14b',
+        needs_stronger_model: false,
+        created_at: 1,
+        completed_at: 2,
+      }],
+      trace: completedTrace as never,
+      onOpenTrace: props.onOpenTrace,
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Open Why summary for turn turn-done' }))
+    expect(props.onOpenTrace).toHaveBeenCalledWith('turn-done')
+  })
+
   test('sends the exact governed command through the normal chat stream', async () => {
     const props = renderPanel()
 

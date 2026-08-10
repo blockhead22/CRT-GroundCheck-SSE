@@ -51,6 +51,7 @@ coverage/
 /workbench/release/
 /workbench/release-*/
 /workbench/.packaging/
+/workbench/*.tsbuildinfo
 /workbench/release-coder/
 /workbench/release-fixed/
 /workbench/release-reflect/

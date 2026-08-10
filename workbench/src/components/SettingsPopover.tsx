@@ -51,13 +51,13 @@ export function SettingsPopover({
         value={uiMode}
         onChange={(event) => onUiMode(event.target.value as UiMode)}
       >
-        <option value="simple">Simple — chat first, plain labels</option>
-        <option value="lab">Lab — full trace, learn, reflect</option>
+        <option value="simple">Simple (recommended) — chat, Why, Knows</option>
+        <option value="lab">Lab only — Process dumps, Learn, Reflect</option>
       </select>
       <p className="provider-disclosure">
         {uiMode === 'simple'
-          ? 'Simple mode shows Chat, Why this answer, and What Aether knows. Lab tools stay under More.'
-          : 'Lab mode shows every review drawer and technical release details.'}
+          ? 'Default product mode. Tap the green line under an answer (or Why) for a plain summary. Lab stays under More if you need it.'
+          : 'Lab is for debugging. Process and full traces are noisy — switch back to Simple for everyday use.'}
       </p>
       <label className="field-label" htmlFor="model-select">Local model</label>
       <select id="model-select" value={model} onChange={(event) => onModel(event.target.value)}>

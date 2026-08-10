@@ -10,17 +10,20 @@ export function WhyThisAnswer({
   trace,
   error = '',
   onShowLabDetails,
+  onOpenKnows,
 }: {
   trace: Trace | null
   error?: string
   onShowLabDetails?: () => void
+  /** Open Knows drawer on a personal fact slot (Simple honesty path). */
+  onOpenKnows?: (slotId: string) => void
 }) {
   if (error) {
     return (
       <div className="drawer-empty">
         <ShieldQuestion size={28} />
         <h3>Details unavailable</h3>
-        <p>{error}</p>
+        <p>{friendlyChatError(error)}</p>
       </div>
     )
   }
@@ -38,12 +41,37 @@ export function WhyThisAnswer({
   }
 
   const summary = summarizeTrace(trace)
+  const cancelled = trace.run_state?.status === 'cancelled'
+    || Boolean((trace as { cancelled?: boolean }).cancelled)
 
   return (
     <div className="why-answer" aria-label="Why this answer">
       <p className="why-lead">
         In plain English: what Aether used for this reply, and what it held back.
       </p>
+
+      {cancelled ? (
+        <div className="why-callout cancelled" role="status">
+          <CircleSlash2 size={15} />
+          <div>
+            <strong>This run was stopped</strong>
+            <span>Nothing further was released after cancel. Partial wording may still appear above.</span>
+          </div>
+        </div>
+      ) : null}
+
+      {!summary.usedFacts.length && summary.contextSources.length ? (
+        <div className="why-callout honesty" role="note">
+          <ShieldQuestion size={15} />
+          <div>
+            <strong>Not from your personal profile</strong>
+            <span>
+              This reply used project or system context below. Aether did not release
+              stored facts about you for this answer.
+            </span>
+          </div>
+        </div>
+      ) : null}
 
       <section className="why-section">
         <div className="why-section-head">
@@ -59,6 +87,15 @@ export function WhyThisAnswer({
                 <span>
                   <strong>{item.label}</strong>
                   {item.value ? <em>{item.value}</em> : null}
+                  {item.slotId && onOpenKnows ? (
+                    <button
+                      type="button"
+                      className="why-knows-link"
+                      onClick={() => onOpenKnows(item.slotId!)}
+                    >
+                      Review in Knows
+                    </button>
+                  ) : null}
                 </span>
               </li>
             ))}
@@ -107,7 +144,15 @@ export function WhyThisAnswer({
                 <Search size={14} />
                 <span>
                   <strong>{item.label}</strong>
-                  {item.detail ? <em>{item.detail}</em> : null}
+                  {item.paths?.length ? (
+                    <ul className="why-path-list">
+                      {item.paths.map((path) => (
+                        <li key={path}><code>{path}</code></li>
+                      ))}
+                    </ul>
+                  ) : item.detail ? (
+                    <em>{item.detail}</em>
+                  ) : null}
                 </span>
               </li>
             ))}
@@ -150,7 +195,7 @@ export function WhyThisAnswer({
 
       {onShowLabDetails ? (
         <button type="button" className="why-lab-link" onClick={onShowLabDetails}>
-          Open full technical trace (Lab)
+          Curious how it works under the hood? Open full Lab trace
         </button>
       ) : null}
     </div>
@@ -158,7 +203,8 @@ export function WhyThisAnswer({
 }
 
 export function buildAnswerFooterLine(trace: Trace | null | undefined): string {
-  if (!trace) return 'Governed answer'
+  if (!trace) return 'Tap for Why this answer'
+  if (trace.run_state?.status === 'cancelled') return 'Stopped · open Why'
   const summary = summarizeTrace(trace)
   const parts: string[] = []
 
@@ -186,6 +232,33 @@ export function buildAnswerFooterLine(trace: Trace | null | undefined): string {
     parts.push('held something back')
   }
   return parts.join(' · ')
+}
+
+/** Map raw API / stream errors into Simple-friendly copy. */
+export function friendlyChatError(raw: string): string {
+  const text = String(raw || '').trim()
+  if (!text) return 'Something went wrong.'
+  const lower = text.toLowerCase()
+  if (lower.includes('failed to fetch') || lower.includes('networkerror') || lower.includes('load failed')) {
+    return 'Can’t reach Aether. Is the sidecar running on this PC?'
+  }
+  if (lower.includes('no longer active') || lower.includes('run is not active')) {
+    return 'That answer already finished — nothing left to stop.'
+  }
+  if (lower.includes('not active in this sidecar')) {
+    return 'This run isn’t active in the current Workbench process. Try again after a restart if Stop keeps failing.'
+  }
+  if (lower.includes('404') && lower.includes('turn')) {
+    return 'That turn wasn’t found. It may be from an older session.'
+  }
+  if (lower.includes('trace is unavailable') || lower.includes('trace not found')) {
+    return 'Why details aren’t available for this turn yet.'
+  }
+  // FastAPI sometimes embeds status as "Request failed (409)"
+  if (/\(409\)/.test(text) || lower.includes('conflict')) {
+    return 'That action conflicted with the current run state. If you were stopping, the answer may already be done.'
+  }
+  return text
 }
 
 export function humanVerificationLabel(
@@ -233,7 +306,7 @@ type ContextSource = {
 }
 
 function summarizeTrace(trace: Trace) {
-  const usedFacts: Array<{ key: string; label: string; value: string }> = []
+  const usedFacts: Array<{ key: string; label: string; value: string; slotId?: string }> = []
   const heldBack: Array<{ key: string; label: string; detail: string }> = []
   const seenFacts = new Set<string>()
 
@@ -246,7 +319,12 @@ function summarizeTrace(trace: Trace) {
       const factKey = `${slot}:${value}`.toLowerCase()
       if (!seenFacts.has(factKey)) {
         seenFacts.add(factKey)
-        usedFacts.push({ key, label, value: clip(value, 80) })
+        usedFacts.push({
+          key,
+          label,
+          value: clip(value, 80),
+          slotId: slot.startsWith('user:') || slot.includes(':') ? slot : undefined,
+        })
       }
     } else if (packet.release === 'withhold' || packet.release === 'conflict') {
       heldBack.push({
@@ -280,24 +358,29 @@ function summarizeTrace(trace: Trace) {
         key: factKey,
         label: humanSlotLabel(slot),
         value: clip(value, 80),
+        slotId: slot.includes(':') ? slot : undefined,
       })
     }
   }
 
-  const tools: Array<{ key: string; label: string; detail: string }> = []
+  const tools: Array<{ key: string; label: string; detail: string; paths?: string[] }> = []
   for (const run of trace.tool_runs || []) {
     const tool = String(run.tool || '').replaceAll('_', ' ')
     const output = (run.output || {}) as Record<string, unknown>
-    let detail = run.status
-    if (typeof output.path === 'string') detail = String(output.path)
-    else if (Array.isArray(output.results) && output.results[0] && typeof (output.results[0] as { path?: string }).path === 'string') {
-      const n = output.results.length
-      detail = `${n} hit${n === 1 ? '' : 's'} · ${(output.results[0] as { path: string }).path}`
+    const paths = toolPathsFromOutput(output)
+    let detail = String(run.status || '')
+    if (paths.length) {
+      detail = paths.length === 1
+        ? paths[0]
+        : `${paths.length} paths`
+    } else if (typeof output.path === 'string') {
+      detail = String(output.path)
     }
     tools.push({
       key: run.tool_run_id || `${tool}-${tools.length}`,
       label: tool || 'tool',
-      detail: clip(detail, 90),
+      detail: clip(detail, 100),
+      paths: paths.slice(0, 4),
     })
   }
 
@@ -421,4 +504,37 @@ function clip(value: string, max: number) {
 function humanReason(reason: string | undefined) {
   if (!reason) return ''
   return reason.replaceAll('_', ' ')
+}
+
+function toolPathsFromOutput(output: Record<string, unknown>): string[] {
+  const paths: string[] = []
+  const push = (raw: unknown) => {
+    if (typeof raw !== 'string') return
+    const clean = raw.trim()
+    if (!clean || paths.includes(clean)) return
+    paths.push(shortPath(clean))
+  }
+  push(output.path)
+  push(output.relative_path)
+  if (Array.isArray(output.results)) {
+    for (const row of output.results) {
+      if (!row || typeof row !== 'object') continue
+      const rec = row as Record<string, unknown>
+      push(rec.relative_path || rec.path)
+    }
+  }
+  if (Array.isArray(output.paths)) {
+    for (const p of output.paths) push(p)
+  }
+  if (Array.isArray(output.preferred_read_paths)) {
+    for (const p of output.preferred_read_paths) push(p)
+  }
+  return paths
+}
+
+function shortPath(path: string) {
+  const normalized = path.replaceAll('\\', '/')
+  const parts = normalized.split('/').filter(Boolean)
+  if (parts.length <= 3) return path
+  return parts.slice(-3).join('/')
 }

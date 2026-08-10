@@ -24,9 +24,14 @@ export function Header({
         <span>AETHER</span>
       </div>
       <div className="window-tools">
-        <span className={`connection ${connected ? 'online' : ''}`}>
+        <span
+          className={`connection ${connected ? 'online' : 'offline'}`}
+          title={connected
+            ? 'Sidecar connected on this PC'
+            : 'Sidecar offline — start the Aether sidecar to chat'}
+        >
           <span className="status-dot" />
-          {connected ? 'Local' : 'Offline'}
+          {connected ? 'On this PC' : 'Sidecar offline'}
         </span>
         <button
           aria-label={floating ? 'Dock window' : 'Float window'}

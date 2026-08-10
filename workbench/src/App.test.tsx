@@ -254,6 +254,8 @@ let consolidationPreview: Record<string, unknown>
 beforeEach(() => {
   localStorage.clear()
   // Existing App tests assert Lab chrome (Trace, voice, route grid).
+  // Lab chrome tests: mark migration done so intentional Lab sticks.
+  localStorage.setItem('aether.uiMode.simpleDefault.v1', '1')
   localStorage.setItem('aether.uiMode', 'lab')
   vi.restoreAllMocks()
   consolidationPreview = {
@@ -293,7 +295,7 @@ beforeEach(() => {
 
 test('opens the trace drawer and expands the desktop window', async () => {
   render(<App />)
-  await screen.findByText('Local')
+  await screen.findByText('On this PC')
   fireEvent.click(screen.getByRole('button', { name: 'Trace' }))
   expect(screen.getByLabelText('trace drawer')).toBeInTheDocument()
   expect(window.aetherDesktop?.setExpanded).toHaveBeenCalledWith(true)
@@ -301,7 +303,7 @@ test('opens the trace drawer and expands the desktop window', async () => {
 
 test('keeps the empty-chat composer in its grid row when no policy summary is active', async () => {
   const { container } = render(<App />)
-  await screen.findByText('Local')
+  await screen.findByText('On this PC')
 
   expect(container.querySelector('.model-policy-summary-placeholder')).toBeInTheDocument()
   expect(screen.queryByLabelText('Model policy recommendation')).not.toBeInTheDocument()
@@ -312,7 +314,7 @@ test('keeps the empty-chat composer in its grid row when no policy summary is ac
 
 test('shows Codex availability in settings', async () => {
   render(<App />)
-  await screen.findByText('Local')
+  await screen.findByText('On this PC')
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
   await waitFor(() => expect(screen.getByText('unavailable')).toBeInTheDocument())
   expect(screen.getByLabelText('Route model policy')).toHaveTextContent('read only')
@@ -321,7 +323,7 @@ test('shows Codex availability in settings', async () => {
 
 test('makes hosted rendering an explicit disclosed setting', async () => {
   render(<App />)
-  await screen.findByText('Local')
+  await screen.findByText('On this PC')
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
 
   const provider = screen.getByLabelText('Answer renderer')
@@ -338,7 +340,7 @@ test('makes hosted rendering an explicit disclosed setting', async () => {
 test('defaults floating on and persists window chrome across restarts', async () => {
   // First run (no stored keys): floating defaults on for QoL.
   const first = render(<App />)
-  await screen.findByText('Local')
+  await screen.findByText('On this PC')
   expect(screen.getByRole('button', { name: 'Dock window' })).toBeInTheDocument()
   expect(window.aetherDesktop?.setFloating).toHaveBeenCalledWith(true)
   expect(window.aetherDesktop?.setAlwaysOnTop).toHaveBeenCalledWith(true)
@@ -355,7 +357,7 @@ test('defaults floating on and persists window chrome across restarts', async ()
 
   // Restart: restore docked (false) preference.
   render(<App />)
-  await screen.findByText('Local')
+  await screen.findByText('On this PC')
   expect(screen.getByRole('button', { name: 'Float window' })).toBeInTheDocument()
   expect(window.aetherDesktop?.setFloating).toHaveBeenCalledWith(false)
   expect(window.aetherDesktop?.setAlwaysOnTop).toHaveBeenCalledWith(true)
@@ -363,7 +365,7 @@ test('defaults floating on and persists window chrome across restarts', async ()
 
 test('opens the reflect drawer from bottom navigation', async () => {
   render(<App />)
-  await screen.findByText('Local')
+  await screen.findByText('On this PC')
   fireEvent.click(screen.getByRole('button', { name: 'Reflect' }))
   expect(screen.getByLabelText('reflect drawer')).toBeInTheDocument()
   expect(screen.getByText('Reflection review')).toBeInTheDocument()
@@ -372,7 +374,7 @@ test('opens the reflect drawer from bottom navigation', async () => {
 
 test('opens the support-pattern review drawer from bottom navigation', async () => {
   render(<App />)
-  await screen.findByText('Local')
+  await screen.findByText('On this PC')
   fireEvent.click(screen.getByRole('button', { name: 'Support' }))
   expect(screen.getByLabelText('support drawer')).toBeInTheDocument()
   expect(screen.getByText('Support review')).toBeInTheDocument()
@@ -381,7 +383,7 @@ test('opens the support-pattern review drawer from bottom navigation', async () 
 
 test('opens the learner preview drawer from bottom navigation', async () => {
   render(<App />)
-  await screen.findByText('Local')
+  await screen.findByText('On this PC')
   fireEvent.click(screen.getByRole('button', { name: 'Learn' }))
   expect(screen.getByLabelText('learn drawer')).toBeInTheDocument()
   expect(screen.getByText('Learner preview')).toBeInTheDocument()
@@ -423,7 +425,7 @@ test('opens a learner candidate review surface without applying it', async () =>
     }],
   }
   render(<App />)
-  await screen.findByText('Local')
+  await screen.findByText('On this PC')
   fireEvent.click(screen.getByRole('button', { name: 'Learn' }))
   fireEvent.click(await screen.findByRole('button', { name: 'Open Support' }))
 
@@ -469,7 +471,7 @@ test('opens a learner reflection candidate as manual draft form state', async ()
     }],
   }
   render(<App />)
-  await screen.findByText('Local')
+  await screen.findByText('On this PC')
   fireEvent.click(screen.getByRole('button', { name: 'Learn' }))
   fireEvent.click(await screen.findByRole('button', { name: 'Open Reflect' }))
 
@@ -481,7 +483,7 @@ test('opens a learner reflection candidate as manual draft form state', async ()
 test('renders local-router feedback ledger candidates in learner review surfaces', async () => {
   consolidationPreview = localRouterFeedbackPreview as unknown as Record<string, unknown>
   render(<App />)
-  await screen.findByText('Local')
+  await screen.findByText('On this PC')
 
   fireEvent.click(screen.getByRole('button', { name: 'Learn' }))
 
@@ -516,7 +518,7 @@ test('renders local-router feedback ledger candidates in learner review surfaces
 test('renders local-router RAG evidence as a review-only learner candidate', async () => {
   consolidationPreview = localRouterRagEvidencePreview as unknown as Record<string, unknown>
   render(<App />)
-  await screen.findByText('Local')
+  await screen.findByText('On this PC')
 
   fireEvent.click(screen.getByRole('button', { name: 'Learn' }))
 
@@ -568,7 +570,7 @@ test('opens a learner contradiction candidate directly on its memory slot', asyn
     }],
   }
   render(<App />)
-  await screen.findByText('Local')
+  await screen.findByText('On this PC')
   fireEvent.click(screen.getByRole('button', { name: 'Learn' }))
   fireEvent.click(await screen.findByRole('button', { name: 'Open Memory' }))
 
@@ -617,7 +619,7 @@ test('opens a trace-proposed memory fact draft without applying it', async () =>
     }],
   }
   render(<App />)
-  await screen.findByText('Local')
+  await screen.findByText('On this PC')
   fireEvent.click(screen.getByRole('button', { name: 'Learn' }))
   fireEvent.click(await screen.findByRole('button', { name: 'Open Memory' }))
 

@@ -5,12 +5,26 @@ import remarkGfm from 'remark-gfm'
 import { api, idempotencyKey, streamChat } from '../api'
 import type { ContinuityAlignmentReceipt, Conversation, PublicGovernanceStep, RenderProvider, RunEvent, TaskContinuationSelection, Trace, Turn } from '../types'
 import type { UiMode } from '../uiMode'
-import { buildAnswerFooterLine, humanVerificationLabel } from './WhyThisAnswer'
+import { buildAnswerFooterLine, friendlyChatError, humanVerificationLabel } from './WhyThisAnswer'
 
-const STARTER_PROMPTS = [
-  { label: 'What do you know about me?', text: 'What do you know about me?' },
-  { label: 'My favorite color?', text: 'What is my favorite color?' },
-  { label: 'Search for holden', text: 'do a workspace search for holden in ai_round2' },
+const STARTER_GROUPS: Array<{
+  title: string
+  prompts: Array<{ label: string; text: string }>
+}> = [
+  {
+    title: 'About me',
+    prompts: [
+      { label: 'What do you know about me?', text: 'What do you know about me?' },
+      { label: 'My favorite color?', text: 'What is my favorite color?' },
+      { label: 'What do they have in common?', text: 'What do my favorites have in common?' },
+    ],
+  },
+  {
+    title: 'Code',
+    prompts: [
+      { label: 'Search for holden', text: 'do a workspace search for holden in ai_round2' },
+    ],
+  },
 ]
 
 const VOICE_STORAGE_KEY = 'aether.voiceProfile'
@@ -93,6 +107,8 @@ export function ChatPanel({
   const scrollRef = useRef<HTMLDivElement>(null)
   const activeConversationRef = useRef(conversationId)
   const activeTurnRef = useRef<string | null>(null)
+  /** One free Why open after the first finished answer this session (Simple only). */
+  const autoOpenedWhyRef = useRef(false)
   const activeTraceRef = useRef<Trace | null>(null)
   const dispatchedMapActionsRef = useRef<Set<string>>(new Set())
 
@@ -210,13 +226,16 @@ export function ChatPanel({
               onTrace(completedTrace)
               dispatchWisconsinMapActions(completedTrace, dispatchedMapActionsRef.current)
             }
+            const finishedTurnId = activeTurnRef.current
             try {
               const activeConversation = activeConversationRef.current
               if (activeConversation) onTurns(await api.turns(activeConversation))
             } catch (reason) {
-              setError(reason instanceof Error
-                ? `Response saved, but refresh failed: ${reason.message}`
-                : 'Response saved, but the conversation refresh failed.')
+              setError(friendlyChatError(
+                reason instanceof Error
+                  ? `Response saved, but refresh failed: ${reason.message}`
+                  : 'Response saved, but the conversation refresh failed.',
+              ))
             } finally {
               activeTurnRef.current = null
               setPendingTurn(null)
@@ -227,9 +246,14 @@ export function ChatPanel({
               setCancellingRun(false)
               setCancelRequested(false)
             }
+            // Teach Simple once: open Why so Nick sees facts/tools without hunting Process.
+            if (isSimple && finishedTurnId && !autoOpenedWhyRef.current) {
+              autoOpenedWhyRef.current = true
+              onOpenTrace(finishedTurnId)
+            }
           },
           onError: async (reason) => {
-            setError(reason)
+            setError(friendlyChatError(String(reason || 'Response failed.')))
             try {
               const activeConversation = activeConversationRef.current
               if (activeConversation) onTurns(await api.turns(activeConversation))
@@ -247,7 +271,9 @@ export function ChatPanel({
         },
       )
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Local response failed.')
+      setError(friendlyChatError(
+        reason instanceof Error ? reason.message : 'Local response failed.',
+      ))
       activeTurnRef.current = null
       setPendingTurn(null)
       setPendingUser('')
@@ -268,7 +294,9 @@ export function ChatPanel({
       setCancelRequested(receipt.accepted)
       setRunEvents((current) => upsertRunEvent(current, receipt.run_event))
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not cancel the active run.')
+      setError(friendlyChatError(
+        reason instanceof Error ? reason.message : 'Could not stop the active answer.',
+      ))
     } finally {
       setCancellingRun(false)
     }
@@ -479,7 +507,7 @@ export function ChatPanel({
             <h1>{isSimple ? 'Your local AI that won’t invent who you are.' : 'Talk to your governed memory.'}</h1>
             <p>
               {isSimple
-                ? 'Ask about yourself or your project. Aether only uses facts and files it can show you. Open Why to see what it used.'
+                ? 'Ask about yourself or your project. After the first answer, Why opens so you can see what it used — no Process dump.'
                 : 'Aether releases only evidence it can defend. Open the trace when you want to see the line it held.'}
             </p>
             <div className="welcome-signals">
@@ -488,16 +516,21 @@ export function ChatPanel({
             </div>
             {/* Starters always on empty chat (Simple + Lab) so they are hard to miss. */}
             <div className="welcome-starters" aria-label="Suggested prompts">
-              {STARTER_PROMPTS.map((starter) => (
-                <button
-                  type="button"
-                  key={starter.text}
-                  className="welcome-starter"
-                  disabled={Boolean(pendingTurn)}
-                  onClick={() => void runMessage(starter.text)}
-                >
-                  {starter.label}
-                </button>
+              {STARTER_GROUPS.map((group) => (
+                <div className="welcome-starter-group" key={group.title}>
+                  <span className="welcome-starter-group-title">{group.title}</span>
+                  {group.prompts.map((starter) => (
+                    <button
+                      type="button"
+                      key={starter.text}
+                      className="welcome-starter"
+                      disabled={Boolean(pendingTurn)}
+                      onClick={() => void runMessage(starter.text)}
+                    >
+                      {starter.label}
+                    </button>
+                  ))}
+                </div>
               ))}
             </div>
           </div>
@@ -565,16 +598,27 @@ export function ChatPanel({
                   trace={trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id]}
                 />
               ) : null}
-              <div className="answer-meta">
+              <div className={`answer-meta ${isSimple ? 'simple-footer' : ''}`}>
                 {isSimple ? (
                   <>
-                    <span>{turn.render_provider?.effective === 'grok_build' ? 'Hosted wording' : 'Local'}</span>
-                    <span>
-                      {buildAnswerFooterLine(
-                        trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id],
-                      )}
+                    <span className="answer-meta-chip">
+                      {turn.render_provider?.effective === 'grok_build' ? 'Hosted wording' : 'Local'}
                     </span>
-                    <span>
+                    <button
+                      type="button"
+                      className="answer-footer-why"
+                      aria-label={`Open Why summary for turn ${turn.turn_id}`}
+                      title="Open Why this answer"
+                      onClick={() => onOpenTrace(turn.turn_id)}
+                    >
+                      <ShieldCheck size={12} />
+                      <span>
+                        {buildAnswerFooterLine(
+                          trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id],
+                        )}
+                      </span>
+                    </button>
+                    <span className="answer-meta-chip">
                       {humanVerificationLabel(
                         trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id],
                         turn.completion_verification,
@@ -606,11 +650,22 @@ export function ChatPanel({
                   : `Governing ${renderProvider === 'grok_build' ? 'hosted ' : ''}response`}
               </div>
               {isSimple ? (
-                <div className="simple-live-status" aria-label="Working status">
-                  <LoaderCircle className="spin" size={12} />
+                <div
+                  className={`simple-live-status ${cancelRequested ? 'stopping' : ''}`}
+                  aria-label="Working status"
+                >
+                  {cancelRequested
+                    ? <CircleSlash2 size={12} />
+                    : <LoaderCircle className="spin" size={12} />}
                   <span>
-                    <strong>{simpleLiveHeadline(runEvents, governanceSteps)}</strong>
-                    <small>Aether checks memory and tools, then words the answer. Open Why after for a plain summary.</small>
+                    <strong>
+                      {simpleLiveHeadline(runEvents, governanceSteps, cancelRequested || cancellingRun)}
+                    </strong>
+                    <small>
+                      {cancelRequested
+                        ? 'Stop requested — Aether will halt at the next safe checkpoint and release nothing more.'
+                        : 'Aether checks memory and tools, then words the answer. Open Why after for a plain summary.'}
+                    </small>
                   </span>
                 </div>
               ) : runEvents.length ? (
@@ -632,14 +687,21 @@ export function ChatPanel({
                 </div>
               )}
               <button
-                className="run-cancel-button"
+                className={`run-cancel-button ${isSimple ? 'simple' : ''}`}
                 type="button"
+                aria-label={isSimple
+                  ? (cancelRequested || cancellingRun ? 'Stopping' : 'Stop answering')
+                  : (cancelRequested
+                    ? 'Cancellation requested'
+                    : cancellingRun
+                      ? 'Requesting cancellation…'
+                      : 'Cancel run')}
                 disabled={!pendingTurn || cancellingRun || cancelRequested}
                 onClick={() => void cancelActiveRun()}
               >
-                <CircleSlash2 size={12} />
+                <CircleSlash2 size={isSimple ? 14 : 12} />
                 {isSimple
-                  ? (cancelRequested || cancellingRun ? 'Stopping…' : 'Stop')
+                  ? (cancelRequested || cancellingRun ? 'Stopping…' : 'Stop answering')
                   : (cancelRequested
                     ? 'Cancellation requested'
                     : cancellingRun
@@ -708,16 +770,25 @@ function answerProviderLabel(turn: Turn, simple = false) {
   return simple ? 'Aether' : 'Local answer'
 }
 
-function simpleLiveHeadline(events: RunEvent[], steps: PublicGovernanceStep[]) {
+function simpleLiveHeadline(
+  events: RunEvent[],
+  steps: PublicGovernanceStep[],
+  stopping = false,
+) {
+  if (stopping) return 'Stopping…'
   const lastEvent = events[events.length - 1]
+  if (lastEvent?.phase === 'cancel') return 'Stopping…'
   if (lastEvent?.phase === 'render' || /render|wording|grok/i.test(lastEvent?.summary || '')) {
     return 'Writing the answer…'
   }
-  if (lastEvent?.phase === 'tools' || /tool|search|read/i.test(lastEvent?.summary || '')) {
+  if (lastEvent?.phase === 'tools' || /tool|search|read|workspace/i.test(lastEvent?.summary || '')) {
     return 'Using tools…'
   }
   if (lastEvent?.phase === 'verify' || /coverage|check|verif/i.test(lastEvent?.summary || '')) {
     return 'Checking the answer…'
+  }
+  if (lastEvent?.phase === 'memory' || /memory|slot|profile/i.test(lastEvent?.summary || '')) {
+    return 'Checking what it knows…'
   }
   if (lastEvent || steps.length) return 'Still working…'
   return 'Starting…'

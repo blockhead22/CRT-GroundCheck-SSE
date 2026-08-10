@@ -213,6 +213,7 @@ export default function App() {
 
   function setMode(next: UiMode) {
     setUiMode(next)
+    writeUiMode(next)
     // Leaving lab drawers when switching to simple
     if (next === 'simple' && (drawer === 'reflect' || drawer === 'support' || drawer === 'learn' || drawer === 'more')) {
       setDrawer(null)
@@ -374,6 +375,7 @@ export default function App() {
                     trace={trace}
                     error={traceError}
                     onShowLabDetails={() => setMode('lab')}
+                    onOpenKnows={(slotId) => openReviewSurface('memory', { slotId })}
                   />
                 )
             )

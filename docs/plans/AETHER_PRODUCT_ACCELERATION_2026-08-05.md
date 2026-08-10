@@ -98,8 +98,39 @@ Until the wedge is felt:
 - Multi-agent freeroam  
 - Broad monorepo cleanup for its own sake  
 - CRT as primary product path  
+- Port CogniForge autoencoder / DNNT / GFN train as product substrate
+- Productize `H:\holder\diy_transformer` (pedagogy only)
 
 Labs stay inventory, not guilt.
+
+---
+
+## Archive transfer inventory (H:\holder) — 2026-08-05
+
+**Cold resume detail:** same section in `AETHER_WHATS_NEXT_RESUME_2026-08-05.md`.
+**HTML card:** `AETHER_ROADMAP_NOW.html`.
+
+### Verdict
+
+| Source | Product role |
+|--------|--------------|
+| `diy_transformer` | **Teaching only** — how transformers work; not the product brain |
+| `CogniForge` | **Salvage ideas** into Aether governance UX — not bulk re-port |
+| Lumi / original_core / CRT trees | Lineage map; frozen as primary |
+
+### Steal rank (after stranger-week green)
+
+1. Fault ladder / multi-layer degrade → Why / Process language
+2. Safe-mode + degraded quarantine → review hold, no silent overwrite
+3. Observer → review candidate (already Aether-shaped; keep tightening)
+4. Central threshold config (confidence / trust / quarantine knobs)
+5. Mirus/Holden literacy in answers only
+
+### Never (unless product path reopens with grant)
+
+- Train dual-codec / DNNT / GFN as default substrate
+- Rebuild Holden freeroam self-reflect as day job
+- Archaeology tour without a loop-back to Simple Workbench
 
 ---
 
@@ -162,6 +193,15 @@ Then scale Phase 4 / funding push.
 | 2026-08-05 | P0 multi-turn: search→explain PASS (deterministic listing + read receipts; search stopword `ai_round2`; design-boost only if term in excerpts) |
 | 2026-08-05 | P0 continuity: session correction + recent-claim recall direct answers; verification soft-pass for self-contained corrections → live **CONTINUITY PASS** |
 | 2026-08-05 | Cancel live flaky (409 until render phase); unit test path still solid |
+| 2026-08-05 | Workbench Simple mode + Why honesty (facts vs project/self); Process Lab-only |
+| 2026-08-05 | **Roadmap now HTML:** `docs/plans/AETHER_ROADMAP_NOW.html` + resume reformatted |
+| 2026-08-05 | Next coding: identity misroute on design “model memory” questions |
+| 2026-08-05 | Main-path self-dogfood **OVERALL PASS** (`labs/SELF_DOGFOOD_MAIN_PATH_NOW.json`); design-model-memory still **quality-thin** (identity-adjacent prose, not pure dump) |
+| 2026-08-05 | **Identity misroute fix:** `runtime_identity.py` excludes design/architecture “model memory” Qs from runtime-identity override; live dogfood design Q now answers persistence/governance not “who rendered” |
+| 2026-08-05 | **Holder inventory saved:** `H:\holder\diy_transformer` = teaching only; `CogniForge` salvage = fault ladder / safe-mode / observer→review / central thresholds — **do not** port autoencoder/DNNT/GFN train. Freezes updated in resume + roadmap HTML. Claude worktrees + CRT/personal_agent map recorded. Diversion looped: main path still Nick Simple stranger-week. |
+| 2026-08-05 | **Simple UI product jump (Ring A+Why):** grouped starters; live status + **Stop answering**; friendly errors; clickable answer footer → Why; Why honesty callout (no personal facts); tool receipt paths; Review in Knows deep-link; cancelled callout; header “On this PC / Sidecar offline”. Tests green. |
+| 2026-08-05 | **Simple forced for product:** one-time localStorage migration off stuck Lab; first Simple answer auto-opens Why; Settings labels recommend Simple; awkward honesty starter removed. Build + tests green. |
+| 2026-08-05 | **Agent workspace literacy:** search design-name ranking prefers `.py` over MIGRATION-style `.md` content spam; preferred_read paths prefer implementation files for explain follow-ups. Tests in `test_search_hygiene_and_followups.py`. |
 
 ### Dogfood checklist status
 
@@ -175,8 +215,12 @@ Then scale Phase 4 / funding push.
 [x] Dogfood: cancel once (live flaky/racey; unit test green)
 [x] Search design-name / exact basename boost (code)
 [x] Soft tool phrases + soft multi-fact (code + live pack)
-[x] One-page product entry for the wedge
-[x] Freeze list written
+[x] Workbench Simple mode (Chat / Why / Knows / More)
+[x] Roadmap HTML + diversion guardrail written
+[x] Cold main-path self-dogfood log SELF_DOGFOOD_MAIN_PATH_NOW.json (PASS)
+[x] Identity misroute fix (design model-memory Q ≠ runtime identity dump)
+[x] Holder / CogniForge / diy_transformer transfer inventory written into plan
+[ ] Nick stranger-week / real week of Simple use
 [ ] 3-min demo recording
 [ ] (Optional) Aeteros LLC + CTC intro
 ```
