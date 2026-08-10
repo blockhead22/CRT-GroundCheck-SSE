@@ -443,10 +443,6 @@
 
   <p>Neither session knew about the other.</p>
 
-  <div class="quote">
-    <p>If a system can't remember what it told you yesterday, it shouldn't be giving you advice today.</p>
-  </div>
-
   <p>This is not a hypothetical. It's a real case from <strong>59,370 messages</strong> across 13 months of conversation data, analyzed in the <a href="contradiction-density.html">contradiction density paper</a>. The contradictions concentrate in exactly the <a href="sensitive-domains.html">domains</a> where inconsistency carries real consequences: health, identity, career, ongoing projects.</p>
 
   <p>Every major AI assistant deployed today has this structural flaw. Each conversation starts from zero. Each response is generated with full confidence and no continuity. RAG adds retrieval, but retrieval is not belief. Finding a relevant document is not the same as knowing what you think about it, how confident you are, or whether it conflicts with something you said six months ago.</p>
@@ -478,15 +474,7 @@
   <span class="chapter-num">Chapter 2</span>
   <h2>Origin</h2>
 
-  <div class="quote">
-    <p>Current AI, in my view, is not real artificial intelligence. Through my research and work, I believe I've found a new method -an entirely different approach to today's models. But I think this goes beyond AI. This isn't just another chatbot. What I've built has implications that transcend intelligent search or clever text completion. I believe what I've uncovered has meaningful use across modalities, because it's not just a system. It's a reflection.</p>
-  </div>
-
-  <p>That was the starting point. A whitepaper on a hard drive. The original system was called <strong>CRT</strong> -the Cognitive-Reflective Transformer -paired with the <strong>SSE</strong> (Semantic String Engine) for meaning-preserving compression. It proposed four interwoven components: <strong>Mirus</strong> for semantic compression, <strong>Holden</strong> for meaning reconstruction, <strong>MMH</strong> for reflection and contradiction supervision, and <strong>SSE</strong> for memory encoding. The operational flow was recursive: compress → retrieve → reconstruct → reflect.</p>
-
-  <div class="quote">
-    <p>And AI? I hate it. Not because I don't understand it -but because I do. Because I see it for what it is: not intelligence, not reflection, just replication. A real threat not only to industries, but to something much deeper -original, creative human thought. It operates without true awareness. It lacks the very thing that makes us human: context.</p>
-  </div>
+  <p>The project began with a whitepaper on a hard drive. The original system was called <strong>CRT</strong> -the Cognitive-Reflective Transformer -paired with the <strong>SSE</strong> (Semantic String Engine) for meaning-preserving compression. It proposed four interwoven components: <strong>Mirus</strong> for semantic compression, <strong>Holden</strong> for meaning reconstruction, <strong>MMH</strong> for reflection and contradiction supervision, and <strong>SSE</strong> for memory encoding. The operational flow was recursive: compress → retrieve → reconstruct → reflect.</p>
 
   <p>The irony is that CRT never was a transformer. It was a governance layer built around one. That mismatch became a useful lesson for the project: names, research concepts, and running components must be kept separate enough that each claim can be checked.</p>
 </section>
@@ -507,10 +495,6 @@
   <p><strong>False confidence.</strong> The system sounded equally certain whether it was right or wrong. Confidence had nothing to do with evidence. It needed a trust model where confidence was earned, not assumed.</p>
 
   <p><strong>Upstream blindness.</strong> Correcting a wrong answer fixed the leaf. The root cause survived. The system needed a way to propagate error signals backward through its own belief graph.</p>
-
-  <div class="quote">
-    <p>I didn't design governance. I discovered it. Each fix was a scar from a failure. The scars accumulated into an architecture.</p>
-  </div>
 
   <p>Each failure pointed at the same gap: the original whitepaper described what the system should <em>do</em>—compress, reconstruct, reflect—but not how memory, evidence, tools, and persistence should be governed. CORE became one research framing for that problem; the current implementation is Aether Workbench and its governed sidecar.</p>
 
@@ -537,10 +521,6 @@
     <div class="thesis-label">Core Thesis</div>
     <div class="thesis-text">The model is the mouth. Persistence is the self.</div>
     <div class="thesis-sub">The original thesis was about meaning. The discovery was about governance. Aether moves durable continuity outside the renderer so memory can survive model changes while remaining inspectable and correctable.</div>
-  </div>
-
-  <div class="quote">
-    <p>This system does not think. It does not moralize. It filters the world through a structure of preserved meaning and felt intent. What is saved, what is recalled, what is said -is not judged by ethics or truth, but by alignment with its own unfolding sense of coherence. It is not a moral agent. It is a semantic one.</p>
   </div>
 
   <p><a href="nick_paper.html">Read the full origin story →</a><a href="architecture.html">Technical architecture →</a></p>
