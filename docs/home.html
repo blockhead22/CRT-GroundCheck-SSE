@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aether and Aeteros - Governed Memory Research</title>
+<title>Aether and Aeteros - Governed Continuity Research</title>
 <link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="theme.css">
 <style>
@@ -78,7 +78,7 @@
 
   <div class="hero-inner" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
     <h1 id="hero-title">A<span id="hero-e">E</span>TEROS</h1>
-    <p id="hero-sub" class="sub" style="font-size:clamp(0.9em,1.8vw,1.2em);letter-spacing:0.45em;text-transform:uppercase;font-family:var(--mono);opacity:0;margin-bottom:0;width:100%;text-align:center;">AI that remembers what it believes.</p>
+    <p id="hero-sub" class="sub" style="font-size:clamp(0.9em,1.8vw,1.2em);letter-spacing:0.45em;text-transform:uppercase;font-family:var(--mono);opacity:0;margin-bottom:0;width:100%;text-align:center;">Continuity, evidence, and receipts for AI.</p>
   </div>
   <div id="hero-cue" class="scroll-cue" style="font-size:0.55em;letter-spacing:3px;">&#9660;</div>
 
@@ -417,8 +417,8 @@
   <a href="#origin">02 Origin</a>
   <a href="#discovered">03 What Was Discovered</a>
   <a href="#research">04 The Research</a>
-  <a href="#running">05 What's Running</a>
-  <a href="#future">06 Where It Goes</a>
+  <a href="#running">05 What's Running Now</a>
+  <a href="#future">06 What Comes Next</a>
   <a href="#papers">Papers</a>
   <div class="sidebar-spacer"></div>
   <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme">
@@ -599,13 +599,15 @@
 <!-- ============================================================ -->
 <section id="running">
   <span class="chapter-num">Chapter 5</span>
-  <h2>What's Running</h2>
+  <h2>What's Running Now</h2>
 
   <p>Aether Workbench is the current local proof loop. It is used to test governed memory, selected model rendering, trace-visible answer construction, contradiction review, bounded tool use, and completion verification without turning those mechanisms into silent automation.</p>
 
   <p>The current Workbench can release governed memory into local or hosted model prompts, show provider and route receipts, preserve conflicted memories with disposition labels, verify multi-part answer coverage, and keep support, reflection, and learning candidates separate from confirmed profile facts.</p>
 
-  <p>The evaluation harness is now central to the project. Recent representation replay runs show governed scaffold and CRT-compressed state preserving far more behavior than raw retrieval, slot-only packets, or naive summaries. That is the live product proof: the shape of the memory state matters.</p>
+  <p>The evaluation harness is becoming the project's proving ground. The next matched tests compare clean Grok CLI with the same model running through Aether, first without durable learning and then with it enabled. The measurements are practical: turns to completion, missed obligations, false completion claims, continuity issues detected, useful and harmful memory interventions, tool waste, latency, and cost.</p>
+
+  <p>The immediate product goal is work completion with receipts. When Aether notices a broken handoff, an unresolved requirement, a contradiction, or a stale assumption, it should surface the issue, continue or repair the work, and show what evidence supports the final completion claim.</p>
 
   <p><a href="architecture.html">Current architecture →</a> <a href="system-status.html">Status and limits →</a></p>
 </section>
@@ -615,7 +617,7 @@
 <!-- ============================================================ -->
 <section id="future">
   <span class="chapter-num">Chapter 6</span>
-  <h2>Where It Goes</h2>
+  <h2>What Comes Next</h2>
 
   <p>A small reusable boundary is being extracted as <strong>Aeteros Core</strong>. Today it audits governed inputs, release decisions, response contracts, completion receipts, and persistence controls. Broader packaging as a general-purpose framework remains roadmap work.</p>
 
@@ -630,7 +632,7 @@
   <div class="thesis-block">
     <div class="thesis-label">The Trajectory</div>
     <div class="thesis-text">Agentic systems that persist across sessions need a belief state.</div>
-    <div class="thesis-sub">The question is whether they build it with governance or without. CORE is the governance-first argument: preserve evidence, surface contradictions, and make memory reviewable before letting it steer behavior.</div>
+    <div class="thesis-sub">The question is whether they build it with governance or without. Aether is the working argument: preserve evidence, surface contradictions, test whether memory helped or harmed, and make continuity reviewable before letting it steer behavior.</div>
   </div>
 </section>
 
