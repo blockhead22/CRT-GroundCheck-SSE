@@ -138,7 +138,7 @@ app.whenReady().then(async () => {
   screen.on('display-removed', applyDockBounds)
   const dataRoot = resolveAetherDataRoot({
     env: process.env,
-    userDataPath: app.getPath('userData'),
+    homePath: app.getPath('home'),
   })
   sidecar = new SidecarManager({
     isPackaged: app.isPackaged,

@@ -19,6 +19,10 @@ export interface Health {
   ollama: string
   model: string
   codex_available: boolean
+  profile: {
+    id: string
+    storage_scope: string
+  }
   substrate: {
     path: string
     slots: number

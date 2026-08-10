@@ -356,6 +356,22 @@ button { color: inherit; }
 .why-lab-link:hover { border-color: #6a824a; }
 
 .memory-profile-lead { margin: 0 0 10px; color: #9aa39b; font-size: 12px; line-height: 1.45; }
+.memory-profile-receipt {
+  margin: 0 0 10px;
+  border: 1px solid #43503f;
+  border-radius: 7px;
+  background: rgba(168, 207, 90, .07);
+  padding: 7px 9px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #9ca69d;
+  font: 500 9px "DM Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.memory-profile-receipt strong { color: #dce8c8; font-weight: 700; }
+.memory-profile-receipt span:last-child { margin-left: auto; color: #a8cf5a; }
 .memory-profile-section { margin-top: 14px; }
 .memory-profile-section h4 {
   margin: 0 0 8px;

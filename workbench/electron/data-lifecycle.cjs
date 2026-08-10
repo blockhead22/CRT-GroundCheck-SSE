@@ -1,18 +1,20 @@
 const path = require('node:path')
+const os = require('node:os')
 
-const DEFAULT_PROFILE_ID = 'local'
+const DEFAULT_PROFILE_ID = ''
 const DEFAULT_SIDECAR_PORT = 8765
 const PROFILE_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/
 
-function resolveAetherDataRoot({ env = process.env, userDataPath }) {
+function resolveAetherDataRoot({ env = process.env, homePath = os.homedir() }) {
   const explicitRoot = String(env.AETHER_HOME || '').trim()
   if (explicitRoot) return path.resolve(explicitRoot)
-  if (!userDataPath) throw new Error('Electron userData path is required')
-  return path.join(path.resolve(userDataPath), 'aether-state')
+  if (!homePath) throw new Error('A stable home path is required for Aether data')
+  return path.join(path.resolve(homePath), '.aether')
 }
 
 function resolveProfileId(env = process.env) {
   const value = String(env.AETHER_PROFILE_ID || DEFAULT_PROFILE_ID).trim().toLowerCase()
+  if (!value) return DEFAULT_PROFILE_ID
   if (!PROFILE_ID_PATTERN.test(value)) {
     throw new Error('AETHER_PROFILE_ID must be 1-64 lowercase letters, digits, underscores, or hyphens')
   }

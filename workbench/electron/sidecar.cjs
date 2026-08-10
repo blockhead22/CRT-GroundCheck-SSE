@@ -22,6 +22,7 @@ class SidecarManager extends EventEmitter {
     this.spawnImpl = options.spawnImpl || spawn
     this.process = null
     this.stopping = false
+    this.profileMismatch = ''
   }
 
   start() {
@@ -97,6 +98,10 @@ class SidecarManager extends EventEmitter {
         this.emit('status', 'ready')
         return true
       }
+      if (this.profileMismatch) {
+        this.emit('status', 'failed')
+        throw new Error(this.profileMismatch)
+      }
       await new Promise((resolve) => setTimeout(resolve, 350))
     }
     this.emit('status', 'timeout')
@@ -113,8 +118,30 @@ class SidecarManager extends EventEmitter {
           timeout: 1000,
         },
         (response) => {
-          response.resume()
-          resolve(response.statusCode === 200)
+          let body = ''
+          response.setEncoding('utf8')
+          response.on('data', (chunk) => {
+            if (body.length < 1024 * 1024) body += chunk
+          })
+          response.on('end', () => {
+            if (response.statusCode !== 200) {
+              resolve(false)
+              return
+            }
+            try {
+              const health = JSON.parse(body)
+              const mismatch = this.expectedProfileMismatch(health)
+              if (mismatch) {
+                this.profileMismatch = mismatch
+                resolve(false)
+                return
+              }
+              this.profileMismatch = ''
+              resolve(true)
+            } catch {
+              resolve(false)
+            }
+          })
         },
       )
       request.on('error', () => resolve(false))
@@ -123,6 +150,34 @@ class SidecarManager extends EventEmitter {
         resolve(false)
       })
     })
+  }
+
+  expectedProfileMismatch(health) {
+    if (!this.dataRoot) return ''
+    const expectedProfileId = this.profileId || 'default'
+    const expectedScope = this.profileId ? 'profile_root' : 'default_root'
+    const expectedPath = this.profileId
+      ? path.join(this.dataRoot, 'profiles', this.profileId, 'substrate.json')
+      : path.join(this.dataRoot, 'substrate.json')
+    const actualProfileId = String(health?.profile?.id || '')
+    const actualScope = String(health?.profile?.storage_scope || '')
+    const actualPath = String(health?.substrate?.path || '')
+    const normalize = (value) => {
+      const flavor = this.platform === 'win32' ? path.win32 : path
+      const normalized = flavor.resolve(value)
+      return this.platform === 'win32' ? normalized.toLowerCase() : normalized
+    }
+    if (
+      actualProfileId === expectedProfileId
+      && actualScope === expectedScope
+      && actualPath
+      && normalize(actualPath) === normalize(expectedPath)
+    ) return ''
+    return (
+      `Wrong Aether profile connected on ${this.host}:${this.port}. `
+      + `Expected ${expectedProfileId} at ${expectedPath}; `
+      + `received ${actualProfileId || 'unknown'} at ${actualPath || 'unknown'}.`
+    )
   }
 
   stop() {

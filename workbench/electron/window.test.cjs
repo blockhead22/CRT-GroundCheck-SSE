@@ -77,6 +77,34 @@ test('sidecar stop terminates its child process', () => {
   assert.equal(killed, true)
 })
 
+test('sidecar accepts only the expected canonical memory profile', () => {
+  const manager = new SidecarManager({
+    dataRoot: 'C:\\Users\\fixture\\.aether',
+    profileId: '',
+    platform: 'win32',
+  })
+
+  assert.equal(manager.expectedProfileMismatch({
+    profile: { id: 'default', storage_scope: 'default_root' },
+    substrate: { path: 'C:\\Users\\fixture\\.aether\\substrate.json' },
+  }), '')
+})
+
+test('sidecar rejects a healthy process serving a different memory profile', () => {
+  const manager = new SidecarManager({
+    dataRoot: 'C:\\Users\\fixture\\.aether',
+    profileId: '',
+    platform: 'win32',
+  })
+
+  assert.match(manager.expectedProfileMismatch({
+    profile: { id: 'local', storage_scope: 'profile_root' },
+    substrate: {
+      path: 'C:\\Temp\\aether-workbench-dev\\aether-state\\profiles\\local\\substrate.json',
+    },
+  }), /Wrong Aether profile connected/)
+})
+
 test('development sidecar enables exact Continuity product flags only for its child', () => {
   let spawnOptions
   const child = {

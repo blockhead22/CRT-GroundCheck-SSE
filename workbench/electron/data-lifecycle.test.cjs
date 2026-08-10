@@ -9,19 +9,20 @@ const {
   resolveSidecarPort,
 } = require('./data-lifecycle.cjs')
 
-test('packaged data defaults below Electron userData and survives app replacement', () => {
-  const userDataPath = path.join('C:', 'Users', 'fixture', 'AppData', 'Roaming', 'Aether Workbench')
+test('Workbench defaults to the same stable personal root as Aether CLI and MCP', () => {
+  const homePath = path.join('C:', 'Users', 'fixture')
   assert.equal(
-    resolveAetherDataRoot({ env: {}, userDataPath }),
-    path.join(path.resolve(userDataPath), 'aether-state'),
+    resolveAetherDataRoot({ env: {}, homePath }),
+    path.join(path.resolve(homePath), '.aether'),
   )
   assert.equal(resolveProfileId({}), DEFAULT_PROFILE_ID)
+  assert.equal(DEFAULT_PROFILE_ID, '')
 })
 
 test('an explicit isolated data root and synthetic profile are preserved exactly', () => {
   const explicitRoot = path.join('D:', 'fixture', 'isolated-aether')
   assert.equal(
-    resolveAetherDataRoot({ env: { AETHER_HOME: explicitRoot }, userDataPath: 'ignored' }),
+    resolveAetherDataRoot({ env: { AETHER_HOME: explicitRoot }, homePath: 'ignored' }),
     path.resolve(explicitRoot),
   )
   assert.equal(resolveProfileId({ AETHER_PROFILE_ID: 'atlas-upgrade-2' }), 'atlas-upgrade-2')
@@ -33,8 +34,8 @@ test('unsafe profile identifiers fail before the sidecar is started', () => {
     /AETHER_PROFILE_ID/,
   )
   assert.throws(
-    () => resolveAetherDataRoot({ env: {}, userDataPath: '' }),
-    /userData path/,
+    () => resolveAetherDataRoot({ env: {}, homePath: '' }),
+    /stable home path/,
   )
 })
 

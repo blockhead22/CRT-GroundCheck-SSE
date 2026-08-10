@@ -386,6 +386,7 @@ export default function App() {
                   uiMode={uiMode}
                   preselectedSlotId={memoryPreselectSlot}
                   draftHandoff={memoryDraftHandoff}
+                  health={health}
                   onMutated={() => setMemoryRefresh((value) => value + 1)}
                 />
               )

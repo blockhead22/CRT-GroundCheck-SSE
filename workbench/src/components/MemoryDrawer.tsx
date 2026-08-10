@@ -1,7 +1,7 @@
 import { AlertOctagon, Check, ChevronRight, History, Search, ShieldX } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { api, idempotencyKey } from '../api'
-import type { ReviewDraftHandoff, SlotDetail, SlotSummary } from '../types'
+import type { Health, ReviewDraftHandoff, SlotDetail, SlotSummary } from '../types'
 import { humanSlotLabel, memoryGroupForSlot, type UiMode } from '../uiMode'
 
 interface MemoryDrawerProps {
@@ -10,6 +10,7 @@ interface MemoryDrawerProps {
   uiMode?: UiMode
   preselectedSlotId?: string | null
   draftHandoff?: ReviewDraftHandoff | null
+  health?: Health | null
 }
 
 function memoryDraftValue(draftHandoff: ReviewDraftHandoff) {
@@ -34,6 +35,7 @@ export function MemoryDrawer({
   uiMode = 'simple',
   preselectedSlotId = null,
   draftHandoff = null,
+  health = null,
 }: MemoryDrawerProps) {
   const [query, setQuery] = useState('')
   const [slots, setSlots] = useState<SlotSummary[]>([])
@@ -42,6 +44,17 @@ export function MemoryDrawer({
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
   const isSimple = uiMode === 'simple'
+  const profileReceipt = health ? (
+    <div
+      className="memory-profile-receipt"
+      aria-label="Active memory profile"
+      title={health.substrate.path}
+    >
+      <span>Personal profile</span>
+      <strong>{health.profile.id}</strong>
+      <span>{health.substrate.slots} facts</span>
+    </div>
+  ) : null
 
   const grouped = useMemo(() => {
     const groups: Record<'identity' | 'favorites' | 'work' | 'other', SlotSummary[]> = {
@@ -116,6 +129,7 @@ export function MemoryDrawer({
     const activeMemoryDraftHandoff = memoryDraft?.slotId === selected.slot_id ? draftHandoff : null
     return (
       <div className="memory-detail">
+        {profileReceipt}
         <button className="back-button" onClick={() => setSelected(null)}>← All memory</button>
         <div className="memory-title">
           <div>
@@ -265,6 +279,7 @@ export function MemoryDrawer({
     ]
     return (
       <div className="memory-browser memory-profile">
+        {profileReceipt}
         <p className="memory-profile-lead">
           Facts Aether is allowed to use about you. Confirm or correct anything wrong.
         </p>
@@ -311,6 +326,7 @@ export function MemoryDrawer({
 
   return (
     <div className="memory-browser">
+      {profileReceipt}
       <label className="search-box">
         <Search size={15} />
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search memory slots…" />

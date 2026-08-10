@@ -92,6 +92,34 @@ test('opens a slot and writes an explicit correction', async () => {
   expect(onMutated).toHaveBeenCalled()
 })
 
+test('shows the active profile and complete slot count in simple mode', async () => {
+  render(
+    <MemoryDrawer
+      refreshKey={0}
+      onMutated={vi.fn()}
+      uiMode="simple"
+      health={{
+        ok: true,
+        aether: 'ready',
+        ollama: 'ready',
+        model: 'qwen3:14b',
+        codex_available: true,
+        profile: { id: 'default', storage_scope: 'default_root' },
+        substrate: {
+          path: 'C:\\Users\\fixture\\.aether\\substrate.json',
+          slots: 11,
+          states: 27,
+          revision_hash: 'revision-1',
+        },
+      }}
+    />,
+  )
+
+  expect(await screen.findByLabelText('Active memory profile')).toHaveTextContent(
+    'Personal profiledefault11 facts',
+  )
+})
+
 test('loads a learner-preselected slot and draft without mutating memory', async () => {
   render(
     <MemoryDrawer

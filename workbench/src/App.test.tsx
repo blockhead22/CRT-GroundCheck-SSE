@@ -9,6 +9,7 @@ const health = {
   ollama: 'ready',
   model: 'qwen2.5:7b-instruct',
   codex_available: false,
+  profile: { id: 'default', storage_scope: 'default_root' },
   substrate: { path: 'test', slots: 2, states: 3, revision_hash: 'rev' },
 }
 
