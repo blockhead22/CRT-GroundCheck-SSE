@@ -64,7 +64,9 @@
     font-family: var(--sans);
     font-size: clamp(0.9rem, 1.25vw, 1.12rem);
     font-weight: 600;
-    letter-spacing: 0.48em;
+    /* Was 0.48em — extreme tracking made the mark hard to read and could
+       visually collide on some fonts/zoom levels. */
+    letter-spacing: 0.18em;
     text-decoration: none;
   }
   .site-nav { display: flex; align-items: stretch; height: 100%; gap: clamp(24px, 4vw, 60px); }
@@ -329,7 +331,7 @@
   @media (max-width: 760px) {
     .landing { padding: 0 18px; }
     .site-header { height: 68px; }
-    .brand { letter-spacing: 0.32em; }
+    .brand { letter-spacing: 0.12em; }
     .site-nav { gap: 16px; }
     .site-nav a { font-size: 0.73rem; }
     .hero { gap: 42px; padding: 44px 0 20px; }

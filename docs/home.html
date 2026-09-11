@@ -41,18 +41,6 @@
     opacity: 0;
     will-change: background-position, opacity;
   }
-  /* E span: mirror the same gradient so background-clip works on inline-block */
-  #hero-title #hero-e {
-    display: inline-block;
-    transform: skewX(23deg);
-    margin: 0 -0.05em;
-    background: linear-gradient(100deg, #fff 0%, #818cf8 20%, #c084fc 40%, #f472b6 60%, #818cf8 80%, #fff 100%);
-    background-size: 300% 300%;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    will-change: background-position;
-  }
   #hero-sub {
     opacity: 0;
     will-change: opacity, transform;
@@ -77,7 +65,7 @@
   </div>
 
   <div class="hero-inner" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
-    <h1 id="hero-title">A<span id="hero-e">E</span>TEROS</h1>
+    <h1 id="hero-title">AETEROS</h1>
     <p id="hero-sub" class="sub" style="font-size:clamp(0.9em,1.8vw,1.2em);letter-spacing:0.45em;text-transform:uppercase;font-family:var(--mono);opacity:0;margin-bottom:0;width:100%;text-align:center;">Continuity, evidence, and receipts for AI.</p>
   </div>
   <div id="hero-cue" class="scroll-cue" style="font-size:0.55em;letter-spacing:3px;">&#9660;</div>
@@ -109,18 +97,16 @@
       gsap.set(title, { y: 28 });
       gsap.set(sub,   { y: 12 });
 
-      // Fluid gradient drift -cycles through positions so there's no snap
-      var eSpan = document.getElementById('hero-e');
-      var targets = [title, eSpan];
-      gsap.set(targets, { backgroundPosition: '0% 50%' });
+      // Fluid gradient drift on the full title (no separate skewed E glyph).
+      gsap.set(title, { backgroundPosition: '0% 50%' });
       var sweep = gsap.timeline({ repeat: -1 });
       sweep
-        .to(targets, { backgroundPosition: '100% 50%', duration: 4,   ease: 'sine.inOut' })
-        .to(targets, { backgroundPosition: '100% 0%',  duration: 3,   ease: 'sine.inOut' })
-        .to(targets, { backgroundPosition: '0% 0%',    duration: 4,   ease: 'sine.inOut' })
-        .to(targets, { backgroundPosition: '0% 100%',  duration: 3,   ease: 'sine.inOut' })
-        .to(targets, { backgroundPosition: '100% 100%',duration: 4,   ease: 'sine.inOut' })
-        .to(targets, { backgroundPosition: '0% 50%',   duration: 3.5, ease: 'sine.inOut' });
+        .to(title, { backgroundPosition: '100% 50%', duration: 4,   ease: 'sine.inOut' })
+        .to(title, { backgroundPosition: '100% 0%',  duration: 3,   ease: 'sine.inOut' })
+        .to(title, { backgroundPosition: '0% 0%',    duration: 4,   ease: 'sine.inOut' })
+        .to(title, { backgroundPosition: '0% 100%',  duration: 3,   ease: 'sine.inOut' })
+        .to(title, { backgroundPosition: '100% 100%',duration: 4,   ease: 'sine.inOut' })
+        .to(title, { backgroundPosition: '0% 50%',   duration: 3.5, ease: 'sine.inOut' });
 
       // Orbs float independently
       var floats = [
