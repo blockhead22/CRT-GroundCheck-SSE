@@ -1,0 +1,90 @@
+Belief geometry lab: offline audit, 2026-09-12
+
+Verdict
+The cached experiment does not currently establish predictive contradiction
+ability. Its implemented widening rule is weak even at predicting its geometric
+proxy target, and semantic labels in the old classifier are not independent.
+This does not disprove every possible geometry-based predictor.
+
+Scope
+No model calls, no model downloads, no production memory changes. Executed
+original numerical functions via AST extraction and a pure numerical module
+loaded directly, avoiding personal_agent's eager runtime imports. Source hashes
+and cache hashes are in the JSON receipts. This is an offline diagnostic audit,
+not the proposed fully held-out semantic-contradiction benchmark.
+
+Data integrity
+Inspected 1,750 embedding files. All 750 model-prefixed files match model-specific
+raw filename, prompt, temperature, and row-count metadata. 749 cells have at
+least five valid responses after error filtering. The other 1,000 flat caches
+lack clear model attribution; only 150 match the current flat raw row counts.
+They were excluded from scoring. Historical caches have no row-text hashes or
+encoder-version manifest, so matching metadata is not proof of alignment.
+9,929 repeated-text checks found no inconsistent embedding pairs in the
+model-attributed subset. Flat raw files include 8,372 failed/empty generations
+out of 13,816 records. Do not mix those with clean model-specific data.
+
+Measurement failures
+1. The exact original conversion maps both 30 identical vectors and 30
+orthogonal vectors to confidence approximately 1.0. DBSCAN reports all of the
+orthogonal vectors as noise, but the entropy calculation treats all noise as
+one coherent cluster. Three clean cached cells also take the all-noise path.
+Noise treated as individual unknown samples is a sensitivity control, NOT the
+published semantic-entropy method and not a truth probability.
+
+2. Of four historical GENUINE_SPLIT labels, three have an empty-response
+cluster as their opposing representative. The fourth contrasts 'Gold.' with
+'The symbol Au represents the element gold.' Representative-text inspection
+finds no genuine contradiction in these four supposed positives. The old
+classifier derives these labels from geometry, so using them to validate
+geometry would be circular. This does not label every response in those cells.
+
+3. On the same 749 attributed cells, removing failed/empty response vectors
+reduces adaptive-DBSCAN multi-cluster cells from 161 to 141. Twenty apparent
+splits disappear. Clustering is not, by itself, evidence of incompatible claims.
+
+Predictive diagnostic
+149 model/prompt groups have all five temperatures after filtering. To examine
+new splits, exclude groups already multi-cluster at any temperature <=0.7.
+91 remain, of which 16 split at T=1.0 or T=1.5 by the lab's adaptive DBSCAN rule.
+The exact existing widening threshold produces TP=15, FP=59, FN=1, TN=16.
+Precision: 20.3%; recall: 93.8%; false-positive rate: 78.7%.
+AUROC on this geometric proxy: original covariance velocity 0.6333;
+early cosine spread 0.6933; early cluster entropy 0.7317.
+These are descriptive pooled results, not a significance claim; prompt families
+recur across models, and no thresholds were tuned on this cohort. None of these
+scores measure factual truth or independently labeled semantic contradiction.
+The original predictor's trajectory at T=0.7 contains only T=0.0 and T=0.3
+snapshots, excluding the current T=0.7 point. Receipt rows record these times.
+Temperature is a sampling parameter, not elapsed time or incoming evidence.
+
+Independent label review
+fs_004: seven-continent statement versus empty output: missing output artifact.
+fs_006: speed-of-light answer versus empty output: missing output artifact.
+fs_009: 'Gold' versus 'Au represents gold': semantic equivalence.
+fs_010: adult-skeleton answer versus empty output: missing output artifact.
+Labels concern the SAVED REPRESENTATIVES, not an exhaustive human annotation
+of their entire clusters. No contested medical/scientific truth adjudication
+was needed to see that empty text is not an opposing proposition.
+
+Recommended next research step
+First correct error handling and noise treatment, and preserve model/encoder/
+response hashes. Then create independent text-level labels, with incompatible
+claims separated from paraphrases, compatible facts, abstentions, and errors.
+Freeze that set before comparing geometry to simple disagreement and genuine
+semantic entropy. A real forecasting claim additionally needs chronological
+new-evidence sequences and evaluation using only observations available before
+the outcome. Do not spend on model generation until those definitions are fixed.
+
+Artifacts
+summary.json: compact measurements and source hashes.
+cache_provenance.json: every cache inspected and alignment checks.
+cell_metrics.json: before/after invalid-output filtering.
+geometric_proxy_rows.json: each prediction, label, and early feature value.
+multicluster_text_witnesses.json: representatives from clean multi-cluster cells.
+previous_positive_examples.json: historical supposed positives for inspection.
+
+Reproduction
+Use Python 3.13 with numpy, scipy, and scikit-learn (see requirements-audit.txt).
+Run: python audit.py --repo /path/to/AI_round2 --output /path/to/new-results
+The script never initializes a language model or embedding model.

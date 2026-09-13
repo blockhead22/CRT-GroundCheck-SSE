@@ -1,0 +1,10 @@
+test_both_splits_balanced_and_family_disjoint (__main__.ProtocolTests.test_both_splits_balanced_and_family_disjoint) ... ok
+test_calibration_uses_strict_threshold_and_conservative_tie (__main__.ProtocolTests.test_calibration_uses_strict_threshold_and_conservative_tie) ... ok
+test_constant_score_does_not_look_successful (__main__.ProtocolTests.test_constant_score_does_not_look_successful) ... ok
+test_cross_family_leakage_rejected (__main__.ProtocolTests.test_cross_family_leakage_rejected) ... ok
+test_reordered_rows_rejected (__main__.ProtocolTests.test_reordered_rows_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.011s
+
+OK

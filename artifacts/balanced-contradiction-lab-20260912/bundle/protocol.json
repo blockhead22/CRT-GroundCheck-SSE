@@ -1,0 +1,25 @@
+{
+  "scope": "Controlled static semantic discrimination; not temporal forecasting or sampled internal beliefs",
+  "hypothesis": "Does project diagonal-Gaussian Fisher approximation discriminate incompatible assertions better than cosine/lexical baselines on heldout scenario families?",
+  "cases": 72,
+  "positive": 36,
+  "negative": 36,
+  "development_families": 6,
+  "heldout_families": 6,
+  "grouping": "All variations of one subject/domain stay together. Shared transformation templates cross splits; this is NOT a template-heldout or natural-language generalization benchmark.",
+  "semantics": "Invented closed-world, single-valued attributes at a stated entity and valid time. Only final asserted propositions count. Mention, uncertainty, retraction, different entities/times are not conflicting assertions.",
+  "geometry": "Means and diagonal population variances of THREE authored paraphrases per side; variance floor 1e-8. These paraphrases are correlated controls, not independent model draws or proof of Gaussian beliefs.",
+  "scores": [
+    "project_fisher_distance",
+    "project_fisher_mean_only",
+    "project_fisher_covariance_only",
+    "centroid_cosine_distance",
+    "mean_cross_cosine_distance",
+    "word_tfidf_cosine_distance"
+  ],
+  "calibration": "Score direction fixed: larger distance = contradiction. Threshold maximizes development balanced accuracy; largest threshold on ties. No test tuning. Fit word TF-IDF on development texts only.",
+  "paired_uncertainty": "2000 bootstrap samples of heldout families (not individual cases), seed 20260912. Small six-family interval, descriptive only.",
+  "model": "sentence-transformers/all-MiniLM-L6-v2; local_files_only=True; CPU float32; normalized vectors",
+  "source": "Single-author synthetic counterfactuals with explicit rationale; independent of geometric scores, not human-validated ground truth.",
+  "no_provider_calls": true
+}

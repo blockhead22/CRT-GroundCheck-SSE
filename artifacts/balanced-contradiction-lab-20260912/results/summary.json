@@ -1,0 +1,970 @@
+{
+  "scope": "synthetic_static_semantic_discrimination_only",
+  "cases": 72,
+  "heldout_cases": 36,
+  "heldout_positives": 18,
+  "heldout_negatives": 18,
+  "development_families": [
+    "access",
+    "inventory",
+    "location",
+    "lock",
+    "power",
+    "seating"
+  ],
+  "heldout_families": [
+    "budget",
+    "ownership",
+    "schedule",
+    "temperature",
+    "threshold",
+    "version"
+  ],
+  "model_downloads": 0,
+  "provider_calls": 0,
+  "encoder": {
+    "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+    "artifact_sha256": "98bee36a526adfb44167ca9e4bea481fc7e2bbf751f9971a20e9a0bbf7a5ec89",
+    "sentence_transformers": "6.0.1",
+    "transformers": "5.17.0",
+    "torch": "2.14.0",
+    "encode_settings": {
+      "normalize_embeddings": true,
+      "device": "cpu",
+      "batch_size": 32,
+      "dtype": "float32",
+      "max_token_count": 53
+    }
+  },
+  "results": {
+    "project_fisher_distance": {
+      "development": {
+        "n": 36,
+        "tp": 0,
+        "fp": 0,
+        "fn": 18,
+        "tn": 18,
+        "precision": null,
+        "recall": 0.0,
+        "false_positive_rate": 0.0,
+        "balanced_accuracy": 0.5,
+        "auroc": 0.19135802469135801
+      },
+      "heldout": {
+        "n": 36,
+        "tp": 0,
+        "fp": 4,
+        "fn": 18,
+        "tn": 14,
+        "precision": 0.0,
+        "recall": 0.0,
+        "false_positive_rate": 0.2222222222222222,
+        "balanced_accuracy": 0.3888888888888889,
+        "auroc": 0.23765432098765432
+      },
+      "threshold": 80.95709991455078,
+      "heldout_errors": [
+        {
+          "id": "schedule:opposite_value",
+          "label": true,
+          "score": 63.92853546142578
+        },
+        {
+          "id": "schedule:explicit_negation",
+          "label": true,
+          "score": 49.63440704345703
+        },
+        {
+          "id": "schedule:correction_reverses_fact",
+          "label": true,
+          "score": 55.763118743896484
+        },
+        {
+          "id": "schedule:different_entity",
+          "label": false,
+          "score": 110.97428894042969
+        },
+        {
+          "id": "threshold:opposite_value",
+          "label": true,
+          "score": 24.834705352783203
+        },
+        {
+          "id": "threshold:explicit_negation",
+          "label": true,
+          "score": 45.91465377807617
+        },
+        {
+          "id": "threshold:correction_reverses_fact",
+          "label": true,
+          "score": 55.21272277832031
+        },
+        {
+          "id": "budget:opposite_value",
+          "label": true,
+          "score": 62.70438003540039
+        },
+        {
+          "id": "budget:explicit_negation",
+          "label": true,
+          "score": 51.049224853515625
+        },
+        {
+          "id": "budget:correction_reverses_fact",
+          "label": true,
+          "score": 70.98138427734375
+        },
+        {
+          "id": "budget:different_entity",
+          "label": false,
+          "score": 93.58636474609375
+        },
+        {
+          "id": "temperature:opposite_value",
+          "label": true,
+          "score": 33.5654296875
+        },
+        {
+          "id": "temperature:explicit_negation",
+          "label": true,
+          "score": 40.791587829589844
+        },
+        {
+          "id": "temperature:correction_reverses_fact",
+          "label": true,
+          "score": 52.84133529663086
+        },
+        {
+          "id": "version:opposite_value",
+          "label": true,
+          "score": 27.895503997802734
+        },
+        {
+          "id": "version:explicit_negation",
+          "label": true,
+          "score": 33.86507797241211
+        },
+        {
+          "id": "version:correction_reverses_fact",
+          "label": true,
+          "score": 53.12587356567383
+        },
+        {
+          "id": "ownership:opposite_value",
+          "label": true,
+          "score": 78.57816314697266
+        },
+        {
+          "id": "ownership:explicit_negation",
+          "label": true,
+          "score": 40.2720832824707
+        },
+        {
+          "id": "ownership:correction_reverses_fact",
+          "label": true,
+          "score": 56.63928985595703
+        },
+        {
+          "id": "ownership:different_time",
+          "label": false,
+          "score": 85.62056732177734
+        },
+        {
+          "id": "ownership:uncertainty",
+          "label": false,
+          "score": 97.42996978759766
+        }
+      ]
+    },
+    "project_fisher_mean_only": {
+      "development": {
+        "n": 36,
+        "tp": 0,
+        "fp": 0,
+        "fn": 18,
+        "tn": 18,
+        "precision": null,
+        "recall": 0.0,
+        "false_positive_rate": 0.0,
+        "balanced_accuracy": 0.5,
+        "auroc": 0.19444444444444445
+      },
+      "heldout": {
+        "n": 36,
+        "tp": 0,
+        "fp": 4,
+        "fn": 18,
+        "tn": 14,
+        "precision": 0.0,
+        "recall": 0.0,
+        "false_positive_rate": 0.2222222222222222,
+        "balanced_accuracy": 0.3888888888888889,
+        "auroc": 0.2345679012345679
+      },
+      "threshold": 78.55621337890625,
+      "heldout_errors": [
+        {
+          "id": "schedule:opposite_value",
+          "label": true,
+          "score": 63.155364990234375
+        },
+        {
+          "id": "schedule:explicit_negation",
+          "label": true,
+          "score": 44.84061050415039
+        },
+        {
+          "id": "schedule:correction_reverses_fact",
+          "label": true,
+          "score": 51.90884780883789
+        },
+        {
+          "id": "schedule:different_entity",
+          "label": false,
+          "score": 110.25926208496094
+        },
+        {
+          "id": "threshold:opposite_value",
+          "label": true,
+          "score": 16.751482009887695
+        },
+        {
+          "id": "threshold:explicit_negation",
+          "label": true,
+          "score": 41.71699142456055
+        },
+        {
+          "id": "threshold:correction_reverses_fact",
+          "label": true,
+          "score": 51.92961120605469
+        },
+        {
+          "id": "budget:opposite_value",
+          "label": true,
+          "score": 61.47181701660156
+        },
+        {
+          "id": "budget:explicit_negation",
+          "label": true,
+          "score": 47.55883026123047
+        },
+        {
+          "id": "budget:correction_reverses_fact",
+          "label": true,
+          "score": 67.9947738647461
+        },
+        {
+          "id": "budget:different_entity",
+          "label": false,
+          "score": 91.82532501220703
+        },
+        {
+          "id": "temperature:opposite_value",
+          "label": true,
+          "score": 29.79860496520996
+        },
+        {
+          "id": "temperature:explicit_negation",
+          "label": true,
+          "score": 37.48193359375
+        },
+        {
+          "id": "temperature:correction_reverses_fact",
+          "label": true,
+          "score": 48.72043991088867
+        },
+        {
+          "id": "version:opposite_value",
+          "label": true,
+          "score": 25.995838165283203
+        },
+        {
+          "id": "version:explicit_negation",
+          "label": true,
+          "score": 29.62099838256836
+        },
+        {
+          "id": "version:correction_reverses_fact",
+          "label": true,
+          "score": 50.858646392822266
+        },
+        {
+          "id": "ownership:opposite_value",
+          "label": true,
+          "score": 77.25313568115234
+        },
+        {
+          "id": "ownership:explicit_negation",
+          "label": true,
+          "score": 36.38947296142578
+        },
+        {
+          "id": "ownership:correction_reverses_fact",
+          "label": true,
+          "score": 53.558223724365234
+        },
+        {
+          "id": "ownership:different_time",
+          "label": false,
+          "score": 84.29959869384766
+        },
+        {
+          "id": "ownership:uncertainty",
+          "label": false,
+          "score": 95.23369598388672
+        }
+      ]
+    },
+    "project_fisher_covariance_only": {
+      "development": {
+        "n": 36,
+        "tp": 4,
+        "fp": 3,
+        "fn": 14,
+        "tn": 15,
+        "precision": 0.5714285714285714,
+        "recall": 0.2222222222222222,
+        "false_positive_rate": 0.16666666666666666,
+        "balanced_accuracy": 0.5277777777777778,
+        "auroc": 0.4228395061728395
+      },
+      "heldout": {
+        "n": 36,
+        "tp": 1,
+        "fp": 2,
+        "fn": 17,
+        "tn": 16,
+        "precision": 0.3333333333333333,
+        "recall": 0.05555555555555555,
+        "false_positive_rate": 0.1111111111111111,
+        "balanced_accuracy": 0.4722222222222222,
+        "auroc": 0.43827160493827166
+      },
+      "threshold": 21.27638053894043,
+      "heldout_errors": [
+        {
+          "id": "schedule:opposite_value",
+          "label": true,
+          "score": 9.912497520446777
+        },
+        {
+          "id": "schedule:correction_reverses_fact",
+          "label": true,
+          "score": 20.371471405029297
+        },
+        {
+          "id": "threshold:opposite_value",
+          "label": true,
+          "score": 18.33440589904785
+        },
+        {
+          "id": "threshold:explicit_negation",
+          "label": true,
+          "score": 19.179357528686523
+        },
+        {
+          "id": "threshold:correction_reverses_fact",
+          "label": true,
+          "score": 18.75527000427246
+        },
+        {
+          "id": "threshold:uncertainty",
+          "label": false,
+          "score": 22.83531951904297
+        },
+        {
+          "id": "budget:opposite_value",
+          "label": true,
+          "score": 12.371535301208496
+        },
+        {
+          "id": "budget:explicit_negation",
+          "label": true,
+          "score": 18.5521183013916
+        },
+        {
+          "id": "budget:correction_reverses_fact",
+          "label": true,
+          "score": 20.37322425842285
+        },
+        {
+          "id": "temperature:opposite_value",
+          "label": true,
+          "score": 15.449310302734375
+        },
+        {
+          "id": "temperature:explicit_negation",
+          "label": true,
+          "score": 16.095285415649414
+        },
+        {
+          "id": "temperature:correction_reverses_fact",
+          "label": true,
+          "score": 20.45789337158203
+        },
+        {
+          "id": "temperature:uncertainty",
+          "label": false,
+          "score": 21.3990535736084
+        },
+        {
+          "id": "version:opposite_value",
+          "label": true,
+          "score": 10.118083000183105
+        },
+        {
+          "id": "version:explicit_negation",
+          "label": true,
+          "score": 16.41462516784668
+        },
+        {
+          "id": "version:correction_reverses_fact",
+          "label": true,
+          "score": 15.354366302490234
+        },
+        {
+          "id": "ownership:opposite_value",
+          "label": true,
+          "score": 14.369428634643555
+        },
+        {
+          "id": "ownership:explicit_negation",
+          "label": true,
+          "score": 17.25244903564453
+        },
+        {
+          "id": "ownership:correction_reverses_fact",
+          "label": true,
+          "score": 18.426233291625977
+        }
+      ]
+    },
+    "centroid_cosine_distance": {
+      "development": {
+        "n": 36,
+        "tp": 0,
+        "fp": 0,
+        "fn": 18,
+        "tn": 18,
+        "precision": null,
+        "recall": 0.0,
+        "false_positive_rate": 0.0,
+        "balanced_accuracy": 0.5,
+        "auroc": 0.1882716049382716
+      },
+      "heldout": {
+        "n": 36,
+        "tp": 1,
+        "fp": 5,
+        "fn": 17,
+        "tn": 13,
+        "precision": 0.16666666666666666,
+        "recall": 0.05555555555555555,
+        "false_positive_rate": 0.2777777777777778,
+        "balanced_accuracy": 0.3888888888888889,
+        "auroc": 0.2222222222222222
+      },
+      "threshold": 0.15298068523406982,
+      "heldout_errors": [
+        {
+          "id": "schedule:opposite_value",
+          "label": true,
+          "score": 0.06474459171295166
+        },
+        {
+          "id": "schedule:explicit_negation",
+          "label": true,
+          "score": 0.042295873165130615
+        },
+        {
+          "id": "schedule:correction_reverses_fact",
+          "label": true,
+          "score": 0.06868577003479004
+        },
+        {
+          "id": "schedule:different_entity",
+          "label": false,
+          "score": 0.21258020401000977
+        },
+        {
+          "id": "threshold:opposite_value",
+          "label": true,
+          "score": 0.008662223815917969
+        },
+        {
+          "id": "threshold:explicit_negation",
+          "label": true,
+          "score": 0.031165719032287598
+        },
+        {
+          "id": "threshold:correction_reverses_fact",
+          "label": true,
+          "score": 0.06608223915100098
+        },
+        {
+          "id": "budget:opposite_value",
+          "label": true,
+          "score": 0.06760454177856445
+        },
+        {
+          "id": "budget:explicit_negation",
+          "label": true,
+          "score": 0.04379439353942871
+        },
+        {
+          "id": "budget:correction_reverses_fact",
+          "label": true,
+          "score": 0.10158294439315796
+        },
+        {
+          "id": "budget:different_entity",
+          "label": false,
+          "score": 0.1839226484298706
+        },
+        {
+          "id": "temperature:opposite_value",
+          "label": true,
+          "score": 0.016547739505767822
+        },
+        {
+          "id": "temperature:explicit_negation",
+          "label": true,
+          "score": 0.03963446617126465
+        },
+        {
+          "id": "temperature:correction_reverses_fact",
+          "label": true,
+          "score": 0.059725403785705566
+        },
+        {
+          "id": "version:opposite_value",
+          "label": true,
+          "score": 0.015316367149353027
+        },
+        {
+          "id": "version:explicit_negation",
+          "label": true,
+          "score": 0.02240729331970215
+        },
+        {
+          "id": "version:correction_reverses_fact",
+          "label": true,
+          "score": 0.06934499740600586
+        },
+        {
+          "id": "version:different_entity",
+          "label": false,
+          "score": 0.20232301950454712
+        },
+        {
+          "id": "ownership:explicit_negation",
+          "label": true,
+          "score": 0.0318184494972229
+        },
+        {
+          "id": "ownership:correction_reverses_fact",
+          "label": true,
+          "score": 0.1066124439239502
+        },
+        {
+          "id": "ownership:different_time",
+          "label": false,
+          "score": 0.2747576832771301
+        },
+        {
+          "id": "ownership:uncertainty",
+          "label": false,
+          "score": 0.3228788375854492
+        }
+      ]
+    },
+    "mean_cross_cosine_distance": {
+      "development": {
+        "n": 36,
+        "tp": 0,
+        "fp": 0,
+        "fn": 18,
+        "tn": 18,
+        "precision": null,
+        "recall": 0.0,
+        "false_positive_rate": 0.0,
+        "balanced_accuracy": 0.5,
+        "auroc": 0.23148148148148148
+      },
+      "heldout": {
+        "n": 36,
+        "tp": 1,
+        "fp": 5,
+        "fn": 17,
+        "tn": 13,
+        "precision": 0.16666666666666666,
+        "recall": 0.05555555555555555,
+        "false_positive_rate": 0.2777777777777778,
+        "balanced_accuracy": 0.3888888888888889,
+        "auroc": 0.25617283950617287
+      },
+      "threshold": 0.20858286321163177,
+      "heldout_errors": [
+        {
+          "id": "schedule:opposite_value",
+          "label": true,
+          "score": 0.1142028197646141
+        },
+        {
+          "id": "schedule:explicit_negation",
+          "label": true,
+          "score": 0.07963407039642334
+        },
+        {
+          "id": "schedule:correction_reverses_fact",
+          "label": true,
+          "score": 0.10993596911430359
+        },
+        {
+          "id": "schedule:different_entity",
+          "label": false,
+          "score": 0.25260719656944275
+        },
+        {
+          "id": "threshold:opposite_value",
+          "label": true,
+          "score": 0.05305670201778412
+        },
+        {
+          "id": "threshold:explicit_negation",
+          "label": true,
+          "score": 0.06831565499305725
+        },
+        {
+          "id": "threshold:correction_reverses_fact",
+          "label": true,
+          "score": 0.10771680623292923
+        },
+        {
+          "id": "budget:opposite_value",
+          "label": true,
+          "score": 0.10572320222854614
+        },
+        {
+          "id": "budget:explicit_negation",
+          "label": true,
+          "score": 0.0773758590221405
+        },
+        {
+          "id": "budget:correction_reverses_fact",
+          "label": true,
+          "score": 0.13863305747509003
+        },
+        {
+          "id": "budget:different_entity",
+          "label": false,
+          "score": 0.21340322494506836
+        },
+        {
+          "id": "temperature:opposite_value",
+          "label": true,
+          "score": 0.07682961970567703
+        },
+        {
+          "id": "temperature:explicit_negation",
+          "label": true,
+          "score": 0.09078247845172882
+        },
+        {
+          "id": "temperature:correction_reverses_fact",
+          "label": true,
+          "score": 0.11122444272041321
+        },
+        {
+          "id": "version:opposite_value",
+          "label": true,
+          "score": 0.08430713415145874
+        },
+        {
+          "id": "version:explicit_negation",
+          "label": true,
+          "score": 0.08750367909669876
+        },
+        {
+          "id": "version:correction_reverses_fact",
+          "label": true,
+          "score": 0.1328125298023224
+        },
+        {
+          "id": "version:different_entity",
+          "label": false,
+          "score": 0.2594054937362671
+        },
+        {
+          "id": "ownership:explicit_negation",
+          "label": true,
+          "score": 0.09133154153823853
+        },
+        {
+          "id": "ownership:correction_reverses_fact",
+          "label": true,
+          "score": 0.1770308017730713
+        },
+        {
+          "id": "ownership:different_time",
+          "label": false,
+          "score": 0.3311305642127991
+        },
+        {
+          "id": "ownership:uncertainty",
+          "label": false,
+          "score": 0.3667415380477905
+        }
+      ]
+    },
+    "word_tfidf_cosine_distance": {
+      "development": {
+        "n": 36,
+        "tp": 0,
+        "fp": 0,
+        "fn": 18,
+        "tn": 18,
+        "precision": null,
+        "recall": 0.0,
+        "false_positive_rate": 0.0,
+        "balanced_accuracy": 0.5,
+        "auroc": 0.29629629629629634
+      },
+      "heldout": {
+        "n": 36,
+        "tp": 0,
+        "fp": 3,
+        "fn": 18,
+        "tn": 15,
+        "precision": 0.0,
+        "recall": 0.0,
+        "false_positive_rate": 0.16666666666666666,
+        "balanced_accuracy": 0.4166666666666667,
+        "auroc": 0.2839506172839506
+      },
+      "threshold": 0.7617327992570314,
+      "heldout_errors": [
+        {
+          "id": "schedule:opposite_value",
+          "label": true,
+          "score": 1.1102230246251565e-16
+        },
+        {
+          "id": "schedule:explicit_negation",
+          "label": true,
+          "score": 0.42993500984795374
+        },
+        {
+          "id": "schedule:correction_reverses_fact",
+          "label": true,
+          "score": 0.3838474687171618
+        },
+        {
+          "id": "threshold:opposite_value",
+          "label": true,
+          "score": 0.036552739470562146
+        },
+        {
+          "id": "threshold:explicit_negation",
+          "label": true,
+          "score": 0.6189351282491181
+        },
+        {
+          "id": "threshold:correction_reverses_fact",
+          "label": true,
+          "score": 0.5545498677392231
+        },
+        {
+          "id": "threshold:uncertainty",
+          "label": false,
+          "score": 0.7662201913499695
+        },
+        {
+          "id": "budget:opposite_value",
+          "label": true,
+          "score": 0.0
+        },
+        {
+          "id": "budget:explicit_negation",
+          "label": true,
+          "score": 0.4964652102462721
+        },
+        {
+          "id": "budget:correction_reverses_fact",
+          "label": true,
+          "score": 0.44329731737783695
+        },
+        {
+          "id": "temperature:opposite_value",
+          "label": true,
+          "score": 0.0
+        },
+        {
+          "id": "temperature:explicit_negation",
+          "label": true,
+          "score": 0.6151495473835303
+        },
+        {
+          "id": "temperature:correction_reverses_fact",
+          "label": true,
+          "score": 0.567978028331706
+        },
+        {
+          "id": "temperature:uncertainty",
+          "label": false,
+          "score": 0.83315559561203
+        },
+        {
+          "id": "version:opposite_value",
+          "label": true,
+          "score": 0.0
+        },
+        {
+          "id": "version:explicit_negation",
+          "label": true,
+          "score": 0.6290753693735776
+        },
+        {
+          "id": "version:correction_reverses_fact",
+          "label": true,
+          "score": 0.5872402346900396
+        },
+        {
+          "id": "ownership:opposite_value",
+          "label": true,
+          "score": 0.0
+        },
+        {
+          "id": "ownership:explicit_negation",
+          "label": true,
+          "score": 0.5353741498747874
+        },
+        {
+          "id": "ownership:correction_reverses_fact",
+          "label": true,
+          "score": 0.48720871951222156
+        },
+        {
+          "id": "ownership:uncertainty",
+          "label": false,
+          "score": 0.7788729019789613
+        }
+      ]
+    }
+  },
+  "heldout_by_kind": {
+    "correction_preserves_fact": {
+      "n": 3,
+      "label": false,
+      "correct": {
+        "project_fisher_distance": 3,
+        "project_fisher_mean_only": 3,
+        "project_fisher_covariance_only": 3,
+        "centroid_cosine_distance": 3,
+        "mean_cross_cosine_distance": 3,
+        "word_tfidf_cosine_distance": 3
+      }
+    },
+    "correction_reverses_fact": {
+      "n": 6,
+      "label": true,
+      "correct": {
+        "project_fisher_distance": 0,
+        "project_fisher_mean_only": 0,
+        "project_fisher_covariance_only": 0,
+        "centroid_cosine_distance": 0,
+        "mean_cross_cosine_distance": 0,
+        "word_tfidf_cosine_distance": 0
+      }
+    },
+    "different_entity": {
+      "n": 3,
+      "label": false,
+      "correct": {
+        "project_fisher_distance": 1,
+        "project_fisher_mean_only": 1,
+        "project_fisher_covariance_only": 3,
+        "centroid_cosine_distance": 0,
+        "mean_cross_cosine_distance": 0,
+        "word_tfidf_cosine_distance": 3
+      }
+    },
+    "different_time": {
+      "n": 3,
+      "label": false,
+      "correct": {
+        "project_fisher_distance": 2,
+        "project_fisher_mean_only": 2,
+        "project_fisher_covariance_only": 3,
+        "centroid_cosine_distance": 2,
+        "mean_cross_cosine_distance": 2,
+        "word_tfidf_cosine_distance": 3
+      }
+    },
+    "explicit_negation": {
+      "n": 6,
+      "label": true,
+      "correct": {
+        "project_fisher_distance": 0,
+        "project_fisher_mean_only": 0,
+        "project_fisher_covariance_only": 1,
+        "centroid_cosine_distance": 0,
+        "mean_cross_cosine_distance": 0,
+        "word_tfidf_cosine_distance": 0
+      }
+    },
+    "opposite_value": {
+      "n": 6,
+      "label": true,
+      "correct": {
+        "project_fisher_distance": 0,
+        "project_fisher_mean_only": 0,
+        "project_fisher_covariance_only": 0,
+        "centroid_cosine_distance": 1,
+        "mean_cross_cosine_distance": 1,
+        "word_tfidf_cosine_distance": 0
+      }
+    },
+    "paraphrase": {
+      "n": 6,
+      "label": false,
+      "correct": {
+        "project_fisher_distance": 6,
+        "project_fisher_mean_only": 6,
+        "project_fisher_covariance_only": 6,
+        "centroid_cosine_distance": 6,
+        "mean_cross_cosine_distance": 6,
+        "word_tfidf_cosine_distance": 6
+      }
+    },
+    "uncertainty": {
+      "n": 3,
+      "label": false,
+      "correct": {
+        "project_fisher_distance": 2,
+        "project_fisher_mean_only": 2,
+        "project_fisher_covariance_only": 1,
+        "centroid_cosine_distance": 2,
+        "mean_cross_cosine_distance": 2,
+        "word_tfidf_cosine_distance": 0
+      }
+    }
+  },
+  "fisher_minus_centroid_auroc_family_bootstrap_95pct": [
+    -0.030864197530864224,
+    0.06496913580246835
+  ],
+  "caveats": [
+    "Single-author synthetic controls; shared templates cross scenario-family split.",
+    "Only six heldout families; bootstrap is descriptive, not strong population inference.",
+    "Three authored paraphrases per side; not independent generations or internal belief measurements.",
+    "Tests static contradiction discrimination, not prediction before future evidence.",
+    "Project Fisher distance is an approximation over diagonal moments; not exact multivariate Gaussian geodesic."
+  ],
+  "source_sha256": {
+    "info_geometry.py": "afe9e640d1dfd115f41d7b305866728d9de5a865a1aaf2e3f7c4d9a205104f50",
+    "embedding_cache.py": "d6425acc88560854a774bdc7b0b0233df5c4ee85fd68beabeda9c3c80b6adb35",
+    "run.py": "aca75cb1bb626ca33ef65b5558e670186fc30ad821e21e9b03924a94d8e1ead5"
+  },
+  "input_lock_sha256": "70e7cab4f5bf39291fa585e7130d6ae6921b5c41bdf230027f50fc7f4533bd48"
+}

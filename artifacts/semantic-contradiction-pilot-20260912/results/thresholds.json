@@ -1,0 +1,26 @@
+{
+  "selection_split": "development_only",
+  "comparison": "score > threshold",
+  "values": {
+    "original_covariance_velocity": 0.001,
+    "early_cosine_spread": 0.053804051131010056,
+    "early_assigned_cluster_entropy": 0.9967916319816366,
+    "early_singleton_noise_entropy": 0.9967916319816366,
+    "current_covariance_trace": 0.09858115017414093,
+    "current_cosine_spread": 0.10953447222709656,
+    "current_singleton_noise_entropy": 1.7709505944546688
+  },
+  "development_families": [
+    "fc_005",
+    "fc_007",
+    "fs_002",
+    "fs_010",
+    "ma_005",
+    "ma_008",
+    "mc_002",
+    "mc_004",
+    "oa_002",
+    "oa_009"
+  ],
+  "label_lock_sha256": "fa929444ad8a37c04dd8faea698b714afd52ea7183f37c758af04389f514216d"
+}

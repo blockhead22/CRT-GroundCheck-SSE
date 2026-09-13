@@ -1,0 +1,2684 @@
+[
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fc_001",
+    "future_geometric_split": true,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.19178557157374598,
+      "early_cosine_spread": 0.1120319813489914,
+      "early_cluster_entropy": 0.7837769474818157,
+      "early_noise_singletons_entropy": 1.438826429298142,
+      "cosine_spread_slope": 0.15849029809657783
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fc_002",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.25968575487392326,
+      "early_cosine_spread": 0.12736625969409943,
+      "early_cluster_entropy": 1.456564762126626,
+      "early_noise_singletons_entropy": 1.9735572622751851,
+      "cosine_spread_slope": 0.17843686749000814
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fc_003",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.1333137710268299,
+      "early_cosine_spread": 0.10581869632005692,
+      "early_cluster_entropy": 0.9182958340516041,
+      "early_noise_singletons_entropy": 2.025605199016944,
+      "cosine_spread_slope": 0.14792320513594395
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fc_004",
+    "future_geometric_split": true,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.0744206608320989,
+      "early_cosine_spread": 0.07707580924034119,
+      "early_cluster_entropy": 0.7837769474818157,
+      "early_noise_singletons_entropy": 1.438826429298142,
+      "cosine_spread_slope": 0.11145047897269897
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fc_005",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.5554301193342326,
+      "early_cosine_spread": 0.18668398261070251,
+      "early_cluster_entropy": 0.9871377743693011,
+      "early_noise_singletons_entropy": 3.3033667177473784,
+      "cosine_spread_slope": 0.2542085176939603
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fc_006",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.025578466544781502,
+      "early_cosine_spread": 0.023738035932183266,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.03405539928919737
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fc_007",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.3408182562376776,
+      "early_cosine_spread": 0.12779021263122559,
+      "early_cluster_entropy": 1.4746786893290724,
+      "early_noise_singletons_entropy": 1.861666705147961,
+      "cosine_spread_slope": 0.175664346976457
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fc_008",
+    "future_geometric_split": true,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.13837597280598857,
+      "early_cosine_spread": 0.06465236097574234,
+      "early_cluster_entropy": 0.353359335018536,
+      "early_noise_singletons_entropy": 0.420026001688088,
+      "cosine_spread_slope": 0.09030104589623376
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fc_009",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.24054647733767828,
+      "early_cosine_spread": 0.1320149004459381,
+      "early_cluster_entropy": 0.9967916319787513,
+      "early_noise_singletons_entropy": 3.1301249653149696,
+      "cosine_spread_slope": 0.17109280678670155
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fc_010",
+    "future_geometric_split": true,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.029517501690558372,
+      "early_cosine_spread": 0.02364152856171131,
+      "early_cluster_entropy": 0.353359335018536,
+      "early_noise_singletons_entropy": 0.420026001688088,
+      "cosine_spread_slope": 0.033904260496599774
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fs_001",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": false,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.014310024678707123,
+      "early_cluster_entropy": 0.353359335018536,
+      "early_noise_singletons_entropy": 0.420026001688088,
+      "cosine_spread_slope": 0.02127165830618627
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fs_002",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.03337515155332464,
+      "early_cosine_spread": 0.08782552927732468,
+      "early_cluster_entropy": 1.3995812306417363,
+      "early_noise_singletons_entropy": 1.6662478973127313,
+      "cosine_spread_slope": 0.12915122624788739
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fs_003",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": false,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.03328947350382805,
+      "early_cluster_entropy": 0.6500224216454688,
+      "early_noise_singletons_entropy": 0.6500224216483541,
+      "cosine_spread_slope": 0.04948435250569037
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fs_004",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": false,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.011611958034336567,
+      "early_cluster_entropy": 0.353359335018536,
+      "early_noise_singletons_entropy": 0.420026001688088,
+      "cosine_spread_slope": 0.017261018699689497
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fs_005",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.020933169348609226,
+      "early_cosine_spread": 0.04697674140334129,
+      "early_cluster_entropy": 0.8519325792127052,
+      "early_noise_singletons_entropy": 0.8519325792170331,
+      "cosine_spread_slope": 0.06895186272575649
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fs_006",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": false,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.012859438546001911,
+      "early_cluster_entropy": 0.21084230031564677,
+      "early_noise_singletons_entropy": 0.21084230031853213,
+      "cosine_spread_slope": 0.019115375919350308
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fs_007",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": false,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.01540555153042078,
+      "early_cluster_entropy": 0.21084230031564677,
+      "early_noise_singletons_entropy": 0.21084230031853213,
+      "cosine_spread_slope": 0.02290012685390552
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fs_008",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.013053644856881874,
+      "early_cosine_spread": 0.027671977877616882,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.04058601990869872
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fs_009",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.20554090797759272,
+      "early_cosine_spread": 0.09566115587949753,
+      "early_cluster_entropy": 1.456564762126626,
+      "early_noise_singletons_entropy": 1.9735572622751851,
+      "cosine_spread_slope": 0.13357839392889798
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "fs_010",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.08415443460004705,
+      "early_cosine_spread": 0.05646728351712227,
+      "early_cluster_entropy": 0.836640741938282,
+      "early_noise_singletons_entropy": 0.8366407419411672,
+      "cosine_spread_slope": 0.08040777601721448
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "ma_001",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.18732608864562889,
+      "early_cosine_spread": 0.11545389145612717,
+      "early_cluster_entropy": 0.9709505944517833,
+      "early_noise_singletons_entropy": 2.4049355947431312,
+      "cosine_spread_slope": 0.163763953825912
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "ma_002",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.4220282845199108,
+      "early_cosine_spread": 0.1482701152563095,
+      "early_cluster_entropy": 0.9967916319787513,
+      "early_noise_singletons_entropy": 3.1301249653149696,
+      "cosine_spread_slope": 0.18299560138099913
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "ma_003",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.12503086536980842,
+      "early_cosine_spread": 0.1322057545185089,
+      "early_cluster_entropy": 0.9709505944517833,
+      "early_noise_singletons_entropy": 2.4049355947431312,
+      "cosine_spread_slope": 0.1912778175663636
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "ma_004",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.4720648083214959,
+      "early_cosine_spread": 0.302261620759964,
+      "early_cluster_entropy": 1.5523892173103568,
+      "early_noise_singletons_entropy": 2.352389217314685,
+      "cosine_spread_slope": 0.42520206667029786
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "ma_005",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.11792373843491077,
+      "early_cosine_spread": 0.059726785868406296,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.08031998584802089
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "ma_006",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.970900173086496,
+      "early_cosine_spread": 0.29001909494400024,
+      "early_cluster_entropy": 0.94807824359102,
+      "early_noise_singletons_entropy": 3.63843233544151,
+      "cosine_spread_slope": 0.39039085040221355
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "ma_007",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.20134074250715156,
+      "early_cosine_spread": 0.1088070422410965,
+      "early_cluster_entropy": 1.9493978533338354,
+      "early_noise_singletons_entropy": 2.4663903534838374,
+      "cosine_spread_slope": 0.15329575367473272
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "ma_008",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.22619998961545207,
+      "early_cosine_spread": 0.08857142925262451,
+      "early_cluster_entropy": 0.9182958340516041,
+      "early_noise_singletons_entropy": 2.025605199016944,
+      "cosine_spread_slope": 0.12217319144312747
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "ma_009",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.17743800093588408,
+      "early_cosine_spread": 0.15521079301834106,
+      "early_cluster_entropy": 0.8812908992278072,
+      "early_noise_singletons_entropy": 1.8322683996633864,
+      "cosine_spread_slope": 0.22327673999038908
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "ma_010",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.47096979131159367,
+      "early_cosine_spread": 0.2056766003370285,
+      "early_cluster_entropy": 1.5523892173103568,
+      "early_noise_singletons_entropy": 2.352389217314685,
+      "cosine_spread_slope": 0.28598293863437896
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "mc_001",
+    "future_geometric_split": true,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.13315136854847276,
+      "early_cosine_spread": 0.09253096580505371,
+      "early_cluster_entropy": 0.9182958340516041,
+      "early_noise_singletons_entropy": 2.025605199016944,
+      "cosine_spread_slope": 0.11461512890417837
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "mc_002",
+    "future_geometric_split": true,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.1287760238831955,
+      "early_cosine_spread": 0.08944635838270187,
+      "early_cluster_entropy": 0.8812908992278072,
+      "early_noise_singletons_entropy": 1.8322683996633864,
+      "cosine_spread_slope": 0.12755951697470772
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "mc_003",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.07474400361237106,
+      "early_cosine_spread": 0.056918542832136154,
+      "early_cluster_entropy": 0.4689955935863958,
+      "early_noise_singletons_entropy": 0.6274918436613969,
+      "cosine_spread_slope": 0.08147316383046375
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "mc_004",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.07591701558946322,
+      "early_cosine_spread": 0.05928598344326019,
+      "early_cluster_entropy": 0.7703437707919198,
+      "early_noise_singletons_entropy": 0.7703437707962479,
+      "cosine_spread_slope": 0.08391089551780075
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "mc_005",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.1848222004870574,
+      "early_cosine_spread": 0.12290310859680176,
+      "early_cluster_entropy": 0.9709505944517833,
+      "early_noise_singletons_entropy": 2.4049355947431312,
+      "cosine_spread_slope": 0.16798408135671072
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "mc_006",
+    "future_geometric_split": true,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.13313650101281382,
+      "early_cosine_spread": 0.056466832756996155,
+      "early_cluster_entropy": 0.5665095065500199,
+      "early_noise_singletons_entropy": 0.833176173219572,
+      "cosine_spread_slope": 0.07835282523181585
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "mc_007",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.32697793354448856,
+      "early_cosine_spread": 0.1141083613038063,
+      "early_cluster_entropy": 0.8812908992278072,
+      "early_noise_singletons_entropy": 1.8322683996633864,
+      "cosine_spread_slope": 0.15590702370156348
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "mc_008",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.44346800953007914,
+      "early_cosine_spread": 0.14256596565246582,
+      "early_cluster_entropy": 0.94807824359102,
+      "early_noise_singletons_entropy": 3.63843233544151,
+      "cosine_spread_slope": 0.19332347488081136
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "mc_009",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.5389186677833399,
+      "early_cosine_spread": 0.2234232872724533,
+      "early_cluster_entropy": 1.3628980971108018,
+      "early_noise_singletons_entropy": 3.864853097980517,
+      "cosine_spread_slope": 0.30552662355271554
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "mc_010",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.1200746453832835,
+      "early_cosine_spread": 0.050729166716337204,
+      "early_cluster_entropy": 0.21084230031564677,
+      "early_noise_singletons_entropy": 0.21084230031853213,
+      "cosine_spread_slope": 0.06828608935245793
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "oa_001",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.23475159217772065,
+      "early_cosine_spread": 0.09415524452924728,
+      "early_cluster_entropy": 0.9182958340516041,
+      "early_noise_singletons_entropy": 2.025605199016944,
+      "cosine_spread_slope": 0.1301145474199313
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "oa_002",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.24679309636212565,
+      "early_cosine_spread": 0.13990797102451324,
+      "early_cluster_entropy": 0.6500224216454688,
+      "early_noise_singletons_entropy": 1.0370104374629148,
+      "cosine_spread_slope": 0.19762061807116074
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "oa_003",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.13493554303901573,
+      "early_cosine_spread": 0.10827180743217468,
+      "early_cluster_entropy": 0.9999999999971146,
+      "early_noise_singletons_entropy": 2.95344529780426,
+      "cosine_spread_slope": 0.15528471325127788
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "oa_004",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.46707773581147194,
+      "early_cosine_spread": 0.1916334182024002,
+      "early_cluster_entropy": 0.9709505944517833,
+      "early_noise_singletons_entropy": 2.4049355947431312,
+      "cosine_spread_slope": 0.24866133399710472
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "oa_005",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.3390698383251826,
+      "early_cosine_spread": 0.15264759957790375,
+      "early_cluster_entropy": 0.9871377743693011,
+      "early_noise_singletons_entropy": 3.3033667177473784,
+      "cosine_spread_slope": 0.19401191482068728
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "oa_006",
+    "future_geometric_split": true,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.44488809019185277,
+      "early_cosine_spread": 0.2113441526889801,
+      "early_cluster_entropy": 0.94807824359102,
+      "early_noise_singletons_entropy": 2.216536503760915,
+      "cosine_spread_slope": 0.2955017681862858
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "oa_007",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.3582678424815337,
+      "early_cosine_spread": 0.14334696531295776,
+      "early_cluster_entropy": 1.934451819476947,
+      "early_noise_singletons_entropy": 2.4514443196269493,
+      "cosine_spread_slope": 0.19578425836673868
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "oa_008",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.9601654608074266,
+      "early_cosine_spread": 0.3551671504974365,
+      "early_cluster_entropy": 1.435591746023603,
+      "early_noise_singletons_entropy": 1.8225797618424917,
+      "cosine_spread_slope": 0.4871945928725592
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "oa_009",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.09809383138872363,
+      "early_cosine_spread": 0.11626702547073364,
+      "early_cluster_entropy": 1.5179159574318104,
+      "early_noise_singletons_entropy": 2.0349084575803698,
+      "cosine_spread_slope": 0.1687148835280875
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "deepseek-r1_8b",
+    "prompt_id": "oa_010",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.22518536954976298,
+      "early_cosine_spread": 0.1002323254942894,
+      "early_cluster_entropy": 0.9871377743693011,
+      "early_noise_singletons_entropy": 2.5906616522333263,
+      "cosine_spread_slope": 0.13954937829526592
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fc_001",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.03192494571067073,
+      "early_cosine_spread": 0.05660572648048401,
+      "early_cluster_entropy": 0.21084230031564677,
+      "early_noise_singletons_entropy": 0.21084230031853213,
+      "cosine_spread_slope": 0.082804131267791
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fc_002",
+    "future_geometric_split": true,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.30070529887931724,
+      "early_cosine_spread": 0.1201772391796112,
+      "early_cluster_entropy": 0.7837769474818157,
+      "early_noise_singletons_entropy": 1.438826429298142,
+      "cosine_spread_slope": 0.16603005655935754
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fc_003",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.20379544804351707,
+      "early_cosine_spread": 0.08903101831674576,
+      "early_cluster_entropy": 1.3125559877977948,
+      "early_noise_singletons_entropy": 1.829548487946354,
+      "cosine_spread_slope": 0.1237958556596038
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fc_004",
+    "future_geometric_split": true,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.08979257454332887,
+      "early_cosine_spread": 0.11357906460762024,
+      "early_cluster_entropy": 0.7219280948844771,
+      "early_noise_singletons_entropy": 1.2389205950315936,
+      "cosine_spread_slope": 0.16506745756880664
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fc_005",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.04283997177935816,
+      "early_cosine_spread": 0.06700550764799118,
+      "early_cluster_entropy": 0.4689955935863958,
+      "early_noise_singletons_entropy": 0.6274918436613969,
+      "cosine_spread_slope": 0.09780541557382103
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fc_006",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.070509261239143,
+      "early_cosine_spread": 0.032936710864305496,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.046002394142183115
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fc_007",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.32841966967680497,
+      "early_cosine_spread": 0.12292036414146423,
+      "early_cluster_entropy": 0.9999999999971146,
+      "early_noise_singletons_entropy": 2.95344529780426,
+      "cosine_spread_slope": 0.16883560259098104
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fc_008",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.33941635499256034,
+      "early_cosine_spread": 0.12017446011304855,
+      "early_cluster_entropy": 0.9709505944517833,
+      "early_noise_singletons_entropy": 0.9709505944546686,
+      "cosine_spread_slope": 0.164402583362283
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fc_009",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.3240787139520762,
+      "early_cosine_spread": 0.12074229121208191,
+      "early_cluster_entropy": 0.9967916319787513,
+      "early_noise_singletons_entropy": 2.7735572622751854,
+      "cosine_spread_slope": 0.16588976673270128
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fc_010",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.15431495020645042,
+      "early_cosine_spread": 0.046931371092796326,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.06329057290316858
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fs_001",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": false,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.0,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.0
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fs_002",
+    "future_geometric_split": true,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.040231622853449764,
+      "early_cosine_spread": 0.06567665934562683,
+      "early_cluster_entropy": 0.7219280948844771,
+      "early_noise_singletons_entropy": 1.2389205950315936,
+      "cosine_spread_slope": 0.09593968468441354
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fs_003",
+    "future_geometric_split": true,
+    "already_split": false,
+    "original_prediction": false,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.011058046482503414,
+      "early_cluster_entropy": 0.353359335018536,
+      "early_noise_singletons_entropy": 0.420026001688088,
+      "cosine_spread_slope": 0.016437619553925843
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fs_004",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": false,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.0007093262975104153,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.0010544039557587258
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fs_005",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": false,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.006659787613898516,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.00989968429093023
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fs_006",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": false,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.006647330708801746,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.009881167269840438
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fs_007",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": false,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.003036517184227705,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.0045136653797371775
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fs_008",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": false,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.0015817566309124231,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.0023512305266104303
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fs_009",
+    "future_geometric_split": true,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.05955225735760905,
+      "early_cosine_spread": 0.03673496097326279,
+      "early_cluster_entropy": 0.7837769474818157,
+      "early_noise_singletons_entropy": 1.438826429298142,
+      "cosine_spread_slope": 0.052107955404632804
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "fs_010",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.04715377723035394,
+      "early_cosine_spread": 0.026753554120659828,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.037790667834168463
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "ma_001",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.47594911652292177,
+      "early_cosine_spread": 0.19153821468353271,
+      "early_cluster_entropy": 1.565596230353274,
+      "early_noise_singletons_entropy": 2.6729055953200564,
+      "cosine_spread_slope": 0.2647311366569272
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "ma_002",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.23481685513009629,
+      "early_cosine_spread": 0.10305305570363998,
+      "early_cluster_entropy": 0.9999999999971146,
+      "early_noise_singletons_entropy": 2.95344529780426,
+      "cosine_spread_slope": 0.13723354497169324
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "ma_003",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.4628861337550916,
+      "early_cosine_spread": 0.24937598407268524,
+      "early_cluster_entropy": 0.9999999999971146,
+      "early_noise_singletons_entropy": 2.95344529780426,
+      "cosine_spread_slope": 0.35102614566583096
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "ma_004",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.7847830792888999,
+      "early_cosine_spread": 0.2706400454044342,
+      "early_cluster_entropy": 0.9871377743693011,
+      "early_noise_singletons_entropy": 2.5906616522333263,
+      "cosine_spread_slope": 0.36258318323037925
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "ma_005",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.16413677741941987,
+      "early_cosine_spread": 0.0754159539937973,
+      "early_cluster_entropy": 0.7219280948844771,
+      "early_noise_singletons_entropy": 1.2389205950315936,
+      "cosine_spread_slope": 0.10522062059592559
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "ma_006",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.21216893205898185,
+      "early_cosine_spread": 0.15008927881717682,
+      "early_cluster_entropy": 1.4746786893290724,
+      "early_noise_singletons_entropy": 2.7431369495004096,
+      "cosine_spread_slope": 0.21420710392900424
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "ma_007",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.27457619085907936,
+      "early_cosine_spread": 0.1260979026556015,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": 4.906890595608519,
+      "cosine_spread_slope": 0.1711497063169609
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "ma_008",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.08622965723134256,
+      "early_cosine_spread": 0.03765595704317093,
+      "early_cluster_entropy": 0.21084230031564677,
+      "early_noise_singletons_entropy": 0.21084230031853213,
+      "cosine_spread_slope": 0.05235820354239362
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "ma_009",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.20341067522622328,
+      "early_cosine_spread": 0.17022128403186798,
+      "early_cluster_entropy": 0.9967916319787513,
+      "early_noise_singletons_entropy": 3.1301249653149696,
+      "cosine_spread_slope": 0.24450022280540143
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "ma_010",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.186397361356588,
+      "early_cosine_spread": 0.06515166163444519,
+      "early_cluster_entropy": 0.7219280948844771,
+      "early_noise_singletons_entropy": 1.2389205950315936,
+      "cosine_spread_slope": 0.08902920719031338
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "mc_001",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.05104145293292579,
+      "early_cosine_spread": 0.09355759620666504,
+      "early_cluster_entropy": 1.8823937016385852,
+      "early_noise_singletons_entropy": 2.399386201788587,
+      "cosine_spread_slope": 0.13693098004001222
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "mc_002",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.07817461103059031,
+      "early_cosine_spread": 0.04482687637209892,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.06335539804061227
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "mc_003",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.3638760398810822,
+      "early_cosine_spread": 0.13182611763477325,
+      "early_cluster_entropy": 1.5301249653106421,
+      "early_noise_singletons_entropy": 2.3301249653149703,
+      "cosine_spread_slope": 0.18069659567195898
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "mc_004",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.10661253342883963,
+      "early_cosine_spread": 0.08167615532875061,
+      "early_cluster_entropy": 0.9967916319787513,
+      "early_noise_singletons_entropy": 0.9967916319816366,
+      "cosine_spread_slope": 0.1169388036470156
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "mc_005",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.1470575631644048,
+      "early_cosine_spread": 0.07344108819961548,
+      "early_cluster_entropy": 0.353359335018536,
+      "early_noise_singletons_entropy": 0.420026001688088,
+      "cosine_spread_slope": 0.10300117425919178
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "mc_006",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.0862077897772906,
+      "early_cosine_spread": 0.09616034477949142,
+      "early_cluster_entropy": 1.4854752972230063,
+      "early_noise_singletons_entropy": 2.002467797371566,
+      "cosine_spread_slope": 0.1393249209474878
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "mc_007",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.16700313995139976,
+      "early_cosine_spread": 0.12264414876699448,
+      "early_cluster_entropy": 0.8812908992278072,
+      "early_noise_singletons_entropy": 1.8322683996633864,
+      "cosine_spread_slope": 0.17530449187836136
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "mc_008",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.061106709240448254,
+      "early_cosine_spread": 0.03945818915963173,
+      "early_cluster_entropy": 0.4689955935863958,
+      "early_noise_singletons_entropy": 0.6274918436613969,
+      "cosine_spread_slope": 0.05609046281570907
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "mc_009",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.0734737913793045,
+      "early_cosine_spread": 0.068732850253582,
+      "early_cluster_entropy": 0.6500224216454688,
+      "early_noise_singletons_entropy": 1.0370104374629148,
+      "cosine_spread_slope": 0.09908837696775742
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "mc_010",
+    "future_geometric_split": true,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.15068151832868656,
+      "early_cosine_spread": 0.06613481044769287,
+      "early_cluster_entropy": 0.353359335018536,
+      "early_noise_singletons_entropy": 0.420026001688088,
+      "cosine_spread_slope": 0.08340724290826838
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "oa_001",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.1350526413307307,
+      "early_cosine_spread": 0.06175830587744713,
+      "early_cluster_entropy": 0.5665095065500199,
+      "early_noise_singletons_entropy": 0.833176173219572,
+      "cosine_spread_slope": 0.08613842029995948
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "oa_002",
+    "future_geometric_split": true,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.5326336740108674,
+      "early_cosine_spread": 0.1891598254442215,
+      "early_cluster_entropy": 0.9967916319787513,
+      "early_noise_singletons_entropy": 2.7735572622751854,
+      "cosine_spread_slope": 0.25848809917177384
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "oa_003",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.23876400301711936,
+      "early_cosine_spread": 0.0894867405295372,
+      "early_cluster_entropy": 1.3628980971108016,
+      "early_noise_singletons_entropy": 2.017947578928571,
+      "cosine_spread_slope": 0.12300690082279415
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "oa_004",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.2692696353778956,
+      "early_cosine_spread": 0.10950478166341782,
+      "early_cluster_entropy": 0.94807824359102,
+      "early_noise_singletons_entropy": 3.63843233544151,
+      "cosine_spread_slope": 0.15148398437765512
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "oa_005",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.14069875339525123,
+      "early_cosine_spread": 0.06977022439241409,
+      "early_cluster_entropy": 0.4689955935863958,
+      "early_noise_singletons_entropy": 0.6274918436613969,
+      "cosine_spread_slope": 0.0978111263576294
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "oa_006",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.18953042880942422,
+      "early_cosine_spread": 0.12466999143362045,
+      "early_cluster_entropy": 0.8812908992278072,
+      "early_noise_singletons_entropy": 1.8322683996633864,
+      "cosine_spread_slope": 0.17303776474216506
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "oa_007",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.0628020143494723,
+      "early_cosine_spread": 0.05516572296619415,
+      "early_cluster_entropy": 0.353359335018536,
+      "early_noise_singletons_entropy": 0.420026001688088,
+      "cosine_spread_slope": 0.07936875285530415
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "oa_008",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.22099351976066828,
+      "early_cosine_spread": 0.12994256615638733,
+      "early_cluster_entropy": 1.5410078709671555,
+      "early_noise_singletons_entropy": 2.6483172359339378,
+      "cosine_spread_slope": 0.1783530975415095
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "oa_009",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.32182553420322324,
+      "early_cosine_spread": 0.11398538202047348,
+      "early_cluster_entropy": 1.565596230353274,
+      "early_noise_singletons_entropy": 2.6729055953200564,
+      "cosine_spread_slope": 0.15593995829988225
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "mistral_latest",
+    "prompt_id": "oa_010",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.26233232527829387,
+      "early_cosine_spread": 0.1063963770866394,
+      "early_cluster_entropy": 0.9871377743693011,
+      "early_noise_singletons_entropy": 2.5906616522333263,
+      "cosine_spread_slope": 0.1471543066613289
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "fc_001",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.1403620492404419,
+      "early_cosine_spread": 0.06035580858588219,
+      "early_cluster_entropy": 0.591672778579442,
+      "early_noise_singletons_entropy": 0.8773870642966132,
+      "cosine_spread_slope": 0.08383085851682581
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "fc_002",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.5569379202400645,
+      "early_cosine_spread": 0.14523503184318542,
+      "early_cluster_entropy": 0.9494520153850632,
+      "early_noise_singletons_entropy": 1.983740670882855,
+      "cosine_spread_slope": 0.1853144847208987
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "fc_003",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.37422896052400273,
+      "early_cosine_spread": 0.14002320170402527,
+      "early_cluster_entropy": 0.9895875212191703,
+      "early_noise_singletons_entropy": 2.511737433422466,
+      "cosine_spread_slope": 0.18279269727802766
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "fc_004",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.48398471385098674,
+      "early_cosine_spread": 0.17272260785102844,
+      "early_cluster_entropy": 0.9910760598353369,
+      "early_noise_singletons_entropy": 1.8799649487271108,
+      "cosine_spread_slope": 0.23581983496700185
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "fc_005",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.5641412362456323,
+      "early_cosine_spread": 0.2071271687746048,
+      "early_cluster_entropy": 1.4955380299147831,
+      "early_noise_singletons_entropy": 1.9399824743635556,
+      "cosine_spread_slope": 0.28051736777195263
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "fc_006",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.061196672419706985,
+      "early_cosine_spread": 0.025949815288186073,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.03407044836471009
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "fc_007",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.16992376496394476,
+      "early_cosine_spread": 0.1250048130750656,
+      "early_cluster_entropy": 0.9709505944517833,
+      "early_noise_singletons_entropy": 3.1219280948873624,
+      "cosine_spread_slope": 0.15976979925825793
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "fc_008",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.03803941058473963,
+      "early_cosine_spread": 0.011024114675819874,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.014791166078284767
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "fc_009",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.12574244135369855,
+      "early_cosine_spread": 0.05456516146659851,
+      "early_cluster_entropy": 0.9999999999971146,
+      "early_noise_singletons_entropy": 1.0,
+      "cosine_spread_slope": 0.06716038943645924
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "fc_010",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": false,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 1.318153266538502e-07,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 5.213478507122799e-23
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "fs_001",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": false,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.0,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.0
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "fs_003",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": false,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.0,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.0
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "fs_004",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.0674174881229798,
+      "early_cosine_spread": 0.03488333150744438,
+      "early_cluster_entropy": 0.5032583347727604,
+      "early_noise_singletons_entropy": 0.6143694458867568,
+      "cosine_spread_slope": 0.04188536439795753
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "fs_005",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": false,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.0,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.0
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "fs_006",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.23190517288943133,
+      "early_cosine_spread": 0.16869372129440308,
+      "early_cluster_entropy": 0.9305861291291075,
+      "early_noise_singletons_entropy": 2.0278678604004856,
+      "cosine_spread_slope": 0.22908362132069235
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "fs_007",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.20686762044685264,
+      "early_cosine_spread": 0.06095770373940468,
+      "early_cluster_entropy": 0.836640741938282,
+      "early_noise_singletons_entropy": 1.6366407419411675,
+      "cosine_spread_slope": 0.081936527765725
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "fs_008",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": false,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.0,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.0
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "fs_009",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.5118527165041088,
+      "early_cosine_spread": 0.3041391670703888,
+      "early_cluster_entropy": 1.1092271387941324,
+      "early_noise_singletons_entropy": 1.1092271387984602,
+      "cosine_spread_slope": 0.43063189703583477
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "fs_010",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.08707098300116438,
+      "early_cosine_spread": 0.025538060814142227,
+      "early_cluster_entropy": 0.21084230031564677,
+      "early_noise_singletons_entropy": 0.21084230031853213,
+      "cosine_spread_slope": 0.03430536300645277
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "ma_001",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.16391363253054203,
+      "early_cosine_spread": 0.07702434808015823,
+      "early_cluster_entropy": 0.6500224216454688,
+      "early_noise_singletons_entropy": 0.6500224216483541,
+      "cosine_spread_slope": 0.10762084325825849
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "ma_002",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.11206894336889188,
+      "early_cosine_spread": 0.043178778141736984,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.057292901753523494
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "ma_003",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.021631369465164123,
+      "early_cosine_spread": 0.01756337285041809,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.025199880323976864
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "ma_004",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.31674155602710624,
+      "early_cosine_spread": 0.11735299974679947,
+      "early_cluster_entropy": 0.4689955935863958,
+      "early_noise_singletons_entropy": 0.6274918436613969,
+      "cosine_spread_slope": 0.16115945537348056
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "ma_005",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.0018154110496955886,
+      "early_cosine_spread": 0.0017081802943721414,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.002462557883543039
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "ma_006",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.20936045698666325,
+      "early_cosine_spread": 0.08581247180700302,
+      "early_cluster_entropy": 1.4983958159864903,
+      "early_noise_singletons_entropy": 2.1534452978042595,
+      "cosine_spread_slope": 0.11819114936893255
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "ma_007",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.1292797079668162,
+      "early_cosine_spread": 0.08106891810894012,
+      "early_cluster_entropy": 0.836640741938282,
+      "early_noise_singletons_entropy": 0.8366407419411672,
+      "cosine_spread_slope": 0.11508551099010421
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "ma_008",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.0024053451109769717,
+      "early_cosine_spread": 0.008219021372497082,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.012116082849585128
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "ma_009",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.024108532293212193,
+      "early_cosine_spread": 0.05402224138379097,
+      "early_cluster_entropy": 0.4689955935863958,
+      "early_noise_singletons_entropy": 0.6274918436613969,
+      "cosine_spread_slope": 0.07929173109398502
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "ma_010",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.21321181466040193,
+      "early_cosine_spread": 0.06777164340019226,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.0917991858904991
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "mc_001",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": false,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.0007350768428295851,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.0010925938029414874
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "mc_002",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.02324963867522456,
+      "early_cosine_spread": 0.023699313402175903,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.03425291899905437
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "mc_003",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.04139813542224146,
+      "early_cosine_spread": 0.039074838161468506,
+      "early_cluster_entropy": 1.1766796675063826,
+      "early_noise_singletons_entropy": 1.1766796675107107,
+      "cosine_spread_slope": 0.05634734018943893
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "mc_004",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.07775643477695364,
+      "early_cosine_spread": 0.028019187971949577,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.03838854376660672
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "mc_005",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.04173072947499653,
+      "early_cosine_spread": 0.027866359800100327,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.038231542204959786
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "mc_006",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.04591491641955751,
+      "early_cosine_spread": 0.026139292865991592,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.036929374858420426
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "mc_007",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.022566830216419476,
+      "early_cosine_spread": 0.06067704036831856,
+      "early_cluster_entropy": 0.7219280948844771,
+      "early_noise_singletons_entropy": 0.7219280948873623,
+      "cosine_spread_slope": 0.089248469978648
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "mc_008",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.028921064087323128,
+      "early_cosine_spread": 0.012237629853188992,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.016977630706655016
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "mc_009",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.16962319870647963,
+      "early_cosine_spread": 0.05937999114394188,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.08115302234928881
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "mc_010",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.12990324705697276,
+      "early_cosine_spread": 0.04662866145372391,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.06386436541102154
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "oa_001",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.0058642171992081184,
+      "early_cosine_spread": 0.006647155154496431,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.009634429524359313
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "oa_002",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.024002009169331966,
+      "early_cosine_spread": 0.026696808636188507,
+      "early_cluster_entropy": 0.353359335018536,
+      "early_noise_singletons_entropy": 0.420026001688088,
+      "cosine_spread_slope": 0.038677259122229746
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "oa_003",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.12140016019202449,
+      "early_cosine_spread": 0.04801082983613014,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.06627555334209742
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "oa_004",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.019246283395659702,
+      "early_cosine_spread": 0.02399064600467682,
+      "early_cluster_entropy": 0.21084230031564677,
+      "early_noise_singletons_entropy": 0.21084230031853213,
+      "cosine_spread_slope": 0.03485407768371139
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "oa_005",
+    "future_geometric_split": true,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.059985794262805335,
+      "early_cosine_spread": 0.05280495062470436,
+      "early_cluster_entropy": 0.5665095065500199,
+      "early_noise_singletons_entropy": 0.833176173219572,
+      "cosine_spread_slope": 0.0753546221184897
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "oa_006",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.11797153959529776,
+      "early_cosine_spread": 0.09422365576028824,
+      "early_cluster_entropy": 1.2419460322017177,
+      "early_noise_singletons_entropy": 1.5086126988727124,
+      "cosine_spread_slope": 0.1351138964670319
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "oa_007",
+    "future_geometric_split": false,
+    "already_split": false,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.01405822850453357,
+      "early_cosine_spread": 0.007497729733586311,
+      "early_cluster_entropy": -1.4428232973175175e-12,
+      "early_noise_singletons_entropy": -0.0,
+      "cosine_spread_slope": 0.009543631427191404
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "oa_008",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.23274954666552125,
+      "early_cosine_spread": 0.10249650478363037,
+      "early_cluster_entropy": 1.584962500716828,
+      "early_noise_singletons_entropy": 2.6922718656836104,
+      "cosine_spread_slope": 0.14259798401916354
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "oa_009",
+    "future_geometric_split": true,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.06907344122585832,
+      "early_cosine_spread": 0.053804051131010056,
+      "early_cluster_entropy": 0.8812908992278072,
+      "early_noise_singletons_entropy": 0.8812908992306927,
+      "cosine_spread_slope": 0.07708162321029487
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  },
+  {
+    "model": "qwen3_14b",
+    "prompt_id": "oa_010",
+    "future_geometric_split": false,
+    "already_split": true,
+    "original_prediction": true,
+    "scores": {
+      "original_covariance_velocity": 0.11801229427116293,
+      "early_cosine_spread": 0.04337100684642792,
+      "early_cluster_entropy": 1.360964047439353,
+      "early_noise_singletons_entropy": 1.519460297515797,
+      "cosine_spread_slope": 0.05952063192789621
+    },
+    "timestamps_used_by_original_predictor": [
+      0.0,
+      0.3
+    ]
+  }
+]

@@ -1,0 +1,130 @@
+BELIEF GEOMETRY: TEXT-LABELED PILOT AND MEASUREMENT REPAIR — 2026-09-12
+
+Outcome
+The cached data does not establish contradiction prediction. This follow-up
+replaces geometry-derived targets with text-only reviewer labels and confirms
+that the implemented predictor also raises many false alarms against meaning.
+No model downloads, local model inference, or provider calls were used.
+
+What was labeled
+40 model/prompt cells, 20 prompt families, two historical models (Mistral and
+Qwen), 10 randomly selected responses per cell at temperature 1.5: 400 responses.
+Selection used a fixed hash seed across the first ten prompts in each of five
+domains. Two families per domain were assigned to development and two to
+heldout before labels or feature scores. Both models of a family stay together.
+The protocol, case text, and labels were hash-locked before geometric scoring.
+This is a local frozen pilot, not an externally preregistered study.
+
+Labels were assigned by one Codex reviewer reading all sampled text, without
+using geometric cluster labels. They are independent of the geometry, NOT
+independent human ground truth. Every decision has a rationale; three cases
+are flagged as semantically borderline. Independent adjudication remains useful.
+
+Labels: 17 paraphrase, 19 uncertainty/qualified response, 1 exact agreement,
+1 contradiction, 2 failed-generation cells. Failed/empty samples are separately
+indexed. Incomplete fragments that contain no substantive answer are also marked.
+The single contradiction is in Mistral's WWII added details: one response places
+the end of the European theater on August 15; another ties it to Germany's
+May surrender. Both still answer the requested year as 1945. There were ZERO
+opposing direct answers to the original questions in this sample.
+The label is internal inconsistency, not an external fact-check of every detail.
+
+Scoring
+37 cells could be scored: two had fewer than five reviewable future responses,
+and one had incomplete valid early-temperature data. 18 development cells and
+19 heldout cells remained, with no family overlap.
+The original predictor was executed from frozen pre-change source. Its warning
+rule is widening plus covariance velocity > 0.001. It warned on 16 of 19 heldout
+cells, all without an observed sampled contradiction: an 84.2% false-positive
+rate. The original trajectory at T=.7 includes only snapshots at T=0 and T=.3;
+that implementation limitation is preserved and recorded, not silently repaired.
+
+Heldout false alarms (19 negative cases):
+  Original covariance-velocity rule:                  16
+  Early cosine spread, development threshold:         14
+  Early assigned-cluster entropy:                      0
+  Early noise-as-singletons entropy:                   9
+  Same-sample covariance trace (secondary diagnostic): 7
+  Same-sample cosine spread (secondary diagnostic):    7
+  Same-sample singleton-noise entropy:                 9
+
+These counts DO NOT establish a winning detector. There are no heldout positive
+examples, so heldout recall, AUROC and balanced accuracy are undefined and saved
+as null. Baseline thresholds were fit using only development data, which contains
+just one positive. Assigned-cluster entropy's zero-warning result may be entirely
+uninformative. The original predictor also consumes fewer early snapshots than
+the baselines. Do not interpret this pilot as a fair performance ranking.
+A label applies only to its 10 sampled rows, not all generations from a model.
+Temperature is not time, and present-sample metrics are not forecasts.
+
+A structural constraint on the research claim
+For unit-normalized embeddings with population variance (ddof=0):
+  trace(covariance) = ((n - 1) / n) * mean_pairwise_cosine_distance.
+The normalized numerical check differed by at most 1.42e-7 (floating-point error).
+Therefore scalar total variance contains no additional information beyond mean
+cosine spread at fixed sample size. Full covariance shape/direction and changes
+across conditions are different hypotheses, still needing independent evidence.
+
+Source changes
+1. Added geometry_metrics.py, a pure numerical helper. All DBSCAN noise now means
+   zero cluster support, not unanimous confidence. The alpha heuristic is:
+     assigned_fraction / (1 + entropy_among_assigned_clusters).
+   It is bounded in [0,1] and explicitly uncalibrated. Identical 30-vector control:
+   support 1.0; 30 mutually orthogonal/all-noise control: support 0.0.
+   Geometric entropy separately treats noise points as singletons. This convention
+   is a sensitivity diagnostic, NOT validated semantic entropy.
+2. variance_to_splats.py uses that helper, exposes noise fraction and confidence
+   kind, validates numerical input, and loads only verified embedding caches.
+   analyze.py and robustness_sweep.py no longer count all noise as one cluster.
+3. embedding_cache.py writes ordered record/text hashes, raw-file and array hashes,
+   shapes/dtypes, preprocessing identity, and encoder weights/config/tokenizer
+   fingerprint plus runtime versions. Stale text, row order, array corruption,
+   wrong encoder, and mixed encoder artifacts fail closed. Writes use temporary
+   files and atomic replacements; interrupted mismatched pairs fail verification.
+4. analyze.py and analyze_density.py use the shared cache path. Blank/ERROR rows
+   retain disk receipts but are removed from arrays returned for analysis.
+   Cache-only runs do not import sentence-transformers. Generation explicitly uses
+   local_files_only=True. Existing legacy arrays are NOT silently blessed with
+   new generation manifests. Regeneration is an explicit operation.
+5. Model-specific analyze.py caches are namespaced by raw-directory name. The
+   research loaders ignore macOS ._ resource-fork files.
+
+Compatibility and limits
+Existing research analysis commands will now reject historical caches without
+manifests. That is intentional: the old row-to-text relationship cannot be proved.
+This benchmark has a separate --allow-legacy-unverified path and labels its cache
+observations accordingly. It records present hashes but cannot retroactively
+prove the historical encoder or mapping. Existing raw data and embeddings were
+not modified. The original predictor and its source are included in this bundle.
+No production chat, memory database, provider settings or inference models changed.
+A real encoder's weight-fingerprint path has not been integration-tested with
+model weights, because no models are installed and none were fetched. The local-
+only generation flow is tested using a deterministic fake encoder.
+
+Verification
+14 focused offline regression tests pass. They cover identical versus all-noise
+support, mixed noise, undersampling and invalid vectors, the actual entropy entry
+point, source/array corruption, same-count text/order edits, wrong or missing
+encoder identity, mixed encoder revisions, cache-only operation with the model
+runtime blocked, missing encoder failure, and local-only generation/receipt
+creation through a deterministic fake encoder. Source parsing also passed.
+The benchmark completed with frozen labels and family-separated calibration.
+
+Reproduce (use an existing Python environment with requirements-audit.txt)
+  python belief_variance_experiment/test_measurement_integrity.py
+  python artifacts/semantic-contradiction-pilot-20260912/run_benchmark.py \
+    --repo /path/to/AI_round2 --output /path/to/new-results \
+    --allow-legacy-unverified
+The second command never imports an encoder or calls a model. Without its
+explicit legacy flag it refuses the unauthenticated historical-cache evaluation.
+
+Next experiment
+Build a separate balanced, independently reviewed set with explicit proposition
+reversals and matched hard negatives: paraphrases, hedges, corrections of errors,
+different times, different entities, and differing conditions. Keep these prompt
+families out of development. Use a fresh, already installed encoder to generate
+verifiable embeddings. Include positive cases in EVERY heldout split; a detector
+that never warns must not count as successful. Compare richer covariance features
+against cosine spread with identical available observations. A sequential claim
+requires sequential evidence with timestamps, not higher sampling temperature.
+There is no justification yet for downloading a large local generation model.

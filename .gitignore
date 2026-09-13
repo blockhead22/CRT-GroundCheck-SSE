@@ -192,3 +192,8 @@ training_data/chat_logs/
 /aether-core/
 /labs/mempalace_lab/mempalace/
 /labs/global_workspace_probe_lab/vendor/
+
+# Local model downloads and Python environments
+.venv-*/
+/models/all-MiniLM-L6-v2/
+!belief_variance_experiment/test_measurement_integrity.py

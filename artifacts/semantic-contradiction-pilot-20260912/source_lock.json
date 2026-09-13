@@ -1,0 +1,8 @@
+{
+  "belief_variance_experiment/variance_to_splats.py": "953e375be5f5fe37414c35438dde0f5fd8d614c289b436b0fb978301ac751167",
+  "belief_variance_experiment/robustness_sweep.py": "4772b8313eef95b09fb408d22f4a58cfdb810270f9eead38cf6e742127c0ea61",
+  "belief_variance_experiment/analyze_density.py": "e3e6092a7e552544c145c5965a117cbb3311969196b55a79804b6ba0c4914efd",
+  "belief_variance_experiment/analyze.py": "c4a651a7e7d15bfcf5477ffb6062209b5e8e49a039946e69831bf39e733e2fc3",
+  "personal_agent/contradiction/predictive.py": "e7a6357d9b6c7ee0d36b7d1393097420fdb9969db39c6b48e289f4d6e6a60d44",
+  "personal_agent/memory_subsystem/splats.py": "03c203bf597b7ce272d039961622b026f64d1401aa244e36d9fba2a977a82008"
+}

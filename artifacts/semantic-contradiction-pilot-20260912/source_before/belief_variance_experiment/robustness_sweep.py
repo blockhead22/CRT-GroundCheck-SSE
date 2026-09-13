@@ -22,11 +22,6 @@ from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
-
-if __package__:
-    from .geometry_metrics import cluster_evidence
-else:
-    from geometry_metrics import cluster_evidence
 from sklearn.cluster import DBSCAN
 from sklearn.metrics.pairwise import cosine_distances, cosine_similarity
 
@@ -86,8 +81,6 @@ def load_raw(data_dir: Path) -> dict:
     """Load {prompt_id: {temperature: [response_texts]}}"""
     data = defaultdict(lambda: defaultdict(list))
     for path in sorted(data_dir.glob("*.jsonl")):
-        if path.name.startswith("._"):
-            continue
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
@@ -97,8 +90,7 @@ def load_raw(data_dir: Path) -> dict:
                 pid = record["prompt_id"]
                 temp = record["temperature"]
                 resp = record.get("response", "")
-                if isinstance(resp, str) and resp.strip() and not resp.lstrip().startswith("ERROR:"):
-                    data[pid][temp].append(resp)
+                data[pid][temp].append(resp)
     return data
 
 
@@ -148,8 +140,13 @@ def compute_cell_metrics(embeddings: np.ndarray, eps: float) -> dict:
         tri_sims = sims[np.triu_indices(n, k=1)]
         template_sim = float(tri_sims.mean()) if len(tri_sims) > 0 else 1.0
 
-    # Geometric diagnostic: never combine all DBSCAN noise into consensus.
-    entropy = cluster_evidence(labels).singleton_noise_entropy_bits
+    # Entropy
+    counts = []
+    for label in unique_labels:
+        counts.append(int(np.sum(labels == label)))
+    total = sum(counts)
+    probs = np.array(counts) / total if total > 0 else np.array([1.0])
+    entropy = float(-np.sum(probs * np.log2(probs + 1e-12)))
 
     # Held contradiction check at this cell
     held = False
@@ -268,7 +265,7 @@ def run_sweep(data_dir: Path):
     for emb_model_name in EMBEDDING_MODELS:
         print(f"\n--- Embedding model: {emb_model_name} ---")
         from sentence_transformers import SentenceTransformer
-        emb_model = SentenceTransformer(emb_model_name, local_files_only=True)
+        emb_model = SentenceTransformer(emb_model_name)
 
         for text_mode in ["raw", "normalized"]:
             print(f"  Text mode: {text_mode}")

@@ -1,0 +1,156 @@
+{
+  "scope": "offline_cache_and_measurement_audit; no semantic prediction claim established",
+  "models_downloaded": 0,
+  "model_calls": 0,
+  "cache_files": 1750,
+  "model_prefixed_cache_files": 750,
+  "model_prefixed_alignment_passes": 750,
+  "flat_cache_files": 1000,
+  "flat_alignment_passes": 150,
+  "raw_inventory": {
+    "deepseek-r1_8b_files": 250,
+    "deepseek-r1_8b_rows": 7500,
+    "deepseek-r1_8b_errors_or_empty": 0,
+    "flat_files": 491,
+    "flat_rows": 13816,
+    "flat_errors_or_empty": 8372,
+    "mistral_latest_files": 250,
+    "mistral_latest_rows": 7524,
+    "mistral_latest_errors_or_empty": 0,
+    "qwen3_14b_files": 1000,
+    "qwen3_14b_rows": 7500,
+    "qwen3_14b_errors_or_empty": 326
+  },
+  "duplicate_text_embedding_consistency": {
+    "pairs_checked": 9929,
+    "mismatched_pairs": 0
+  },
+  "analyzed_cells": 749,
+  "invalid_responses_in_attributed_cells": 297,
+  "excluded_attributed_cells_below_five_valid_responses": 1,
+  "multimodal_cells_before": 161,
+  "multimodal_cells_after": 141,
+  "lost_multimodality_after_error_removal": 20,
+  "clean_all_noise_cells": 3,
+  "numerical_controls": {
+    "identical": {
+      "n": 30,
+      "clusters": 1,
+      "noise": 0,
+      "entropy": -1.4428232973175175e-12,
+      "confidence": 1.0000000000014428,
+      "singleton_noise_entropy": -0.0,
+      "spread": 0.0,
+      "variance_trace": 0.0
+    },
+    "orthogonal_all_noise": {
+      "n": 30,
+      "clusters": 0,
+      "noise": 30,
+      "entropy": -1.4428232973175175e-12,
+      "confidence": 1.0000000000014428,
+      "singleton_noise_entropy": 4.906890595608519,
+      "spread": 1.0,
+      "variance_trace": 0.9666666666666659
+    }
+  },
+  "geometric_proxy_results": {
+    "all_complete_groups": {
+      "n": 149,
+      "positive": 51,
+      "negative": 98,
+      "tp": 49,
+      "fp": 82,
+      "fn": 2,
+      "tn": 16,
+      "diagnostic_auroc": {
+        "original_covariance_velocity": 0.6645,
+        "early_cosine_spread": 0.7009,
+        "early_cluster_entropy": 0.7182,
+        "early_noise_singletons_entropy": 0.6649,
+        "cosine_spread_slope": 0.7027
+      }
+    },
+    "new_split_only_groups": {
+      "n": 91,
+      "positive": 16,
+      "negative": 75,
+      "tp": 15,
+      "fp": 59,
+      "fn": 1,
+      "tn": 16,
+      "diagnostic_auroc": {
+        "original_covariance_velocity": 0.6333,
+        "early_cosine_spread": 0.6933,
+        "early_cluster_entropy": 0.7317,
+        "early_noise_singletons_entropy": 0.7317,
+        "cosine_spread_slope": 0.6942
+      }
+    },
+    "by_model": {
+      "deepseek-r1_8b": {
+        "n": 50,
+        "positive": 23,
+        "negative": 27,
+        "tp": 22,
+        "fp": 23,
+        "fn": 1,
+        "tn": 4,
+        "diagnostic_auroc": {
+          "original_covariance_velocity": 0.6103,
+          "early_cosine_spread": 0.57,
+          "early_cluster_entropy": 0.5403,
+          "early_noise_singletons_entropy": 0.4863,
+          "cosine_spread_slope": 0.5813
+        }
+      },
+      "mistral_latest": {
+        "n": 50,
+        "positive": 16,
+        "negative": 34,
+        "tp": 15,
+        "fp": 28,
+        "fn": 1,
+        "tn": 6,
+        "diagnostic_auroc": {
+          "original_covariance_velocity": 0.6489,
+          "early_cosine_spread": 0.6783,
+          "early_cluster_entropy": 0.6976,
+          "early_noise_singletons_entropy": 0.5956,
+          "cosine_spread_slope": 0.6783
+        }
+      },
+      "qwen3_14b": {
+        "n": 49,
+        "positive": 12,
+        "negative": 37,
+        "tp": 12,
+        "fp": 31,
+        "fn": 0,
+        "tn": 6,
+        "diagnostic_auroc": {
+          "original_covariance_velocity": 0.7432,
+          "early_cosine_spread": 0.8401,
+          "early_cluster_entropy": 0.8367,
+          "early_noise_singletons_entropy": 0.8176,
+          "cosine_spread_slope": 0.8401
+        }
+      }
+    }
+  },
+  "old_genuine_split_count": 4,
+  "old_genuine_split_with_empty_representative": 3,
+  "limitations": [
+    "Historical embeddings lack row text hashes and encoder-version manifests; filename/count alignment is not proof.",
+    "Old GENUINE_SPLIT labels are generated from geometric features and cannot independently validate those features.",
+    "Proxy AUROCs predict future DBSCAN clustering across temperature, not semantic contradiction or temporal belief change.",
+    "No learned thresholds or tuned classifiers; proxy figures are descriptive, not a held-out semantic benchmark.",
+    "Noise-as-singletons entropy is a sensitivity analysis, not the published semantic-entropy method."
+  ],
+  "source_sha256": {
+    "belief_variance_experiment/variance_to_splats.py": "953e375be5f5fe37414c35438dde0f5fd8d614c289b436b0fb978301ac751167",
+    "personal_agent/contradiction/predictive.py": "e7a6357d9b6c7ee0d36b7d1393097420fdb9969db39c6b48e289f4d6e6a60d44",
+    "belief_variance_experiment/llm_belief_analysis.py": "7790cbab4055993d70c01fd2df66a1e6a4db0cbd575ba6180f0e35023277c6d4",
+    "belief_variance_experiment/classify_contradictions.py": "9deefabaddef9d874f8f3bc0ace998b3e6cd3fa999e13529e5f6d449c4aa5275"
+  }
+}

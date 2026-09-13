@@ -1,0 +1,25 @@
+{
+  "seed": "aether-semantic-v1-20260912",
+  "selection": "4 of first 10 prompt families per domain by SHA256; first 2 development, last 2 heldout; Mistral and Qwen; 10 uniformly sampled rows at T=1.5",
+  "primary_target": "At least one mutually incompatible pair of assertions/recommendations under the SAME assumptions within sampled valid responses. Pure hedging, different compatible examples, different explicit contexts, and generation failures are not contradictions.",
+  "labels": [
+    "agreement",
+    "paraphrase",
+    "contradiction",
+    "uncertainty",
+    "failed_generation"
+  ],
+  "uncertainty": "No incompatible pair, but responses qualify, abstain, or offer compatible alternatives; ambiguity must be recorded.",
+  "label_source": "One Codex reviewer, text-only before score calculation; independent of geometric labels, NOT independent human validation.",
+  "scope": "Held-out prompt families for threshold transfer. Retrospective temperature experiment, NOT time forecasting. Small pilot; existing historical cache alignment remains unauthenticated.",
+  "cases_sha256": "4bf0dd57c59e81579fbd67093299751e7e7fa927aa580cb0a8173e5848840e6a",
+  "score_plan": [
+    "original early covariance velocity rule, fixed 0.001 threshold",
+    "early cosine spread at T=.7",
+    "early noise-aware cluster entropy at T=.7",
+    "early noise-as-singletons entropy",
+    "same-sample covariance trace vs cosine spread vs cluster entropy (secondary diagnostic)"
+  ],
+  "thresholds": "Baselines maximize development balanced accuracy, conservative larger threshold on ties; lock before heldout scoring. Original rule remains fixed.",
+  "labels_frozen_before_scoring": true
+}

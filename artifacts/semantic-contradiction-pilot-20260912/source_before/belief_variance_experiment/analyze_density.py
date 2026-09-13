@@ -19,11 +19,6 @@ from pathlib import Path
 from itertools import combinations
 
 import numpy as np
-
-if __package__:
-    from .embedding_cache import compute_verified_embeddings
-else:
-    from embedding_cache import compute_verified_embeddings
 from scipy import stats
 from scipy.optimize import curve_fit
 from scipy.spatial.distance import cdist
@@ -65,8 +60,6 @@ def load_model_data(data_dir: Path) -> dict[str, dict[float, list[dict]]]:
         print(f"  WARNING: directory not found: {data_dir}")
         return data
     for path in sorted(data_dir.glob("*.jsonl")):
-        if path.name.startswith("._"):
-            continue
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
@@ -83,11 +76,51 @@ def load_model_data(data_dir: Path) -> dict[str, dict[float, list[dict]]]:
 # ---------------------------------------------------------------------------
 # Embeddings
 # ---------------------------------------------------------------------------
-def compute_embeddings(data, model_name, cache_prefix="", raw_dir=None, force=False):
-    """Load row-verified caches or use an already installed encoder."""
-    if raw_dir is None:
-        raw_dir = RAW_DIR / cache_prefix.rstrip("_") if cache_prefix else RAW_DIR
-    return compute_verified_embeddings(data, EMBED_DIR, raw_dir, model_name, force, cache_prefix)
+def compute_embeddings(
+    data: dict[str, dict[float, list[dict]]],
+    model_name: str,
+    cache_prefix: str = "",
+) -> dict[str, dict[float, np.ndarray]]:
+    """Compute or load cached sentence embeddings."""
+    from sentence_transformers import SentenceTransformer
+
+    EMBED_DIR.mkdir(parents=True, exist_ok=True)
+    cached: dict[str, dict[float, np.ndarray]] = defaultdict(dict)
+    to_embed: list[tuple[str, float, int, str]] = []
+
+    for pid in data:
+        for temp in data[pid]:
+            cache_path = EMBED_DIR / f"{cache_prefix}{pid}_{temp}.npy"
+            expected = len(data[pid][temp])
+            if cache_path.exists():
+                arr = np.load(cache_path)
+                if arr.shape[0] == expected:
+                    cached[pid][temp] = arr
+                    continue
+            for idx, rec in enumerate(data[pid][temp]):
+                text = rec.get("response", "")
+                if text.startswith("ERROR:"):
+                    text = ""
+                to_embed.append((pid, temp, idx, text))
+
+    if to_embed:
+        print(f"  Embedding {len(to_embed)} responses with {model_name}...")
+        model = SentenceTransformer(model_name)
+        groups: dict[tuple[str, float], dict[int, str]] = defaultdict(dict)
+        for pid, temp, idx, text in to_embed:
+            groups[(pid, temp)][idx] = text
+
+        for (pid, temp), idx_text in groups.items():
+            n = len(data[pid][temp])
+            texts = [idx_text.get(i, data[pid][temp][i].get("response", "")) for i in range(n)]
+            embeddings = model.encode(texts, show_progress_bar=False, batch_size=128)
+            arr = np.array(embeddings)
+            np.save(EMBED_DIR / f"{cache_prefix}{pid}_{temp}.npy", arr)
+            cached[pid][temp] = arr
+    else:
+        print("  All embeddings cached.")
+
+    return cached
 
 
 # ---------------------------------------------------------------------------
@@ -674,7 +707,6 @@ def main() -> None:
     parser.add_argument("--all", action="store_true", help="Analyze all models")
     parser.add_argument("--data-dir", type=str, help="Path to a single model's raw data directory")
     parser.add_argument("--embedding-model", default=EMBEDDING_MODEL, help="Embedding model name")
-    parser.add_argument("--force-embed", action="store_true", help="Replace caches using an already installed encoder; never downloads weights")
     args = parser.parse_args()
 
     if not args.all and not args.data_dir:
@@ -719,7 +751,7 @@ def main() -> None:
 
         # Cache prefix keeps model embeddings separate
         prefix = f"{model_name}_" if model_name != "" else ""
-        embeddings = compute_embeddings(data, args.embedding_model, cache_prefix=prefix, raw_dir=model_dir, force=args.force_embed)
+        embeddings = compute_embeddings(data, args.embedding_model, cache_prefix=prefix)
 
         res = analyze_model(model_name, data, embeddings)
         all_results[model_name] = res

@@ -1,0 +1,19 @@
+test_cache_only_path_filters_failures_without_model_runtime (__main__.CacheTests.test_cache_only_path_filters_failures_without_model_runtime) ... ok
+test_different_encoder_revisions_cannot_be_combined (__main__.CacheTests.test_different_encoder_revisions_cannot_be_combined) ... ok
+test_generation_is_local_only_and_writes_verifiable_receipts (__main__.CacheTests.test_generation_is_local_only_and_writes_verifiable_receipts) ... ok
+test_invalid_array_or_source_mapping_cannot_be_saved (__main__.CacheTests.test_invalid_array_or_source_mapping_cannot_be_saved) ... ok
+test_legacy_cache_refused_without_importing_models (__main__.CacheTests.test_legacy_cache_refused_without_importing_models) ... ok
+test_missing_encoder_stops_without_download (__main__.CacheTests.test_missing_encoder_stops_without_download) ... ok
+test_roundtrip_preserves_source_rows (__main__.CacheTests.test_roundtrip_preserves_source_rows) ... ok
+test_same_count_reordering_or_text_change_rejected (__main__.CacheTests.test_same_count_reordering_or_text_change_rejected) ... ok
+test_source_change_and_embedding_corruption_rejected (__main__.CacheTests.test_source_change_and_embedding_corruption_rejected) ... ok
+test_wrong_encoder_and_missing_identity_rejected (__main__.CacheTests.test_wrong_encoder_and_missing_identity_rejected) ... ok
+test_empty_and_undersampled_do_not_get_certainty (__main__.GeometryTests.test_empty_and_undersampled_do_not_get_certainty) ... ok
+test_entropy_entry_point_no_longer_collapses_noise (__main__.GeometryTests.test_entropy_entry_point_no_longer_collapses_noise) ... ok
+test_identical_and_all_noise_have_different_support (__main__.GeometryTests.test_identical_and_all_noise_have_different_support) ... ok
+test_mixed_noise_reduces_support (__main__.GeometryTests.test_mixed_noise_reduces_support) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.096s
+
+OK

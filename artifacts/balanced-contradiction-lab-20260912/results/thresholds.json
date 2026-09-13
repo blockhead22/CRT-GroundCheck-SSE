@@ -1,0 +1,13 @@
+{
+  "thresholds": {
+    "project_fisher_distance": 80.95709991455078,
+    "project_fisher_mean_only": 78.55621337890625,
+    "project_fisher_covariance_only": 21.27638053894043,
+    "centroid_cosine_distance": 0.15298068523406982,
+    "mean_cross_cosine_distance": 0.20858286321163177,
+    "word_tfidf_cosine_distance": 0.7617327992570314
+  },
+  "fit_split": "development_only",
+  "rule": "score > threshold",
+  "input_lock_sha256": "70e7cab4f5bf39291fa585e7130d6ae6921b5c41bdf230027f50fc7f4533bd48"
+}

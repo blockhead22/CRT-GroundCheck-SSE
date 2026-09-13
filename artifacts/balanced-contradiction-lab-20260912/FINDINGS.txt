@@ -1,0 +1,138 @@
+BALANCED CONTRADICTION LAB — 2026-09-12
+
+Outcome
+The downloaded MiniLM encoder loads and runs entirely offline. The balanced
+lab completed. In this controlled test, the project's Fisher-distance component
+did not add useful contradiction discrimination beyond cosine similarity.
+This is evidence about the tested static representation and rules, not a
+refutation of every geometry-based method or of the broader Aether project.
+
+Design, frozen before scoring
+72 constructed cases in 12 scenario families; 36 contradictions and 36 matched
+noncontradictions. Six families (36 cases, 18 positive) develop thresholds and six
+different families (36 cases, 18 positive) evaluate transfer. Families cover
+counts, power, access, location, ownership, budgets, versions, locks, temperature,
+schedules, and threshold comparisons. Whole families stay in one split.
+
+Each side has three authored paraphrases. There are 432 row-preserving embeddings.
+Positives include opposing exclusive values, explicit negations, and corrections
+whose final asserted value conflicts with the source memory. Negatives include
+paraphrases, a different entity, a different valid time, retractions that preserve
+the source fact, and unasserted possibilities. The records are invented and
+single-valued in the stated entity/time context, not factual claims about people.
+Labels follow those constructions, include rationales, and were frozen before
+embedding or scoring. One Codex author/reviewer; no independent human adjudication.
+
+Primary experiment: continuous distance as contradiction evidence
+Executed the repository's actual Fisher approximation, mean-only component and
+covariance-only component from frozen source. Compared with centroid cosine,
+mean cross-response cosine, and word/bigram TF-IDF cosine. TF-IDF vocabulary and
+IDF were fit on development texts only. Higher distance was fixed in advance as
+stronger evidence of contradiction, matching the research code's high-Fisher
+candidate premise. Thresholds maximize development balanced accuracy; conservative
+larger threshold wins ties. There is no heldout threshold optimization.
+
+Heldout AUROC (36 cases; 0.5 represents chance ranking):
+  Project Fisher distance:             0.238
+  Fisher precision-weighted mean only: 0.235
+  Fisher covariance shape only:        0.438
+  Centroid cosine distance:            0.222
+  Mean cross-response cosine distance: 0.256
+  Word/bigram TF-IDF distance:          0.284
+
+Fisher's threshold chosen on development (80.9571) caught 0 of 18 contradictions
+and produced 4 false positives among 18 negatives. Centroid cosine caught 1 and
+produced 5 false positives. These are calibrated distance rules, NOT the complete
+production detector. Most development optimums defaulted to warning on nothing;
+with the prespecified direction, separation already failed on development.
+
+Below-chance AUROC means the direction of this relation is often reversed in these
+controls. Contradictions can be lexically and semantically very close, whereas
+harmless context changes increase distance. Simply negating the score would give
+Fisher AUROC 0.762 and centroid cosine 0.778 on these same labels. This is a
+post-hoc arithmetic diagnostic, NOT a newly validated classifier. It still gives
+no Fisher advantage. Do not silently reverse the preregistered direction and
+present it as a prospective result. The protocol was locally frozen, not formally
+registered with an external study registry.
+
+The paired, family-bootstrap 95% interval for Fisher-minus-centroid AUROC is
+[-0.031, 0.065] (2,000 resamples, six heldout families). It includes zero. This is
+a descriptive interval over a very small synthetic set, not population proof.
+
+Concrete counterexample
+Source: Event G's only scheduled day in week 12 is Monday.
+Actual contradiction: Event G's only day that week is Thursday.
+  Fisher distance = 63.929.
+Harmless entity change: Event Z's only day that week is Thursday.
+  Fisher distance = 110.974.
+The changed event identity produces more distance than changing the day for the
+same event. Raw geometry does not supply the semantic scoping rule needed here.
+
+Supplement: execute the existing candidate gate
+After the primary results, inspected and executed the unchanged function
+find_cross_prompt_contradictions with its fixed defaults on these constructed
+loci. It requires cosine similarity >= 0.7 and Fisher distance >= 5.0. This is a
+source-grounded follow-up diagnostic, not part of the original frozen score plan.
+No gate thresholds were tuned. Only its pure numerical dependencies were loaded;
+the application's initializer and production databases were not used.
+
+Heldout result:
+  True positives: 18 / 18
+  False positives: 17 / 18
+  Precision: 51.4%
+  Recall: 100%
+  Balanced accuracy: 52.8%
+The cosine >= 0.7 gate ALONE gives EXACTLY the same decisions. The Fisher >= 5
+condition contributes no selectivity here. The candidate generator still needs
+semantic adjudication; high candidate recall should not be labeled successful
+contradiction detection. This test does not exercise the full application or its
+temporal convergence predictor.
+
+Reproducibility and verification
+Encoder: sentence-transformers/all-MiniLM-L6-v2, local CPU float32, normalized.
+Loaded only from the user-provided model directory. No model downloads and no
+provider calls by the agent. Offline environment flags and a socket connection
+block were active during encoding/scoring. Software dependencies were installed
+into .venv-lab; those are runtime libraries, not additional model weights.
+Max input length was 53 tokens, below the encoder limit; no text was truncated.
+
+Saved embeddings have original record/text row hashes, raw and array file hashes,
+encoder weights/config/tokenizer fingerprint, runtime versions, and encoding
+settings. Disk save/load round-trip matched exactly. Raw input/protocol/source
+locks are checked by the runner. All artifacts preserve row order.
+
+19 checks passed: 14 existing measurement/cache regression tests plus five new
+checks for balanced and disjoint splits, row mapping, family leakage, constant-
+score chance performance, and threshold behavior. Real local encoder loading,
+fingerprinting, encoding, and cache round-trip also completed successfully.
+
+macOS created 37,073 AppleDouble ._ metadata files within the new virtualenv.
+Transformers tried to parse some as Python and failed. Removed only files with
+AppleDouble magic within .venv-lab; retry succeeded. Future package installs on
+this external filesystem may recreate such metadata. No research/model data was
+removed and no production application source was changed in this experiment.
+
+Limitations and next decision
+This is a single-author synthetic test with shared transformation templates across
+scenario-family splits. Three correlated paraphrases per side give a noisy diagonal
+variance estimate in 384 dimensions; these are not independent LLM draws or proof
+of Gaussian internal beliefs. Default thresholds from other data may not transfer.
+Only one small encoder and six heldout families were used. This tests static
+semantic discrimination, NOT prediction before future evidence arrives.
+
+These results do not justify investment in more geometry-only confidence or
+contradiction claims. A useful next architecture would use geometry to retrieve
+related claims and a separate semantic check for entity, valid time, negation,
+conditional scope, and final asserted value. Evaluate that second stage on a new
+heldout set, keeping candidate recall separate from final precision. Natural
+examples and independent adjudication should precede broad research claims.
+
+Run from the AI_round2 project directory:
+  .venv-lab/bin/python artifacts/balanced-contradiction-lab-20260912/bundle/run.py \
+    --repo "$PWD" --model "$PWD/models/all-MiniLM-L6-v2" \
+    --output /private/tmp/aether-balanced-reproduction
+  .venv-lab/bin/python artifacts/balanced-contradiction-lab-20260912/bundle/supplement.py \
+    --results /private/tmp/aether-balanced-reproduction
+  .venv-lab/bin/python artifacts/balanced-contradiction-lab-20260912/bundle/test_benchmark.py
+The first command uses existing verified embeddings if present in the output,
+otherwise it encodes with the existing local model. It cannot download a model.

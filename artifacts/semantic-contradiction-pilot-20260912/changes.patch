@@ -1,0 +1,923 @@
+--- a/belief_variance_experiment/analyze.py
++++ b/belief_variance_experiment/analyze.py
+@@ -18,6 +18,13 @@
+ matplotlib.use("Agg")  # Non-interactive backend for Windows compatibility
+ import matplotlib.pyplot as plt
+ import numpy as np
++
++if __package__:
++    from .embedding_cache import compute_verified_embeddings
++    from .geometry_metrics import cluster_evidence, valid_embeddings
++else:
++    from embedding_cache import compute_verified_embeddings
++    from geometry_metrics import cluster_evidence, valid_embeddings
+ import seaborn as sns
+ from scipy import stats
+ from scipy.spatial.distance import jensenshannon
+@@ -55,6 +62,8 @@
+         return data
+ 
+     for path in sorted(RAW_DIR.glob("*.jsonl")):
++        if path.name.startswith("._"):
++            continue
+         with open(path, "r", encoding="utf-8") as f:
+             for line in f:
+                 line = line.strip()
+@@ -70,103 +79,26 @@
+ # ---------------------------------------------------------------------------
+ # Embedding
+ # ---------------------------------------------------------------------------
+-def compute_embeddings(
+-    data: dict[str, dict[float, list[dict]]],
+-    model_name: str,
+-    force: bool = False,
+-) -> dict[str, dict[float, np.ndarray]]:
+-    """
+-    Compute sentence embeddings for all responses.
+-    Caches to disk as .npy files.
+-    Returns: {prompt_id: {temperature: np.ndarray of shape (N, dim)}}
+-    """
+-    from sentence_transformers import SentenceTransformer
+-
+-    EMBED_DIR.mkdir(parents=True, exist_ok=True)
+-
+-    # Collect all texts that need embedding
+-    to_embed: list[tuple[str, float, int, str]] = []  # (pid, temp, idx, text)
+-    cached: dict[str, dict[float, np.ndarray]] = defaultdict(dict)
+-
+-    for pid in data:
+-        for temp in data[pid]:
+-            cache_path = EMBED_DIR / f"{pid}_{temp}.npy"
+-            expected_count = len(data[pid][temp])
+-            if cache_path.exists() and not force:
+-                arr = np.load(cache_path)
+-                if arr.shape[0] == expected_count:
+-                    cached[pid][temp] = arr
+-                    continue
+-            # Need to embed
+-            for idx, record in enumerate(data[pid][temp]):
+-                text = record.get("response", "")
+-                if text.startswith("ERROR:"):
+-                    text = ""  # Embed empty string for errors
+-                to_embed.append((pid, temp, idx, text))
+-
+-    if to_embed:
+-        print(f"Embedding {len(to_embed)} responses with {model_name}...")
+-        model = SentenceTransformer(model_name)
+-
+-        # Group by (pid, temp) for batch saving
+-        groups: dict[tuple[str, float], dict[int, str]] = defaultdict(dict)
+-        for pid, temp, idx, text in to_embed:
+-            groups[(pid, temp)][idx] = text
+-
+-        for (pid, temp), idx_text in groups.items():
+-            n = len(data[pid][temp])
+-            texts = []
+-            for i in range(n):
+-                if i in idx_text:
+-                    texts.append(idx_text[i])
+-                else:
+-                    # Already cached individually? Shouldn't happen, but safe fallback
+-                    texts.append(data[pid][temp][i].get("response", ""))
+-
+-            embeddings = model.encode(texts, show_progress_bar=False, batch_size=128)
+-            arr = np.array(embeddings)
+-            np.save(EMBED_DIR / f"{pid}_{temp}.npy", arr)
+-            cached[pid][temp] = arr
+-
+-        print("Embedding complete.")
+-    else:
+-        print("All embeddings cached. Skipping embedding step.")
+-
+-    return cached
++def compute_embeddings(data, model_name, force=False):
++    """Load row-verified caches or explicitly use an already installed encoder."""
++    prefix = f"{RAW_DIR.name}_" if RAW_DIR != BASE_DIR / "results" / "raw" else ""
++    return compute_verified_embeddings(data, EMBED_DIR, RAW_DIR, model_name, force, prefix)
+ 
+ 
+ # ---------------------------------------------------------------------------
+ # Metrics computation
+ # ---------------------------------------------------------------------------
+-def semantic_entropy(embeddings: np.ndarray, eps: float = 0.3, min_samples: int = 5) -> tuple[float, int]:
+-    """
+-    Compute semantic entropy over DBSCAN clusters.
+-    Returns (entropy, num_clusters).
+-    """
+-    if len(embeddings) < min_samples:
+-        return 0.0, 0
+-
+-    # Use cosine distance for DBSCAN
+-    distances = cosine_distances(embeddings)
+-    clustering = DBSCAN(eps=eps, min_samples=min_samples, metric="precomputed")
+-    labels = clustering.fit_predict(distances)
+-
+-    # Count cluster sizes (including noise as its own "cluster")
+-    unique_labels = set(labels)
+-    counts = []
+-    for label in unique_labels:
+-        count = np.sum(labels == label)
+-        counts.append(count)
+-
+-    total = sum(counts)
+-    if total == 0:
+-        return 0.0, 0
+-
+-    probs = np.array(counts) / total
+-    entropy = -np.sum(probs * np.log2(probs + 1e-12))
+-    num_clusters = len([l for l in unique_labels if l >= 0])  # Exclude noise
+-
+-    return entropy, num_clusters
++def semantic_entropy(embeddings, eps=0.3, min_samples=5):
++    """Compatibility name for DBSCAN entropy with noise as singletons.
++
++    This geometric diagnostic is NOT the published semantic-entropy estimator.
++    Small samples are not silently returned as zero uncertainty.
++    """
++    arr = valid_embeddings(embeddings)
++    distances = cosine_distances(arr)
++    labels = DBSCAN(eps=eps, min_samples=min_samples, metric="precomputed").fit_predict(distances)
++    evidence = cluster_evidence(labels)
++    return evidence.singleton_noise_entropy_bits, evidence.clusters
+ 
+ 
+ def response_variance(embeddings: np.ndarray) -> float:
+--- a/belief_variance_experiment/analyze_density.py
++++ b/belief_variance_experiment/analyze_density.py
+@@ -19,6 +19,11 @@
+ from itertools import combinations
+ 
+ import numpy as np
++
++if __package__:
++    from .embedding_cache import compute_verified_embeddings
++else:
++    from embedding_cache import compute_verified_embeddings
+ from scipy import stats
+ from scipy.optimize import curve_fit
+ from scipy.spatial.distance import cdist
+@@ -60,6 +65,8 @@
+         print(f"  WARNING: directory not found: {data_dir}")
+         return data
+     for path in sorted(data_dir.glob("*.jsonl")):
++        if path.name.startswith("._"):
++            continue
+         with open(path, "r", encoding="utf-8") as f:
+             for line in f:
+                 line = line.strip()
+@@ -76,51 +83,11 @@
+ # ---------------------------------------------------------------------------
+ # Embeddings
+ # ---------------------------------------------------------------------------
+-def compute_embeddings(
+-    data: dict[str, dict[float, list[dict]]],
+-    model_name: str,
+-    cache_prefix: str = "",
+-) -> dict[str, dict[float, np.ndarray]]:
+-    """Compute or load cached sentence embeddings."""
+-    from sentence_transformers import SentenceTransformer
+-
+-    EMBED_DIR.mkdir(parents=True, exist_ok=True)
+-    cached: dict[str, dict[float, np.ndarray]] = defaultdict(dict)
+-    to_embed: list[tuple[str, float, int, str]] = []
+-
+-    for pid in data:
+-        for temp in data[pid]:
+-            cache_path = EMBED_DIR / f"{cache_prefix}{pid}_{temp}.npy"
+-            expected = len(data[pid][temp])
+-            if cache_path.exists():
+-                arr = np.load(cache_path)
+-                if arr.shape[0] == expected:
+-                    cached[pid][temp] = arr
+-                    continue
+-            for idx, rec in enumerate(data[pid][temp]):
+-                text = rec.get("response", "")
+-                if text.startswith("ERROR:"):
+-                    text = ""
+-                to_embed.append((pid, temp, idx, text))
+-
+-    if to_embed:
+-        print(f"  Embedding {len(to_embed)} responses with {model_name}...")
+-        model = SentenceTransformer(model_name)
+-        groups: dict[tuple[str, float], dict[int, str]] = defaultdict(dict)
+-        for pid, temp, idx, text in to_embed:
+-            groups[(pid, temp)][idx] = text
+-
+-        for (pid, temp), idx_text in groups.items():
+-            n = len(data[pid][temp])
+-            texts = [idx_text.get(i, data[pid][temp][i].get("response", "")) for i in range(n)]
+-            embeddings = model.encode(texts, show_progress_bar=False, batch_size=128)
+-            arr = np.array(embeddings)
+-            np.save(EMBED_DIR / f"{cache_prefix}{pid}_{temp}.npy", arr)
+-            cached[pid][temp] = arr
+-    else:
+-        print("  All embeddings cached.")
+-
+-    return cached
++def compute_embeddings(data, model_name, cache_prefix="", raw_dir=None, force=False):
++    """Load row-verified caches or use an already installed encoder."""
++    if raw_dir is None:
++        raw_dir = RAW_DIR / cache_prefix.rstrip("_") if cache_prefix else RAW_DIR
++    return compute_verified_embeddings(data, EMBED_DIR, raw_dir, model_name, force, cache_prefix)
+ 
+ 
+ # ---------------------------------------------------------------------------
+@@ -707,6 +674,7 @@
+     parser.add_argument("--all", action="store_true", help="Analyze all models")
+     parser.add_argument("--data-dir", type=str, help="Path to a single model's raw data directory")
+     parser.add_argument("--embedding-model", default=EMBEDDING_MODEL, help="Embedding model name")
++    parser.add_argument("--force-embed", action="store_true", help="Replace caches using an already installed encoder; never downloads weights")
+     args = parser.parse_args()
+ 
+     if not args.all and not args.data_dir:
+@@ -751,7 +719,7 @@
+ 
+         # Cache prefix keeps model embeddings separate
+         prefix = f"{model_name}_" if model_name != "" else ""
+-        embeddings = compute_embeddings(data, args.embedding_model, cache_prefix=prefix)
++        embeddings = compute_embeddings(data, args.embedding_model, cache_prefix=prefix, raw_dir=model_dir, force=args.force_embed)
+ 
+         res = analyze_model(model_name, data, embeddings)
+         all_results[model_name] = res
+--- a/belief_variance_experiment/embedding_cache.py
++++ b/belief_variance_experiment/embedding_cache.py
+@@ -0,0 +1,200 @@
++"""Verified row-preserving embedding caches. Loading never downloads a model.
++
++Legacy .npy files have no authenticated text mapping and fail closed here.
++The separately labeled historical pilot can inspect them conditionally; it
++must never manufacture a 'verified' generation manifest for those files.
++"""
++from collections import defaultdict
++import hashlib
++from importlib.metadata import version
++import json
++import os
++from pathlib import Path
++import tempfile
++import numpy as np
++
++SCHEMA = 1
++PREPROCESSING = 'response-v1: ERROR/blank -> empty; other text unchanged'
++
++
++class CacheIntegrityError(ValueError):
++    pass
++
++
++def sha256(path):
++    h = hashlib.sha256()
++    with Path(path).open('rb') as f:
++        for block in iter(lambda: f.read(1024 * 1024), b''):
++            h.update(block)
++    return h.hexdigest()
++
++
++def digest(value):
++    return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False,
++                                     separators=(',', ':'), allow_nan=False).encode()).hexdigest()
++
++
++def response_valid(record):
++    text = record.get('response')
++    return isinstance(text, str) and bool(text.strip()) and not text.lstrip().startswith('ERROR:')
++
++
++def embedding_text(record):
++    return record['response'] if response_valid(record) else ''
++
++
++def row_receipts(records):
++    return [dict(record_sha256=digest(r), text_sha256=digest(embedding_text(r)),
++                 valid=response_valid(r)) for r in records]
++
++
++def manifest_path(path):
++    return Path(path).with_suffix('.manifest.json')
++
++
++def _validate_array(arr, count):
++    if (arr.ndim != 2 or arr.shape[0] != count or arr.shape[1] == 0 or
++        not np.issubdtype(arr.dtype, np.number) or not np.isfinite(arr).all()):
++        raise CacheIntegrityError('Embedding shape, row count, or finite-number check failed')
++
++
++def save_cache(path, arr, records, encoder, source_file):
++    """Call ONLY for arrays just generated from these records, in this order.
++
++    Hashes detect staleness/corruption after creation; they cannot establish
++    honesty of the producer or retroactively authenticate historical arrays.
++    """
++    path = Path(path)
++    arr = np.asarray(arr)
++    _validate_array(arr, len(records))
++    if not encoder.get('model_name') or not encoder.get('artifact_sha256'):
++        raise CacheIntegrityError('Encoder name and immutable artifact fingerprint required')
++    source_file = Path(source_file)
++    actual = read_records(source_file)
++    if row_receipts(actual) != row_receipts(records):
++        raise CacheIntegrityError('Source JSONL differs from rows passed to encoder')
++    path.parent.mkdir(parents=True, exist_ok=True)
++    # Each file replaces atomically. A crash between replacements yields a hash
++    # mismatch, never an apparently valid partially updated cache.
++    with tempfile.NamedTemporaryFile(dir=path.parent, suffix='.npy', delete=False) as f:
++        temporary = Path(f.name)
++        np.save(f, arr, allow_pickle=False)
++    try:
++        manifest = dict(schema=SCHEMA, provenance='generated_with_row_receipts',
++                        preprocessing=PREPROCESSING, encoder=encoder,
++                        source_file=os.path.relpath(source_file.resolve(), path.parent.resolve()),
++                        source_sha256=sha256(source_file), rows=row_receipts(records),
++                        shape=list(arr.shape), dtype=str(arr.dtype), array_sha256=sha256(temporary))
++        os.replace(temporary, path)
++        with tempfile.NamedTemporaryFile(mode='w', dir=path.parent, suffix='.json',
++                                         encoding='utf-8', delete=False) as f:
++            temporary_manifest = Path(f.name)
++            json.dump(manifest, f, indent=2, allow_nan=False)
++            f.write('\n')
++        os.replace(temporary_manifest, manifest_path(path))
++    finally:
++        temporary.unlink(missing_ok=True)
++
++
++def read_records(path):
++    return [json.loads(l) for l in Path(path).read_text(encoding='utf-8-sig').splitlines() if l.strip()]
++
++
++def load_cache(path, records=None, model_name=None):
++    path = Path(path)
++    try:
++        manifest = json.loads(manifest_path(path).read_text())
++        if (manifest['schema'] != SCHEMA or manifest['preprocessing'] != PREPROCESSING or
++            manifest['provenance'] != 'generated_with_row_receipts'):
++            raise CacheIntegrityError('Unsupported or unverified cache provenance')
++        encoder = manifest['encoder']
++        if not encoder.get('model_name') or not encoder.get('artifact_sha256'):
++            raise CacheIntegrityError('Missing encoder fingerprint')
++        if model_name is not None and model_name != encoder['model_name']:
++            raise CacheIntegrityError('Cache was generated by a different encoder')
++        source = path.parent / manifest['source_file']
++        if sha256(source) != manifest['source_sha256']:
++            raise CacheIntegrityError('Raw JSONL changed since embedding')
++        source_records = read_records(source)
++        receipts = row_receipts(source_records)
++        if receipts != manifest['rows'] or (records is not None and row_receipts(records) != receipts):
++            raise CacheIntegrityError('Embedding row text/order/metadata changed')
++        if sha256(path) != manifest['array_sha256']:
++            raise CacheIntegrityError('Embedding array hash mismatch')
++        arr = np.load(path, allow_pickle=False)
++        _validate_array(arr, len(receipts))
++        if list(arr.shape) != manifest['shape'] or str(arr.dtype) != manifest['dtype']:
++            raise CacheIntegrityError('Embedding shape/dtype manifest mismatch')
++        return arr
++    except (OSError, KeyError, TypeError, json.JSONDecodeError) as exc:
++        raise CacheIntegrityError(f'Unverified or unreadable cache {path.name}: {exc}. '
++                                  'No model was loaded. Re-embed explicitly with an installed encoder.') from exc
++
++
++def fingerprint_encoder(model, model_name):
++    """Fingerprint loaded weights, module configuration, tokenizer and runtime."""
++    h = hashlib.sha256()
++    for key, tensor in sorted(model.state_dict().items()):
++        h.update(key.encode())
++        value = tensor.detach().cpu().contiguous()
++        h.update(str(value.dtype).encode())
++        h.update(str(tuple(value.shape)).encode())
++        # Byte view also supports bfloat16, which numpy cannot represent directly.
++        h.update(value.view(__import__('torch').uint8).numpy().tobytes())
++    config = {name: module.get_config_dict() if hasattr(module, 'get_config_dict') else repr(module)
++              for name, module in model._modules.items()}
++    tokenizer = model.tokenizer
++    config['tokenizer'] = tokenizer.backend_tokenizer.to_str() if hasattr(tokenizer, 'backend_tokenizer') else tokenizer.get_vocab()
++    config['tokenizer_special_tokens'] = {k: str(v) for k, v in tokenizer.special_tokens_map.items()}
++    config['max_seq_length'] = model.max_seq_length
++    config['prompts'] = getattr(model, 'prompts', {})
++    config['default_prompt_name'] = getattr(model, 'default_prompt_name', None)
++    config['truncate_dim'] = getattr(model, 'truncate_dim', None)
++    h.update(digest(config).encode())
++    return dict(model_name=model_name, artifact_sha256=h.hexdigest(),
++                sentence_transformers=version('sentence-transformers'),
++                transformers=version('transformers'), torch=version('torch'))
++
++
++def compute_verified_embeddings(data, embed_dir, raw_dir, model_name, force=False, prefix=''):
++    """Use verified caches or an already installed encoder; never fetch weights.
++
++    Errors/blank generations stay in disk receipts to preserve row alignment,
++    but are excluded from the numerical arrays returned to experiment metrics.
++    """
++    result = defaultdict(dict)
++    pending = []
++    encoder_identity = None
++    for pid, temperatures in data.items():
++        for temp, records in temperatures.items():
++            path = Path(embed_dir) / f'{prefix}{pid}_{temp}.npy'
++            if path.exists() and not force:
++                arr = load_cache(path, records, model_name)
++                identity = json.loads(manifest_path(path).read_text())["encoder"]
++                if encoder_identity is not None and identity != encoder_identity:
++                    raise CacheIntegrityError("Mixed encoder artifacts/runtimes in one analysis")
++                encoder_identity = identity
++                mask = np.array([response_valid(r) for r in records], dtype=bool)
++                if mask.any():
++                    result[pid][temp] = arr[mask]
++            elif records:
++                pending.append((pid, temp, path, records))
++    if pending:
++        # Deliberately lazy: a cache-only run never imports ML/model runtimes.
++        try:
++            from sentence_transformers import SentenceTransformer
++            model = SentenceTransformer(model_name, local_files_only=True)
++        except (ImportError, OSError) as exc:
++            raise RuntimeError('A locally installed embedding model is required. '
++                               'Stopped without downloading weights.') from exc
++        encoder = fingerprint_encoder(model, model_name)
++        if encoder_identity is not None and encoder != encoder_identity:
++            raise CacheIntegrityError("Installed encoder differs from existing caches; explicitly regenerate all cells")
++        for pid, temp, path, records in pending:
++            arr = np.asarray(model.encode([embedding_text(r) for r in records],
++                                          show_progress_bar=False, batch_size=128))
++            save_cache(path, arr, records, encoder, Path(raw_dir) / f'{pid}_{temp}.jsonl')
++            mask = np.array([response_valid(r) for r in records], dtype=bool)
++            if mask.any():
++                result[pid][temp] = arr[mask]
++    return result
+--- a/belief_variance_experiment/geometry_metrics.py
++++ b/belief_variance_experiment/geometry_metrics.py
+@@ -0,0 +1,53 @@
++"""Geometric diagnostics, not semantic truth probabilities. No model imports."""
++from dataclasses import dataclass
++import numpy as np
++
++
++@dataclass(frozen=True)
++class ClusterEvidence:
++    clusters: int
++    noise_fraction: float
++    cluster_entropy_bits: float
++    singleton_noise_entropy_bits: float
++    support: float
++
++
++def _entropy(counts):
++    p = np.asarray(counts, dtype=float)
++    if not len(p) or not p.sum():
++        return 0.0
++    p = p[p > 0] / p.sum()
++    return max(0.0, float(-np.sum(p * np.log2(p))))
++
++
++def cluster_evidence(labels):
++    """Noise is unassigned evidence, never one unanimous semantic cluster.
++
++    support = assigned fraction / (1 + entropy among assigned clusters).
++    It is a bounded heuristic, NOT calibrated confidence/correctness. All-noise
++    and empty inputs have zero support. Singleton-noise entropy is a separate
++    sensitivity diagnostic, not a validated semantic-entropy estimator.
++    """
++    labels = np.asarray(labels)
++    if labels.ndim != 1 or (labels.size and
++            (not np.issubdtype(labels.dtype, np.integer) or np.any(labels < -1))):
++        raise ValueError('Expected one-dimensional integer DBSCAN labels >= -1')
++    n = len(labels)
++    counts = [int(np.sum(labels == k)) for k in np.unique(labels) if k >= 0]
++    noise = int(np.sum(labels == -1))
++    entropy = _entropy(counts)
++    fraction = noise / n if n else 1.0
++    return ClusterEvidence(len(counts), fraction, entropy,
++                           _entropy(counts + [1] * noise),
++                           float(np.clip((1.0 - fraction) / (1.0 + entropy), 0., 1.)))
++
++
++def valid_embeddings(embeddings):
++    arr = np.asarray(embeddings)
++    if arr.ndim != 2 or arr.shape[0] == 0 or arr.shape[1] == 0:
++        raise ValueError('Expected a nonempty N x D embedding matrix')
++    if not np.issubdtype(arr.dtype, np.number) or not np.isfinite(arr).all():
++        raise ValueError('Embeddings must be finite numbers')
++    if np.any(np.linalg.norm(arr, axis=1) == 0):
++        raise ValueError('Zero vectors have undefined cosine direction')
++    return arr
+--- a/belief_variance_experiment/robustness_sweep.py
++++ b/belief_variance_experiment/robustness_sweep.py
+@@ -22,6 +22,11 @@
+ from pathlib import Path
+ 
+ import numpy as np
++
++if __package__:
++    from .geometry_metrics import cluster_evidence
++else:
++    from geometry_metrics import cluster_evidence
+ from sklearn.cluster import DBSCAN
+ from sklearn.metrics.pairwise import cosine_distances, cosine_similarity
+ 
+@@ -81,6 +86,8 @@
+     """Load {prompt_id: {temperature: [response_texts]}}"""
+     data = defaultdict(lambda: defaultdict(list))
+     for path in sorted(data_dir.glob("*.jsonl")):
++        if path.name.startswith("._"):
++            continue
+         with open(path, "r", encoding="utf-8") as f:
+             for line in f:
+                 line = line.strip()
+@@ -90,7 +97,8 @@
+                 pid = record["prompt_id"]
+                 temp = record["temperature"]
+                 resp = record.get("response", "")
+-                data[pid][temp].append(resp)
++                if isinstance(resp, str) and resp.strip() and not resp.lstrip().startswith("ERROR:"):
++                    data[pid][temp].append(resp)
+     return data
+ 
+ 
+@@ -140,13 +148,8 @@
+         tri_sims = sims[np.triu_indices(n, k=1)]
+         template_sim = float(tri_sims.mean()) if len(tri_sims) > 0 else 1.0
+ 
+-    # Entropy
+-    counts = []
+-    for label in unique_labels:
+-        counts.append(int(np.sum(labels == label)))
+-    total = sum(counts)
+-    probs = np.array(counts) / total if total > 0 else np.array([1.0])
+-    entropy = float(-np.sum(probs * np.log2(probs + 1e-12)))
++    # Geometric diagnostic: never combine all DBSCAN noise into consensus.
++    entropy = cluster_evidence(labels).singleton_noise_entropy_bits
+ 
+     # Held contradiction check at this cell
+     held = False
+@@ -265,7 +268,7 @@
+     for emb_model_name in EMBEDDING_MODELS:
+         print(f"\n--- Embedding model: {emb_model_name} ---")
+         from sentence_transformers import SentenceTransformer
+-        emb_model = SentenceTransformer(emb_model_name)
++        emb_model = SentenceTransformer(emb_model_name, local_files_only=True)
+ 
+         for text_mode in ["raw", "normalized"]:
+             print(f"  Text mode: {text_mode}")
+--- a/belief_variance_experiment/test_measurement_integrity.py
++++ b/belief_variance_experiment/test_measurement_integrity.py
+@@ -0,0 +1,179 @@
++"""Offline regression tests. No model imports, downloads, or provider calls."""
++import ast
++from collections import defaultdict
++from dataclasses import dataclass
++import importlib.util
++import json
++import os
++from pathlib import Path
++import sys
++import tempfile
++import unittest
++from unittest.mock import patch
++import numpy as np
++from sklearn.cluster import DBSCAN
++from sklearn.metrics.pairwise import cosine_distances
++
++if __package__:
++    from . import embedding_cache as cache
++    from .geometry_metrics import cluster_evidence, valid_embeddings
++else:
++    import embedding_cache as cache
++    from geometry_metrics import cluster_evidence, valid_embeddings
++
++SOURCE = Path(__file__).resolve().parent
++ROOT = Path(os.environ.get('AETHER_LAB_REPO', SOURCE.parent))
++
++
++def source_functions(path, names, namespace):
++    tree = ast.parse(path.read_text())
++    body = [ast.ImportFrom(module='__future__', names=[ast.alias(name='annotations')], level=0)]
++    body += [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.ClassDef)) and n.name in names]
++    if len(body) != len(names) + 1:
++        raise AssertionError('Missing production definition')
++    exec(compile(ast.fix_missing_locations(ast.Module(body=body, type_ignores=[])), str(path), 'exec'), namespace)
++
++
++def converter():
++    # Import only the pure numerical locus file, bypassing app initializers.
++    spec = importlib.util.spec_from_file_location('regression_locus', ROOT/'personal_agent/memory_subsystem/splats.py')
++    module = importlib.util.module_from_spec(spec)
++    sys.modules[spec.name] = module
++    spec.loader.exec_module(module)
++    namespace = dict(__name__=__name__, np=np, dataclass=dataclass, BeliefLocus=module.BeliefLocus,
++                     DBSCAN=DBSCAN, cosine_distances=cosine_distances,
++                     cluster_evidence=cluster_evidence, valid_embeddings=valid_embeddings)
++    source_functions(SOURCE/'variance_to_splats.py', {'BeliefSplat','distribution_to_splat'}, namespace)
++    return namespace['distribution_to_splat']
++
++
++class GeometryTests(unittest.TestCase):
++    def test_identical_and_all_noise_have_different_support(self):
++        convert = converter()
++        same = convert('same', np.tile(np.eye(1,384)[0], (30,1)), 1.)
++        noise = convert('noise', np.eye(30,384), 1.)
++        self.assertEqual(same.splat.alpha, 1.)
++        self.assertEqual(noise.splat.alpha, 0.)
++        self.assertEqual(noise.noise_fraction, 1.)
++        self.assertAlmostEqual(noise.entropy, np.log2(30))
++
++    def test_mixed_noise_reduces_support(self):
++        clean = cluster_evidence([0]*10)
++        mixed = cluster_evidence([0]*10 + [-1]*10)
++        self.assertEqual(clean.support, 1.)
++        self.assertEqual(mixed.support, .5)
++        self.assertGreater(mixed.singleton_noise_entropy_bits, 0.)
++
++    def test_empty_and_undersampled_do_not_get_certainty(self):
++        self.assertEqual(cluster_evidence([]).support, 0.)
++        self.assertEqual(converter()('small',np.eye(3,10),1.).splat.alpha,0.)
++        for arr in [np.empty((0,10)), np.zeros((5,10)), np.full((5,10),np.nan)]:
++            with self.assertRaises(ValueError): converter()('bad',arr,1.)
++
++    def test_entropy_entry_point_no_longer_collapses_noise(self):
++        ns=dict(__name__=__name__, np=np, DBSCAN=DBSCAN, cosine_distances=cosine_distances,
++                cluster_evidence=cluster_evidence, valid_embeddings=valid_embeddings)
++        source_functions(SOURCE/'analyze.py',{'semantic_entropy'},ns)
++        entropy, clusters=ns['semantic_entropy'](np.eye(30,384))
++        self.assertEqual(clusters,0)
++        self.assertAlmostEqual(entropy,np.log2(30))
++
++
++class CacheTests(unittest.TestCase):
++    def setUp(self):
++        self.temp = tempfile.TemporaryDirectory()
++        self.addCleanup(self.temp.cleanup)
++        self.root=Path(self.temp.name)
++        self.path=self.root/'embeddings'/'m_pid_1.0.npy'
++        self.raw=self.root/'raw'/'pid_1.0.jsonl'
++        self.raw.parent.mkdir()
++        self.records=[dict(prompt_id='pid',temperature=1.0,response=t,repetition=i)
++                      for i,t in enumerate(['A','B','ERROR: timeout',''])]
++        self.arr=np.eye(4,8,dtype=np.float32)
++        self.encoder=dict(model_name='fake-test-encoder',artifact_sha256='a'*64)
++        self.raw.write_text(''.join(json.dumps(r)+'\n' for r in self.records))
++
++    def save(self): cache.save_cache(self.path,self.arr,self.records,self.encoder,self.raw)
++
++    def test_roundtrip_preserves_source_rows(self):
++        self.save()
++        np.testing.assert_array_equal(cache.load_cache(self.path,self.records,'fake-test-encoder'),self.arr)
++        receipts=json.loads(cache.manifest_path(self.path).read_text())['rows']
++        self.assertEqual([r['valid'] for r in receipts],[True,True,False,False])
++
++    def test_same_count_reordering_or_text_change_rejected(self):
++        self.save()
++        for records in [list(reversed(self.records)),[dict(r,response='C') for r in self.records]]:
++            with self.assertRaises(cache.CacheIntegrityError): cache.load_cache(self.path,records)
++
++    def test_source_change_and_embedding_corruption_rejected(self):
++        self.save()
++        self.raw.write_text(self.raw.read_text().replace('"A"','"C"'))
++        with self.assertRaises(cache.CacheIntegrityError): cache.load_cache(self.path)
++        self.raw.write_text(''.join(json.dumps(r)+'\n' for r in self.records))
++        self.save()
++        np.save(self.path,self.arr+1.)
++        with self.assertRaises(cache.CacheIntegrityError): cache.load_cache(self.path)
++
++    def test_wrong_encoder_and_missing_identity_rejected(self):
++        self.save()
++        with self.assertRaises(cache.CacheIntegrityError): cache.load_cache(self.path,model_name='different')
++        p=cache.manifest_path(self.path)
++        m=json.loads(p.read_text()); del m['encoder']['artifact_sha256']; p.write_text(json.dumps(m))
++        with self.assertRaises(cache.CacheIntegrityError): cache.load_cache(self.path)
++
++    def test_legacy_cache_refused_without_importing_models(self):
++        self.path.parent.mkdir(); np.save(self.path,self.arr)
++        with patch.dict(sys.modules,{'sentence_transformers':None}):
++            with self.assertRaises(cache.CacheIntegrityError):
++                cache.compute_verified_embeddings({'pid':{1.0:self.records}},self.path.parent,self.raw.parent,'fake-test-encoder',prefix='m_')
++
++    def test_cache_only_path_filters_failures_without_model_runtime(self):
++        self.save()
++        with patch.dict(sys.modules,{'sentence_transformers':None}):
++            result=cache.compute_verified_embeddings({'pid':{1.0:self.records}},self.path.parent,self.raw.parent,'fake-test-encoder',prefix='m_')
++        np.testing.assert_array_equal(result['pid'][1.0], self.arr[:2])
++
++    def test_different_encoder_revisions_cannot_be_combined(self):
++        self.save()
++        other_raw=self.raw.parent/'pid2_1.0.jsonl'
++        other_records=[dict(r,prompt_id='pid2') for r in self.records]
++        other_raw.write_text(''.join(json.dumps(r)+'\n' for r in other_records))
++        other_path=self.path.parent/'m_pid2_1.0.npy'
++        cache.save_cache(other_path,self.arr,other_records,
++                         dict(model_name='fake-test-encoder',artifact_sha256='b'*64),other_raw)
++        with patch.dict(sys.modules,{'sentence_transformers':None}):
++            with self.assertRaisesRegex(cache.CacheIntegrityError,'Mixed encoder'):
++                cache.compute_verified_embeddings({'pid':{1.0:self.records},'pid2':{1.0:other_records}},
++                    self.path.parent,self.raw.parent,'fake-test-encoder',prefix='m_')
++
++    def test_generation_is_local_only_and_writes_verifiable_receipts(self):
++        from types import SimpleNamespace
++        received={}
++        arr=self.arr
++        class InstalledEncoder:
++            def __init__(self,name,**kwargs): received.update(name=name,**kwargs)
++            def encode(self,texts,**kwargs):
++                received['texts']=texts
++                return arr
++        fake=SimpleNamespace(SentenceTransformer=InstalledEncoder)
++        with patch.dict(sys.modules,{'sentence_transformers':fake}), patch.object(cache,'fingerprint_encoder',return_value=self.encoder):
++            result=cache.compute_verified_embeddings({'pid':{1.0:self.records}},self.path.parent,self.raw.parent,'fake-test-encoder',prefix='m_')
++        self.assertIs(received['local_files_only'],True)
++        self.assertEqual(received['texts'],['A','B','',''])
++        np.testing.assert_array_equal(cache.load_cache(self.path),self.arr)
++        np.testing.assert_array_equal(result['pid'][1.0],self.arr[:2])
++
++    def test_missing_encoder_stops_without_download(self):
++        with patch.dict(sys.modules,{'sentence_transformers':None}):
++            with self.assertRaisesRegex(RuntimeError,'Stopped without downloading'):
++                cache.compute_verified_embeddings({'pid':{1.0:self.records}},self.path.parent,self.raw.parent,'missing')
++
++    def test_invalid_array_or_source_mapping_cannot_be_saved(self):
++        for arr in [self.arr[:2], np.full((4,8),np.nan)]:
++            with self.assertRaises(cache.CacheIntegrityError): cache.save_cache(self.path,arr,self.records,self.encoder,self.raw)
++        with self.assertRaises(cache.CacheIntegrityError):
++            cache.save_cache(self.path,self.arr,list(reversed(self.records)),self.encoder,self.raw)
++
++
++if __name__=='__main__': unittest.main(verbosity=2)
+--- a/belief_variance_experiment/variance_to_splats.py
++++ b/belief_variance_experiment/variance_to_splats.py
+@@ -1,24 +1,10 @@
+-"""Variance-to-Loci Pipeline
+-================================
+-Converts LLM belief variance experiment output into BeliefLocus instances.
+-
+-The key insight: each prompt's response distribution across 100 samples
+-IS a Gaussian (or mixture of Gaussians) in embedding space. The mean
+-of the response embeddings = the locus center (mu). The per-dimension
+-variance of the response embeddings = the locus covariance (sigma).
+-The inverse of the entropy = confidence (alpha).
+-
+-This means LLM response distributions under temperature variation
+-are LITERALLY belief loci already. No conversion needed — just
+-extraction.
+-
+-For each prompt at each temperature, we get one locus.
+-For each prompt ACROSS temperatures, we get a trajectory.
+-That trajectory is the input to predictive contradiction detection.
+-
+-The multi-modal prompts (where DBSCAN finds 2+ clusters) become
+-MULTIPLE loci per prompt — representing held contradictions in
+-the model's belief space.
++"""Extract geometric summaries of sampled response embeddings.
++
++Means and diagonal variances are descriptive moments; they do not establish
++Gaussian distributions, internal model beliefs, or semantic contradictions.
++DBSCAN partitions may reflect wording. Alpha is cluster-support heuristics,
++not calibrated truth confidence. Temperature trajectories are sampling sweeps,
++not observations through time.
+ """
+ 
+ import json
+@@ -29,6 +15,13 @@
+ from typing import Optional
+ 
+ import numpy as np
++
++if __package__:
++    from .geometry_metrics import cluster_evidence, valid_embeddings
++    from .embedding_cache import load_cache, manifest_path, response_valid, read_records, CacheIntegrityError
++else:
++    from geometry_metrics import cluster_evidence, valid_embeddings
++    from embedding_cache import load_cache, manifest_path, response_valid, read_records, CacheIntegrityError
+ from sklearn.cluster import DBSCAN
+ from sklearn.metrics.pairwise import cosine_distances
+ 
+@@ -61,31 +54,27 @@
+ # ---------------------------------------------------------------------------
+ # Data loading
+ # ---------------------------------------------------------------------------
+-def load_embeddings() -> dict[str, dict[float, np.ndarray]]:
+-    """Load cached embeddings from analyze.py's output.
+-
+-    Returns: {prompt_id: {temperature: ndarray(N, dim)}}
++def load_embeddings():
++    """Load verified caches, retaining model identity in keys and filtering errors.
++
++    Historical arrays without generation manifests fail closed; the separate
++    frozen-data audit can assess those under an explicit unverified assumption.
+     """
+-    data: dict[str, dict[float, np.ndarray]] = defaultdict(dict)
+-    if not EMBED_DIR.exists():
+-        print(f"No embeddings found at {EMBED_DIR}")
+-        print("Run analyze.py first to generate embeddings.")
+-        return data
+-
++    data = defaultdict(dict)
++    identities = set()
+     for path in sorted(EMBED_DIR.glob("*.npy")):
+-        # filename format: {prompt_id}_{temperature}.npy
+-        stem = path.stem
+-        # Split on last underscore (prompt_id may contain underscores)
+-        last_under = stem.rfind("_")
+-        if last_under < 0:
++        if path.name.startswith("._"):
+             continue
+-        prompt_id = stem[:last_under]
+-        try:
+-            temp = float(stem[last_under + 1:])
+-        except ValueError:
+-            continue
+-        data[prompt_id][temp] = np.load(path)
+-
++        prompt_id, raw_temp = path.stem.rsplit("_", 1)
++        arr = load_cache(path)
++        manifest = json.loads(manifest_path(path).read_text())
++        identities.add(json.dumps(manifest["encoder"], sort_keys=True))
++        if len(identities) > 1:
++            raise CacheIntegrityError("Cannot compare embeddings from different encoder artifacts/runtimes")
++        records = read_records(path.parent / manifest["source_file"])
++        mask = np.array([response_valid(r) for r in records], dtype=bool)
++        if mask.sum() >= 5:
++            data[prompt_id][float(raw_temp)] = arr[mask]
+     return data
+ 
+ 
+@@ -127,8 +116,10 @@
+     temperature: float
+     n_responses: int
+     n_clusters: int  # from DBSCAN — 1=unimodal, 2+=multi-modal
+-    entropy: float  # semantic entropy at this temperature
++    entropy: float  # geometric entropy; not semantic truth uncertainty
+     cluster_label: int  # which cluster this splat represents (-1 for all)
++    noise_fraction: float = 0.0
++    confidence_kind: str = "uncalibrated_cluster_support"
+ 
+ 
+ def distribution_to_splat(
+@@ -142,8 +133,9 @@
+ 
+     mu = mean of embeddings (the model's "average belief")
+     sigma = per-dimension variance (the model's uncertainty shape)
+-    alpha = inverse entropy (high entropy = low confidence)
++    alpha = clustered fraction / (1 + assigned-cluster entropy), a heuristic
+     """
++    embeddings = valid_embeddings(embeddings)
+     mu = np.mean(embeddings, axis=0).astype(np.float32)
+     sigma = np.var(embeddings, axis=0).astype(np.float32)
+ 
+@@ -158,24 +150,12 @@
+     adaptive_eps = max(adaptive_eps, 0.05)  # floor
+     clustering = DBSCAN(eps=adaptive_eps, min_samples=5, metric="precomputed")
+     labels = clustering.fit_predict(distances)
+-    unique_labels = set(labels)
+-    counts = [np.sum(labels == l) for l in unique_labels]
+-    total = sum(counts)
+-    if total > 0:
+-        probs = np.array(counts) / total
+-        entropy = -np.sum(probs * np.log2(probs + 1e-12))
+-    else:
+-        entropy = 0.0
+-
+-    n_clusters = len([l for l in unique_labels if l >= 0])
+-
+-    # Confidence: inverse entropy, normalized to [0, 1]
+-    # entropy=0 -> alpha=1.0 (completely certain)
+-    # entropy=3 -> alpha~0.25 (very uncertain)
+-    if confidence_from_entropy:
+-        alpha = float(1.0 / (1.0 + entropy))
+-    else:
+-        alpha = 0.8  # default
++    evidence = cluster_evidence(labels)
++    entropy = evidence.singleton_noise_entropy_bits
++    n_clusters = evidence.clusters
++    # Unassigned samples reduce support rather than masquerading as consensus.
++    # Explicit legacy fixed-weight mode is still bounded and named separately.
++    alpha = evidence.support if confidence_from_entropy else 0.8
+ 
+     belief_locus = BeliefLocus(
+         memory_id=f"llm_{prompt_id}_T{temperature}",
+@@ -197,6 +177,8 @@
+         n_clusters=n_clusters,
+         entropy=entropy,
+         cluster_label=-1,
++        noise_fraction=evidence.noise_fraction,
++        confidence_kind="uncalibrated_cluster_support" if confidence_from_entropy else "fixed_weight",
+     )
+ 
+ 
+@@ -211,11 +193,11 @@
+     """Convert a multi-modal response distribution into MULTIPLE loci.
+ 
+     If DBSCAN finds 2+ clusters, each cluster becomes its own locus.
+-    This represents held contradictions: the model has 2+ stable
+-    positions on the same question.
++    These are geometric modes only; semantic opposition requires text labels.
+ 
+     If unimodal, returns a single locus (same as distribution_to_splat).
+     """
++    embeddings = valid_embeddings(embeddings)
+     distances = cosine_distances(embeddings)
+     # Use adaptive eps if default is too tight
+     upper_tri = distances[np.triu_indices_from(distances, k=1)]
+@@ -267,6 +249,7 @@
+             n_clusters=len(unique_real),
+             entropy=0.0,  # computed per-cluster doesn't apply
+             cluster_label=cluster_id,
++            confidence_kind="cluster_fraction",
+         ))
+ 
+     return splats

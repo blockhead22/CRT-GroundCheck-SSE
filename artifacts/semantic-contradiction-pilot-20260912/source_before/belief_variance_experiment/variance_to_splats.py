@@ -1,10 +1,24 @@
-"""Extract geometric summaries of sampled response embeddings.
+"""Variance-to-Loci Pipeline
+================================
+Converts LLM belief variance experiment output into BeliefLocus instances.
 
-Means and diagonal variances are descriptive moments; they do not establish
-Gaussian distributions, internal model beliefs, or semantic contradictions.
-DBSCAN partitions may reflect wording. Alpha is cluster-support heuristics,
-not calibrated truth confidence. Temperature trajectories are sampling sweeps,
-not observations through time.
+The key insight: each prompt's response distribution across 100 samples
+IS a Gaussian (or mixture of Gaussians) in embedding space. The mean
+of the response embeddings = the locus center (mu). The per-dimension
+variance of the response embeddings = the locus covariance (sigma).
+The inverse of the entropy = confidence (alpha).
+
+This means LLM response distributions under temperature variation
+are LITERALLY belief loci already. No conversion needed — just
+extraction.
+
+For each prompt at each temperature, we get one locus.
+For each prompt ACROSS temperatures, we get a trajectory.
+That trajectory is the input to predictive contradiction detection.
+
+The multi-modal prompts (where DBSCAN finds 2+ clusters) become
+MULTIPLE loci per prompt — representing held contradictions in
+the model's belief space.
 """
 
 import json
@@ -15,13 +29,6 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-
-if __package__:
-    from .geometry_metrics import cluster_evidence, valid_embeddings
-    from .embedding_cache import load_cache, manifest_path, response_valid, read_records, CacheIntegrityError
-else:
-    from geometry_metrics import cluster_evidence, valid_embeddings
-    from embedding_cache import load_cache, manifest_path, response_valid, read_records, CacheIntegrityError
 from sklearn.cluster import DBSCAN
 from sklearn.metrics.pairwise import cosine_distances
 
@@ -54,27 +61,31 @@ TEMPERATURES = [0.0, 0.3, 0.7, 1.0, 1.5]
 # ---------------------------------------------------------------------------
 # Data loading
 # ---------------------------------------------------------------------------
-def load_embeddings():
-    """Load verified caches, retaining model identity in keys and filtering errors.
+def load_embeddings() -> dict[str, dict[float, np.ndarray]]:
+    """Load cached embeddings from analyze.py's output.
 
-    Historical arrays without generation manifests fail closed; the separate
-    frozen-data audit can assess those under an explicit unverified assumption.
+    Returns: {prompt_id: {temperature: ndarray(N, dim)}}
     """
-    data = defaultdict(dict)
-    identities = set()
+    data: dict[str, dict[float, np.ndarray]] = defaultdict(dict)
+    if not EMBED_DIR.exists():
+        print(f"No embeddings found at {EMBED_DIR}")
+        print("Run analyze.py first to generate embeddings.")
+        return data
+
     for path in sorted(EMBED_DIR.glob("*.npy")):
-        if path.name.startswith("._"):
+        # filename format: {prompt_id}_{temperature}.npy
+        stem = path.stem
+        # Split on last underscore (prompt_id may contain underscores)
+        last_under = stem.rfind("_")
+        if last_under < 0:
             continue
-        prompt_id, raw_temp = path.stem.rsplit("_", 1)
-        arr = load_cache(path)
-        manifest = json.loads(manifest_path(path).read_text())
-        identities.add(json.dumps(manifest["encoder"], sort_keys=True))
-        if len(identities) > 1:
-            raise CacheIntegrityError("Cannot compare embeddings from different encoder artifacts/runtimes")
-        records = read_records(path.parent / manifest["source_file"])
-        mask = np.array([response_valid(r) for r in records], dtype=bool)
-        if mask.sum() >= 5:
-            data[prompt_id][float(raw_temp)] = arr[mask]
+        prompt_id = stem[:last_under]
+        try:
+            temp = float(stem[last_under + 1:])
+        except ValueError:
+            continue
+        data[prompt_id][temp] = np.load(path)
+
     return data
 
 
@@ -116,10 +127,8 @@ class BeliefSplat:
     temperature: float
     n_responses: int
     n_clusters: int  # from DBSCAN — 1=unimodal, 2+=multi-modal
-    entropy: float  # geometric entropy; not semantic truth uncertainty
+    entropy: float  # semantic entropy at this temperature
     cluster_label: int  # which cluster this splat represents (-1 for all)
-    noise_fraction: float = 0.0
-    confidence_kind: str = "uncalibrated_cluster_support"
 
 
 def distribution_to_splat(
@@ -133,9 +142,8 @@ def distribution_to_splat(
 
     mu = mean of embeddings (the model's "average belief")
     sigma = per-dimension variance (the model's uncertainty shape)
-    alpha = clustered fraction / (1 + assigned-cluster entropy), a heuristic
+    alpha = inverse entropy (high entropy = low confidence)
     """
-    embeddings = valid_embeddings(embeddings)
     mu = np.mean(embeddings, axis=0).astype(np.float32)
     sigma = np.var(embeddings, axis=0).astype(np.float32)
 
@@ -150,12 +158,24 @@ def distribution_to_splat(
     adaptive_eps = max(adaptive_eps, 0.05)  # floor
     clustering = DBSCAN(eps=adaptive_eps, min_samples=5, metric="precomputed")
     labels = clustering.fit_predict(distances)
-    evidence = cluster_evidence(labels)
-    entropy = evidence.singleton_noise_entropy_bits
-    n_clusters = evidence.clusters
-    # Unassigned samples reduce support rather than masquerading as consensus.
-    # Explicit legacy fixed-weight mode is still bounded and named separately.
-    alpha = evidence.support if confidence_from_entropy else 0.8
+    unique_labels = set(labels)
+    counts = [np.sum(labels == l) for l in unique_labels]
+    total = sum(counts)
+    if total > 0:
+        probs = np.array(counts) / total
+        entropy = -np.sum(probs * np.log2(probs + 1e-12))
+    else:
+        entropy = 0.0
+
+    n_clusters = len([l for l in unique_labels if l >= 0])
+
+    # Confidence: inverse entropy, normalized to [0, 1]
+    # entropy=0 -> alpha=1.0 (completely certain)
+    # entropy=3 -> alpha~0.25 (very uncertain)
+    if confidence_from_entropy:
+        alpha = float(1.0 / (1.0 + entropy))
+    else:
+        alpha = 0.8  # default
 
     belief_locus = BeliefLocus(
         memory_id=f"llm_{prompt_id}_T{temperature}",
@@ -177,8 +197,6 @@ def distribution_to_splat(
         n_clusters=n_clusters,
         entropy=entropy,
         cluster_label=-1,
-        noise_fraction=evidence.noise_fraction,
-        confidence_kind="uncalibrated_cluster_support" if confidence_from_entropy else "fixed_weight",
     )
 
 
@@ -193,11 +211,11 @@ def distribution_to_multi_splats(
     """Convert a multi-modal response distribution into MULTIPLE loci.
 
     If DBSCAN finds 2+ clusters, each cluster becomes its own locus.
-    These are geometric modes only; semantic opposition requires text labels.
+    This represents held contradictions: the model has 2+ stable
+    positions on the same question.
 
     If unimodal, returns a single locus (same as distribution_to_splat).
     """
-    embeddings = valid_embeddings(embeddings)
     distances = cosine_distances(embeddings)
     # Use adaptive eps if default is too tight
     upper_tri = distances[np.triu_indices_from(distances, k=1)]
@@ -249,7 +267,6 @@ def distribution_to_multi_splats(
             n_clusters=len(unique_real),
             entropy=0.0,  # computed per-cluster doesn't apply
             cluster_label=cluster_id,
-            confidence_kind="cluster_fraction",
         ))
 
     return splats

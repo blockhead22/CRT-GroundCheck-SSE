@@ -18,13 +18,6 @@ import matplotlib
 matplotlib.use("Agg")  # Non-interactive backend for Windows compatibility
 import matplotlib.pyplot as plt
 import numpy as np
-
-if __package__:
-    from .embedding_cache import compute_verified_embeddings
-    from .geometry_metrics import cluster_evidence, valid_embeddings
-else:
-    from embedding_cache import compute_verified_embeddings
-    from geometry_metrics import cluster_evidence, valid_embeddings
 import seaborn as sns
 from scipy import stats
 from scipy.spatial.distance import jensenshannon
@@ -62,8 +55,6 @@ def load_raw_results() -> dict[str, dict[float, list[dict]]]:
         return data
 
     for path in sorted(RAW_DIR.glob("*.jsonl")):
-        if path.name.startswith("._"):
-            continue
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
@@ -79,26 +70,103 @@ def load_raw_results() -> dict[str, dict[float, list[dict]]]:
 # ---------------------------------------------------------------------------
 # Embedding
 # ---------------------------------------------------------------------------
-def compute_embeddings(data, model_name, force=False):
-    """Load row-verified caches or explicitly use an already installed encoder."""
-    prefix = f"{RAW_DIR.name}_" if RAW_DIR != BASE_DIR / "results" / "raw" else ""
-    return compute_verified_embeddings(data, EMBED_DIR, RAW_DIR, model_name, force, prefix)
+def compute_embeddings(
+    data: dict[str, dict[float, list[dict]]],
+    model_name: str,
+    force: bool = False,
+) -> dict[str, dict[float, np.ndarray]]:
+    """
+    Compute sentence embeddings for all responses.
+    Caches to disk as .npy files.
+    Returns: {prompt_id: {temperature: np.ndarray of shape (N, dim)}}
+    """
+    from sentence_transformers import SentenceTransformer
+
+    EMBED_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Collect all texts that need embedding
+    to_embed: list[tuple[str, float, int, str]] = []  # (pid, temp, idx, text)
+    cached: dict[str, dict[float, np.ndarray]] = defaultdict(dict)
+
+    for pid in data:
+        for temp in data[pid]:
+            cache_path = EMBED_DIR / f"{pid}_{temp}.npy"
+            expected_count = len(data[pid][temp])
+            if cache_path.exists() and not force:
+                arr = np.load(cache_path)
+                if arr.shape[0] == expected_count:
+                    cached[pid][temp] = arr
+                    continue
+            # Need to embed
+            for idx, record in enumerate(data[pid][temp]):
+                text = record.get("response", "")
+                if text.startswith("ERROR:"):
+                    text = ""  # Embed empty string for errors
+                to_embed.append((pid, temp, idx, text))
+
+    if to_embed:
+        print(f"Embedding {len(to_embed)} responses with {model_name}...")
+        model = SentenceTransformer(model_name)
+
+        # Group by (pid, temp) for batch saving
+        groups: dict[tuple[str, float], dict[int, str]] = defaultdict(dict)
+        for pid, temp, idx, text in to_embed:
+            groups[(pid, temp)][idx] = text
+
+        for (pid, temp), idx_text in groups.items():
+            n = len(data[pid][temp])
+            texts = []
+            for i in range(n):
+                if i in idx_text:
+                    texts.append(idx_text[i])
+                else:
+                    # Already cached individually? Shouldn't happen, but safe fallback
+                    texts.append(data[pid][temp][i].get("response", ""))
+
+            embeddings = model.encode(texts, show_progress_bar=False, batch_size=128)
+            arr = np.array(embeddings)
+            np.save(EMBED_DIR / f"{pid}_{temp}.npy", arr)
+            cached[pid][temp] = arr
+
+        print("Embedding complete.")
+    else:
+        print("All embeddings cached. Skipping embedding step.")
+
+    return cached
 
 
 # ---------------------------------------------------------------------------
 # Metrics computation
 # ---------------------------------------------------------------------------
-def semantic_entropy(embeddings, eps=0.3, min_samples=5):
-    """Compatibility name for DBSCAN entropy with noise as singletons.
-
-    This geometric diagnostic is NOT the published semantic-entropy estimator.
-    Small samples are not silently returned as zero uncertainty.
+def semantic_entropy(embeddings: np.ndarray, eps: float = 0.3, min_samples: int = 5) -> tuple[float, int]:
     """
-    arr = valid_embeddings(embeddings)
-    distances = cosine_distances(arr)
-    labels = DBSCAN(eps=eps, min_samples=min_samples, metric="precomputed").fit_predict(distances)
-    evidence = cluster_evidence(labels)
-    return evidence.singleton_noise_entropy_bits, evidence.clusters
+    Compute semantic entropy over DBSCAN clusters.
+    Returns (entropy, num_clusters).
+    """
+    if len(embeddings) < min_samples:
+        return 0.0, 0
+
+    # Use cosine distance for DBSCAN
+    distances = cosine_distances(embeddings)
+    clustering = DBSCAN(eps=eps, min_samples=min_samples, metric="precomputed")
+    labels = clustering.fit_predict(distances)
+
+    # Count cluster sizes (including noise as its own "cluster")
+    unique_labels = set(labels)
+    counts = []
+    for label in unique_labels:
+        count = np.sum(labels == label)
+        counts.append(count)
+
+    total = sum(counts)
+    if total == 0:
+        return 0.0, 0
+
+    probs = np.array(counts) / total
+    entropy = -np.sum(probs * np.log2(probs + 1e-12))
+    num_clusters = len([l for l in unique_labels if l >= 0])  # Exclude noise
+
+    return entropy, num_clusters
 
 
 def response_variance(embeddings: np.ndarray) -> float:

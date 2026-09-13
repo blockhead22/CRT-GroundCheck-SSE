@@ -1,0 +1,39 @@
+{
+  "artifact_sha256": {
+    "FINDINGS.txt": "6aa85091b09f60ad49ac1f2c61678d5ad4ab5cd0bde5c3edc54d9db828eb4528",
+    "protocol.json": "3ff9aebc6e007127468a20e60cbe7b4de37e32ade6fdea07b21587f06b073e1b",
+    "cases.json": "1b6c0cbe1e2d0484123aced74ab4b47c44ffdf811dae915e7a34bbea3a570d18",
+    "labels.json": "aeeb26714ce453ac934b7cc4680a1c9782d04703d6983f993b0078ee15deea2c",
+    "label_lock.json": "fa929444ad8a37c04dd8faea698b714afd52ea7183f37c758af04389f514216d",
+    "source_lock.json": "e8f1bd8ad4ebf837beccdbeddc4edbae28a69c8d2578ed47c0043fea2f8d9a42",
+    "run_benchmark.py": "17bf76c481218a2f93a3288d5c0fd488c3f5afa365477841cf33d27273533d7f",
+    "prepare.py": "b58decbe0a563ba5c8af7a84880ccb6524f74829e6659661de12f182d7389fd7",
+    "label.py": "d681f7b83fdaee4307f093cc157752499ea948be3764fd9e7b1a8303546dbc26",
+    "labeling.txt": "57e5912ea03f6f48da2fc30bd5876d6b2a73ce977278ca7827255758779fc859",
+    "requirements-audit.txt": "4e275643ae06764ac1a3774f1b52a86529128effa2104b4d8e3ddf2135321f2f",
+    "changes.patch": "9076efa2634b2dcf942c192a8927e1901f98ce89929629c53f85a9147bb370cd",
+    "verification.log": "e5823c0af8d00e145733af1ad9d07ecfdeb9d40e0ce868d787231a4cadcfa1f5",
+    "results/summary.json": "5ff09faba491e4d80f97cbe7a90a465fd5b6e6c937be77bf67326e63d1a507e0",
+    "results/legacy_cache_observations.json": "47e920ea6a4e4828ef479401aed716f628425c1363a563286dfb4f3b90a4f739",
+    "results/thresholds.json": "cd9e71eba372831625f3e5796930db8d3fcd4544222b4dc3b44090f205c9cad6",
+    "results/scored_cases.json": "1cf1208092c4f509aa2910d1d115c806c28f05ec9161a46ba9c4c97920ee39a7",
+    "source_before/belief_variance_experiment/variance_to_splats.py": "953e375be5f5fe37414c35438dde0f5fd8d614c289b436b0fb978301ac751167",
+    "source_before/belief_variance_experiment/robustness_sweep.py": "4772b8313eef95b09fb408d22f4a58cfdb810270f9eead38cf6e742127c0ea61",
+    "source_before/belief_variance_experiment/analyze_density.py": "e3e6092a7e552544c145c5965a117cbb3311969196b55a79804b6ba0c4914efd",
+    "source_before/belief_variance_experiment/analyze.py": "c4a651a7e7d15bfcf5477ffb6062209b5e8e49a039946e69831bf39e733e2fc3",
+    "source_before/personal_agent/contradiction/predictive.py": "e7a6357d9b6c7ee0d36b7d1393097420fdb9969db39c6b48e289f4d6e6a60d44",
+    "source_before/personal_agent/memory_subsystem/splats.py": "03c203bf597b7ce272d039961622b026f64d1401aa244e36d9fba2a977a82008"
+  },
+  "installed_source_sha256": {
+    "belief_variance_experiment/variance_to_splats.py": "62683c7a021ffdd892b851b12c2ff26913526ff39d024074b35695ac0ac3c248",
+    "belief_variance_experiment/geometry_metrics.py": "51d481f1321cd43ae76ea8a414ccb9f964d70401745488154c58a90870ed9991",
+    "belief_variance_experiment/robustness_sweep.py": "1a17741287cbf1c33216399afe94f315a583bfbe9835c358d1326a3084566aee",
+    "belief_variance_experiment/analyze_density.py": "6eae38027c4f6b273a82afa123dbad54437747af015d36447413b56f5c7f3431",
+    "belief_variance_experiment/test_measurement_integrity.py": "1c6c9267cfc54e79747ae6a42cd76c62896b2e870b57b9a4d3c6f453a0cfade6",
+    "belief_variance_experiment/embedding_cache.py": "d6425acc88560854a774bdc7b0b0233df5c4ee85fd68beabeda9c3c80b6adb35",
+    "belief_variance_experiment/analyze.py": "51630c54b2dc148b7c051d3f5e2f7a5ce6de8ad60788c141a2ff6c508e8218de"
+  },
+  "verification": "14 offline regression tests passed; installed benchmark rerun completed; labels and frozen predictor source hashes verified",
+  "models_downloaded": 0,
+  "real_model_calls": 0
+}

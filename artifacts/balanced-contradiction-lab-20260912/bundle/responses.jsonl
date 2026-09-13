@@ -1,0 +1,432 @@
+{"case_id": "inventory:opposite_value", "side": "source", "repetition": 0, "response": "At 09:00, Crate R contains exactly 8 bolts."}
+{"case_id": "inventory:opposite_value", "side": "source", "repetition": 1, "response": "There are precisely eight bolts in Crate R at 09:00."}
+{"case_id": "inventory:opposite_value", "side": "source", "repetition": 2, "response": "The bolt count for Crate R at 09:00 is exactly 8."}
+{"case_id": "inventory:opposite_value", "side": "target", "repetition": 0, "response": "At 09:00, Crate R contains exactly 13 bolts."}
+{"case_id": "inventory:opposite_value", "side": "target", "repetition": 1, "response": "There are precisely thirteen bolts in Crate R at 09:00."}
+{"case_id": "inventory:opposite_value", "side": "target", "repetition": 2, "response": "The bolt count for Crate R at 09:00 is exactly 13."}
+{"case_id": "inventory:explicit_negation", "side": "source", "repetition": 0, "response": "At 09:00, Crate R contains exactly 8 bolts."}
+{"case_id": "inventory:explicit_negation", "side": "source", "repetition": 1, "response": "There are precisely eight bolts in Crate R at 09:00."}
+{"case_id": "inventory:explicit_negation", "side": "source", "repetition": 2, "response": "The bolt count for Crate R at 09:00 is exactly 8."}
+{"case_id": "inventory:explicit_negation", "side": "target", "repetition": 0, "response": "It is false that At 09:00, Crate R contains exactly 8 bolts."}
+{"case_id": "inventory:explicit_negation", "side": "target", "repetition": 1, "response": "It is false that There are precisely eight bolts in Crate R at 09:00."}
+{"case_id": "inventory:explicit_negation", "side": "target", "repetition": 2, "response": "It is false that The bolt count for Crate R at 09:00 is exactly 8."}
+{"case_id": "inventory:correction_reverses_fact", "side": "source", "repetition": 0, "response": "At 09:00, Crate R contains exactly 8 bolts."}
+{"case_id": "inventory:correction_reverses_fact", "side": "source", "repetition": 1, "response": "There are precisely eight bolts in Crate R at 09:00."}
+{"case_id": "inventory:correction_reverses_fact", "side": "source", "repetition": 2, "response": "The bolt count for Crate R at 09:00 is exactly 8."}
+{"case_id": "inventory:correction_reverses_fact", "side": "target", "repetition": 0, "response": "An earlier report said: At 09:00, Crate R contains exactly 8 bolts. That report was wrong. The corrected record states: At 09:00, Crate R contains exactly 13 bolts."}
+{"case_id": "inventory:correction_reverses_fact", "side": "target", "repetition": 1, "response": "An earlier report said: There are precisely eight bolts in Crate R at 09:00. That report was wrong. The corrected record states: There are precisely thirteen bolts in Crate R at 09:00."}
+{"case_id": "inventory:correction_reverses_fact", "side": "target", "repetition": 2, "response": "An earlier report said: The bolt count for Crate R at 09:00 is exactly 8. That report was wrong. The corrected record states: The bolt count for Crate R at 09:00 is exactly 13."}
+{"case_id": "inventory:paraphrase", "side": "source", "repetition": 0, "response": "At 09:00, Crate R contains exactly 8 bolts."}
+{"case_id": "inventory:paraphrase", "side": "source", "repetition": 1, "response": "There are precisely eight bolts in Crate R at 09:00."}
+{"case_id": "inventory:paraphrase", "side": "source", "repetition": 2, "response": "The bolt count for Crate R at 09:00 is exactly 8."}
+{"case_id": "inventory:paraphrase", "side": "target", "repetition": 0, "response": "The verified record confirms the following: At 09:00, Crate R contains exactly 8 bolts."}
+{"case_id": "inventory:paraphrase", "side": "target", "repetition": 1, "response": "The verified record confirms the following: There are precisely eight bolts in Crate R at 09:00."}
+{"case_id": "inventory:paraphrase", "side": "target", "repetition": 2, "response": "The verified record confirms the following: The bolt count for Crate R at 09:00 is exactly 8."}
+{"case_id": "inventory:different_entity", "side": "source", "repetition": 0, "response": "At 09:00, Crate R contains exactly 8 bolts."}
+{"case_id": "inventory:different_entity", "side": "source", "repetition": 1, "response": "There are precisely eight bolts in Crate R at 09:00."}
+{"case_id": "inventory:different_entity", "side": "source", "repetition": 2, "response": "The bolt count for Crate R at 09:00 is exactly 8."}
+{"case_id": "inventory:different_entity", "side": "target", "repetition": 0, "response": "At 09:00, Crate S contains exactly 13 bolts."}
+{"case_id": "inventory:different_entity", "side": "target", "repetition": 1, "response": "There are precisely thirteen bolts in Crate S at 09:00."}
+{"case_id": "inventory:different_entity", "side": "target", "repetition": 2, "response": "The bolt count for Crate S at 09:00 is exactly 13."}
+{"case_id": "inventory:correction_preserves_fact", "side": "source", "repetition": 0, "response": "At 09:00, Crate R contains exactly 8 bolts."}
+{"case_id": "inventory:correction_preserves_fact", "side": "source", "repetition": 1, "response": "There are precisely eight bolts in Crate R at 09:00."}
+{"case_id": "inventory:correction_preserves_fact", "side": "source", "repetition": 2, "response": "The bolt count for Crate R at 09:00 is exactly 8."}
+{"case_id": "inventory:correction_preserves_fact", "side": "target", "repetition": 0, "response": "An earlier report said: At 09:00, Crate R contains exactly 13 bolts. That report was wrong. The corrected record states: At 09:00, Crate R contains exactly 8 bolts."}
+{"case_id": "inventory:correction_preserves_fact", "side": "target", "repetition": 1, "response": "An earlier report said: There are precisely thirteen bolts in Crate R at 09:00. That report was wrong. The corrected record states: There are precisely eight bolts in Crate R at 09:00."}
+{"case_id": "inventory:correction_preserves_fact", "side": "target", "repetition": 2, "response": "An earlier report said: The bolt count for Crate R at 09:00 is exactly 13. That report was wrong. The corrected record states: The bolt count for Crate R at 09:00 is exactly 8."}
+{"case_id": "seating:opposite_value", "side": "source", "repetition": 0, "response": "At 09:00, Room K has exactly 12 seats."}
+{"case_id": "seating:opposite_value", "side": "source", "repetition": 1, "response": "The exact seating capacity of Room K at 09:00 is 12."}
+{"case_id": "seating:opposite_value", "side": "source", "repetition": 2, "response": "Room K contains precisely twelve seats at 09:00."}
+{"case_id": "seating:opposite_value", "side": "target", "repetition": 0, "response": "At 09:00, Room K has exactly 18 seats."}
+{"case_id": "seating:opposite_value", "side": "target", "repetition": 1, "response": "The exact seating capacity of Room K at 09:00 is 18."}
+{"case_id": "seating:opposite_value", "side": "target", "repetition": 2, "response": "Room K contains precisely eighteen seats at 09:00."}
+{"case_id": "seating:explicit_negation", "side": "source", "repetition": 0, "response": "At 09:00, Room K has exactly 12 seats."}
+{"case_id": "seating:explicit_negation", "side": "source", "repetition": 1, "response": "The exact seating capacity of Room K at 09:00 is 12."}
+{"case_id": "seating:explicit_negation", "side": "source", "repetition": 2, "response": "Room K contains precisely twelve seats at 09:00."}
+{"case_id": "seating:explicit_negation", "side": "target", "repetition": 0, "response": "It is false that At 09:00, Room K has exactly 12 seats."}
+{"case_id": "seating:explicit_negation", "side": "target", "repetition": 1, "response": "It is false that The exact seating capacity of Room K at 09:00 is 12."}
+{"case_id": "seating:explicit_negation", "side": "target", "repetition": 2, "response": "It is false that Room K contains precisely twelve seats at 09:00."}
+{"case_id": "seating:correction_reverses_fact", "side": "source", "repetition": 0, "response": "At 09:00, Room K has exactly 12 seats."}
+{"case_id": "seating:correction_reverses_fact", "side": "source", "repetition": 1, "response": "The exact seating capacity of Room K at 09:00 is 12."}
+{"case_id": "seating:correction_reverses_fact", "side": "source", "repetition": 2, "response": "Room K contains precisely twelve seats at 09:00."}
+{"case_id": "seating:correction_reverses_fact", "side": "target", "repetition": 0, "response": "An earlier report said: At 09:00, Room K has exactly 12 seats. That report was wrong. The corrected record states: At 09:00, Room K has exactly 18 seats."}
+{"case_id": "seating:correction_reverses_fact", "side": "target", "repetition": 1, "response": "An earlier report said: The exact seating capacity of Room K at 09:00 is 12. That report was wrong. The corrected record states: The exact seating capacity of Room K at 09:00 is 18."}
+{"case_id": "seating:correction_reverses_fact", "side": "target", "repetition": 2, "response": "An earlier report said: Room K contains precisely twelve seats at 09:00. That report was wrong. The corrected record states: Room K contains precisely eighteen seats at 09:00."}
+{"case_id": "seating:paraphrase", "side": "source", "repetition": 0, "response": "At 09:00, Room K has exactly 12 seats."}
+{"case_id": "seating:paraphrase", "side": "source", "repetition": 1, "response": "The exact seating capacity of Room K at 09:00 is 12."}
+{"case_id": "seating:paraphrase", "side": "source", "repetition": 2, "response": "Room K contains precisely twelve seats at 09:00."}
+{"case_id": "seating:paraphrase", "side": "target", "repetition": 0, "response": "The verified record confirms the following: At 09:00, Room K has exactly 12 seats."}
+{"case_id": "seating:paraphrase", "side": "target", "repetition": 1, "response": "The verified record confirms the following: The exact seating capacity of Room K at 09:00 is 12."}
+{"case_id": "seating:paraphrase", "side": "target", "repetition": 2, "response": "The verified record confirms the following: Room K contains precisely twelve seats at 09:00."}
+{"case_id": "seating:different_time", "side": "source", "repetition": 0, "response": "At 09:00, Room K has exactly 12 seats."}
+{"case_id": "seating:different_time", "side": "source", "repetition": 1, "response": "The exact seating capacity of Room K at 09:00 is 12."}
+{"case_id": "seating:different_time", "side": "source", "repetition": 2, "response": "Room K contains precisely twelve seats at 09:00."}
+{"case_id": "seating:different_time", "side": "target", "repetition": 0, "response": "At 10:00, Room K has exactly 18 seats."}
+{"case_id": "seating:different_time", "side": "target", "repetition": 1, "response": "The exact seating capacity of Room K at 10:00 is 18."}
+{"case_id": "seating:different_time", "side": "target", "repetition": 2, "response": "Room K contains precisely eighteen seats at 10:00."}
+{"case_id": "seating:uncertainty", "side": "source", "repetition": 0, "response": "At 09:00, Room K has exactly 12 seats."}
+{"case_id": "seating:uncertainty", "side": "source", "repetition": 1, "response": "The exact seating capacity of Room K at 09:00 is 12."}
+{"case_id": "seating:uncertainty", "side": "source", "repetition": 2, "response": "Room K contains precisely twelve seats at 09:00."}
+{"case_id": "seating:uncertainty", "side": "target", "repetition": 0, "response": "The following is an unverified possibility, not an assertion: At 09:00, Room K has exactly 18 seats. The actual state has not been determined in this report."}
+{"case_id": "seating:uncertainty", "side": "target", "repetition": 1, "response": "The following is an unverified possibility, not an assertion: The exact seating capacity of Room K at 09:00 is 18. The actual state has not been determined in this report."}
+{"case_id": "seating:uncertainty", "side": "target", "repetition": 2, "response": "The following is an unverified possibility, not an assertion: Room K contains precisely eighteen seats at 09:00. The actual state has not been determined in this report."}
+{"case_id": "location:opposite_value", "side": "source", "repetition": 0, "response": "At 09:00, Parcel M is located exclusively in Warehouse A."}
+{"case_id": "location:opposite_value", "side": "source", "repetition": 1, "response": "The sole location of Parcel M at 09:00 is Warehouse A."}
+{"case_id": "location:opposite_value", "side": "source", "repetition": 2, "response": "Parcel M is in Warehouse A and nowhere else at 09:00."}
+{"case_id": "location:opposite_value", "side": "target", "repetition": 0, "response": "At 09:00, Parcel M is located exclusively in Warehouse B."}
+{"case_id": "location:opposite_value", "side": "target", "repetition": 1, "response": "The sole location of Parcel M at 09:00 is Warehouse B."}
+{"case_id": "location:opposite_value", "side": "target", "repetition": 2, "response": "Parcel M is in Warehouse B and nowhere else at 09:00."}
+{"case_id": "location:explicit_negation", "side": "source", "repetition": 0, "response": "At 09:00, Parcel M is located exclusively in Warehouse A."}
+{"case_id": "location:explicit_negation", "side": "source", "repetition": 1, "response": "The sole location of Parcel M at 09:00 is Warehouse A."}
+{"case_id": "location:explicit_negation", "side": "source", "repetition": 2, "response": "Parcel M is in Warehouse A and nowhere else at 09:00."}
+{"case_id": "location:explicit_negation", "side": "target", "repetition": 0, "response": "It is false that At 09:00, Parcel M is located exclusively in Warehouse A."}
+{"case_id": "location:explicit_negation", "side": "target", "repetition": 1, "response": "It is false that The sole location of Parcel M at 09:00 is Warehouse A."}
+{"case_id": "location:explicit_negation", "side": "target", "repetition": 2, "response": "It is false that Parcel M is in Warehouse A and nowhere else at 09:00."}
+{"case_id": "location:correction_reverses_fact", "side": "source", "repetition": 0, "response": "At 09:00, Parcel M is located exclusively in Warehouse A."}
+{"case_id": "location:correction_reverses_fact", "side": "source", "repetition": 1, "response": "The sole location of Parcel M at 09:00 is Warehouse A."}
+{"case_id": "location:correction_reverses_fact", "side": "source", "repetition": 2, "response": "Parcel M is in Warehouse A and nowhere else at 09:00."}
+{"case_id": "location:correction_reverses_fact", "side": "target", "repetition": 0, "response": "An earlier report said: At 09:00, Parcel M is located exclusively in Warehouse A. That report was wrong. The corrected record states: At 09:00, Parcel M is located exclusively in Warehouse B."}
+{"case_id": "location:correction_reverses_fact", "side": "target", "repetition": 1, "response": "An earlier report said: The sole location of Parcel M at 09:00 is Warehouse A. That report was wrong. The corrected record states: The sole location of Parcel M at 09:00 is Warehouse B."}
+{"case_id": "location:correction_reverses_fact", "side": "target", "repetition": 2, "response": "An earlier report said: Parcel M is in Warehouse A and nowhere else at 09:00. That report was wrong. The corrected record states: Parcel M is in Warehouse B and nowhere else at 09:00."}
+{"case_id": "location:paraphrase", "side": "source", "repetition": 0, "response": "At 09:00, Parcel M is located exclusively in Warehouse A."}
+{"case_id": "location:paraphrase", "side": "source", "repetition": 1, "response": "The sole location of Parcel M at 09:00 is Warehouse A."}
+{"case_id": "location:paraphrase", "side": "source", "repetition": 2, "response": "Parcel M is in Warehouse A and nowhere else at 09:00."}
+{"case_id": "location:paraphrase", "side": "target", "repetition": 0, "response": "The verified record confirms the following: At 09:00, Parcel M is located exclusively in Warehouse A."}
+{"case_id": "location:paraphrase", "side": "target", "repetition": 1, "response": "The verified record confirms the following: The sole location of Parcel M at 09:00 is Warehouse A."}
+{"case_id": "location:paraphrase", "side": "target", "repetition": 2, "response": "The verified record confirms the following: Parcel M is in Warehouse A and nowhere else at 09:00."}
+{"case_id": "location:different_entity", "side": "source", "repetition": 0, "response": "At 09:00, Parcel M is located exclusively in Warehouse A."}
+{"case_id": "location:different_entity", "side": "source", "repetition": 1, "response": "The sole location of Parcel M at 09:00 is Warehouse A."}
+{"case_id": "location:different_entity", "side": "source", "repetition": 2, "response": "Parcel M is in Warehouse A and nowhere else at 09:00."}
+{"case_id": "location:different_entity", "side": "target", "repetition": 0, "response": "At 09:00, Parcel N is located exclusively in Warehouse B."}
+{"case_id": "location:different_entity", "side": "target", "repetition": 1, "response": "The sole location of Parcel N at 09:00 is Warehouse B."}
+{"case_id": "location:different_entity", "side": "target", "repetition": 2, "response": "Parcel N is in Warehouse B and nowhere else at 09:00."}
+{"case_id": "location:correction_preserves_fact", "side": "source", "repetition": 0, "response": "At 09:00, Parcel M is located exclusively in Warehouse A."}
+{"case_id": "location:correction_preserves_fact", "side": "source", "repetition": 1, "response": "The sole location of Parcel M at 09:00 is Warehouse A."}
+{"case_id": "location:correction_preserves_fact", "side": "source", "repetition": 2, "response": "Parcel M is in Warehouse A and nowhere else at 09:00."}
+{"case_id": "location:correction_preserves_fact", "side": "target", "repetition": 0, "response": "An earlier report said: At 09:00, Parcel M is located exclusively in Warehouse B. That report was wrong. The corrected record states: At 09:00, Parcel M is located exclusively in Warehouse A."}
+{"case_id": "location:correction_preserves_fact", "side": "target", "repetition": 1, "response": "An earlier report said: The sole location of Parcel M at 09:00 is Warehouse B. That report was wrong. The corrected record states: The sole location of Parcel M at 09:00 is Warehouse A."}
+{"case_id": "location:correction_preserves_fact", "side": "target", "repetition": 2, "response": "An earlier report said: Parcel M is in Warehouse B and nowhere else at 09:00. That report was wrong. The corrected record states: Parcel M is in Warehouse A and nowhere else at 09:00."}
+{"case_id": "lock:opposite_value", "side": "source", "repetition": 0, "response": "Door H is locked at 09:00."}
+{"case_id": "lock:opposite_value", "side": "source", "repetition": 1, "response": "At 09:00, the lock on Door H is engaged."}
+{"case_id": "lock:opposite_value", "side": "source", "repetition": 2, "response": "Door H is in a locked state at 09:00."}
+{"case_id": "lock:opposite_value", "side": "target", "repetition": 0, "response": "Door H is unlocked at 09:00."}
+{"case_id": "lock:opposite_value", "side": "target", "repetition": 1, "response": "At 09:00, the lock on Door H is disengaged."}
+{"case_id": "lock:opposite_value", "side": "target", "repetition": 2, "response": "Door H is in an unlocked state at 09:00."}
+{"case_id": "lock:explicit_negation", "side": "source", "repetition": 0, "response": "Door H is locked at 09:00."}
+{"case_id": "lock:explicit_negation", "side": "source", "repetition": 1, "response": "At 09:00, the lock on Door H is engaged."}
+{"case_id": "lock:explicit_negation", "side": "source", "repetition": 2, "response": "Door H is in a locked state at 09:00."}
+{"case_id": "lock:explicit_negation", "side": "target", "repetition": 0, "response": "It is false that Door H is locked at 09:00."}
+{"case_id": "lock:explicit_negation", "side": "target", "repetition": 1, "response": "It is false that At 09:00, the lock on Door H is engaged."}
+{"case_id": "lock:explicit_negation", "side": "target", "repetition": 2, "response": "It is false that Door H is in a locked state at 09:00."}
+{"case_id": "lock:correction_reverses_fact", "side": "source", "repetition": 0, "response": "Door H is locked at 09:00."}
+{"case_id": "lock:correction_reverses_fact", "side": "source", "repetition": 1, "response": "At 09:00, the lock on Door H is engaged."}
+{"case_id": "lock:correction_reverses_fact", "side": "source", "repetition": 2, "response": "Door H is in a locked state at 09:00."}
+{"case_id": "lock:correction_reverses_fact", "side": "target", "repetition": 0, "response": "An earlier report said: Door H is locked at 09:00. That report was wrong. The corrected record states: Door H is unlocked at 09:00."}
+{"case_id": "lock:correction_reverses_fact", "side": "target", "repetition": 1, "response": "An earlier report said: At 09:00, the lock on Door H is engaged. That report was wrong. The corrected record states: At 09:00, the lock on Door H is disengaged."}
+{"case_id": "lock:correction_reverses_fact", "side": "target", "repetition": 2, "response": "An earlier report said: Door H is in a locked state at 09:00. That report was wrong. The corrected record states: Door H is in an unlocked state at 09:00."}
+{"case_id": "lock:paraphrase", "side": "source", "repetition": 0, "response": "Door H is locked at 09:00."}
+{"case_id": "lock:paraphrase", "side": "source", "repetition": 1, "response": "At 09:00, the lock on Door H is engaged."}
+{"case_id": "lock:paraphrase", "side": "source", "repetition": 2, "response": "Door H is in a locked state at 09:00."}
+{"case_id": "lock:paraphrase", "side": "target", "repetition": 0, "response": "The verified record confirms the following: Door H is locked at 09:00."}
+{"case_id": "lock:paraphrase", "side": "target", "repetition": 1, "response": "The verified record confirms the following: At 09:00, the lock on Door H is engaged."}
+{"case_id": "lock:paraphrase", "side": "target", "repetition": 2, "response": "The verified record confirms the following: Door H is in a locked state at 09:00."}
+{"case_id": "lock:different_time", "side": "source", "repetition": 0, "response": "Door H is locked at 09:00."}
+{"case_id": "lock:different_time", "side": "source", "repetition": 1, "response": "At 09:00, the lock on Door H is engaged."}
+{"case_id": "lock:different_time", "side": "source", "repetition": 2, "response": "Door H is in a locked state at 09:00."}
+{"case_id": "lock:different_time", "side": "target", "repetition": 0, "response": "Door H is unlocked at 10:00."}
+{"case_id": "lock:different_time", "side": "target", "repetition": 1, "response": "At 10:00, the lock on Door H is disengaged."}
+{"case_id": "lock:different_time", "side": "target", "repetition": 2, "response": "Door H is in an unlocked state at 10:00."}
+{"case_id": "lock:uncertainty", "side": "source", "repetition": 0, "response": "Door H is locked at 09:00."}
+{"case_id": "lock:uncertainty", "side": "source", "repetition": 1, "response": "At 09:00, the lock on Door H is engaged."}
+{"case_id": "lock:uncertainty", "side": "source", "repetition": 2, "response": "Door H is in a locked state at 09:00."}
+{"case_id": "lock:uncertainty", "side": "target", "repetition": 0, "response": "The following is an unverified possibility, not an assertion: Door H is unlocked at 09:00. The actual state has not been determined in this report."}
+{"case_id": "lock:uncertainty", "side": "target", "repetition": 1, "response": "The following is an unverified possibility, not an assertion: At 09:00, the lock on Door H is disengaged. The actual state has not been determined in this report."}
+{"case_id": "lock:uncertainty", "side": "target", "repetition": 2, "response": "The following is an unverified possibility, not an assertion: Door H is in an unlocked state at 09:00. The actual state has not been determined in this report."}
+{"case_id": "access:opposite_value", "side": "source", "repetition": 0, "response": "At 09:00, Key C is authorized to open the vault."}
+{"case_id": "access:opposite_value", "side": "source", "repetition": 1, "response": "Key C has permission to open the vault at 09:00."}
+{"case_id": "access:opposite_value", "side": "source", "repetition": 2, "response": "Vault access using Key C is permitted at 09:00."}
+{"case_id": "access:opposite_value", "side": "target", "repetition": 0, "response": "At 09:00, Key C is forbidden from opening the vault."}
+{"case_id": "access:opposite_value", "side": "target", "repetition": 1, "response": "Key C has no permission to open the vault at 09:00."}
+{"case_id": "access:opposite_value", "side": "target", "repetition": 2, "response": "Vault access using Key C is prohibited at 09:00."}
+{"case_id": "access:explicit_negation", "side": "source", "repetition": 0, "response": "At 09:00, Key C is authorized to open the vault."}
+{"case_id": "access:explicit_negation", "side": "source", "repetition": 1, "response": "Key C has permission to open the vault at 09:00."}
+{"case_id": "access:explicit_negation", "side": "source", "repetition": 2, "response": "Vault access using Key C is permitted at 09:00."}
+{"case_id": "access:explicit_negation", "side": "target", "repetition": 0, "response": "It is false that At 09:00, Key C is authorized to open the vault."}
+{"case_id": "access:explicit_negation", "side": "target", "repetition": 1, "response": "It is false that Key C has permission to open the vault at 09:00."}
+{"case_id": "access:explicit_negation", "side": "target", "repetition": 2, "response": "It is false that Vault access using Key C is permitted at 09:00."}
+{"case_id": "access:correction_reverses_fact", "side": "source", "repetition": 0, "response": "At 09:00, Key C is authorized to open the vault."}
+{"case_id": "access:correction_reverses_fact", "side": "source", "repetition": 1, "response": "Key C has permission to open the vault at 09:00."}
+{"case_id": "access:correction_reverses_fact", "side": "source", "repetition": 2, "response": "Vault access using Key C is permitted at 09:00."}
+{"case_id": "access:correction_reverses_fact", "side": "target", "repetition": 0, "response": "An earlier report said: At 09:00, Key C is authorized to open the vault. That report was wrong. The corrected record states: At 09:00, Key C is forbidden from opening the vault."}
+{"case_id": "access:correction_reverses_fact", "side": "target", "repetition": 1, "response": "An earlier report said: Key C has permission to open the vault at 09:00. That report was wrong. The corrected record states: Key C has no permission to open the vault at 09:00."}
+{"case_id": "access:correction_reverses_fact", "side": "target", "repetition": 2, "response": "An earlier report said: Vault access using Key C is permitted at 09:00. That report was wrong. The corrected record states: Vault access using Key C is prohibited at 09:00."}
+{"case_id": "access:paraphrase", "side": "source", "repetition": 0, "response": "At 09:00, Key C is authorized to open the vault."}
+{"case_id": "access:paraphrase", "side": "source", "repetition": 1, "response": "Key C has permission to open the vault at 09:00."}
+{"case_id": "access:paraphrase", "side": "source", "repetition": 2, "response": "Vault access using Key C is permitted at 09:00."}
+{"case_id": "access:paraphrase", "side": "target", "repetition": 0, "response": "The verified record confirms the following: At 09:00, Key C is authorized to open the vault."}
+{"case_id": "access:paraphrase", "side": "target", "repetition": 1, "response": "The verified record confirms the following: Key C has permission to open the vault at 09:00."}
+{"case_id": "access:paraphrase", "side": "target", "repetition": 2, "response": "The verified record confirms the following: Vault access using Key C is permitted at 09:00."}
+{"case_id": "access:different_entity", "side": "source", "repetition": 0, "response": "At 09:00, Key C is authorized to open the vault."}
+{"case_id": "access:different_entity", "side": "source", "repetition": 1, "response": "Key C has permission to open the vault at 09:00."}
+{"case_id": "access:different_entity", "side": "source", "repetition": 2, "response": "Vault access using Key C is permitted at 09:00."}
+{"case_id": "access:different_entity", "side": "target", "repetition": 0, "response": "At 09:00, Key D is forbidden from opening the vault."}
+{"case_id": "access:different_entity", "side": "target", "repetition": 1, "response": "Key D has no permission to open the vault at 09:00."}
+{"case_id": "access:different_entity", "side": "target", "repetition": 2, "response": "Vault access using Key D is prohibited at 09:00."}
+{"case_id": "access:correction_preserves_fact", "side": "source", "repetition": 0, "response": "At 09:00, Key C is authorized to open the vault."}
+{"case_id": "access:correction_preserves_fact", "side": "source", "repetition": 1, "response": "Key C has permission to open the vault at 09:00."}
+{"case_id": "access:correction_preserves_fact", "side": "source", "repetition": 2, "response": "Vault access using Key C is permitted at 09:00."}
+{"case_id": "access:correction_preserves_fact", "side": "target", "repetition": 0, "response": "An earlier report said: At 09:00, Key C is forbidden from opening the vault. That report was wrong. The corrected record states: At 09:00, Key C is authorized to open the vault."}
+{"case_id": "access:correction_preserves_fact", "side": "target", "repetition": 1, "response": "An earlier report said: Key C has no permission to open the vault at 09:00. That report was wrong. The corrected record states: Key C has permission to open the vault at 09:00."}
+{"case_id": "access:correction_preserves_fact", "side": "target", "repetition": 2, "response": "An earlier report said: Vault access using Key C is prohibited at 09:00. That report was wrong. The corrected record states: Vault access using Key C is permitted at 09:00."}
+{"case_id": "power:opposite_value", "side": "source", "repetition": 0, "response": "Pump A is powered on at 09:00."}
+{"case_id": "power:opposite_value", "side": "source", "repetition": 1, "response": "At 09:00, the power state of Pump A is on."}
+{"case_id": "power:opposite_value", "side": "source", "repetition": 2, "response": "Pump A has its power switched on at 09:00."}
+{"case_id": "power:opposite_value", "side": "target", "repetition": 0, "response": "Pump A is powered off at 09:00."}
+{"case_id": "power:opposite_value", "side": "target", "repetition": 1, "response": "At 09:00, the power state of Pump A is off."}
+{"case_id": "power:opposite_value", "side": "target", "repetition": 2, "response": "Pump A has its power switched off at 09:00."}
+{"case_id": "power:explicit_negation", "side": "source", "repetition": 0, "response": "Pump A is powered on at 09:00."}
+{"case_id": "power:explicit_negation", "side": "source", "repetition": 1, "response": "At 09:00, the power state of Pump A is on."}
+{"case_id": "power:explicit_negation", "side": "source", "repetition": 2, "response": "Pump A has its power switched on at 09:00."}
+{"case_id": "power:explicit_negation", "side": "target", "repetition": 0, "response": "It is false that Pump A is powered on at 09:00."}
+{"case_id": "power:explicit_negation", "side": "target", "repetition": 1, "response": "It is false that At 09:00, the power state of Pump A is on."}
+{"case_id": "power:explicit_negation", "side": "target", "repetition": 2, "response": "It is false that Pump A has its power switched on at 09:00."}
+{"case_id": "power:correction_reverses_fact", "side": "source", "repetition": 0, "response": "Pump A is powered on at 09:00."}
+{"case_id": "power:correction_reverses_fact", "side": "source", "repetition": 1, "response": "At 09:00, the power state of Pump A is on."}
+{"case_id": "power:correction_reverses_fact", "side": "source", "repetition": 2, "response": "Pump A has its power switched on at 09:00."}
+{"case_id": "power:correction_reverses_fact", "side": "target", "repetition": 0, "response": "An earlier report said: Pump A is powered on at 09:00. That report was wrong. The corrected record states: Pump A is powered off at 09:00."}
+{"case_id": "power:correction_reverses_fact", "side": "target", "repetition": 1, "response": "An earlier report said: At 09:00, the power state of Pump A is on. That report was wrong. The corrected record states: At 09:00, the power state of Pump A is off."}
+{"case_id": "power:correction_reverses_fact", "side": "target", "repetition": 2, "response": "An earlier report said: Pump A has its power switched on at 09:00. That report was wrong. The corrected record states: Pump A has its power switched off at 09:00."}
+{"case_id": "power:paraphrase", "side": "source", "repetition": 0, "response": "Pump A is powered on at 09:00."}
+{"case_id": "power:paraphrase", "side": "source", "repetition": 1, "response": "At 09:00, the power state of Pump A is on."}
+{"case_id": "power:paraphrase", "side": "source", "repetition": 2, "response": "Pump A has its power switched on at 09:00."}
+{"case_id": "power:paraphrase", "side": "target", "repetition": 0, "response": "The verified record confirms the following: Pump A is powered on at 09:00."}
+{"case_id": "power:paraphrase", "side": "target", "repetition": 1, "response": "The verified record confirms the following: At 09:00, the power state of Pump A is on."}
+{"case_id": "power:paraphrase", "side": "target", "repetition": 2, "response": "The verified record confirms the following: Pump A has its power switched on at 09:00."}
+{"case_id": "power:different_time", "side": "source", "repetition": 0, "response": "Pump A is powered on at 09:00."}
+{"case_id": "power:different_time", "side": "source", "repetition": 1, "response": "At 09:00, the power state of Pump A is on."}
+{"case_id": "power:different_time", "side": "source", "repetition": 2, "response": "Pump A has its power switched on at 09:00."}
+{"case_id": "power:different_time", "side": "target", "repetition": 0, "response": "Pump A is powered off at 10:00."}
+{"case_id": "power:different_time", "side": "target", "repetition": 1, "response": "At 10:00, the power state of Pump A is off."}
+{"case_id": "power:different_time", "side": "target", "repetition": 2, "response": "Pump A has its power switched off at 10:00."}
+{"case_id": "power:uncertainty", "side": "source", "repetition": 0, "response": "Pump A is powered on at 09:00."}
+{"case_id": "power:uncertainty", "side": "source", "repetition": 1, "response": "At 09:00, the power state of Pump A is on."}
+{"case_id": "power:uncertainty", "side": "source", "repetition": 2, "response": "Pump A has its power switched on at 09:00."}
+{"case_id": "power:uncertainty", "side": "target", "repetition": 0, "response": "The following is an unverified possibility, not an assertion: Pump A is powered off at 09:00. The actual state has not been determined in this report."}
+{"case_id": "power:uncertainty", "side": "target", "repetition": 1, "response": "The following is an unverified possibility, not an assertion: At 09:00, the power state of Pump A is off. The actual state has not been determined in this report."}
+{"case_id": "power:uncertainty", "side": "target", "repetition": 2, "response": "The following is an unverified possibility, not an assertion: Pump A has its power switched off at 09:00. The actual state has not been determined in this report."}
+{"case_id": "schedule:opposite_value", "side": "source", "repetition": 0, "response": "The sole scheduled day for Event G in week 12 is Monday."}
+{"case_id": "schedule:opposite_value", "side": "source", "repetition": 1, "response": "In week 12, Event G is scheduled exclusively for Monday."}
+{"case_id": "schedule:opposite_value", "side": "source", "repetition": 2, "response": "Event G has Monday as its only scheduled day in week 12."}
+{"case_id": "schedule:opposite_value", "side": "target", "repetition": 0, "response": "The sole scheduled day for Event G in week 12 is Thursday."}
+{"case_id": "schedule:opposite_value", "side": "target", "repetition": 1, "response": "In week 12, Event G is scheduled exclusively for Thursday."}
+{"case_id": "schedule:opposite_value", "side": "target", "repetition": 2, "response": "Event G has Thursday as its only scheduled day in week 12."}
+{"case_id": "schedule:explicit_negation", "side": "source", "repetition": 0, "response": "The sole scheduled day for Event G in week 12 is Monday."}
+{"case_id": "schedule:explicit_negation", "side": "source", "repetition": 1, "response": "In week 12, Event G is scheduled exclusively for Monday."}
+{"case_id": "schedule:explicit_negation", "side": "source", "repetition": 2, "response": "Event G has Monday as its only scheduled day in week 12."}
+{"case_id": "schedule:explicit_negation", "side": "target", "repetition": 0, "response": "It is false that The sole scheduled day for Event G in week 12 is Monday."}
+{"case_id": "schedule:explicit_negation", "side": "target", "repetition": 1, "response": "It is false that In week 12, Event G is scheduled exclusively for Monday."}
+{"case_id": "schedule:explicit_negation", "side": "target", "repetition": 2, "response": "It is false that Event G has Monday as its only scheduled day in week 12."}
+{"case_id": "schedule:correction_reverses_fact", "side": "source", "repetition": 0, "response": "The sole scheduled day for Event G in week 12 is Monday."}
+{"case_id": "schedule:correction_reverses_fact", "side": "source", "repetition": 1, "response": "In week 12, Event G is scheduled exclusively for Monday."}
+{"case_id": "schedule:correction_reverses_fact", "side": "source", "repetition": 2, "response": "Event G has Monday as its only scheduled day in week 12."}
+{"case_id": "schedule:correction_reverses_fact", "side": "target", "repetition": 0, "response": "An earlier report said: The sole scheduled day for Event G in week 12 is Monday. That report was wrong. The corrected record states: The sole scheduled day for Event G in week 12 is Thursday."}
+{"case_id": "schedule:correction_reverses_fact", "side": "target", "repetition": 1, "response": "An earlier report said: In week 12, Event G is scheduled exclusively for Monday. That report was wrong. The corrected record states: In week 12, Event G is scheduled exclusively for Thursday."}
+{"case_id": "schedule:correction_reverses_fact", "side": "target", "repetition": 2, "response": "An earlier report said: Event G has Monday as its only scheduled day in week 12. That report was wrong. The corrected record states: Event G has Thursday as its only scheduled day in week 12."}
+{"case_id": "schedule:paraphrase", "side": "source", "repetition": 0, "response": "The sole scheduled day for Event G in week 12 is Monday."}
+{"case_id": "schedule:paraphrase", "side": "source", "repetition": 1, "response": "In week 12, Event G is scheduled exclusively for Monday."}
+{"case_id": "schedule:paraphrase", "side": "source", "repetition": 2, "response": "Event G has Monday as its only scheduled day in week 12."}
+{"case_id": "schedule:paraphrase", "side": "target", "repetition": 0, "response": "The verified record confirms the following: The sole scheduled day for Event G in week 12 is Monday."}
+{"case_id": "schedule:paraphrase", "side": "target", "repetition": 1, "response": "The verified record confirms the following: In week 12, Event G is scheduled exclusively for Monday."}
+{"case_id": "schedule:paraphrase", "side": "target", "repetition": 2, "response": "The verified record confirms the following: Event G has Monday as its only scheduled day in week 12."}
+{"case_id": "schedule:different_entity", "side": "source", "repetition": 0, "response": "The sole scheduled day for Event G in week 12 is Monday."}
+{"case_id": "schedule:different_entity", "side": "source", "repetition": 1, "response": "In week 12, Event G is scheduled exclusively for Monday."}
+{"case_id": "schedule:different_entity", "side": "source", "repetition": 2, "response": "Event G has Monday as its only scheduled day in week 12."}
+{"case_id": "schedule:different_entity", "side": "target", "repetition": 0, "response": "The sole scheduled day for Event Z in week 12 is Thursday."}
+{"case_id": "schedule:different_entity", "side": "target", "repetition": 1, "response": "In week 12, Event Z is scheduled exclusively for Thursday."}
+{"case_id": "schedule:different_entity", "side": "target", "repetition": 2, "response": "Event Z has Thursday as its only scheduled day in week 12."}
+{"case_id": "schedule:correction_preserves_fact", "side": "source", "repetition": 0, "response": "The sole scheduled day for Event G in week 12 is Monday."}
+{"case_id": "schedule:correction_preserves_fact", "side": "source", "repetition": 1, "response": "In week 12, Event G is scheduled exclusively for Monday."}
+{"case_id": "schedule:correction_preserves_fact", "side": "source", "repetition": 2, "response": "Event G has Monday as its only scheduled day in week 12."}
+{"case_id": "schedule:correction_preserves_fact", "side": "target", "repetition": 0, "response": "An earlier report said: The sole scheduled day for Event G in week 12 is Thursday. That report was wrong. The corrected record states: The sole scheduled day for Event G in week 12 is Monday."}
+{"case_id": "schedule:correction_preserves_fact", "side": "target", "repetition": 1, "response": "An earlier report said: In week 12, Event G is scheduled exclusively for Thursday. That report was wrong. The corrected record states: In week 12, Event G is scheduled exclusively for Monday."}
+{"case_id": "schedule:correction_preserves_fact", "side": "target", "repetition": 2, "response": "An earlier report said: Event G has Thursday as its only scheduled day in week 12. That report was wrong. The corrected record states: Event G has Monday as its only scheduled day in week 12."}
+{"case_id": "threshold:opposite_value", "side": "source", "repetition": 0, "response": "At 09:00, the measured pH of Sample T is strictly above 7."}
+{"case_id": "threshold:opposite_value", "side": "source", "repetition": 1, "response": "Sample T has a measured pH greater than 7 at 09:00."}
+{"case_id": "threshold:opposite_value", "side": "source", "repetition": 2, "response": "The pH measurement of Sample T at 09:00 exceeds 7."}
+{"case_id": "threshold:opposite_value", "side": "target", "repetition": 0, "response": "At 09:00, the measured pH of Sample T is strictly below 7."}
+{"case_id": "threshold:opposite_value", "side": "target", "repetition": 1, "response": "Sample T has a measured pH less than 7 at 09:00."}
+{"case_id": "threshold:opposite_value", "side": "target", "repetition": 2, "response": "The pH measurement of Sample T at 09:00 is under 7."}
+{"case_id": "threshold:explicit_negation", "side": "source", "repetition": 0, "response": "At 09:00, the measured pH of Sample T is strictly above 7."}
+{"case_id": "threshold:explicit_negation", "side": "source", "repetition": 1, "response": "Sample T has a measured pH greater than 7 at 09:00."}
+{"case_id": "threshold:explicit_negation", "side": "source", "repetition": 2, "response": "The pH measurement of Sample T at 09:00 exceeds 7."}
+{"case_id": "threshold:explicit_negation", "side": "target", "repetition": 0, "response": "It is false that At 09:00, the measured pH of Sample T is strictly above 7."}
+{"case_id": "threshold:explicit_negation", "side": "target", "repetition": 1, "response": "It is false that Sample T has a measured pH greater than 7 at 09:00."}
+{"case_id": "threshold:explicit_negation", "side": "target", "repetition": 2, "response": "It is false that The pH measurement of Sample T at 09:00 exceeds 7."}
+{"case_id": "threshold:correction_reverses_fact", "side": "source", "repetition": 0, "response": "At 09:00, the measured pH of Sample T is strictly above 7."}
+{"case_id": "threshold:correction_reverses_fact", "side": "source", "repetition": 1, "response": "Sample T has a measured pH greater than 7 at 09:00."}
+{"case_id": "threshold:correction_reverses_fact", "side": "source", "repetition": 2, "response": "The pH measurement of Sample T at 09:00 exceeds 7."}
+{"case_id": "threshold:correction_reverses_fact", "side": "target", "repetition": 0, "response": "An earlier report said: At 09:00, the measured pH of Sample T is strictly above 7. That report was wrong. The corrected record states: At 09:00, the measured pH of Sample T is strictly below 7."}
+{"case_id": "threshold:correction_reverses_fact", "side": "target", "repetition": 1, "response": "An earlier report said: Sample T has a measured pH greater than 7 at 09:00. That report was wrong. The corrected record states: Sample T has a measured pH less than 7 at 09:00."}
+{"case_id": "threshold:correction_reverses_fact", "side": "target", "repetition": 2, "response": "An earlier report said: The pH measurement of Sample T at 09:00 exceeds 7. That report was wrong. The corrected record states: The pH measurement of Sample T at 09:00 is under 7."}
+{"case_id": "threshold:paraphrase", "side": "source", "repetition": 0, "response": "At 09:00, the measured pH of Sample T is strictly above 7."}
+{"case_id": "threshold:paraphrase", "side": "source", "repetition": 1, "response": "Sample T has a measured pH greater than 7 at 09:00."}
+{"case_id": "threshold:paraphrase", "side": "source", "repetition": 2, "response": "The pH measurement of Sample T at 09:00 exceeds 7."}
+{"case_id": "threshold:paraphrase", "side": "target", "repetition": 0, "response": "The verified record confirms the following: At 09:00, the measured pH of Sample T is strictly above 7."}
+{"case_id": "threshold:paraphrase", "side": "target", "repetition": 1, "response": "The verified record confirms the following: Sample T has a measured pH greater than 7 at 09:00."}
+{"case_id": "threshold:paraphrase", "side": "target", "repetition": 2, "response": "The verified record confirms the following: The pH measurement of Sample T at 09:00 exceeds 7."}
+{"case_id": "threshold:different_time", "side": "source", "repetition": 0, "response": "At 09:00, the measured pH of Sample T is strictly above 7."}
+{"case_id": "threshold:different_time", "side": "source", "repetition": 1, "response": "Sample T has a measured pH greater than 7 at 09:00."}
+{"case_id": "threshold:different_time", "side": "source", "repetition": 2, "response": "The pH measurement of Sample T at 09:00 exceeds 7."}
+{"case_id": "threshold:different_time", "side": "target", "repetition": 0, "response": "At 10:00, the measured pH of Sample T is strictly below 7."}
+{"case_id": "threshold:different_time", "side": "target", "repetition": 1, "response": "Sample T has a measured pH less than 7 at 10:00."}
+{"case_id": "threshold:different_time", "side": "target", "repetition": 2, "response": "The pH measurement of Sample T at 10:00 is under 7."}
+{"case_id": "threshold:uncertainty", "side": "source", "repetition": 0, "response": "At 09:00, the measured pH of Sample T is strictly above 7."}
+{"case_id": "threshold:uncertainty", "side": "source", "repetition": 1, "response": "Sample T has a measured pH greater than 7 at 09:00."}
+{"case_id": "threshold:uncertainty", "side": "source", "repetition": 2, "response": "The pH measurement of Sample T at 09:00 exceeds 7."}
+{"case_id": "threshold:uncertainty", "side": "target", "repetition": 0, "response": "The following is an unverified possibility, not an assertion: At 09:00, the measured pH of Sample T is strictly below 7. The actual state has not been determined in this report."}
+{"case_id": "threshold:uncertainty", "side": "target", "repetition": 1, "response": "The following is an unverified possibility, not an assertion: Sample T has a measured pH less than 7 at 09:00. The actual state has not been determined in this report."}
+{"case_id": "threshold:uncertainty", "side": "target", "repetition": 2, "response": "The following is an unverified possibility, not an assertion: The pH measurement of Sample T at 09:00 is under 7. The actual state has not been determined in this report."}
+{"case_id": "budget:opposite_value", "side": "source", "repetition": 0, "response": "At 09:00, the approved budget for Project U is exactly 450 dollars."}
+{"case_id": "budget:opposite_value", "side": "source", "repetition": 1, "response": "Project U has precisely 450 dollars of approved budget at 09:00."}
+{"case_id": "budget:opposite_value", "side": "source", "repetition": 2, "response": "The exact authorized budget of Project U at 09:00 is 450 dollars."}
+{"case_id": "budget:opposite_value", "side": "target", "repetition": 0, "response": "At 09:00, the approved budget for Project U is exactly 650 dollars."}
+{"case_id": "budget:opposite_value", "side": "target", "repetition": 1, "response": "Project U has precisely 650 dollars of approved budget at 09:00."}
+{"case_id": "budget:opposite_value", "side": "target", "repetition": 2, "response": "The exact authorized budget of Project U at 09:00 is 650 dollars."}
+{"case_id": "budget:explicit_negation", "side": "source", "repetition": 0, "response": "At 09:00, the approved budget for Project U is exactly 450 dollars."}
+{"case_id": "budget:explicit_negation", "side": "source", "repetition": 1, "response": "Project U has precisely 450 dollars of approved budget at 09:00."}
+{"case_id": "budget:explicit_negation", "side": "source", "repetition": 2, "response": "The exact authorized budget of Project U at 09:00 is 450 dollars."}
+{"case_id": "budget:explicit_negation", "side": "target", "repetition": 0, "response": "It is false that At 09:00, the approved budget for Project U is exactly 450 dollars."}
+{"case_id": "budget:explicit_negation", "side": "target", "repetition": 1, "response": "It is false that Project U has precisely 450 dollars of approved budget at 09:00."}
+{"case_id": "budget:explicit_negation", "side": "target", "repetition": 2, "response": "It is false that The exact authorized budget of Project U at 09:00 is 450 dollars."}
+{"case_id": "budget:correction_reverses_fact", "side": "source", "repetition": 0, "response": "At 09:00, the approved budget for Project U is exactly 450 dollars."}
+{"case_id": "budget:correction_reverses_fact", "side": "source", "repetition": 1, "response": "Project U has precisely 450 dollars of approved budget at 09:00."}
+{"case_id": "budget:correction_reverses_fact", "side": "source", "repetition": 2, "response": "The exact authorized budget of Project U at 09:00 is 450 dollars."}
+{"case_id": "budget:correction_reverses_fact", "side": "target", "repetition": 0, "response": "An earlier report said: At 09:00, the approved budget for Project U is exactly 450 dollars. That report was wrong. The corrected record states: At 09:00, the approved budget for Project U is exactly 650 dollars."}
+{"case_id": "budget:correction_reverses_fact", "side": "target", "repetition": 1, "response": "An earlier report said: Project U has precisely 450 dollars of approved budget at 09:00. That report was wrong. The corrected record states: Project U has precisely 650 dollars of approved budget at 09:00."}
+{"case_id": "budget:correction_reverses_fact", "side": "target", "repetition": 2, "response": "An earlier report said: The exact authorized budget of Project U at 09:00 is 450 dollars. That report was wrong. The corrected record states: The exact authorized budget of Project U at 09:00 is 650 dollars."}
+{"case_id": "budget:paraphrase", "side": "source", "repetition": 0, "response": "At 09:00, the approved budget for Project U is exactly 450 dollars."}
+{"case_id": "budget:paraphrase", "side": "source", "repetition": 1, "response": "Project U has precisely 450 dollars of approved budget at 09:00."}
+{"case_id": "budget:paraphrase", "side": "source", "repetition": 2, "response": "The exact authorized budget of Project U at 09:00 is 450 dollars."}
+{"case_id": "budget:paraphrase", "side": "target", "repetition": 0, "response": "The verified record confirms the following: At 09:00, the approved budget for Project U is exactly 450 dollars."}
+{"case_id": "budget:paraphrase", "side": "target", "repetition": 1, "response": "The verified record confirms the following: Project U has precisely 450 dollars of approved budget at 09:00."}
+{"case_id": "budget:paraphrase", "side": "target", "repetition": 2, "response": "The verified record confirms the following: The exact authorized budget of Project U at 09:00 is 450 dollars."}
+{"case_id": "budget:different_entity", "side": "source", "repetition": 0, "response": "At 09:00, the approved budget for Project U is exactly 450 dollars."}
+{"case_id": "budget:different_entity", "side": "source", "repetition": 1, "response": "Project U has precisely 450 dollars of approved budget at 09:00."}
+{"case_id": "budget:different_entity", "side": "source", "repetition": 2, "response": "The exact authorized budget of Project U at 09:00 is 450 dollars."}
+{"case_id": "budget:different_entity", "side": "target", "repetition": 0, "response": "At 09:00, the approved budget for Project V is exactly 650 dollars."}
+{"case_id": "budget:different_entity", "side": "target", "repetition": 1, "response": "Project V has precisely 650 dollars of approved budget at 09:00."}
+{"case_id": "budget:different_entity", "side": "target", "repetition": 2, "response": "The exact authorized budget of Project V at 09:00 is 650 dollars."}
+{"case_id": "budget:correction_preserves_fact", "side": "source", "repetition": 0, "response": "At 09:00, the approved budget for Project U is exactly 450 dollars."}
+{"case_id": "budget:correction_preserves_fact", "side": "source", "repetition": 1, "response": "Project U has precisely 450 dollars of approved budget at 09:00."}
+{"case_id": "budget:correction_preserves_fact", "side": "source", "repetition": 2, "response": "The exact authorized budget of Project U at 09:00 is 450 dollars."}
+{"case_id": "budget:correction_preserves_fact", "side": "target", "repetition": 0, "response": "An earlier report said: At 09:00, the approved budget for Project U is exactly 650 dollars. That report was wrong. The corrected record states: At 09:00, the approved budget for Project U is exactly 450 dollars."}
+{"case_id": "budget:correction_preserves_fact", "side": "target", "repetition": 1, "response": "An earlier report said: Project U has precisely 650 dollars of approved budget at 09:00. That report was wrong. The corrected record states: Project U has precisely 450 dollars of approved budget at 09:00."}
+{"case_id": "budget:correction_preserves_fact", "side": "target", "repetition": 2, "response": "An earlier report said: The exact authorized budget of Project U at 09:00 is 650 dollars. That report was wrong. The corrected record states: The exact authorized budget of Project U at 09:00 is 450 dollars."}
+{"case_id": "temperature:opposite_value", "side": "source", "repetition": 0, "response": "At 09:00, Sensor W reads exactly 20 degrees Celsius."}
+{"case_id": "temperature:opposite_value", "side": "source", "repetition": 1, "response": "The exact temperature reading from Sensor W at 09:00 is 20 degrees Celsius."}
+{"case_id": "temperature:opposite_value", "side": "source", "repetition": 2, "response": "Sensor W reports precisely twenty degrees Celsius at 09:00."}
+{"case_id": "temperature:opposite_value", "side": "target", "repetition": 0, "response": "At 09:00, Sensor W reads exactly 25 degrees Celsius."}
+{"case_id": "temperature:opposite_value", "side": "target", "repetition": 1, "response": "The exact temperature reading from Sensor W at 09:00 is 25 degrees Celsius."}
+{"case_id": "temperature:opposite_value", "side": "target", "repetition": 2, "response": "Sensor W reports precisely twenty-five degrees Celsius at 09:00."}
+{"case_id": "temperature:explicit_negation", "side": "source", "repetition": 0, "response": "At 09:00, Sensor W reads exactly 20 degrees Celsius."}
+{"case_id": "temperature:explicit_negation", "side": "source", "repetition": 1, "response": "The exact temperature reading from Sensor W at 09:00 is 20 degrees Celsius."}
+{"case_id": "temperature:explicit_negation", "side": "source", "repetition": 2, "response": "Sensor W reports precisely twenty degrees Celsius at 09:00."}
+{"case_id": "temperature:explicit_negation", "side": "target", "repetition": 0, "response": "It is false that At 09:00, Sensor W reads exactly 20 degrees Celsius."}
+{"case_id": "temperature:explicit_negation", "side": "target", "repetition": 1, "response": "It is false that The exact temperature reading from Sensor W at 09:00 is 20 degrees Celsius."}
+{"case_id": "temperature:explicit_negation", "side": "target", "repetition": 2, "response": "It is false that Sensor W reports precisely twenty degrees Celsius at 09:00."}
+{"case_id": "temperature:correction_reverses_fact", "side": "source", "repetition": 0, "response": "At 09:00, Sensor W reads exactly 20 degrees Celsius."}
+{"case_id": "temperature:correction_reverses_fact", "side": "source", "repetition": 1, "response": "The exact temperature reading from Sensor W at 09:00 is 20 degrees Celsius."}
+{"case_id": "temperature:correction_reverses_fact", "side": "source", "repetition": 2, "response": "Sensor W reports precisely twenty degrees Celsius at 09:00."}
+{"case_id": "temperature:correction_reverses_fact", "side": "target", "repetition": 0, "response": "An earlier report said: At 09:00, Sensor W reads exactly 20 degrees Celsius. That report was wrong. The corrected record states: At 09:00, Sensor W reads exactly 25 degrees Celsius."}
+{"case_id": "temperature:correction_reverses_fact", "side": "target", "repetition": 1, "response": "An earlier report said: The exact temperature reading from Sensor W at 09:00 is 20 degrees Celsius. That report was wrong. The corrected record states: The exact temperature reading from Sensor W at 09:00 is 25 degrees Celsius."}
+{"case_id": "temperature:correction_reverses_fact", "side": "target", "repetition": 2, "response": "An earlier report said: Sensor W reports precisely twenty degrees Celsius at 09:00. That report was wrong. The corrected record states: Sensor W reports precisely twenty-five degrees Celsius at 09:00."}
+{"case_id": "temperature:paraphrase", "side": "source", "repetition": 0, "response": "At 09:00, Sensor W reads exactly 20 degrees Celsius."}
+{"case_id": "temperature:paraphrase", "side": "source", "repetition": 1, "response": "The exact temperature reading from Sensor W at 09:00 is 20 degrees Celsius."}
+{"case_id": "temperature:paraphrase", "side": "source", "repetition": 2, "response": "Sensor W reports precisely twenty degrees Celsius at 09:00."}
+{"case_id": "temperature:paraphrase", "side": "target", "repetition": 0, "response": "The verified record confirms the following: At 09:00, Sensor W reads exactly 20 degrees Celsius."}
+{"case_id": "temperature:paraphrase", "side": "target", "repetition": 1, "response": "The verified record confirms the following: The exact temperature reading from Sensor W at 09:00 is 20 degrees Celsius."}
+{"case_id": "temperature:paraphrase", "side": "target", "repetition": 2, "response": "The verified record confirms the following: Sensor W reports precisely twenty degrees Celsius at 09:00."}
+{"case_id": "temperature:different_time", "side": "source", "repetition": 0, "response": "At 09:00, Sensor W reads exactly 20 degrees Celsius."}
+{"case_id": "temperature:different_time", "side": "source", "repetition": 1, "response": "The exact temperature reading from Sensor W at 09:00 is 20 degrees Celsius."}
+{"case_id": "temperature:different_time", "side": "source", "repetition": 2, "response": "Sensor W reports precisely twenty degrees Celsius at 09:00."}
+{"case_id": "temperature:different_time", "side": "target", "repetition": 0, "response": "At 10:00, Sensor W reads exactly 25 degrees Celsius."}
+{"case_id": "temperature:different_time", "side": "target", "repetition": 1, "response": "The exact temperature reading from Sensor W at 10:00 is 25 degrees Celsius."}
+{"case_id": "temperature:different_time", "side": "target", "repetition": 2, "response": "Sensor W reports precisely twenty-five degrees Celsius at 10:00."}
+{"case_id": "temperature:uncertainty", "side": "source", "repetition": 0, "response": "At 09:00, Sensor W reads exactly 20 degrees Celsius."}
+{"case_id": "temperature:uncertainty", "side": "source", "repetition": 1, "response": "The exact temperature reading from Sensor W at 09:00 is 20 degrees Celsius."}
+{"case_id": "temperature:uncertainty", "side": "source", "repetition": 2, "response": "Sensor W reports precisely twenty degrees Celsius at 09:00."}
+{"case_id": "temperature:uncertainty", "side": "target", "repetition": 0, "response": "The following is an unverified possibility, not an assertion: At 09:00, Sensor W reads exactly 25 degrees Celsius. The actual state has not been determined in this report."}
+{"case_id": "temperature:uncertainty", "side": "target", "repetition": 1, "response": "The following is an unverified possibility, not an assertion: The exact temperature reading from Sensor W at 09:00 is 25 degrees Celsius. The actual state has not been determined in this report."}
+{"case_id": "temperature:uncertainty", "side": "target", "repetition": 2, "response": "The following is an unverified possibility, not an assertion: Sensor W reports precisely twenty-five degrees Celsius at 09:00. The actual state has not been determined in this report."}
+{"case_id": "version:opposite_value", "side": "source", "repetition": 0, "response": "At 09:00, Server E runs only application version 2.1."}
+{"case_id": "version:opposite_value", "side": "source", "repetition": 1, "response": "The only application version active on Server E at 09:00 is 2.1."}
+{"case_id": "version:opposite_value", "side": "source", "repetition": 2, "response": "Server E has version 2.1 as its sole active application version at 09:00."}
+{"case_id": "version:opposite_value", "side": "target", "repetition": 0, "response": "At 09:00, Server E runs only application version 2.2."}
+{"case_id": "version:opposite_value", "side": "target", "repetition": 1, "response": "The only application version active on Server E at 09:00 is 2.2."}
+{"case_id": "version:opposite_value", "side": "target", "repetition": 2, "response": "Server E has version 2.2 as its sole active application version at 09:00."}
+{"case_id": "version:explicit_negation", "side": "source", "repetition": 0, "response": "At 09:00, Server E runs only application version 2.1."}
+{"case_id": "version:explicit_negation", "side": "source", "repetition": 1, "response": "The only application version active on Server E at 09:00 is 2.1."}
+{"case_id": "version:explicit_negation", "side": "source", "repetition": 2, "response": "Server E has version 2.1 as its sole active application version at 09:00."}
+{"case_id": "version:explicit_negation", "side": "target", "repetition": 0, "response": "It is false that At 09:00, Server E runs only application version 2.1."}
+{"case_id": "version:explicit_negation", "side": "target", "repetition": 1, "response": "It is false that The only application version active on Server E at 09:00 is 2.1."}
+{"case_id": "version:explicit_negation", "side": "target", "repetition": 2, "response": "It is false that Server E has version 2.1 as its sole active application version at 09:00."}
+{"case_id": "version:correction_reverses_fact", "side": "source", "repetition": 0, "response": "At 09:00, Server E runs only application version 2.1."}
+{"case_id": "version:correction_reverses_fact", "side": "source", "repetition": 1, "response": "The only application version active on Server E at 09:00 is 2.1."}
+{"case_id": "version:correction_reverses_fact", "side": "source", "repetition": 2, "response": "Server E has version 2.1 as its sole active application version at 09:00."}
+{"case_id": "version:correction_reverses_fact", "side": "target", "repetition": 0, "response": "An earlier report said: At 09:00, Server E runs only application version 2.1. That report was wrong. The corrected record states: At 09:00, Server E runs only application version 2.2."}
+{"case_id": "version:correction_reverses_fact", "side": "target", "repetition": 1, "response": "An earlier report said: The only application version active on Server E at 09:00 is 2.1. That report was wrong. The corrected record states: The only application version active on Server E at 09:00 is 2.2."}
+{"case_id": "version:correction_reverses_fact", "side": "target", "repetition": 2, "response": "An earlier report said: Server E has version 2.1 as its sole active application version at 09:00. That report was wrong. The corrected record states: Server E has version 2.2 as its sole active application version at 09:00."}
+{"case_id": "version:paraphrase", "side": "source", "repetition": 0, "response": "At 09:00, Server E runs only application version 2.1."}
+{"case_id": "version:paraphrase", "side": "source", "repetition": 1, "response": "The only application version active on Server E at 09:00 is 2.1."}
+{"case_id": "version:paraphrase", "side": "source", "repetition": 2, "response": "Server E has version 2.1 as its sole active application version at 09:00."}
+{"case_id": "version:paraphrase", "side": "target", "repetition": 0, "response": "The verified record confirms the following: At 09:00, Server E runs only application version 2.1."}
+{"case_id": "version:paraphrase", "side": "target", "repetition": 1, "response": "The verified record confirms the following: The only application version active on Server E at 09:00 is 2.1."}
+{"case_id": "version:paraphrase", "side": "target", "repetition": 2, "response": "The verified record confirms the following: Server E has version 2.1 as its sole active application version at 09:00."}
+{"case_id": "version:different_entity", "side": "source", "repetition": 0, "response": "At 09:00, Server E runs only application version 2.1."}
+{"case_id": "version:different_entity", "side": "source", "repetition": 1, "response": "The only application version active on Server E at 09:00 is 2.1."}
+{"case_id": "version:different_entity", "side": "source", "repetition": 2, "response": "Server E has version 2.1 as its sole active application version at 09:00."}
+{"case_id": "version:different_entity", "side": "target", "repetition": 0, "response": "At 09:00, Server F runs only application version 2.2."}
+{"case_id": "version:different_entity", "side": "target", "repetition": 1, "response": "The only application version active on Server F at 09:00 is 2.2."}
+{"case_id": "version:different_entity", "side": "target", "repetition": 2, "response": "Server F has version 2.2 as its sole active application version at 09:00."}
+{"case_id": "version:correction_preserves_fact", "side": "source", "repetition": 0, "response": "At 09:00, Server E runs only application version 2.1."}
+{"case_id": "version:correction_preserves_fact", "side": "source", "repetition": 1, "response": "The only application version active on Server E at 09:00 is 2.1."}
+{"case_id": "version:correction_preserves_fact", "side": "source", "repetition": 2, "response": "Server E has version 2.1 as its sole active application version at 09:00."}
+{"case_id": "version:correction_preserves_fact", "side": "target", "repetition": 0, "response": "An earlier report said: At 09:00, Server E runs only application version 2.2. That report was wrong. The corrected record states: At 09:00, Server E runs only application version 2.1."}
+{"case_id": "version:correction_preserves_fact", "side": "target", "repetition": 1, "response": "An earlier report said: The only application version active on Server E at 09:00 is 2.2. That report was wrong. The corrected record states: The only application version active on Server E at 09:00 is 2.1."}
+{"case_id": "version:correction_preserves_fact", "side": "target", "repetition": 2, "response": "An earlier report said: Server E has version 2.2 as its sole active application version at 09:00. That report was wrong. The corrected record states: Server E has version 2.1 as its sole active application version at 09:00."}
+{"case_id": "ownership:opposite_value", "side": "source", "repetition": 0, "response": "Nora is the sole owner of Account P at 09:00."}
+{"case_id": "ownership:opposite_value", "side": "source", "repetition": 1, "response": "At 09:00, Account P belongs exclusively to Nora."}
+{"case_id": "ownership:opposite_value", "side": "source", "repetition": 2, "response": "The only owner of Account P at 09:00 is Nora."}
+{"case_id": "ownership:opposite_value", "side": "target", "repetition": 0, "response": "Ilan is the sole owner of Account P at 09:00."}
+{"case_id": "ownership:opposite_value", "side": "target", "repetition": 1, "response": "At 09:00, Account P belongs exclusively to Ilan."}
+{"case_id": "ownership:opposite_value", "side": "target", "repetition": 2, "response": "The only owner of Account P at 09:00 is Ilan."}
+{"case_id": "ownership:explicit_negation", "side": "source", "repetition": 0, "response": "Nora is the sole owner of Account P at 09:00."}
+{"case_id": "ownership:explicit_negation", "side": "source", "repetition": 1, "response": "At 09:00, Account P belongs exclusively to Nora."}
+{"case_id": "ownership:explicit_negation", "side": "source", "repetition": 2, "response": "The only owner of Account P at 09:00 is Nora."}
+{"case_id": "ownership:explicit_negation", "side": "target", "repetition": 0, "response": "It is false that Nora is the sole owner of Account P at 09:00."}
+{"case_id": "ownership:explicit_negation", "side": "target", "repetition": 1, "response": "It is false that At 09:00, Account P belongs exclusively to Nora."}
+{"case_id": "ownership:explicit_negation", "side": "target", "repetition": 2, "response": "It is false that The only owner of Account P at 09:00 is Nora."}
+{"case_id": "ownership:correction_reverses_fact", "side": "source", "repetition": 0, "response": "Nora is the sole owner of Account P at 09:00."}
+{"case_id": "ownership:correction_reverses_fact", "side": "source", "repetition": 1, "response": "At 09:00, Account P belongs exclusively to Nora."}
+{"case_id": "ownership:correction_reverses_fact", "side": "source", "repetition": 2, "response": "The only owner of Account P at 09:00 is Nora."}
+{"case_id": "ownership:correction_reverses_fact", "side": "target", "repetition": 0, "response": "An earlier report said: Nora is the sole owner of Account P at 09:00. That report was wrong. The corrected record states: Ilan is the sole owner of Account P at 09:00."}
+{"case_id": "ownership:correction_reverses_fact", "side": "target", "repetition": 1, "response": "An earlier report said: At 09:00, Account P belongs exclusively to Nora. That report was wrong. The corrected record states: At 09:00, Account P belongs exclusively to Ilan."}
+{"case_id": "ownership:correction_reverses_fact", "side": "target", "repetition": 2, "response": "An earlier report said: The only owner of Account P at 09:00 is Nora. That report was wrong. The corrected record states: The only owner of Account P at 09:00 is Ilan."}
+{"case_id": "ownership:paraphrase", "side": "source", "repetition": 0, "response": "Nora is the sole owner of Account P at 09:00."}
+{"case_id": "ownership:paraphrase", "side": "source", "repetition": 1, "response": "At 09:00, Account P belongs exclusively to Nora."}
+{"case_id": "ownership:paraphrase", "side": "source", "repetition": 2, "response": "The only owner of Account P at 09:00 is Nora."}
+{"case_id": "ownership:paraphrase", "side": "target", "repetition": 0, "response": "The verified record confirms the following: Nora is the sole owner of Account P at 09:00."}
+{"case_id": "ownership:paraphrase", "side": "target", "repetition": 1, "response": "The verified record confirms the following: At 09:00, Account P belongs exclusively to Nora."}
+{"case_id": "ownership:paraphrase", "side": "target", "repetition": 2, "response": "The verified record confirms the following: The only owner of Account P at 09:00 is Nora."}
+{"case_id": "ownership:different_time", "side": "source", "repetition": 0, "response": "Nora is the sole owner of Account P at 09:00."}
+{"case_id": "ownership:different_time", "side": "source", "repetition": 1, "response": "At 09:00, Account P belongs exclusively to Nora."}
+{"case_id": "ownership:different_time", "side": "source", "repetition": 2, "response": "The only owner of Account P at 09:00 is Nora."}
+{"case_id": "ownership:different_time", "side": "target", "repetition": 0, "response": "Ilan is the sole owner of Account P at 10:00."}
+{"case_id": "ownership:different_time", "side": "target", "repetition": 1, "response": "At 10:00, Account P belongs exclusively to Ilan."}
+{"case_id": "ownership:different_time", "side": "target", "repetition": 2, "response": "The only owner of Account P at 10:00 is Ilan."}
+{"case_id": "ownership:uncertainty", "side": "source", "repetition": 0, "response": "Nora is the sole owner of Account P at 09:00."}
+{"case_id": "ownership:uncertainty", "side": "source", "repetition": 1, "response": "At 09:00, Account P belongs exclusively to Nora."}
+{"case_id": "ownership:uncertainty", "side": "source", "repetition": 2, "response": "The only owner of Account P at 09:00 is Nora."}
+{"case_id": "ownership:uncertainty", "side": "target", "repetition": 0, "response": "The following is an unverified possibility, not an assertion: Ilan is the sole owner of Account P at 09:00. The actual state has not been determined in this report."}
+{"case_id": "ownership:uncertainty", "side": "target", "repetition": 1, "response": "The following is an unverified possibility, not an assertion: At 09:00, Account P belongs exclusively to Ilan. The actual state has not been determined in this report."}
+{"case_id": "ownership:uncertainty", "side": "target", "repetition": 2, "response": "The following is an unverified possibility, not an assertion: The only owner of Account P at 09:00 is Ilan. The actual state has not been determined in this report."}

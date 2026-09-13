@@ -1,0 +1,1802 @@
+[
+  {
+    "id": "inventory:opposite_value",
+    "family": "inventory",
+    "split": "development",
+    "source_rows": [
+      0,
+      1,
+      2
+    ],
+    "target_rows": [
+      3,
+      4,
+      5
+    ],
+    "kind": "opposite_value",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 61.310604095458984,
+      "project_fisher_mean_only": 59.989986419677734,
+      "project_fisher_covariance_only": 12.656682014465332,
+      "centroid_cosine_distance": 0.07893562316894531,
+      "mean_cross_cosine_distance": 0.1217106431722641,
+      "word_tfidf_cosine_distance": 0.2221875883990374
+    }
+  },
+  {
+    "id": "inventory:explicit_negation",
+    "family": "inventory",
+    "split": "development",
+    "source_rows": [
+      6,
+      7,
+      8
+    ],
+    "target_rows": [
+      9,
+      10,
+      11
+    ],
+    "kind": "explicit_negation",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 31.52204704284668,
+      "project_fisher_mean_only": 28.26504135131836,
+      "project_fisher_covariance_only": 13.954458236694336,
+      "centroid_cosine_distance": 0.01539766788482666,
+      "mean_cross_cosine_distance": 0.05789831653237343,
+      "word_tfidf_cosine_distance": 0.3256663098897
+    }
+  },
+  {
+    "id": "inventory:correction_reverses_fact",
+    "family": "inventory",
+    "split": "development",
+    "source_rows": [
+      12,
+      13,
+      14
+    ],
+    "target_rows": [
+      15,
+      16,
+      17
+    ],
+    "kind": "correction_reverses_fact",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 52.72559356689453,
+      "project_fisher_mean_only": 48.22822189331055,
+      "project_fisher_covariance_only": 21.30790138244629,
+      "centroid_cosine_distance": 0.06867790222167969,
+      "mean_cross_cosine_distance": 0.11971628665924072,
+      "word_tfidf_cosine_distance": 0.3165871938631333
+    }
+  },
+  {
+    "id": "inventory:paraphrase",
+    "family": "inventory",
+    "split": "development",
+    "source_rows": [
+      18,
+      19,
+      20
+    ],
+    "target_rows": [
+      21,
+      22,
+      23
+    ],
+    "kind": "paraphrase",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 40.07929611206055,
+      "project_fisher_mean_only": 36.55512237548828,
+      "project_fisher_covariance_only": 16.43390655517578,
+      "centroid_cosine_distance": 0.03959554433822632,
+      "mean_cross_cosine_distance": 0.08396932482719421,
+      "word_tfidf_cosine_distance": 0.39716933912393504
+    }
+  },
+  {
+    "id": "inventory:different_entity",
+    "family": "inventory",
+    "split": "development",
+    "source_rows": [
+      24,
+      25,
+      26
+    ],
+    "target_rows": [
+      27,
+      28,
+      29
+    ],
+    "kind": "different_entity",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 70.36439514160156,
+      "project_fisher_mean_only": 68.77025604248047,
+      "project_fisher_covariance_only": 14.892953872680664,
+      "centroid_cosine_distance": 0.12074923515319824,
+      "mean_cross_cosine_distance": 0.1631719172000885,
+      "word_tfidf_cosine_distance": 0.2221875883990374
+    }
+  },
+  {
+    "id": "inventory:correction_preserves_fact",
+    "family": "inventory",
+    "split": "development",
+    "source_rows": [
+      30,
+      31,
+      32
+    ],
+    "target_rows": [
+      33,
+      34,
+      35
+    ],
+    "kind": "correction_preserves_fact",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 61.56262969970703,
+      "project_fisher_mean_only": 57.798858642578125,
+      "project_fisher_covariance_only": 21.195505142211914,
+      "centroid_cosine_distance": 0.08457362651824951,
+      "mean_cross_cosine_distance": 0.13408595323562622,
+      "word_tfidf_cosine_distance": 0.3165871938631333
+    }
+  },
+  {
+    "id": "seating:opposite_value",
+    "family": "seating",
+    "split": "development",
+    "source_rows": [
+      36,
+      37,
+      38
+    ],
+    "target_rows": [
+      39,
+      40,
+      41
+    ],
+    "kind": "opposite_value",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 58.26205825805664,
+      "project_fisher_mean_only": 56.53899383544922,
+      "project_fisher_covariance_only": 14.06448745727539,
+      "centroid_cosine_distance": 0.06942272186279297,
+      "mean_cross_cosine_distance": 0.12146782875061035,
+      "word_tfidf_cosine_distance": 0.3026431898126407
+    }
+  },
+  {
+    "id": "seating:explicit_negation",
+    "family": "seating",
+    "split": "development",
+    "source_rows": [
+      42,
+      43,
+      44
+    ],
+    "target_rows": [
+      45,
+      46,
+      47
+    ],
+    "kind": "explicit_negation",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 40.34914016723633,
+      "project_fisher_mean_only": 37.60189437866211,
+      "project_fisher_covariance_only": 14.633885383605957,
+      "centroid_cosine_distance": 0.03228139877319336,
+      "mean_cross_cosine_distance": 0.07899047434329987,
+      "word_tfidf_cosine_distance": 0.3233164778153068
+    }
+  },
+  {
+    "id": "seating:correction_reverses_fact",
+    "family": "seating",
+    "split": "development",
+    "source_rows": [
+      48,
+      49,
+      50
+    ],
+    "target_rows": [
+      51,
+      52,
+      53
+    ],
+    "kind": "correction_reverses_fact",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 55.71592330932617,
+      "project_fisher_mean_only": 51.11969757080078,
+      "project_fisher_covariance_only": 22.159433364868164,
+      "centroid_cosine_distance": 0.06632637977600098,
+      "mean_cross_cosine_distance": 0.12130362540483475,
+      "word_tfidf_cosine_distance": 0.3507277598784895
+    }
+  },
+  {
+    "id": "seating:paraphrase",
+    "family": "seating",
+    "split": "development",
+    "source_rows": [
+      54,
+      55,
+      56
+    ],
+    "target_rows": [
+      57,
+      58,
+      59
+    ],
+    "kind": "paraphrase",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 47.90936279296875,
+      "project_fisher_mean_only": 45.33525085449219,
+      "project_fisher_covariance_only": 15.492647171020508,
+      "centroid_cosine_distance": 0.049101829528808594,
+      "mean_cross_cosine_distance": 0.0946914479136467,
+      "word_tfidf_cosine_distance": 0.39556364172208536
+    }
+  },
+  {
+    "id": "seating:different_time",
+    "family": "seating",
+    "split": "development",
+    "source_rows": [
+      60,
+      61,
+      62
+    ],
+    "target_rows": [
+      63,
+      64,
+      65
+    ],
+    "kind": "different_time",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 63.96063232421875,
+      "project_fisher_mean_only": 61.998252868652344,
+      "project_fisher_covariance_only": 15.721927642822266,
+      "centroid_cosine_distance": 0.09125423431396484,
+      "mean_cross_cosine_distance": 0.14005683362483978,
+      "word_tfidf_cosine_distance": 0.49732313868805733
+    }
+  },
+  {
+    "id": "seating:uncertainty",
+    "family": "seating",
+    "split": "development",
+    "source_rows": [
+      66,
+      67,
+      68
+    ],
+    "target_rows": [
+      69,
+      70,
+      71
+    ],
+    "kind": "uncertainty",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 80.95709991455078,
+      "project_fisher_mean_only": 78.55621337890625,
+      "project_fisher_covariance_only": 19.569721221923828,
+      "centroid_cosine_distance": 0.15298068523406982,
+      "mean_cross_cosine_distance": 0.19441761076450348,
+      "word_tfidf_cosine_distance": 0.7447045644792545
+    }
+  },
+  {
+    "id": "location:opposite_value",
+    "family": "location",
+    "split": "development",
+    "source_rows": [
+      72,
+      73,
+      74
+    ],
+    "target_rows": [
+      75,
+      76,
+      77
+    ],
+    "kind": "opposite_value",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 43.293357849121094,
+      "project_fisher_mean_only": 41.54732131958008,
+      "project_fisher_covariance_only": 12.171066284179688,
+      "centroid_cosine_distance": 0.04648888111114502,
+      "mean_cross_cosine_distance": 0.10977684706449509,
+      "word_tfidf_cosine_distance": 2.220446049250313e-16
+    }
+  },
+  {
+    "id": "location:explicit_negation",
+    "family": "location",
+    "split": "development",
+    "source_rows": [
+      78,
+      79,
+      80
+    ],
+    "target_rows": [
+      81,
+      82,
+      83
+    ],
+    "kind": "explicit_negation",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 39.602657318115234,
+      "project_fisher_mean_only": 34.64109420776367,
+      "project_fisher_covariance_only": 19.192832946777344,
+      "centroid_cosine_distance": 0.03731048107147217,
+      "mean_cross_cosine_distance": 0.09200289100408554,
+      "word_tfidf_cosine_distance": 0.2963083454243223
+    }
+  },
+  {
+    "id": "location:correction_reverses_fact",
+    "family": "location",
+    "split": "development",
+    "source_rows": [
+      84,
+      85,
+      86
+    ],
+    "target_rows": [
+      87,
+      88,
+      89
+    ],
+    "kind": "correction_reverses_fact",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 54.89558410644531,
+      "project_fisher_mean_only": 51.66099548339844,
+      "project_fisher_covariance_only": 18.565200805664062,
+      "centroid_cosine_distance": 0.08080077171325684,
+      "mean_cross_cosine_distance": 0.1414012610912323,
+      "word_tfidf_cosine_distance": 0.254374116400777
+    }
+  },
+  {
+    "id": "location:paraphrase",
+    "family": "location",
+    "split": "development",
+    "source_rows": [
+      90,
+      91,
+      92
+    ],
+    "target_rows": [
+      93,
+      94,
+      95
+    ],
+    "kind": "paraphrase",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 65.69355010986328,
+      "project_fisher_mean_only": 63.228187561035156,
+      "project_fisher_covariance_only": 17.828027725219727,
+      "centroid_cosine_distance": 0.08902251720428467,
+      "mean_cross_cosine_distance": 0.1425236314535141,
+      "word_tfidf_cosine_distance": 0.373453492551474
+    }
+  },
+  {
+    "id": "location:different_entity",
+    "family": "location",
+    "split": "development",
+    "source_rows": [
+      96,
+      97,
+      98
+    ],
+    "target_rows": [
+      99,
+      100,
+      101
+    ],
+    "kind": "different_entity",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 70.84239959716797,
+      "project_fisher_mean_only": 69.39032745361328,
+      "project_fisher_covariance_only": 14.269837379455566,
+      "centroid_cosine_distance": 0.14996492862701416,
+      "mean_cross_cosine_distance": 0.20858286321163177,
+      "word_tfidf_cosine_distance": 2.220446049250313e-16
+    }
+  },
+  {
+    "id": "location:correction_preserves_fact",
+    "family": "location",
+    "split": "development",
+    "source_rows": [
+      102,
+      103,
+      104
+    ],
+    "target_rows": [
+      105,
+      106,
+      107
+    ],
+    "kind": "correction_preserves_fact",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 54.895023345947266,
+      "project_fisher_mean_only": 51.68370819091797,
+      "project_fisher_covariance_only": 18.500211715698242,
+      "centroid_cosine_distance": 0.08313620090484619,
+      "mean_cross_cosine_distance": 0.14396211504936218,
+      "word_tfidf_cosine_distance": 0.254374116400777
+    }
+  },
+  {
+    "id": "lock:opposite_value",
+    "family": "lock",
+    "split": "development",
+    "source_rows": [
+      108,
+      109,
+      110
+    ],
+    "target_rows": [
+      111,
+      112,
+      113
+    ],
+    "kind": "opposite_value",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 38.769779205322266,
+      "project_fisher_mean_only": 27.807266235351562,
+      "project_fisher_covariance_only": 27.01576805114746,
+      "centroid_cosine_distance": 0.04027152061462402,
+      "mean_cross_cosine_distance": 0.12471527606248856,
+      "word_tfidf_cosine_distance": 0.3996044929398024
+    }
+  },
+  {
+    "id": "lock:explicit_negation",
+    "family": "lock",
+    "split": "development",
+    "source_rows": [
+      114,
+      115,
+      116
+    ],
+    "target_rows": [
+      117,
+      118,
+      119
+    ],
+    "kind": "explicit_negation",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 65.1298599243164,
+      "project_fisher_mean_only": 63.169918060302734,
+      "project_fisher_covariance_only": 15.857487678527832,
+      "centroid_cosine_distance": 0.06634211540222168,
+      "mean_cross_cosine_distance": 0.1259811520576477,
+      "word_tfidf_cosine_distance": 0.37011638682806547
+    }
+  },
+  {
+    "id": "lock:correction_reverses_fact",
+    "family": "lock",
+    "split": "development",
+    "source_rows": [
+      120,
+      121,
+      122
+    ],
+    "target_rows": [
+      123,
+      124,
+      125
+    ],
+    "kind": "correction_reverses_fact",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 54.746253967285156,
+      "project_fisher_mean_only": 48.808353424072266,
+      "project_fisher_covariance_only": 24.7971134185791,
+      "centroid_cosine_distance": 0.08757871389389038,
+      "mean_cross_cosine_distance": 0.1611589789390564,
+      "word_tfidf_cosine_distance": 0.4269571675099273
+    }
+  },
+  {
+    "id": "lock:paraphrase",
+    "family": "lock",
+    "split": "development",
+    "source_rows": [
+      126,
+      127,
+      128
+    ],
+    "target_rows": [
+      129,
+      130,
+      131
+    ],
+    "kind": "paraphrase",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 70.5806655883789,
+      "project_fisher_mean_only": 68.22013854980469,
+      "project_fisher_covariance_only": 18.100914001464844,
+      "centroid_cosine_distance": 0.11447370052337646,
+      "mean_cross_cosine_distance": 0.16680730879306793,
+      "word_tfidf_cosine_distance": 0.44711135819129766
+    }
+  },
+  {
+    "id": "lock:different_time",
+    "family": "lock",
+    "split": "development",
+    "source_rows": [
+      132,
+      133,
+      134
+    ],
+    "target_rows": [
+      135,
+      136,
+      137
+    ],
+    "kind": "different_time",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 47.317256927490234,
+      "project_fisher_mean_only": 38.21756362915039,
+      "project_fisher_covariance_only": 27.898757934570312,
+      "centroid_cosine_distance": 0.06709623336791992,
+      "mean_cross_cosine_distance": 0.15055666863918304,
+      "word_tfidf_cosine_distance": 0.5917649452736868
+    }
+  },
+  {
+    "id": "lock:uncertainty",
+    "family": "lock",
+    "split": "development",
+    "source_rows": [
+      138,
+      139,
+      140
+    ],
+    "target_rows": [
+      141,
+      142,
+      143
+    ],
+    "kind": "uncertainty",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 59.708126068115234,
+      "project_fisher_mean_only": 52.81507110595703,
+      "project_fisher_covariance_only": 27.850107192993164,
+      "centroid_cosine_distance": 0.13485515117645264,
+      "mean_cross_cosine_distance": 0.19416576623916626,
+      "word_tfidf_cosine_distance": 0.7617327992570314
+    }
+  },
+  {
+    "id": "access:opposite_value",
+    "family": "access",
+    "split": "development",
+    "source_rows": [
+      144,
+      145,
+      146
+    ],
+    "target_rows": [
+      147,
+      148,
+      149
+    ],
+    "kind": "opposite_value",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 37.0361213684082,
+      "project_fisher_mean_only": 30.408084869384766,
+      "project_fisher_covariance_only": 21.142908096313477,
+      "centroid_cosine_distance": 0.03718149662017822,
+      "mean_cross_cosine_distance": 0.09975597262382507,
+      "word_tfidf_cosine_distance": 0.29942726084730875
+    }
+  },
+  {
+    "id": "access:explicit_negation",
+    "family": "access",
+    "split": "development",
+    "source_rows": [
+      150,
+      151,
+      152
+    ],
+    "target_rows": [
+      153,
+      154,
+      155
+    ],
+    "kind": "explicit_negation",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 41.08054733276367,
+      "project_fisher_mean_only": 38.179107666015625,
+      "project_fisher_covariance_only": 15.164669036865234,
+      "centroid_cosine_distance": 0.030739665031433105,
+      "mean_cross_cosine_distance": 0.08070850372314453,
+      "word_tfidf_cosine_distance": 0.2810519165641292
+    }
+  },
+  {
+    "id": "access:correction_reverses_fact",
+    "family": "access",
+    "split": "development",
+    "source_rows": [
+      156,
+      157,
+      158
+    ],
+    "target_rows": [
+      159,
+      160,
+      161
+    ],
+    "kind": "correction_reverses_fact",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 50.56954574584961,
+      "project_fisher_mean_only": 47.086612701416016,
+      "project_fisher_covariance_only": 18.442609786987305,
+      "centroid_cosine_distance": 0.06100541353225708,
+      "mean_cross_cosine_distance": 0.11599596589803696,
+      "word_tfidf_cosine_distance": 0.31604256567221567
+    }
+  },
+  {
+    "id": "access:paraphrase",
+    "family": "access",
+    "split": "development",
+    "source_rows": [
+      162,
+      163,
+      164
+    ],
+    "target_rows": [
+      165,
+      166,
+      167
+    ],
+    "kind": "paraphrase",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 57.32318878173828,
+      "project_fisher_mean_only": 55.3632698059082,
+      "project_fisher_covariance_only": 14.861236572265625,
+      "centroid_cosine_distance": 0.06354224681854248,
+      "mean_cross_cosine_distance": 0.11757770925760269,
+      "word_tfidf_cosine_distance": 0.3456597792238745
+    }
+  },
+  {
+    "id": "access:different_entity",
+    "family": "access",
+    "split": "development",
+    "source_rows": [
+      168,
+      169,
+      170
+    ],
+    "target_rows": [
+      171,
+      172,
+      173
+    ],
+    "kind": "different_entity",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 60.6055908203125,
+      "project_fisher_mean_only": 56.7481575012207,
+      "project_fisher_covariance_only": 21.27638053894043,
+      "centroid_cosine_distance": 0.1329776644706726,
+      "mean_cross_cosine_distance": 0.1890774667263031,
+      "word_tfidf_cosine_distance": 0.29942726084730875
+    }
+  },
+  {
+    "id": "access:correction_preserves_fact",
+    "family": "access",
+    "split": "development",
+    "source_rows": [
+      174,
+      175,
+      176
+    ],
+    "target_rows": [
+      177,
+      178,
+      179
+    ],
+    "kind": "correction_preserves_fact",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 51.952735900878906,
+      "project_fisher_mean_only": 47.79617691040039,
+      "project_fisher_covariance_only": 20.362030029296875,
+      "centroid_cosine_distance": 0.06631922721862793,
+      "mean_cross_cosine_distance": 0.12052258849143982,
+      "word_tfidf_cosine_distance": 0.31604256567221567
+    }
+  },
+  {
+    "id": "power:opposite_value",
+    "family": "power",
+    "split": "development",
+    "source_rows": [
+      180,
+      181,
+      182
+    ],
+    "target_rows": [
+      183,
+      184,
+      185
+    ],
+    "kind": "opposite_value",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 39.51996994018555,
+      "project_fisher_mean_only": 35.862308502197266,
+      "project_fisher_covariance_only": 16.604900360107422,
+      "centroid_cosine_distance": 0.02061593532562256,
+      "mean_cross_cosine_distance": 0.059697967022657394,
+      "word_tfidf_cosine_distance": 0.356259241453456
+    }
+  },
+  {
+    "id": "power:explicit_negation",
+    "family": "power",
+    "split": "development",
+    "source_rows": [
+      186,
+      187,
+      188
+    ],
+    "target_rows": [
+      189,
+      190,
+      191
+    ],
+    "kind": "explicit_negation",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 44.92106628417969,
+      "project_fisher_mean_only": 42.22582244873047,
+      "project_fisher_covariance_only": 15.325864791870117,
+      "centroid_cosine_distance": 0.0381619930267334,
+      "mean_cross_cosine_distance": 0.07574430108070374,
+      "word_tfidf_cosine_distance": 0.33445665446273676
+    }
+  },
+  {
+    "id": "power:correction_reverses_fact",
+    "family": "power",
+    "split": "development",
+    "source_rows": [
+      192,
+      193,
+      194
+    ],
+    "target_rows": [
+      195,
+      196,
+      197
+    ],
+    "kind": "correction_reverses_fact",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 55.92182159423828,
+      "project_fisher_mean_only": 51.9325065612793,
+      "project_fisher_covariance_only": 20.742828369140625,
+      "centroid_cosine_distance": 0.09361565113067627,
+      "mean_cross_cosine_distance": 0.1374026983976364,
+      "word_tfidf_cosine_distance": 0.3743666487034353
+    }
+  },
+  {
+    "id": "power:paraphrase",
+    "family": "power",
+    "split": "development",
+    "source_rows": [
+      198,
+      199,
+      200
+    ],
+    "target_rows": [
+      201,
+      202,
+      203
+    ],
+    "kind": "paraphrase",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 62.59312438964844,
+      "project_fisher_mean_only": 60.181583404541016,
+      "project_fisher_covariance_only": 17.206871032714844,
+      "centroid_cosine_distance": 0.07866084575653076,
+      "mean_cross_cosine_distance": 0.11785587668418884,
+      "word_tfidf_cosine_distance": 0.40626650874334325
+    }
+  },
+  {
+    "id": "power:different_time",
+    "family": "power",
+    "split": "development",
+    "source_rows": [
+      204,
+      205,
+      206
+    ],
+    "target_rows": [
+      207,
+      208,
+      209
+    ],
+    "kind": "different_time",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 54.13718795776367,
+      "project_fisher_mean_only": 51.0413818359375,
+      "project_fisher_covariance_only": 18.044740676879883,
+      "centroid_cosine_distance": 0.04867219924926758,
+      "mean_cross_cosine_distance": 0.08795811235904694,
+      "word_tfidf_cosine_distance": 0.531098624069953
+    }
+  },
+  {
+    "id": "power:uncertainty",
+    "family": "power",
+    "split": "development",
+    "source_rows": [
+      210,
+      211,
+      212
+    ],
+    "target_rows": [
+      213,
+      214,
+      215
+    ],
+    "kind": "uncertainty",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 74.76708221435547,
+      "project_fisher_mean_only": 69.78508758544922,
+      "project_fisher_covariance_only": 26.83576011657715,
+      "centroid_cosine_distance": 0.10347753763198853,
+      "mean_cross_cosine_distance": 0.1321200579404831,
+      "word_tfidf_cosine_distance": 0.7340464240777138
+    }
+  },
+  {
+    "id": "schedule:opposite_value",
+    "family": "schedule",
+    "split": "heldout",
+    "source_rows": [
+      216,
+      217,
+      218
+    ],
+    "target_rows": [
+      219,
+      220,
+      221
+    ],
+    "kind": "opposite_value",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 63.92853546142578,
+      "project_fisher_mean_only": 63.155364990234375,
+      "project_fisher_covariance_only": 9.912497520446777,
+      "centroid_cosine_distance": 0.06474459171295166,
+      "mean_cross_cosine_distance": 0.1142028197646141,
+      "word_tfidf_cosine_distance": 1.1102230246251565e-16
+    }
+  },
+  {
+    "id": "schedule:explicit_negation",
+    "family": "schedule",
+    "split": "heldout",
+    "source_rows": [
+      222,
+      223,
+      224
+    ],
+    "target_rows": [
+      225,
+      226,
+      227
+    ],
+    "kind": "explicit_negation",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 49.63440704345703,
+      "project_fisher_mean_only": 44.84061050415039,
+      "project_fisher_covariance_only": 21.28130531311035,
+      "centroid_cosine_distance": 0.042295873165130615,
+      "mean_cross_cosine_distance": 0.07963407039642334,
+      "word_tfidf_cosine_distance": 0.42993500984795374
+    }
+  },
+  {
+    "id": "schedule:correction_reverses_fact",
+    "family": "schedule",
+    "split": "heldout",
+    "source_rows": [
+      228,
+      229,
+      230
+    ],
+    "target_rows": [
+      231,
+      232,
+      233
+    ],
+    "kind": "correction_reverses_fact",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 55.763118743896484,
+      "project_fisher_mean_only": 51.90884780883789,
+      "project_fisher_covariance_only": 20.371471405029297,
+      "centroid_cosine_distance": 0.06868577003479004,
+      "mean_cross_cosine_distance": 0.10993596911430359,
+      "word_tfidf_cosine_distance": 0.3838474687171618
+    }
+  },
+  {
+    "id": "schedule:paraphrase",
+    "family": "schedule",
+    "split": "heldout",
+    "source_rows": [
+      234,
+      235,
+      236
+    ],
+    "target_rows": [
+      237,
+      238,
+      239
+    ],
+    "kind": "paraphrase",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 69.37295532226562,
+      "project_fisher_mean_only": 66.78712463378906,
+      "project_fisher_covariance_only": 18.763965606689453,
+      "centroid_cosine_distance": 0.07135558128356934,
+      "mean_cross_cosine_distance": 0.10868002474308014,
+      "word_tfidf_cosine_distance": 0.5095962706518082
+    }
+  },
+  {
+    "id": "schedule:different_entity",
+    "family": "schedule",
+    "split": "heldout",
+    "source_rows": [
+      240,
+      241,
+      242
+    ],
+    "target_rows": [
+      243,
+      244,
+      245
+    ],
+    "kind": "different_entity",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 110.97428894042969,
+      "project_fisher_mean_only": 110.25926208496094,
+      "project_fisher_covariance_only": 12.577247619628906,
+      "centroid_cosine_distance": 0.21258020401000977,
+      "mean_cross_cosine_distance": 0.25260719656944275,
+      "word_tfidf_cosine_distance": 1.1102230246251565e-16
+    }
+  },
+  {
+    "id": "schedule:correction_preserves_fact",
+    "family": "schedule",
+    "split": "heldout",
+    "source_rows": [
+      246,
+      247,
+      248
+    ],
+    "target_rows": [
+      249,
+      250,
+      251
+    ],
+    "kind": "correction_preserves_fact",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 62.29528045654297,
+      "project_fisher_mean_only": 59.286766052246094,
+      "project_fisher_covariance_only": 19.12542152404785,
+      "centroid_cosine_distance": 0.08359277248382568,
+      "mean_cross_cosine_distance": 0.12389978021383286,
+      "word_tfidf_cosine_distance": 0.3838474687171618
+    }
+  },
+  {
+    "id": "threshold:opposite_value",
+    "family": "threshold",
+    "split": "heldout",
+    "source_rows": [
+      252,
+      253,
+      254
+    ],
+    "target_rows": [
+      255,
+      256,
+      257
+    ],
+    "kind": "opposite_value",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 24.834705352783203,
+      "project_fisher_mean_only": 16.751482009887695,
+      "project_fisher_covariance_only": 18.33440589904785,
+      "centroid_cosine_distance": 0.008662223815917969,
+      "mean_cross_cosine_distance": 0.05305670201778412,
+      "word_tfidf_cosine_distance": 0.036552739470562146
+    }
+  },
+  {
+    "id": "threshold:explicit_negation",
+    "family": "threshold",
+    "split": "heldout",
+    "source_rows": [
+      258,
+      259,
+      260
+    ],
+    "target_rows": [
+      261,
+      262,
+      263
+    ],
+    "kind": "explicit_negation",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 45.91465377807617,
+      "project_fisher_mean_only": 41.71699142456055,
+      "project_fisher_covariance_only": 19.179357528686523,
+      "centroid_cosine_distance": 0.031165719032287598,
+      "mean_cross_cosine_distance": 0.06831565499305725,
+      "word_tfidf_cosine_distance": 0.6189351282491181
+    }
+  },
+  {
+    "id": "threshold:correction_reverses_fact",
+    "family": "threshold",
+    "split": "heldout",
+    "source_rows": [
+      264,
+      265,
+      266
+    ],
+    "target_rows": [
+      267,
+      268,
+      269
+    ],
+    "kind": "correction_reverses_fact",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 55.21272277832031,
+      "project_fisher_mean_only": 51.92961120605469,
+      "project_fisher_covariance_only": 18.75527000427246,
+      "centroid_cosine_distance": 0.06608223915100098,
+      "mean_cross_cosine_distance": 0.10771680623292923,
+      "word_tfidf_cosine_distance": 0.5545498677392231
+    }
+  },
+  {
+    "id": "threshold:paraphrase",
+    "family": "threshold",
+    "split": "heldout",
+    "source_rows": [
+      270,
+      271,
+      272
+    ],
+    "target_rows": [
+      273,
+      274,
+      275
+    ],
+    "kind": "paraphrase",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 67.77418518066406,
+      "project_fisher_mean_only": 65.5785903930664,
+      "project_fisher_covariance_only": 17.111082077026367,
+      "centroid_cosine_distance": 0.07039093971252441,
+      "mean_cross_cosine_distance": 0.10616011917591095,
+      "word_tfidf_cosine_distance": 0.6192354625480475
+    }
+  },
+  {
+    "id": "threshold:different_time",
+    "family": "threshold",
+    "split": "heldout",
+    "source_rows": [
+      276,
+      277,
+      278
+    ],
+    "target_rows": [
+      279,
+      280,
+      281
+    ],
+    "kind": "different_time",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 48.8973503112793,
+      "project_fisher_mean_only": 44.71011734008789,
+      "project_fisher_covariance_only": 19.797876358032227,
+      "centroid_cosine_distance": 0.03724426031112671,
+      "mean_cross_cosine_distance": 0.07975184172391891,
+      "word_tfidf_cosine_distance": 0.6841935253554046
+    }
+  },
+  {
+    "id": "threshold:uncertainty",
+    "family": "threshold",
+    "split": "heldout",
+    "source_rows": [
+      282,
+      283,
+      284
+    ],
+    "target_rows": [
+      285,
+      286,
+      287
+    ],
+    "kind": "uncertainty",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 71.11861419677734,
+      "project_fisher_mean_only": 67.35284423828125,
+      "project_fisher_covariance_only": 22.83531951904297,
+      "centroid_cosine_distance": 0.09877324104309082,
+      "mean_cross_cosine_distance": 0.12851089239120483,
+      "word_tfidf_cosine_distance": 0.7662201913499695
+    }
+  },
+  {
+    "id": "budget:opposite_value",
+    "family": "budget",
+    "split": "heldout",
+    "source_rows": [
+      288,
+      289,
+      290
+    ],
+    "target_rows": [
+      291,
+      292,
+      293
+    ],
+    "kind": "opposite_value",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 62.70438003540039,
+      "project_fisher_mean_only": 61.47181701660156,
+      "project_fisher_covariance_only": 12.371535301208496,
+      "centroid_cosine_distance": 0.06760454177856445,
+      "mean_cross_cosine_distance": 0.10572320222854614,
+      "word_tfidf_cosine_distance": 0.0
+    }
+  },
+  {
+    "id": "budget:explicit_negation",
+    "family": "budget",
+    "split": "heldout",
+    "source_rows": [
+      294,
+      295,
+      296
+    ],
+    "target_rows": [
+      297,
+      298,
+      299
+    ],
+    "kind": "explicit_negation",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 51.049224853515625,
+      "project_fisher_mean_only": 47.55883026123047,
+      "project_fisher_covariance_only": 18.5521183013916,
+      "centroid_cosine_distance": 0.04379439353942871,
+      "mean_cross_cosine_distance": 0.0773758590221405,
+      "word_tfidf_cosine_distance": 0.4964652102462721
+    }
+  },
+  {
+    "id": "budget:correction_reverses_fact",
+    "family": "budget",
+    "split": "heldout",
+    "source_rows": [
+      300,
+      301,
+      302
+    ],
+    "target_rows": [
+      303,
+      304,
+      305
+    ],
+    "kind": "correction_reverses_fact",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 70.98138427734375,
+      "project_fisher_mean_only": 67.9947738647461,
+      "project_fisher_covariance_only": 20.37322425842285,
+      "centroid_cosine_distance": 0.10158294439315796,
+      "mean_cross_cosine_distance": 0.13863305747509003,
+      "word_tfidf_cosine_distance": 0.44329731737783695
+    }
+  },
+  {
+    "id": "budget:paraphrase",
+    "family": "budget",
+    "split": "heldout",
+    "source_rows": [
+      306,
+      307,
+      308
+    ],
+    "target_rows": [
+      309,
+      310,
+      311
+    ],
+    "kind": "paraphrase",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 56.91526412963867,
+      "project_fisher_mean_only": 54.011375427246094,
+      "project_fisher_covariance_only": 17.94767189025879,
+      "centroid_cosine_distance": 0.06259405612945557,
+      "mean_cross_cosine_distance": 0.09606503695249557,
+      "word_tfidf_cosine_distance": 0.5452233639430194
+    }
+  },
+  {
+    "id": "budget:different_entity",
+    "family": "budget",
+    "split": "heldout",
+    "source_rows": [
+      312,
+      313,
+      314
+    ],
+    "target_rows": [
+      315,
+      316,
+      317
+    ],
+    "kind": "different_entity",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 93.58636474609375,
+      "project_fisher_mean_only": 91.82532501220703,
+      "project_fisher_covariance_only": 18.069787979125977,
+      "centroid_cosine_distance": 0.1839226484298706,
+      "mean_cross_cosine_distance": 0.21340322494506836,
+      "word_tfidf_cosine_distance": 0.0
+    }
+  },
+  {
+    "id": "budget:correction_preserves_fact",
+    "family": "budget",
+    "split": "heldout",
+    "source_rows": [
+      318,
+      319,
+      320
+    ],
+    "target_rows": [
+      321,
+      322,
+      323
+    ],
+    "kind": "correction_preserves_fact",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 72.83625030517578,
+      "project_fisher_mean_only": 69.80000305175781,
+      "project_fisher_covariance_only": 20.810546875,
+      "centroid_cosine_distance": 0.1160268783569336,
+      "mean_cross_cosine_distance": 0.1524345874786377,
+      "word_tfidf_cosine_distance": 0.44329731737783695
+    }
+  },
+  {
+    "id": "temperature:opposite_value",
+    "family": "temperature",
+    "split": "heldout",
+    "source_rows": [
+      324,
+      325,
+      326
+    ],
+    "target_rows": [
+      327,
+      328,
+      329
+    ],
+    "kind": "opposite_value",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 33.5654296875,
+      "project_fisher_mean_only": 29.79860496520996,
+      "project_fisher_covariance_only": 15.449310302734375,
+      "centroid_cosine_distance": 0.016547739505767822,
+      "mean_cross_cosine_distance": 0.07682961970567703,
+      "word_tfidf_cosine_distance": 0.0
+    }
+  },
+  {
+    "id": "temperature:explicit_negation",
+    "family": "temperature",
+    "split": "heldout",
+    "source_rows": [
+      330,
+      331,
+      332
+    ],
+    "target_rows": [
+      333,
+      334,
+      335
+    ],
+    "kind": "explicit_negation",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 40.791587829589844,
+      "project_fisher_mean_only": 37.48193359375,
+      "project_fisher_covariance_only": 16.095285415649414,
+      "centroid_cosine_distance": 0.03963446617126465,
+      "mean_cross_cosine_distance": 0.09078247845172882,
+      "word_tfidf_cosine_distance": 0.6151495473835303
+    }
+  },
+  {
+    "id": "temperature:correction_reverses_fact",
+    "family": "temperature",
+    "split": "heldout",
+    "source_rows": [
+      336,
+      337,
+      338
+    ],
+    "target_rows": [
+      339,
+      340,
+      341
+    ],
+    "kind": "correction_reverses_fact",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 52.84133529663086,
+      "project_fisher_mean_only": 48.72043991088867,
+      "project_fisher_covariance_only": 20.45789337158203,
+      "centroid_cosine_distance": 0.059725403785705566,
+      "mean_cross_cosine_distance": 0.11122444272041321,
+      "word_tfidf_cosine_distance": 0.567978028331706
+    }
+  },
+  {
+    "id": "temperature:paraphrase",
+    "family": "temperature",
+    "split": "heldout",
+    "source_rows": [
+      342,
+      343,
+      344
+    ],
+    "target_rows": [
+      345,
+      346,
+      347
+    ],
+    "kind": "paraphrase",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 43.338260650634766,
+      "project_fisher_mean_only": 40.009300231933594,
+      "project_fisher_covariance_only": 16.657154083251953,
+      "centroid_cosine_distance": 0.03814494609832764,
+      "mean_cross_cosine_distance": 0.0902649313211441,
+      "word_tfidf_cosine_distance": 0.6647926916705849
+    }
+  },
+  {
+    "id": "temperature:different_time",
+    "family": "temperature",
+    "split": "heldout",
+    "source_rows": [
+      348,
+      349,
+      350
+    ],
+    "target_rows": [
+      351,
+      352,
+      353
+    ],
+    "kind": "different_time",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 38.82124710083008,
+      "project_fisher_mean_only": 33.742637634277344,
+      "project_fisher_covariance_only": 19.196969985961914,
+      "centroid_cosine_distance": 0.04378831386566162,
+      "mean_cross_cosine_distance": 0.1010943055152893,
+      "word_tfidf_cosine_distance": 0.685451229708636
+    }
+  },
+  {
+    "id": "temperature:uncertainty",
+    "family": "temperature",
+    "split": "heldout",
+    "source_rows": [
+      354,
+      355,
+      356
+    ],
+    "target_rows": [
+      357,
+      358,
+      359
+    ],
+    "kind": "uncertainty",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 61.024330139160156,
+      "project_fisher_mean_only": 57.14936065673828,
+      "project_fisher_covariance_only": 21.3990535736084,
+      "centroid_cosine_distance": 0.0863574743270874,
+      "mean_cross_cosine_distance": 0.1336061954498291,
+      "word_tfidf_cosine_distance": 0.83315559561203
+    }
+  },
+  {
+    "id": "version:opposite_value",
+    "family": "version",
+    "split": "heldout",
+    "source_rows": [
+      360,
+      361,
+      362
+    ],
+    "target_rows": [
+      363,
+      364,
+      365
+    ],
+    "kind": "opposite_value",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 27.895503997802734,
+      "project_fisher_mean_only": 25.995838165283203,
+      "project_fisher_covariance_only": 10.118083000183105,
+      "centroid_cosine_distance": 0.015316367149353027,
+      "mean_cross_cosine_distance": 0.08430713415145874,
+      "word_tfidf_cosine_distance": 0.0
+    }
+  },
+  {
+    "id": "version:explicit_negation",
+    "family": "version",
+    "split": "heldout",
+    "source_rows": [
+      366,
+      367,
+      368
+    ],
+    "target_rows": [
+      369,
+      370,
+      371
+    ],
+    "kind": "explicit_negation",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 33.86507797241211,
+      "project_fisher_mean_only": 29.62099838256836,
+      "project_fisher_covariance_only": 16.41462516784668,
+      "centroid_cosine_distance": 0.02240729331970215,
+      "mean_cross_cosine_distance": 0.08750367909669876,
+      "word_tfidf_cosine_distance": 0.6290753693735776
+    }
+  },
+  {
+    "id": "version:correction_reverses_fact",
+    "family": "version",
+    "split": "heldout",
+    "source_rows": [
+      372,
+      373,
+      374
+    ],
+    "target_rows": [
+      375,
+      376,
+      377
+    ],
+    "kind": "correction_reverses_fact",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 53.12587356567383,
+      "project_fisher_mean_only": 50.858646392822266,
+      "project_fisher_covariance_only": 15.354366302490234,
+      "centroid_cosine_distance": 0.06934499740600586,
+      "mean_cross_cosine_distance": 0.1328125298023224,
+      "word_tfidf_cosine_distance": 0.5872402346900396
+    }
+  },
+  {
+    "id": "version:paraphrase",
+    "family": "version",
+    "split": "heldout",
+    "source_rows": [
+      378,
+      379,
+      380
+    ],
+    "target_rows": [
+      381,
+      382,
+      383
+    ],
+    "kind": "paraphrase",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 72.33699035644531,
+      "project_fisher_mean_only": 71.15772247314453,
+      "project_fisher_covariance_only": 13.008435249328613,
+      "centroid_cosine_distance": 0.08581143617630005,
+      "mean_cross_cosine_distance": 0.1454336941242218,
+      "word_tfidf_cosine_distance": 0.6676143796464604
+    }
+  },
+  {
+    "id": "version:different_entity",
+    "family": "version",
+    "split": "heldout",
+    "source_rows": [
+      384,
+      385,
+      386
+    ],
+    "target_rows": [
+      387,
+      388,
+      389
+    ],
+    "kind": "different_entity",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 69.71256256103516,
+      "project_fisher_mean_only": 68.08252716064453,
+      "project_fisher_covariance_only": 14.98703384399414,
+      "centroid_cosine_distance": 0.20232301950454712,
+      "mean_cross_cosine_distance": 0.2594054937362671,
+      "word_tfidf_cosine_distance": 0.0
+    }
+  },
+  {
+    "id": "version:correction_preserves_fact",
+    "family": "version",
+    "split": "heldout",
+    "source_rows": [
+      390,
+      391,
+      392
+    ],
+    "target_rows": [
+      393,
+      394,
+      395
+    ],
+    "kind": "correction_preserves_fact",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 48.198612213134766,
+      "project_fisher_mean_only": 45.475067138671875,
+      "project_fisher_covariance_only": 15.972616195678711,
+      "centroid_cosine_distance": 0.06827163696289062,
+      "mean_cross_cosine_distance": 0.13235348463058472,
+      "word_tfidf_cosine_distance": 0.5872402346900396
+    }
+  },
+  {
+    "id": "ownership:opposite_value",
+    "family": "ownership",
+    "split": "heldout",
+    "source_rows": [
+      396,
+      397,
+      398
+    ],
+    "target_rows": [
+      399,
+      400,
+      401
+    ],
+    "kind": "opposite_value",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 78.57816314697266,
+      "project_fisher_mean_only": 77.25313568115234,
+      "project_fisher_covariance_only": 14.369428634643555,
+      "centroid_cosine_distance": 0.23728209733963013,
+      "mean_cross_cosine_distance": 0.29755863547325134,
+      "word_tfidf_cosine_distance": 0.0
+    }
+  },
+  {
+    "id": "ownership:explicit_negation",
+    "family": "ownership",
+    "split": "heldout",
+    "source_rows": [
+      402,
+      403,
+      404
+    ],
+    "target_rows": [
+      405,
+      406,
+      407
+    ],
+    "kind": "explicit_negation",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 40.2720832824707,
+      "project_fisher_mean_only": 36.38947296142578,
+      "project_fisher_covariance_only": 17.25244903564453,
+      "centroid_cosine_distance": 0.0318184494972229,
+      "mean_cross_cosine_distance": 0.09133154153823853,
+      "word_tfidf_cosine_distance": 0.5353741498747874
+    }
+  },
+  {
+    "id": "ownership:correction_reverses_fact",
+    "family": "ownership",
+    "split": "heldout",
+    "source_rows": [
+      408,
+      409,
+      410
+    ],
+    "target_rows": [
+      411,
+      412,
+      413
+    ],
+    "kind": "correction_reverses_fact",
+    "label": true,
+    "scores": {
+      "project_fisher_distance": 56.63928985595703,
+      "project_fisher_mean_only": 53.558223724365234,
+      "project_fisher_covariance_only": 18.426233291625977,
+      "centroid_cosine_distance": 0.1066124439239502,
+      "mean_cross_cosine_distance": 0.1770308017730713,
+      "word_tfidf_cosine_distance": 0.48720871951222156
+    }
+  },
+  {
+    "id": "ownership:paraphrase",
+    "family": "ownership",
+    "split": "heldout",
+    "source_rows": [
+      414,
+      415,
+      416
+    ],
+    "target_rows": [
+      417,
+      418,
+      419
+    ],
+    "kind": "paraphrase",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 52.86948776245117,
+      "project_fisher_mean_only": 50.65824890136719,
+      "project_fisher_covariance_only": 15.130242347717285,
+      "centroid_cosine_distance": 0.06955087184906006,
+      "mean_cross_cosine_distance": 0.13038505613803864,
+      "word_tfidf_cosine_distance": 0.5708540282657323
+    }
+  },
+  {
+    "id": "ownership:different_time",
+    "family": "ownership",
+    "split": "heldout",
+    "source_rows": [
+      420,
+      421,
+      422
+    ],
+    "target_rows": [
+      423,
+      424,
+      425
+    ],
+    "kind": "different_time",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 85.62056732177734,
+      "project_fisher_mean_only": 84.29959869384766,
+      "project_fisher_covariance_only": 14.981980323791504,
+      "centroid_cosine_distance": 0.2747576832771301,
+      "mean_cross_cosine_distance": 0.3311305642127991,
+      "word_tfidf_cosine_distance": 0.581758667447144
+    }
+  },
+  {
+    "id": "ownership:uncertainty",
+    "family": "ownership",
+    "split": "heldout",
+    "source_rows": [
+      426,
+      427,
+      428
+    ],
+    "target_rows": [
+      429,
+      430,
+      431
+    ],
+    "kind": "uncertainty",
+    "label": false,
+    "scores": {
+      "project_fisher_distance": 97.42996978759766,
+      "project_fisher_mean_only": 95.23369598388672,
+      "project_fisher_covariance_only": 20.570438385009766,
+      "centroid_cosine_distance": 0.3228788375854492,
+      "mean_cross_cosine_distance": 0.3667415380477905,
+      "word_tfidf_cosine_distance": 0.7788729019789613
+    }
+  }
+]

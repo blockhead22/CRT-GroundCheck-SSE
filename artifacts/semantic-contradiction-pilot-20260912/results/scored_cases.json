@@ -1,0 +1,1482 @@
+[
+  {
+    "id": "mistral_latest:fs_002",
+    "family": "fs_002",
+    "model": "mistral_latest",
+    "split": "development",
+    "category": "contradiction",
+    "contradiction": true,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.040231622853449764,
+      "early_cosine_spread": 0.06567665934562683,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 1.2389205950315936,
+      "current_covariance_trace": 0.11115052551031113,
+      "current_cosine_spread": 0.12350050359964371,
+      "current_singleton_noise_entropy": 3.321928094887362
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.06567665934562683,
+      "covariance_trace": 0.0634874552488327,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.2,
+      "singleton_noise_entropy": 1.2389205950315936,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.12350050359964371,
+      "covariance_trace": 0.11115052551031113,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 1.0,
+      "singleton_noise_entropy": 3.321928094887362,
+      "cluster_count": 0
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 6.631016731539763e-08
+  },
+  {
+    "id": "mistral_latest:fs_010",
+    "family": "fs_010",
+    "model": "mistral_latest",
+    "split": "development",
+    "category": "paraphrase",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.04715377723035394,
+      "early_cosine_spread": 0.026753554120659828,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 0.0,
+      "current_covariance_trace": 0.04515545070171356,
+      "current_cosine_spread": 0.05017270892858505,
+      "current_singleton_noise_entropy": 0.4689955935892812
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.026753554120659828,
+      "covariance_trace": 0.02586178295314312,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.0,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.05017270892858505,
+      "covariance_trace": 0.04515545070171356,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.1,
+      "singleton_noise_entropy": 0.4689955935892812,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 1.005828380307161e-08
+  },
+  {
+    "id": "qwen3_14b:fs_010",
+    "family": "fs_010",
+    "model": "qwen3_14b",
+    "split": "development",
+    "category": "paraphrase",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 9,
+    "scores": {
+      "original_covariance_velocity": 0.08707098300116438,
+      "early_cosine_spread": 0.025538060814142227,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 0.21084230031853213,
+      "current_covariance_trace": 0.035651370882987976,
+      "current_cosine_spread": 0.0401078462600708,
+      "current_singleton_noise_entropy": 0.9864267287308424
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.025538060814142227,
+      "covariance_trace": 0.024686727672815323,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.03333333333333333,
+      "singleton_noise_entropy": 0.21084230031853213,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.0401078462600708,
+      "covariance_trace": 0.035651370882987976,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.2222222222222222,
+      "singleton_noise_entropy": 0.9864267287308424,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 8.69234403205743e-09
+  },
+  {
+    "id": "mistral_latest:fs_004",
+    "family": "fs_004",
+    "model": "mistral_latest",
+    "split": "heldout",
+    "category": "paraphrase",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.0007093262975104153,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 0.0,
+      "current_covariance_trace": 0.0022784750908613205,
+      "current_cosine_spread": 0.0025315589737147093,
+      "current_singleton_noise_entropy": 0.0
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.0007093262975104153,
+      "covariance_trace": 0.0006884289905428886,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.0,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.0025315589737147093,
+      "covariance_trace": 0.0022784750908613205,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.0,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 7.099006325015159e-08
+  },
+  {
+    "id": "qwen3_14b:fs_004",
+    "family": "fs_004",
+    "model": "qwen3_14b",
+    "split": "heldout",
+    "category": "paraphrase",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 6,
+    "scores": {
+      "original_covariance_velocity": 0.0674174881229798,
+      "early_cosine_spread": 0.03488333150744438,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 0.6143694458867568,
+      "current_covariance_trace": 0.021308178082108498,
+      "current_cosine_spread": 0.02556970901787281,
+      "current_singleton_noise_entropy": 0.0
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.03488333150744438,
+      "covariance_trace": 0.0329454131424427,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.1111111111111111,
+      "singleton_noise_entropy": 0.6143694458867568,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.02556970901787281,
+      "covariance_trace": 0.021308178082108498,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.0,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 7.015963395320957e-08
+  },
+  {
+    "id": "mistral_latest:fs_001",
+    "family": "fs_001",
+    "model": "mistral_latest",
+    "split": "heldout",
+    "category": "agreement",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.0,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 0.0,
+      "current_covariance_trace": 5.4275236987589605e-15,
+      "current_cosine_spread": 0.0,
+      "current_singleton_noise_entropy": 0.0
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.0,
+      "covariance_trace": 5.3914406034256956e-14,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.0,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.0,
+      "covariance_trace": 5.4275236987589605e-15,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.0,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 5.4275236987589605e-15
+  },
+  {
+    "id": "qwen3_14b:fs_001",
+    "family": "fs_001",
+    "model": "qwen3_14b",
+    "split": "heldout",
+    "category": "paraphrase",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.0,
+      "early_cosine_spread": 0.0,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 0.0,
+      "current_covariance_trace": 0.056535590440034866,
+      "current_cosine_spread": 0.06281731277704239,
+      "current_singleton_noise_entropy": 0.4689955935892812
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.0,
+      "covariance_trace": 5.3914406034256956e-14,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.0,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.06281731277704239,
+      "covariance_trace": 0.056535590440034866,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.1,
+      "singleton_noise_entropy": 0.4689955935892812,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 1.2665987016158287e-08
+  },
+  {
+    "id": "mistral_latest:fc_007",
+    "family": "fc_007",
+    "model": "mistral_latest",
+    "split": "development",
+    "category": "uncertainty",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.32841966967680497,
+      "early_cosine_spread": 0.12292036414146423,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 2.95344529780426,
+      "current_covariance_trace": 0.13381372392177582,
+      "current_cosine_spread": 0.1486818492412567,
+      "current_singleton_noise_entropy": 3.321928094887362
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.12292036414146423,
+      "covariance_trace": 0.1188230812549591,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.5,
+      "singleton_noise_entropy": 2.95344529780426,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.1486818492412567,
+      "covariance_trace": 0.13381372392177582,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 1.0,
+      "singleton_noise_entropy": 3.321928094887362,
+      "cluster_count": 0
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 7.450580596923828e-08
+  },
+  {
+    "id": "qwen3_14b:fc_007",
+    "family": "fc_007",
+    "model": "qwen3_14b",
+    "split": "development",
+    "category": "uncertainty",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.16992376496394476,
+      "early_cosine_spread": 0.1250048130750656,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 3.121928094887362,
+      "current_covariance_trace": 0.03215787559747696,
+      "current_cosine_spread": 0.03573089838027954,
+      "current_singleton_noise_entropy": 0.0
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.1250048130750656,
+      "covariance_trace": 0.11875463277101517,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.6,
+      "singleton_noise_entropy": 3.121928094887362,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.03573089838027954,
+      "covariance_trace": 0.03215787559747696,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.0,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 6.705522537231445e-08
+  },
+  {
+    "id": "mistral_latest:fc_005",
+    "family": "fc_005",
+    "model": "mistral_latest",
+    "split": "development",
+    "category": "uncertainty",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.04283997177935816,
+      "early_cosine_spread": 0.06700550764799118,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 0.6274918436613969,
+      "current_covariance_trace": 0.1365923434495926,
+      "current_cosine_spread": 0.1517692506313324,
+      "current_singleton_noise_entropy": 1.7709505944546688
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.06700550764799118,
+      "covariance_trace": 0.06477203965187073,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.1,
+      "singleton_noise_entropy": 0.6274918436613969,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.1517692506313324,
+      "covariance_trace": 0.1365923434495926,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.4,
+      "singleton_noise_entropy": 1.7709505944546688,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 3.2782554615362614e-08
+  },
+  {
+    "id": "mistral_latest:fc_004",
+    "family": "fc_004",
+    "model": "mistral_latest",
+    "split": "heldout",
+    "category": "uncertainty",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.08979257454332887,
+      "early_cosine_spread": 0.11357906460762024,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 1.2389205950315936,
+      "current_covariance_trace": 0.1594080626964569,
+      "current_cosine_spread": 0.17712000012397766,
+      "current_singleton_noise_entropy": 1.0
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.11357906460762024,
+      "covariance_trace": 0.10979314148426056,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.2,
+      "singleton_noise_entropy": 1.2389205950315936,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.17712000012397766,
+      "covariance_trace": 0.1594080626964569,
+      "assigned_cluster_entropy": 1.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 1.0,
+      "cluster_count": 2
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 6.258487700305793e-08
+  },
+  {
+    "id": "mistral_latest:fc_001",
+    "family": "fc_001",
+    "model": "mistral_latest",
+    "split": "heldout",
+    "category": "paraphrase",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.03192494571067073,
+      "early_cosine_spread": 0.05660572648048401,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 0.21084230031853213,
+      "current_covariance_trace": 0.05830085277557373,
+      "current_cosine_spread": 0.06477867811918259,
+      "current_singleton_noise_entropy": 1.0
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.05660572648048401,
+      "covariance_trace": 0.05471893399953842,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.03333333333333333,
+      "singleton_noise_entropy": 0.21084230031853213,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.06477867811918259,
+      "covariance_trace": 0.05830085277557373,
+      "assigned_cluster_entropy": 1.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 1.0,
+      "cluster_count": 2
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 4.24683094038536e-08
+  },
+  {
+    "id": "qwen3_14b:fc_001",
+    "family": "fc_001",
+    "model": "qwen3_14b",
+    "split": "heldout",
+    "category": "paraphrase",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 9,
+    "scores": {
+      "original_covariance_velocity": 0.1403620492404419,
+      "early_cosine_spread": 0.06035580858588219,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 0.8773870642966132,
+      "current_covariance_trace": 0.058205265551805496,
+      "current_cosine_spread": 0.06548087298870087,
+      "current_singleton_noise_entropy": 0.5032583347756457
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.06035580858588219,
+      "covariance_trace": 0.058200299739837646,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.14285714285714285,
+      "singleton_noise_entropy": 0.8773870642966132,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.06548087298870087,
+      "covariance_trace": 0.058205265551805496,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.1111111111111111,
+      "singleton_noise_entropy": 0.5032583347756457,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 6.208817164565783e-08
+  },
+  {
+    "id": "mistral_latest:ma_008",
+    "family": "ma_008",
+    "model": "mistral_latest",
+    "split": "development",
+    "category": "uncertainty",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.08622965723134256,
+      "early_cosine_spread": 0.03765595704317093,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 0.21084230031853213,
+      "current_covariance_trace": 0.06780906766653061,
+      "current_cosine_spread": 0.07534332573413849,
+      "current_singleton_noise_entropy": 3.321928094887362
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.03765595704317093,
+      "covariance_trace": 0.03640080988407135,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.03333333333333333,
+      "singleton_noise_entropy": 0.21084230031853213,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.07534332573413849,
+      "covariance_trace": 0.06780906766653061,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 1.0,
+      "singleton_noise_entropy": 3.321928094887362,
+      "cluster_count": 0
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 6.109476088922428e-08
+  },
+  {
+    "id": "qwen3_14b:ma_008",
+    "family": "ma_008",
+    "model": "qwen3_14b",
+    "split": "development",
+    "category": "uncertainty",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.0024053451109769717,
+      "early_cosine_spread": 0.008219021372497082,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 0.0,
+      "current_covariance_trace": 0.026998642832040787,
+      "current_cosine_spread": 0.02999843843281269,
+      "current_singleton_noise_entropy": 0.0
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.008219021372497082,
+      "covariance_trace": 0.007945138961076736,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.0,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.02999843843281269,
+      "covariance_trace": 0.026998642832040787,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.0,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 5.0105154515006634e-08
+  },
+  {
+    "id": "mistral_latest:ma_005",
+    "family": "ma_005",
+    "model": "mistral_latest",
+    "split": "development",
+    "category": "uncertainty",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.16413677741941987,
+      "early_cosine_spread": 0.0754159539937973,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 1.2389205950315936,
+      "current_covariance_trace": 0.09044157713651657,
+      "current_cosine_spread": 0.10049054026603699,
+      "current_singleton_noise_entropy": 3.321928094887362
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.0754159539937973,
+      "covariance_trace": 0.0729021430015564,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.2,
+      "singleton_noise_entropy": 1.2389205950315936,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.10049054026603699,
+      "covariance_trace": 0.09044157713651657,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 1.0,
+      "singleton_noise_entropy": 3.321928094887362,
+      "cluster_count": 0
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 8.344650267999576e-08
+  },
+  {
+    "id": "qwen3_14b:ma_005",
+    "family": "ma_005",
+    "model": "qwen3_14b",
+    "split": "development",
+    "category": "paraphrase",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.0018154110496955886,
+      "early_cosine_spread": 0.0017081802943721414,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 0.0,
+      "current_covariance_trace": 0.011599792167544365,
+      "current_cosine_spread": 0.012888520024716854,
+      "current_singleton_noise_entropy": 0.0
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.0017081802943721414,
+      "covariance_trace": 0.0016513194423168898,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.0,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.012888520024716854,
+      "covariance_trace": 0.011599792167544365,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.0,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 1.4174729585578194e-07
+  },
+  {
+    "id": "mistral_latest:ma_010",
+    "family": "ma_010",
+    "model": "mistral_latest",
+    "split": "heldout",
+    "category": "uncertainty",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.186397361356588,
+      "early_cosine_spread": 0.06515166163444519,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 1.2389205950315936,
+      "current_covariance_trace": 0.0572453998029232,
+      "current_cosine_spread": 0.06360594183206558,
+      "current_singleton_noise_entropy": 1.7709505944546688
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.06515166163444519,
+      "covariance_trace": 0.06297998875379562,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.2,
+      "singleton_noise_entropy": 1.2389205950315936,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.06360594183206558,
+      "covariance_trace": 0.0572453998029232,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.4,
+      "singleton_noise_entropy": 1.7709505944546688,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 6.258487700999682e-08
+  },
+  {
+    "id": "qwen3_14b:ma_010",
+    "family": "ma_010",
+    "model": "qwen3_14b",
+    "split": "heldout",
+    "category": "uncertainty",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.21321181466040193,
+      "early_cosine_spread": 0.06777164340019226,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 0.0,
+      "current_covariance_trace": 0.07086165249347687,
+      "current_cosine_spread": 0.0787351131439209,
+      "current_singleton_noise_entropy": 2.1609640474436813
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.06777164340019226,
+      "covariance_trace": 0.06551264226436615,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.0,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.0787351131439209,
+      "covariance_trace": 0.07086165249347687,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.5,
+      "singleton_noise_entropy": 2.1609640474436813,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 5.066394805075536e-08
+  },
+  {
+    "id": "mistral_latest:ma_009",
+    "family": "ma_009",
+    "model": "mistral_latest",
+    "split": "heldout",
+    "category": "uncertainty",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.20341067522622328,
+      "early_cosine_spread": 0.17022128403186798,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 3.13012496531497,
+      "current_covariance_trace": 0.17902150750160217,
+      "current_cosine_spread": 0.19891275465488434,
+      "current_singleton_noise_entropy": 3.321928094887362
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.17022128403186798,
+      "covariance_trace": 0.16454726457595825,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.5333333333333333,
+      "singleton_noise_entropy": 3.13012496531497,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.19891275465488434,
+      "covariance_trace": 0.17902150750160217,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 1.0,
+      "singleton_noise_entropy": 3.321928094887362,
+      "cluster_count": 0
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 5.8114528661556974e-08
+  },
+  {
+    "id": "qwen3_14b:ma_009",
+    "family": "ma_009",
+    "model": "qwen3_14b",
+    "split": "heldout",
+    "category": "uncertainty",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.024108532293212193,
+      "early_cosine_spread": 0.05402224138379097,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 0.6274918436613969,
+      "current_covariance_trace": 0.20685967803001404,
+      "current_cosine_spread": 0.2298441082239151,
+      "current_singleton_noise_entropy": 1.7709505944546688
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.05402224138379097,
+      "covariance_trace": 0.05222156271338463,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.1,
+      "singleton_noise_entropy": 0.6274918436613969,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.2298441082239151,
+      "covariance_trace": 0.20685967803001404,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.4,
+      "singleton_noise_entropy": 1.7709505944546688,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 7.450580596923828e-09
+  },
+  {
+    "id": "mistral_latest:mc_004",
+    "family": "mc_004",
+    "model": "mistral_latest",
+    "split": "development",
+    "category": "paraphrase",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.10661253342883963,
+      "early_cosine_spread": 0.08167615532875061,
+      "early_assigned_cluster_entropy": 0.9967916319816366,
+      "early_singleton_noise_entropy": 0.9967916319816366,
+      "current_covariance_trace": 0.09858115017414093,
+      "current_cosine_spread": 0.10953447222709656,
+      "current_singleton_noise_entropy": 3.321928094887362
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.08167615532875061,
+      "covariance_trace": 0.07895366847515106,
+      "assigned_cluster_entropy": 0.9967916319816366,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.9967916319816366,
+      "cluster_count": 2
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.10953447222709656,
+      "covariance_trace": 0.09858115017414093,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 1.0,
+      "singleton_noise_entropy": 3.321928094887362,
+      "cluster_count": 0
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 1.2516975401999364e-07
+  },
+  {
+    "id": "qwen3_14b:mc_004",
+    "family": "mc_004",
+    "model": "qwen3_14b",
+    "split": "development",
+    "category": "paraphrase",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.07775643477695364,
+      "early_cosine_spread": 0.028019187971949577,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 0.0,
+      "current_covariance_trace": 0.017519835382699966,
+      "current_cosine_spread": 0.019466457888484,
+      "current_singleton_noise_entropy": 0.0
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.028019187971949577,
+      "covariance_trace": 0.02708517387509346,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.0,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.019466457888484,
+      "covariance_trace": 0.017519835382699966,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.0,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 1.993030309538346e-08
+  },
+  {
+    "id": "mistral_latest:mc_002",
+    "family": "mc_002",
+    "model": "mistral_latest",
+    "split": "development",
+    "category": "paraphrase",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.07817461103059031,
+      "early_cosine_spread": 0.04482687637209892,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 0.0,
+      "current_covariance_trace": 0.051290109753608704,
+      "current_cosine_spread": 0.056988995522260666,
+      "current_singleton_noise_entropy": 0.9219280948873623
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.04482687637209892,
+      "covariance_trace": 0.04333268851041794,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.0,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.056988995522260666,
+      "covariance_trace": 0.051290109753608704,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.2,
+      "singleton_noise_entropy": 0.9219280948873623,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 7.0780515684654155e-09
+  },
+  {
+    "id": "qwen3_14b:mc_002",
+    "family": "mc_002",
+    "model": "qwen3_14b",
+    "split": "development",
+    "category": "paraphrase",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.02324963867522456,
+      "early_cosine_spread": 0.023699313402175903,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 0.0,
+      "current_covariance_trace": 0.03326631337404251,
+      "current_cosine_spread": 0.03696250915527344,
+      "current_singleton_noise_entropy": 0.0
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.023699313402175903,
+      "covariance_trace": 0.02290945127606392,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.0,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.03696250915527344,
+      "covariance_trace": 0.03326631337404251,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.0,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 1.4901161193847656e-08
+  },
+  {
+    "id": "mistral_latest:mc_007",
+    "family": "mc_007",
+    "model": "mistral_latest",
+    "split": "heldout",
+    "category": "paraphrase",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.16700313995139976,
+      "early_cosine_spread": 0.12264414876699448,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 1.8322683996633866,
+      "current_covariance_trace": 0.11974205821752548,
+      "current_cosine_spread": 0.13304665684700012,
+      "current_singleton_noise_entropy": 3.321928094887362
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.12264414876699448,
+      "covariance_trace": 0.11855605244636536,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.3,
+      "singleton_noise_entropy": 1.8322683996633866,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.13304665684700012,
+      "covariance_trace": 0.11974205821752548,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 1.0,
+      "singleton_noise_entropy": 3.321928094887362,
+      "cluster_count": 0
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 8.046627043845067e-08
+  },
+  {
+    "id": "qwen3_14b:mc_007",
+    "family": "mc_007",
+    "model": "qwen3_14b",
+    "split": "heldout",
+    "category": "paraphrase",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.022566830216419476,
+      "early_cosine_spread": 0.06067704036831856,
+      "early_assigned_cluster_entropy": 0.7219280948873623,
+      "early_singleton_noise_entropy": 0.7219280948873623,
+      "current_covariance_trace": 0.07117313146591187,
+      "current_cosine_spread": 0.07908125221729279,
+      "current_singleton_noise_entropy": 2.1609640474436813
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.06067704036831856,
+      "covariance_trace": 0.05865442007780075,
+      "assigned_cluster_entropy": 0.7219280948873623,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.7219280948873623,
+      "cluster_count": 2
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.07908125221729279,
+      "covariance_trace": 0.07117313146591187,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.5,
+      "singleton_noise_entropy": 2.1609640474436813,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 4.470348355378739e-09
+  },
+  {
+    "id": "mistral_latest:mc_009",
+    "family": "mc_009",
+    "model": "mistral_latest",
+    "split": "heldout",
+    "category": "paraphrase",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.0734737913793045,
+      "early_cosine_spread": 0.068732850253582,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 1.0370104374629148,
+      "current_covariance_trace": 0.13049623370170593,
+      "current_cosine_spread": 0.14499574899673462,
+      "current_singleton_noise_entropy": 3.321928094887362
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.068732850253582,
+      "covariance_trace": 0.06644180417060852,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.16666666666666666,
+      "singleton_noise_entropy": 1.0370104374629148,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.14499574899673462,
+      "covariance_trace": 0.13049623370170593,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 1.0,
+      "singleton_noise_entropy": 3.321928094887362,
+      "cluster_count": 0
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 5.960464477539063e-08
+  },
+  {
+    "id": "qwen3_14b:mc_009",
+    "family": "mc_009",
+    "model": "qwen3_14b",
+    "split": "heldout",
+    "category": "paraphrase",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.16962319870647963,
+      "early_cosine_spread": 0.05937999114394188,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 0.0,
+      "current_covariance_trace": 0.0789753645658493,
+      "current_cosine_spread": 0.08775032311677933,
+      "current_singleton_noise_entropy": 1.7709505944546688
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.05937999114394188,
+      "covariance_trace": 0.05740073323249817,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.0,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.08775032311677933,
+      "covariance_trace": 0.0789753645658493,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.4,
+      "singleton_noise_entropy": 1.7709505944546688,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 6.85453414861481e-08
+  },
+  {
+    "id": "mistral_latest:oa_009",
+    "family": "oa_009",
+    "model": "mistral_latest",
+    "split": "development",
+    "category": "uncertainty",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.32182553420322324,
+      "early_cosine_spread": 0.11398538202047348,
+      "early_assigned_cluster_entropy": 0.9709505944546686,
+      "early_singleton_noise_entropy": 2.6729055953200564,
+      "current_covariance_trace": 0.1205415204167366,
+      "current_cosine_spread": 0.13393498957157135,
+      "current_singleton_noise_entropy": 3.321928094887362
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.11398538202047348,
+      "covariance_trace": 0.110185906291008,
+      "assigned_cluster_entropy": 0.9709505944546686,
+      "noise_fraction": 0.3333333333333333,
+      "singleton_noise_entropy": 2.6729055953200564,
+      "cluster_count": 2
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.13393498957157135,
+      "covariance_trace": 0.1205415204167366,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 1.0,
+      "singleton_noise_entropy": 3.321928094887362,
+      "cluster_count": 0
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 5.066394805075536e-08
+  },
+  {
+    "id": "qwen3_14b:oa_009",
+    "family": "oa_009",
+    "model": "qwen3_14b",
+    "split": "development",
+    "category": "uncertainty",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.06907344122585832,
+      "early_cosine_spread": 0.053804051131010056,
+      "early_assigned_cluster_entropy": 0.8812908992306927,
+      "early_singleton_noise_entropy": 0.8812908992306927,
+      "current_covariance_trace": 0.06377872824668884,
+      "current_cosine_spread": 0.07086518406867981,
+      "current_singleton_noise_entropy": 1.0
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.053804051131010056,
+      "covariance_trace": 0.052010610699653625,
+      "assigned_cluster_entropy": 0.8812908992306927,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 0.8812908992306927,
+      "cluster_count": 2
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.07086518406867981,
+      "covariance_trace": 0.06377872824668884,
+      "assigned_cluster_entropy": 1.0,
+      "noise_fraction": 0.0,
+      "singleton_noise_entropy": 1.0,
+      "cluster_count": 2
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 1.0281801222922216e-07
+  },
+  {
+    "id": "mistral_latest:oa_002",
+    "family": "oa_002",
+    "model": "mistral_latest",
+    "split": "development",
+    "category": "uncertainty",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.5326336740108674,
+      "early_cosine_spread": 0.1891598254442215,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 2.7735572622751854,
+      "current_covariance_trace": 0.16447371244430542,
+      "current_cosine_spread": 0.18274854123592377,
+      "current_singleton_noise_entropy": 3.321928094887362
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.1891598254442215,
+      "covariance_trace": 0.1828545480966568,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.4666666666666667,
+      "singleton_noise_entropy": 2.7735572622751854,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.18274854123592377,
+      "covariance_trace": 0.16447371244430542,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 1.0,
+      "singleton_noise_entropy": 3.321928094887362,
+      "cluster_count": 0
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 2.5331974018438785e-08
+  },
+  {
+    "id": "qwen3_14b:oa_002",
+    "family": "oa_002",
+    "model": "qwen3_14b",
+    "split": "development",
+    "category": "uncertainty",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.024002009169331966,
+      "early_cosine_spread": 0.026696808636188507,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 0.420026001688088,
+      "current_covariance_trace": 0.0770413875579834,
+      "current_cosine_spread": 0.0856015533208847,
+      "current_singleton_noise_entropy": 1.3567796494470397
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.026696808636188507,
+      "covariance_trace": 0.025806955993175507,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.06666666666666667,
+      "singleton_noise_entropy": 0.420026001688088,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.0856015533208847,
+      "covariance_trace": 0.0770413875579834,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.3,
+      "singleton_noise_entropy": 1.3567796494470397,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 4.470348355378739e-09
+  },
+  {
+    "id": "mistral_latest:oa_010",
+    "family": "oa_010",
+    "model": "mistral_latest",
+    "split": "heldout",
+    "category": "uncertainty",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.26233232527829387,
+      "early_cosine_spread": 0.1063963770866394,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 2.5906616522333263,
+      "current_covariance_trace": 0.10741840302944183,
+      "current_cosine_spread": 0.11935371905565262,
+      "current_singleton_noise_entropy": 3.321928094887362
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.1063963770866394,
+      "covariance_trace": 0.10284985601902008,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.43333333333333335,
+      "singleton_noise_entropy": 2.5906616522333263,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.11935371905565262,
+      "covariance_trace": 0.10741840302944183,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 1.0,
+      "singleton_noise_entropy": 3.321928094887362,
+      "cluster_count": 0
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 7.599592208307193e-08
+  },
+  {
+    "id": "qwen3_14b:oa_010",
+    "family": "oa_010",
+    "model": "qwen3_14b",
+    "split": "heldout",
+    "category": "uncertainty",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.11801229427116293,
+      "early_cosine_spread": 0.04337100684642792,
+      "early_assigned_cluster_entropy": 0.9910760598382222,
+      "early_singleton_noise_entropy": 1.519460297515797,
+      "current_covariance_trace": 0.0746886134147644,
+      "current_cosine_spread": 0.08298730850219727,
+      "current_singleton_noise_entropy": 2.1609640474436813
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.04337100684642792,
+      "covariance_trace": 0.04192535579204559,
+      "assigned_cluster_entropy": 0.9910760598382222,
+      "noise_fraction": 0.1,
+      "singleton_noise_entropy": 1.519460297515797,
+      "cluster_count": 2
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.08298730850219727,
+      "covariance_trace": 0.0746886134147644,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.5,
+      "singleton_noise_entropy": 2.1609640474436813,
+      "cluster_count": 1
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 5.066394805075536e-08
+  },
+  {
+    "id": "mistral_latest:oa_006",
+    "family": "oa_006",
+    "model": "mistral_latest",
+    "split": "heldout",
+    "category": "uncertainty",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.18953042880942422,
+      "early_cosine_spread": 0.12466999143362045,
+      "early_assigned_cluster_entropy": 0.0,
+      "early_singleton_noise_entropy": 1.8322683996633866,
+      "current_covariance_trace": 0.103610098361969,
+      "current_cosine_spread": 0.11512231081724167,
+      "current_singleton_noise_entropy": 3.321928094887362
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.12466999143362045,
+      "covariance_trace": 0.12051437050104141,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 0.3,
+      "singleton_noise_entropy": 1.8322683996633866,
+      "cluster_count": 1
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.11512231081724167,
+      "covariance_trace": 0.103610098361969,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 1.0,
+      "singleton_noise_entropy": 3.321928094887362,
+      "cluster_count": 0
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 3.3527612686157227e-08
+  },
+  {
+    "id": "qwen3_14b:oa_006",
+    "family": "oa_006",
+    "model": "qwen3_14b",
+    "split": "heldout",
+    "category": "uncertainty",
+    "contradiction": false,
+    "direct_answer_contradiction": false,
+    "n_reviewable": 10,
+    "scores": {
+      "original_covariance_velocity": 0.11797153959529776,
+      "early_cosine_spread": 0.09422365576028824,
+      "early_assigned_cluster_entropy": 0.7793498372920851,
+      "early_singleton_noise_entropy": 1.5086126988727124,
+      "current_covariance_trace": 0.09828712791204453,
+      "current_cosine_spread": 0.1092078760266304,
+      "current_singleton_noise_entropy": 3.321928094887362
+    },
+    "early_diagnostics": {
+      "cosine_spread": 0.09422365576028824,
+      "covariance_trace": 0.09108290821313858,
+      "assigned_cluster_entropy": 0.7793498372920851,
+      "noise_fraction": 0.13333333333333333,
+      "singleton_noise_entropy": 1.5086126988727124,
+      "cluster_count": 2
+    },
+    "current_diagnostics": {
+      "cosine_spread": 0.1092078760266304,
+      "covariance_trace": 0.09828712791204453,
+      "assigned_cluster_entropy": 0.0,
+      "noise_fraction": 1.0,
+      "singleton_noise_entropy": 3.321928094887362,
+      "cluster_count": 0
+    },
+    "original_timestamps": [
+      0.0,
+      0.3
+    ],
+    "normalized_variance_identity_error": 6.705522537231445e-08
+  }
+]

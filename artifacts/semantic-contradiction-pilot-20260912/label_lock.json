@@ -1,0 +1,6 @@
+{
+  "protocol.json": "3ff9aebc6e007127468a20e60cbe7b4de37e32ade6fdea07b21587f06b073e1b",
+  "cases.json": "1b6c0cbe1e2d0484123aced74ab4b47c44ffdf811dae915e7a34bbea3a570d18",
+  "labels.json": "aeeb26714ce453ac934b7cc4680a1c9782d04703d6983f993b0078ee15deea2c",
+  "stage": "frozen_after_text_review_before_geometric_scoring"
+}

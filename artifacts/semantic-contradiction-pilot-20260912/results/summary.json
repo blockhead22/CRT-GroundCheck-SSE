@@ -1,0 +1,428 @@
+{
+  "scope": "retrospective_temperature_pilot_with_text_labels",
+  "model_downloads": 0,
+  "model_calls": 0,
+  "n_cases": 40,
+  "families": 20,
+  "sampled_responses": 400,
+  "labels": {
+    "contradiction": 1,
+    "paraphrase": 17,
+    "agreement": 1,
+    "uncertainty": 19,
+    "failed_generation": 2
+  },
+  "scored": 37,
+  "excluded": [
+    {
+      "id": "qwen3_14b:fs_002",
+      "reason": "incomplete_early_valid_data",
+      "category": "paraphrase"
+    },
+    {
+      "id": "qwen3_14b:fc_005",
+      "reason": "fewer_than_five_reviewable_responses",
+      "category": "failed_generation"
+    },
+    {
+      "id": "qwen3_14b:fc_004",
+      "reason": "fewer_than_five_reviewable_responses",
+      "category": "failed_generation"
+    }
+  ],
+  "development_families": [
+    "fc_005",
+    "fc_007",
+    "fs_002",
+    "fs_010",
+    "ma_005",
+    "ma_008",
+    "mc_002",
+    "mc_004",
+    "oa_002",
+    "oa_009"
+  ],
+  "heldout_families": [
+    "fc_001",
+    "fc_004",
+    "fs_001",
+    "fs_004",
+    "ma_009",
+    "ma_010",
+    "mc_007",
+    "mc_009",
+    "oa_006",
+    "oa_010"
+  ],
+  "heldout_positives": 0,
+  "direct_answer_contradictions": 0,
+  "max_normalized_variance_identity_error": 1.4174729585578194e-07,
+  "results": {
+    "original_covariance_velocity": {
+      "threshold": 0.001,
+      "development": {
+        "n": 18,
+        "positive": 1,
+        "negative": 17,
+        "tp": 1,
+        "fp": 17,
+        "fn": 0,
+        "tn": 0,
+        "precision": 0.05555555555555555,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "balanced_accuracy": 0.5,
+        "auroc": 0.23529411764705888,
+        "warning_ids": [
+          "mistral_latest:fs_002",
+          "mistral_latest:fs_010",
+          "qwen3_14b:fs_010",
+          "mistral_latest:fc_007",
+          "qwen3_14b:fc_007",
+          "mistral_latest:fc_005",
+          "mistral_latest:ma_008",
+          "qwen3_14b:ma_008",
+          "mistral_latest:ma_005",
+          "qwen3_14b:ma_005",
+          "mistral_latest:mc_004",
+          "qwen3_14b:mc_004",
+          "mistral_latest:mc_002",
+          "qwen3_14b:mc_002",
+          "mistral_latest:oa_009",
+          "qwen3_14b:oa_009",
+          "mistral_latest:oa_002",
+          "qwen3_14b:oa_002"
+        ]
+      },
+      "heldout": {
+        "n": 19,
+        "positive": 0,
+        "negative": 19,
+        "tp": 0,
+        "fp": 16,
+        "fn": 0,
+        "tn": 3,
+        "precision": 0.0,
+        "recall": null,
+        "false_positive_rate": 0.8421052631578947,
+        "balanced_accuracy": null,
+        "auroc": null,
+        "warning_ids": [
+          "qwen3_14b:fs_004",
+          "mistral_latest:fc_004",
+          "mistral_latest:fc_001",
+          "qwen3_14b:fc_001",
+          "mistral_latest:ma_010",
+          "qwen3_14b:ma_010",
+          "mistral_latest:ma_009",
+          "qwen3_14b:ma_009",
+          "mistral_latest:mc_007",
+          "qwen3_14b:mc_007",
+          "mistral_latest:mc_009",
+          "qwen3_14b:mc_009",
+          "mistral_latest:oa_010",
+          "qwen3_14b:oa_010",
+          "mistral_latest:oa_006",
+          "qwen3_14b:oa_006"
+        ]
+      }
+    },
+    "early_cosine_spread": {
+      "threshold": 0.053804051131010056,
+      "development": {
+        "n": 18,
+        "positive": 1,
+        "negative": 17,
+        "tp": 1,
+        "fp": 7,
+        "fn": 0,
+        "tn": 10,
+        "precision": 0.125,
+        "recall": 1.0,
+        "false_positive_rate": 0.4117647058823529,
+        "balanced_accuracy": 0.7941176470588236,
+        "auroc": 0.5882352941176471,
+        "warning_ids": [
+          "mistral_latest:fs_002",
+          "mistral_latest:fc_007",
+          "qwen3_14b:fc_007",
+          "mistral_latest:fc_005",
+          "mistral_latest:ma_005",
+          "mistral_latest:mc_004",
+          "mistral_latest:oa_009",
+          "mistral_latest:oa_002"
+        ]
+      },
+      "heldout": {
+        "n": 19,
+        "positive": 0,
+        "negative": 19,
+        "tp": 0,
+        "fp": 14,
+        "fn": 0,
+        "tn": 5,
+        "precision": 0.0,
+        "recall": null,
+        "false_positive_rate": 0.7368421052631579,
+        "balanced_accuracy": null,
+        "auroc": null,
+        "warning_ids": [
+          "mistral_latest:fc_004",
+          "mistral_latest:fc_001",
+          "qwen3_14b:fc_001",
+          "mistral_latest:ma_010",
+          "qwen3_14b:ma_010",
+          "mistral_latest:ma_009",
+          "qwen3_14b:ma_009",
+          "mistral_latest:mc_007",
+          "qwen3_14b:mc_007",
+          "mistral_latest:mc_009",
+          "qwen3_14b:mc_009",
+          "mistral_latest:oa_010",
+          "mistral_latest:oa_006",
+          "qwen3_14b:oa_006"
+        ]
+      }
+    },
+    "early_assigned_cluster_entropy": {
+      "threshold": 0.9967916319816366,
+      "development": {
+        "n": 18,
+        "positive": 1,
+        "negative": 17,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "tn": 17,
+        "precision": null,
+        "recall": 0.0,
+        "false_positive_rate": 0.0,
+        "balanced_accuracy": 0.5,
+        "auroc": 0.4117647058823529,
+        "warning_ids": []
+      },
+      "heldout": {
+        "n": 19,
+        "positive": 0,
+        "negative": 19,
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "tn": 19,
+        "precision": null,
+        "recall": null,
+        "false_positive_rate": 0.0,
+        "balanced_accuracy": null,
+        "auroc": null,
+        "warning_ids": []
+      }
+    },
+    "early_singleton_noise_entropy": {
+      "threshold": 0.9967916319816366,
+      "development": {
+        "n": 18,
+        "positive": 1,
+        "negative": 17,
+        "tp": 1,
+        "fp": 5,
+        "fn": 0,
+        "tn": 12,
+        "precision": 0.16666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 0.29411764705882354,
+        "balanced_accuracy": 0.8529411764705883,
+        "auroc": 0.7352941176470589,
+        "warning_ids": [
+          "mistral_latest:fs_002",
+          "mistral_latest:fc_007",
+          "qwen3_14b:fc_007",
+          "mistral_latest:ma_005",
+          "mistral_latest:oa_009",
+          "mistral_latest:oa_002"
+        ]
+      },
+      "heldout": {
+        "n": 19,
+        "positive": 0,
+        "negative": 19,
+        "tp": 0,
+        "fp": 9,
+        "fn": 0,
+        "tn": 10,
+        "precision": 0.0,
+        "recall": null,
+        "false_positive_rate": 0.47368421052631576,
+        "balanced_accuracy": null,
+        "auroc": null,
+        "warning_ids": [
+          "mistral_latest:fc_004",
+          "mistral_latest:ma_010",
+          "mistral_latest:ma_009",
+          "mistral_latest:mc_007",
+          "mistral_latest:mc_009",
+          "mistral_latest:oa_010",
+          "qwen3_14b:oa_010",
+          "mistral_latest:oa_006",
+          "qwen3_14b:oa_006"
+        ]
+      }
+    },
+    "current_covariance_trace": {
+      "threshold": 0.09858115017414093,
+      "development": {
+        "n": 18,
+        "positive": 1,
+        "negative": 17,
+        "tp": 1,
+        "fp": 4,
+        "fn": 0,
+        "tn": 13,
+        "precision": 0.2,
+        "recall": 1.0,
+        "false_positive_rate": 0.23529411764705882,
+        "balanced_accuracy": 0.8823529411764706,
+        "auroc": 0.7647058823529411,
+        "warning_ids": [
+          "mistral_latest:fs_002",
+          "mistral_latest:fc_007",
+          "mistral_latest:fc_005",
+          "mistral_latest:oa_009",
+          "mistral_latest:oa_002"
+        ]
+      },
+      "heldout": {
+        "n": 19,
+        "positive": 0,
+        "negative": 19,
+        "tp": 0,
+        "fp": 7,
+        "fn": 0,
+        "tn": 12,
+        "precision": 0.0,
+        "recall": null,
+        "false_positive_rate": 0.3684210526315789,
+        "balanced_accuracy": null,
+        "auroc": null,
+        "warning_ids": [
+          "mistral_latest:fc_004",
+          "mistral_latest:ma_009",
+          "qwen3_14b:ma_009",
+          "mistral_latest:mc_007",
+          "mistral_latest:mc_009",
+          "mistral_latest:oa_010",
+          "mistral_latest:oa_006"
+        ]
+      }
+    },
+    "current_cosine_spread": {
+      "threshold": 0.10953447222709656,
+      "development": {
+        "n": 18,
+        "positive": 1,
+        "negative": 17,
+        "tp": 1,
+        "fp": 4,
+        "fn": 0,
+        "tn": 13,
+        "precision": 0.2,
+        "recall": 1.0,
+        "false_positive_rate": 0.23529411764705882,
+        "balanced_accuracy": 0.8823529411764706,
+        "auroc": 0.7647058823529411,
+        "warning_ids": [
+          "mistral_latest:fs_002",
+          "mistral_latest:fc_007",
+          "mistral_latest:fc_005",
+          "mistral_latest:oa_009",
+          "mistral_latest:oa_002"
+        ]
+      },
+      "heldout": {
+        "n": 19,
+        "positive": 0,
+        "negative": 19,
+        "tp": 0,
+        "fp": 7,
+        "fn": 0,
+        "tn": 12,
+        "precision": 0.0,
+        "recall": null,
+        "false_positive_rate": 0.3684210526315789,
+        "balanced_accuracy": null,
+        "auroc": null,
+        "warning_ids": [
+          "mistral_latest:fc_004",
+          "mistral_latest:ma_009",
+          "qwen3_14b:ma_009",
+          "mistral_latest:mc_007",
+          "mistral_latest:mc_009",
+          "mistral_latest:oa_010",
+          "mistral_latest:oa_006"
+        ]
+      }
+    },
+    "current_singleton_noise_entropy": {
+      "threshold": 1.7709505944546688,
+      "development": {
+        "n": 18,
+        "positive": 1,
+        "negative": 17,
+        "tp": 1,
+        "fp": 6,
+        "fn": 0,
+        "tn": 11,
+        "precision": 0.14285714285714285,
+        "recall": 1.0,
+        "false_positive_rate": 0.35294117647058826,
+        "balanced_accuracy": 0.8235294117647058,
+        "auroc": 0.8235294117647058,
+        "warning_ids": [
+          "mistral_latest:fs_002",
+          "mistral_latest:fc_007",
+          "mistral_latest:ma_008",
+          "mistral_latest:ma_005",
+          "mistral_latest:mc_004",
+          "mistral_latest:oa_009",
+          "mistral_latest:oa_002"
+        ]
+      },
+      "heldout": {
+        "n": 19,
+        "positive": 0,
+        "negative": 19,
+        "tp": 0,
+        "fp": 9,
+        "fn": 0,
+        "tn": 10,
+        "precision": 0.0,
+        "recall": null,
+        "false_positive_rate": 0.47368421052631576,
+        "balanced_accuracy": null,
+        "auroc": null,
+        "warning_ids": [
+          "qwen3_14b:ma_010",
+          "mistral_latest:ma_009",
+          "mistral_latest:mc_007",
+          "qwen3_14b:mc_007",
+          "mistral_latest:mc_009",
+          "mistral_latest:oa_010",
+          "qwen3_14b:oa_010",
+          "mistral_latest:oa_006",
+          "qwen3_14b:oa_006"
+        ]
+      }
+    }
+  },
+  "can_establish_predictive_advantage": false,
+  "limitations": [
+    "Single Codex text reviewer; independent of geometry, not independent human validation.",
+    "10 sampled responses per cell; no assertion of contradiction absence in unsampled rows.",
+    "Only one positive, in development, on an ancillary detail. Heldout has no positive examples; recall, AUROC and balanced accuracy are undefined there.",
+    "Very weak calibration: one development positive. Lower false alarms alone cannot establish useful detection.",
+    "Historical encoder/row alignment remains unauthenticated; recorded hashes freeze present observations only.",
+    "Sampling temperature is not time. Same-sample scores are diagnostics, not forecasts.",
+    "Families restricted to original first ten prompts per domain; two historical models; not representative of all tasks or modern models."
+  ],
+  "label_lock_sha256": "fa929444ad8a37c04dd8faea698b714afd52ea7183f37c758af04389f514216d",
+  "source_lock_sha256": "e8f1bd8ad4ebf837beccdbeddc4edbae28a69c8d2578ed47c0043fea2f8d9a42"
+}

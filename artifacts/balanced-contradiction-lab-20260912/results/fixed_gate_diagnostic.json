@@ -1,0 +1,714 @@
+{
+  "stage": "Post-primary source-grounded diagnostic; fixed code defaults, no tuning",
+  "rule": "original find_cross_prompt_contradictions: cosine >= .7 and Fisher >= 5",
+  "caveat": "Measures candidate gate on constructed static loci, not end-to-end production reasoning or future prediction.",
+  "source_sha256": {
+    "variance_to_splats.py": "62683c7a021ffdd892b851b12c2ff26913526ff39d024074b35695ac0ac3c248",
+    "locus_types.py": "03c203bf597b7ce272d039961622b026f64d1401aa244e36d9fba2a977a82008",
+    "supplement.py": "c0dcb80795d716a8e95ac56f06507108e316fab99ae24dbafb8c21f2a3614e84"
+  },
+  "results": {
+    "development": {
+      "candidate": {
+        "n": 36,
+        "tp": 18,
+        "fp": 18,
+        "fn": 0,
+        "tn": 0,
+        "precision": 0.5,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "balanced_accuracy": 0.5,
+        "auroc": 0.5
+      },
+      "cosine_only": {
+        "n": 36,
+        "tp": 18,
+        "fp": 18,
+        "fn": 0,
+        "tn": 0,
+        "precision": 0.5,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "balanced_accuracy": 0.5,
+        "auroc": 0.5
+      }
+    },
+    "heldout": {
+      "candidate": {
+        "n": 36,
+        "tp": 18,
+        "fp": 17,
+        "fn": 0,
+        "tn": 1,
+        "precision": 0.5142857142857142,
+        "recall": 1.0,
+        "false_positive_rate": 0.9444444444444444,
+        "balanced_accuracy": 0.5277777777777778,
+        "auroc": 0.5277777777777778
+      },
+      "cosine_only": {
+        "n": 36,
+        "tp": 18,
+        "fp": 17,
+        "fn": 0,
+        "tn": 1,
+        "precision": 0.5142857142857142,
+        "recall": 1.0,
+        "false_positive_rate": 0.9444444444444444,
+        "balanced_accuracy": 0.5277777777777778,
+        "auroc": 0.5277777777777778
+      }
+    }
+  },
+  "rows": [
+    {
+      "id": "inventory:opposite_value",
+      "split": "development",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9210643768310547,
+      "fisher": 61.310604095458984
+    },
+    {
+      "id": "inventory:explicit_negation",
+      "split": "development",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9846022725105286,
+      "fisher": 31.52204704284668
+    },
+    {
+      "id": "inventory:correction_reverses_fact",
+      "split": "development",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9313220977783203,
+      "fisher": 52.72559356689453
+    },
+    {
+      "id": "inventory:paraphrase",
+      "split": "development",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9604046940803528,
+      "fisher": 40.07929611206055
+    },
+    {
+      "id": "inventory:different_entity",
+      "split": "development",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.8792507648468018,
+      "fisher": 70.36439514160156
+    },
+    {
+      "id": "inventory:correction_preserves_fact",
+      "split": "development",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.91542649269104,
+      "fisher": 61.56262969970703
+    },
+    {
+      "id": "seating:opposite_value",
+      "split": "development",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9305772185325623,
+      "fisher": 58.26205825805664
+    },
+    {
+      "id": "seating:explicit_negation",
+      "split": "development",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9677186012268066,
+      "fisher": 40.34914016723633
+    },
+    {
+      "id": "seating:correction_reverses_fact",
+      "split": "development",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9336736798286438,
+      "fisher": 55.71592330932617
+    },
+    {
+      "id": "seating:paraphrase",
+      "split": "development",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9508981704711914,
+      "fisher": 47.90936279296875
+    },
+    {
+      "id": "seating:different_time",
+      "split": "development",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9087457060813904,
+      "fisher": 63.96063232421875
+    },
+    {
+      "id": "seating:uncertainty",
+      "split": "development",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.8470193147659302,
+      "fisher": 80.95709991455078
+    },
+    {
+      "id": "location:opposite_value",
+      "split": "development",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9535112380981445,
+      "fisher": 43.293357849121094
+    },
+    {
+      "id": "location:explicit_negation",
+      "split": "development",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9626896381378174,
+      "fisher": 39.602657318115234
+    },
+    {
+      "id": "location:correction_reverses_fact",
+      "split": "development",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9191992878913879,
+      "fisher": 54.89558410644531
+    },
+    {
+      "id": "location:paraphrase",
+      "split": "development",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9109776020050049,
+      "fisher": 65.69355010986328
+    },
+    {
+      "id": "location:different_entity",
+      "split": "development",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.8500351309776306,
+      "fisher": 70.84239959716797
+    },
+    {
+      "id": "location:correction_preserves_fact",
+      "split": "development",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9168639183044434,
+      "fisher": 54.895023345947266
+    },
+    {
+      "id": "lock:opposite_value",
+      "split": "development",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9597283601760864,
+      "fisher": 38.769779205322266
+    },
+    {
+      "id": "lock:explicit_negation",
+      "split": "development",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9336578249931335,
+      "fisher": 65.1298599243164
+    },
+    {
+      "id": "lock:correction_reverses_fact",
+      "split": "development",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9124212265014648,
+      "fisher": 54.746253967285156
+    },
+    {
+      "id": "lock:paraphrase",
+      "split": "development",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.8855262994766235,
+      "fisher": 70.5806655883789
+    },
+    {
+      "id": "lock:different_time",
+      "split": "development",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9329037666320801,
+      "fisher": 47.317256927490234
+    },
+    {
+      "id": "lock:uncertainty",
+      "split": "development",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.8651447892189026,
+      "fisher": 59.708126068115234
+    },
+    {
+      "id": "access:opposite_value",
+      "split": "development",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9628183841705322,
+      "fisher": 37.0361213684082
+    },
+    {
+      "id": "access:explicit_negation",
+      "split": "development",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9692604541778564,
+      "fisher": 41.08054733276367
+    },
+    {
+      "id": "access:correction_reverses_fact",
+      "split": "development",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9389946460723877,
+      "fisher": 50.56954574584961
+    },
+    {
+      "id": "access:paraphrase",
+      "split": "development",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9364577531814575,
+      "fisher": 57.32318878173828
+    },
+    {
+      "id": "access:different_entity",
+      "split": "development",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.8670223951339722,
+      "fisher": 60.6055908203125
+    },
+    {
+      "id": "access:correction_preserves_fact",
+      "split": "development",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9336807727813721,
+      "fisher": 51.952735900878906
+    },
+    {
+      "id": "power:opposite_value",
+      "split": "development",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9793840646743774,
+      "fisher": 39.51996994018555
+    },
+    {
+      "id": "power:explicit_negation",
+      "split": "development",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9618380665779114,
+      "fisher": 44.92106628417969
+    },
+    {
+      "id": "power:correction_reverses_fact",
+      "split": "development",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9063843488693237,
+      "fisher": 55.92182159423828
+    },
+    {
+      "id": "power:paraphrase",
+      "split": "development",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.921339213848114,
+      "fisher": 62.59312438964844
+    },
+    {
+      "id": "power:different_time",
+      "split": "development",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9513276815414429,
+      "fisher": 54.13718795776367
+    },
+    {
+      "id": "power:uncertainty",
+      "split": "development",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.8965225219726562,
+      "fisher": 74.76708221435547
+    },
+    {
+      "id": "schedule:opposite_value",
+      "split": "heldout",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9352554678916931,
+      "fisher": 63.92853546142578
+    },
+    {
+      "id": "schedule:explicit_negation",
+      "split": "heldout",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9577040672302246,
+      "fisher": 49.63440704345703
+    },
+    {
+      "id": "schedule:correction_reverses_fact",
+      "split": "heldout",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9313143491744995,
+      "fisher": 55.763118743896484
+    },
+    {
+      "id": "schedule:paraphrase",
+      "split": "heldout",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9286444187164307,
+      "fisher": 69.37295532226562
+    },
+    {
+      "id": "schedule:different_entity",
+      "split": "heldout",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.7874197363853455,
+      "fisher": 110.97428894042969
+    },
+    {
+      "id": "schedule:correction_preserves_fact",
+      "split": "heldout",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9164072275161743,
+      "fisher": 62.29528045654297
+    },
+    {
+      "id": "threshold:opposite_value",
+      "split": "heldout",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9913377165794373,
+      "fisher": 24.834705352783203
+    },
+    {
+      "id": "threshold:explicit_negation",
+      "split": "heldout",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9688342809677124,
+      "fisher": 45.91465377807617
+    },
+    {
+      "id": "threshold:correction_reverses_fact",
+      "split": "heldout",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9339177012443542,
+      "fisher": 55.21272277832031
+    },
+    {
+      "id": "threshold:paraphrase",
+      "split": "heldout",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9296091794967651,
+      "fisher": 67.77418518066406
+    },
+    {
+      "id": "threshold:different_time",
+      "split": "heldout",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9627556800842285,
+      "fisher": 48.8973503112793
+    },
+    {
+      "id": "threshold:uncertainty",
+      "split": "heldout",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9012267589569092,
+      "fisher": 71.11861419677734
+    },
+    {
+      "id": "budget:opposite_value",
+      "split": "heldout",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9323954582214355,
+      "fisher": 62.70438003540039
+    },
+    {
+      "id": "budget:explicit_negation",
+      "split": "heldout",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9562056660652161,
+      "fisher": 51.049224853515625
+    },
+    {
+      "id": "budget:correction_reverses_fact",
+      "split": "heldout",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.8984169960021973,
+      "fisher": 70.98138427734375
+    },
+    {
+      "id": "budget:paraphrase",
+      "split": "heldout",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9374059438705444,
+      "fisher": 56.91526412963867
+    },
+    {
+      "id": "budget:different_entity",
+      "split": "heldout",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.8160773515701294,
+      "fisher": 93.58636474609375
+    },
+    {
+      "id": "budget:correction_preserves_fact",
+      "split": "heldout",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.8839731216430664,
+      "fisher": 72.83625030517578
+    },
+    {
+      "id": "temperature:opposite_value",
+      "split": "heldout",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9834522604942322,
+      "fisher": 33.5654296875
+    },
+    {
+      "id": "temperature:explicit_negation",
+      "split": "heldout",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9603654742240906,
+      "fisher": 40.791587829589844
+    },
+    {
+      "id": "temperature:correction_reverses_fact",
+      "split": "heldout",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9402745366096497,
+      "fisher": 52.84133529663086
+    },
+    {
+      "id": "temperature:paraphrase",
+      "split": "heldout",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9618551731109619,
+      "fisher": 43.338260650634766
+    },
+    {
+      "id": "temperature:different_time",
+      "split": "heldout",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9562116265296936,
+      "fisher": 38.82124710083008
+    },
+    {
+      "id": "temperature:uncertainty",
+      "split": "heldout",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9136426448822021,
+      "fisher": 61.024330139160156
+    },
+    {
+      "id": "version:opposite_value",
+      "split": "heldout",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9846836924552917,
+      "fisher": 27.895503997802734
+    },
+    {
+      "id": "version:explicit_negation",
+      "split": "heldout",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9775927662849426,
+      "fisher": 33.86507797241211
+    },
+    {
+      "id": "version:correction_reverses_fact",
+      "split": "heldout",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9306551814079285,
+      "fisher": 53.12587356567383
+    },
+    {
+      "id": "version:paraphrase",
+      "split": "heldout",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9141885042190552,
+      "fisher": 72.33699035644531
+    },
+    {
+      "id": "version:different_entity",
+      "split": "heldout",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.7976770401000977,
+      "fisher": 69.71256256103516
+    },
+    {
+      "id": "version:correction_preserves_fact",
+      "split": "heldout",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9317284226417542,
+      "fisher": 48.198612213134766
+    },
+    {
+      "id": "ownership:opposite_value",
+      "split": "heldout",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.7627179026603699,
+      "fisher": 78.57816314697266
+    },
+    {
+      "id": "ownership:explicit_negation",
+      "split": "heldout",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9681816101074219,
+      "fisher": 40.2720832824707
+    },
+    {
+      "id": "ownership:correction_reverses_fact",
+      "split": "heldout",
+      "label": true,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.8933876156806946,
+      "fisher": 56.63928985595703
+    },
+    {
+      "id": "ownership:paraphrase",
+      "split": "heldout",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.9304491281509399,
+      "fisher": 52.86948776245117
+    },
+    {
+      "id": "ownership:different_time",
+      "split": "heldout",
+      "label": false,
+      "candidate": true,
+      "cosine_only": true,
+      "cosine": 0.7252423763275146,
+      "fisher": 85.62056732177734
+    },
+    {
+      "id": "ownership:uncertainty",
+      "split": "heldout",
+      "label": false,
+      "candidate": false,
+      "cosine_only": false,
+      "cosine": 0.677121102809906,
+      "fisher": 97.42996978759766
+    }
+  ]
+}

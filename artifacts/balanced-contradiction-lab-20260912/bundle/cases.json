@@ -1,0 +1,1154 @@
+[
+  {
+    "id": "inventory:opposite_value",
+    "family": "inventory",
+    "split": "development",
+    "source_rows": [
+      0,
+      1,
+      2
+    ],
+    "target_rows": [
+      3,
+      4,
+      5
+    ],
+    "kind": "opposite_value"
+  },
+  {
+    "id": "inventory:explicit_negation",
+    "family": "inventory",
+    "split": "development",
+    "source_rows": [
+      6,
+      7,
+      8
+    ],
+    "target_rows": [
+      9,
+      10,
+      11
+    ],
+    "kind": "explicit_negation"
+  },
+  {
+    "id": "inventory:correction_reverses_fact",
+    "family": "inventory",
+    "split": "development",
+    "source_rows": [
+      12,
+      13,
+      14
+    ],
+    "target_rows": [
+      15,
+      16,
+      17
+    ],
+    "kind": "correction_reverses_fact"
+  },
+  {
+    "id": "inventory:paraphrase",
+    "family": "inventory",
+    "split": "development",
+    "source_rows": [
+      18,
+      19,
+      20
+    ],
+    "target_rows": [
+      21,
+      22,
+      23
+    ],
+    "kind": "paraphrase"
+  },
+  {
+    "id": "inventory:different_entity",
+    "family": "inventory",
+    "split": "development",
+    "source_rows": [
+      24,
+      25,
+      26
+    ],
+    "target_rows": [
+      27,
+      28,
+      29
+    ],
+    "kind": "different_entity"
+  },
+  {
+    "id": "inventory:correction_preserves_fact",
+    "family": "inventory",
+    "split": "development",
+    "source_rows": [
+      30,
+      31,
+      32
+    ],
+    "target_rows": [
+      33,
+      34,
+      35
+    ],
+    "kind": "correction_preserves_fact"
+  },
+  {
+    "id": "seating:opposite_value",
+    "family": "seating",
+    "split": "development",
+    "source_rows": [
+      36,
+      37,
+      38
+    ],
+    "target_rows": [
+      39,
+      40,
+      41
+    ],
+    "kind": "opposite_value"
+  },
+  {
+    "id": "seating:explicit_negation",
+    "family": "seating",
+    "split": "development",
+    "source_rows": [
+      42,
+      43,
+      44
+    ],
+    "target_rows": [
+      45,
+      46,
+      47
+    ],
+    "kind": "explicit_negation"
+  },
+  {
+    "id": "seating:correction_reverses_fact",
+    "family": "seating",
+    "split": "development",
+    "source_rows": [
+      48,
+      49,
+      50
+    ],
+    "target_rows": [
+      51,
+      52,
+      53
+    ],
+    "kind": "correction_reverses_fact"
+  },
+  {
+    "id": "seating:paraphrase",
+    "family": "seating",
+    "split": "development",
+    "source_rows": [
+      54,
+      55,
+      56
+    ],
+    "target_rows": [
+      57,
+      58,
+      59
+    ],
+    "kind": "paraphrase"
+  },
+  {
+    "id": "seating:different_time",
+    "family": "seating",
+    "split": "development",
+    "source_rows": [
+      60,
+      61,
+      62
+    ],
+    "target_rows": [
+      63,
+      64,
+      65
+    ],
+    "kind": "different_time"
+  },
+  {
+    "id": "seating:uncertainty",
+    "family": "seating",
+    "split": "development",
+    "source_rows": [
+      66,
+      67,
+      68
+    ],
+    "target_rows": [
+      69,
+      70,
+      71
+    ],
+    "kind": "uncertainty"
+  },
+  {
+    "id": "location:opposite_value",
+    "family": "location",
+    "split": "development",
+    "source_rows": [
+      72,
+      73,
+      74
+    ],
+    "target_rows": [
+      75,
+      76,
+      77
+    ],
+    "kind": "opposite_value"
+  },
+  {
+    "id": "location:explicit_negation",
+    "family": "location",
+    "split": "development",
+    "source_rows": [
+      78,
+      79,
+      80
+    ],
+    "target_rows": [
+      81,
+      82,
+      83
+    ],
+    "kind": "explicit_negation"
+  },
+  {
+    "id": "location:correction_reverses_fact",
+    "family": "location",
+    "split": "development",
+    "source_rows": [
+      84,
+      85,
+      86
+    ],
+    "target_rows": [
+      87,
+      88,
+      89
+    ],
+    "kind": "correction_reverses_fact"
+  },
+  {
+    "id": "location:paraphrase",
+    "family": "location",
+    "split": "development",
+    "source_rows": [
+      90,
+      91,
+      92
+    ],
+    "target_rows": [
+      93,
+      94,
+      95
+    ],
+    "kind": "paraphrase"
+  },
+  {
+    "id": "location:different_entity",
+    "family": "location",
+    "split": "development",
+    "source_rows": [
+      96,
+      97,
+      98
+    ],
+    "target_rows": [
+      99,
+      100,
+      101
+    ],
+    "kind": "different_entity"
+  },
+  {
+    "id": "location:correction_preserves_fact",
+    "family": "location",
+    "split": "development",
+    "source_rows": [
+      102,
+      103,
+      104
+    ],
+    "target_rows": [
+      105,
+      106,
+      107
+    ],
+    "kind": "correction_preserves_fact"
+  },
+  {
+    "id": "lock:opposite_value",
+    "family": "lock",
+    "split": "development",
+    "source_rows": [
+      108,
+      109,
+      110
+    ],
+    "target_rows": [
+      111,
+      112,
+      113
+    ],
+    "kind": "opposite_value"
+  },
+  {
+    "id": "lock:explicit_negation",
+    "family": "lock",
+    "split": "development",
+    "source_rows": [
+      114,
+      115,
+      116
+    ],
+    "target_rows": [
+      117,
+      118,
+      119
+    ],
+    "kind": "explicit_negation"
+  },
+  {
+    "id": "lock:correction_reverses_fact",
+    "family": "lock",
+    "split": "development",
+    "source_rows": [
+      120,
+      121,
+      122
+    ],
+    "target_rows": [
+      123,
+      124,
+      125
+    ],
+    "kind": "correction_reverses_fact"
+  },
+  {
+    "id": "lock:paraphrase",
+    "family": "lock",
+    "split": "development",
+    "source_rows": [
+      126,
+      127,
+      128
+    ],
+    "target_rows": [
+      129,
+      130,
+      131
+    ],
+    "kind": "paraphrase"
+  },
+  {
+    "id": "lock:different_time",
+    "family": "lock",
+    "split": "development",
+    "source_rows": [
+      132,
+      133,
+      134
+    ],
+    "target_rows": [
+      135,
+      136,
+      137
+    ],
+    "kind": "different_time"
+  },
+  {
+    "id": "lock:uncertainty",
+    "family": "lock",
+    "split": "development",
+    "source_rows": [
+      138,
+      139,
+      140
+    ],
+    "target_rows": [
+      141,
+      142,
+      143
+    ],
+    "kind": "uncertainty"
+  },
+  {
+    "id": "access:opposite_value",
+    "family": "access",
+    "split": "development",
+    "source_rows": [
+      144,
+      145,
+      146
+    ],
+    "target_rows": [
+      147,
+      148,
+      149
+    ],
+    "kind": "opposite_value"
+  },
+  {
+    "id": "access:explicit_negation",
+    "family": "access",
+    "split": "development",
+    "source_rows": [
+      150,
+      151,
+      152
+    ],
+    "target_rows": [
+      153,
+      154,
+      155
+    ],
+    "kind": "explicit_negation"
+  },
+  {
+    "id": "access:correction_reverses_fact",
+    "family": "access",
+    "split": "development",
+    "source_rows": [
+      156,
+      157,
+      158
+    ],
+    "target_rows": [
+      159,
+      160,
+      161
+    ],
+    "kind": "correction_reverses_fact"
+  },
+  {
+    "id": "access:paraphrase",
+    "family": "access",
+    "split": "development",
+    "source_rows": [
+      162,
+      163,
+      164
+    ],
+    "target_rows": [
+      165,
+      166,
+      167
+    ],
+    "kind": "paraphrase"
+  },
+  {
+    "id": "access:different_entity",
+    "family": "access",
+    "split": "development",
+    "source_rows": [
+      168,
+      169,
+      170
+    ],
+    "target_rows": [
+      171,
+      172,
+      173
+    ],
+    "kind": "different_entity"
+  },
+  {
+    "id": "access:correction_preserves_fact",
+    "family": "access",
+    "split": "development",
+    "source_rows": [
+      174,
+      175,
+      176
+    ],
+    "target_rows": [
+      177,
+      178,
+      179
+    ],
+    "kind": "correction_preserves_fact"
+  },
+  {
+    "id": "power:opposite_value",
+    "family": "power",
+    "split": "development",
+    "source_rows": [
+      180,
+      181,
+      182
+    ],
+    "target_rows": [
+      183,
+      184,
+      185
+    ],
+    "kind": "opposite_value"
+  },
+  {
+    "id": "power:explicit_negation",
+    "family": "power",
+    "split": "development",
+    "source_rows": [
+      186,
+      187,
+      188
+    ],
+    "target_rows": [
+      189,
+      190,
+      191
+    ],
+    "kind": "explicit_negation"
+  },
+  {
+    "id": "power:correction_reverses_fact",
+    "family": "power",
+    "split": "development",
+    "source_rows": [
+      192,
+      193,
+      194
+    ],
+    "target_rows": [
+      195,
+      196,
+      197
+    ],
+    "kind": "correction_reverses_fact"
+  },
+  {
+    "id": "power:paraphrase",
+    "family": "power",
+    "split": "development",
+    "source_rows": [
+      198,
+      199,
+      200
+    ],
+    "target_rows": [
+      201,
+      202,
+      203
+    ],
+    "kind": "paraphrase"
+  },
+  {
+    "id": "power:different_time",
+    "family": "power",
+    "split": "development",
+    "source_rows": [
+      204,
+      205,
+      206
+    ],
+    "target_rows": [
+      207,
+      208,
+      209
+    ],
+    "kind": "different_time"
+  },
+  {
+    "id": "power:uncertainty",
+    "family": "power",
+    "split": "development",
+    "source_rows": [
+      210,
+      211,
+      212
+    ],
+    "target_rows": [
+      213,
+      214,
+      215
+    ],
+    "kind": "uncertainty"
+  },
+  {
+    "id": "schedule:opposite_value",
+    "family": "schedule",
+    "split": "heldout",
+    "source_rows": [
+      216,
+      217,
+      218
+    ],
+    "target_rows": [
+      219,
+      220,
+      221
+    ],
+    "kind": "opposite_value"
+  },
+  {
+    "id": "schedule:explicit_negation",
+    "family": "schedule",
+    "split": "heldout",
+    "source_rows": [
+      222,
+      223,
+      224
+    ],
+    "target_rows": [
+      225,
+      226,
+      227
+    ],
+    "kind": "explicit_negation"
+  },
+  {
+    "id": "schedule:correction_reverses_fact",
+    "family": "schedule",
+    "split": "heldout",
+    "source_rows": [
+      228,
+      229,
+      230
+    ],
+    "target_rows": [
+      231,
+      232,
+      233
+    ],
+    "kind": "correction_reverses_fact"
+  },
+  {
+    "id": "schedule:paraphrase",
+    "family": "schedule",
+    "split": "heldout",
+    "source_rows": [
+      234,
+      235,
+      236
+    ],
+    "target_rows": [
+      237,
+      238,
+      239
+    ],
+    "kind": "paraphrase"
+  },
+  {
+    "id": "schedule:different_entity",
+    "family": "schedule",
+    "split": "heldout",
+    "source_rows": [
+      240,
+      241,
+      242
+    ],
+    "target_rows": [
+      243,
+      244,
+      245
+    ],
+    "kind": "different_entity"
+  },
+  {
+    "id": "schedule:correction_preserves_fact",
+    "family": "schedule",
+    "split": "heldout",
+    "source_rows": [
+      246,
+      247,
+      248
+    ],
+    "target_rows": [
+      249,
+      250,
+      251
+    ],
+    "kind": "correction_preserves_fact"
+  },
+  {
+    "id": "threshold:opposite_value",
+    "family": "threshold",
+    "split": "heldout",
+    "source_rows": [
+      252,
+      253,
+      254
+    ],
+    "target_rows": [
+      255,
+      256,
+      257
+    ],
+    "kind": "opposite_value"
+  },
+  {
+    "id": "threshold:explicit_negation",
+    "family": "threshold",
+    "split": "heldout",
+    "source_rows": [
+      258,
+      259,
+      260
+    ],
+    "target_rows": [
+      261,
+      262,
+      263
+    ],
+    "kind": "explicit_negation"
+  },
+  {
+    "id": "threshold:correction_reverses_fact",
+    "family": "threshold",
+    "split": "heldout",
+    "source_rows": [
+      264,
+      265,
+      266
+    ],
+    "target_rows": [
+      267,
+      268,
+      269
+    ],
+    "kind": "correction_reverses_fact"
+  },
+  {
+    "id": "threshold:paraphrase",
+    "family": "threshold",
+    "split": "heldout",
+    "source_rows": [
+      270,
+      271,
+      272
+    ],
+    "target_rows": [
+      273,
+      274,
+      275
+    ],
+    "kind": "paraphrase"
+  },
+  {
+    "id": "threshold:different_time",
+    "family": "threshold",
+    "split": "heldout",
+    "source_rows": [
+      276,
+      277,
+      278
+    ],
+    "target_rows": [
+      279,
+      280,
+      281
+    ],
+    "kind": "different_time"
+  },
+  {
+    "id": "threshold:uncertainty",
+    "family": "threshold",
+    "split": "heldout",
+    "source_rows": [
+      282,
+      283,
+      284
+    ],
+    "target_rows": [
+      285,
+      286,
+      287
+    ],
+    "kind": "uncertainty"
+  },
+  {
+    "id": "budget:opposite_value",
+    "family": "budget",
+    "split": "heldout",
+    "source_rows": [
+      288,
+      289,
+      290
+    ],
+    "target_rows": [
+      291,
+      292,
+      293
+    ],
+    "kind": "opposite_value"
+  },
+  {
+    "id": "budget:explicit_negation",
+    "family": "budget",
+    "split": "heldout",
+    "source_rows": [
+      294,
+      295,
+      296
+    ],
+    "target_rows": [
+      297,
+      298,
+      299
+    ],
+    "kind": "explicit_negation"
+  },
+  {
+    "id": "budget:correction_reverses_fact",
+    "family": "budget",
+    "split": "heldout",
+    "source_rows": [
+      300,
+      301,
+      302
+    ],
+    "target_rows": [
+      303,
+      304,
+      305
+    ],
+    "kind": "correction_reverses_fact"
+  },
+  {
+    "id": "budget:paraphrase",
+    "family": "budget",
+    "split": "heldout",
+    "source_rows": [
+      306,
+      307,
+      308
+    ],
+    "target_rows": [
+      309,
+      310,
+      311
+    ],
+    "kind": "paraphrase"
+  },
+  {
+    "id": "budget:different_entity",
+    "family": "budget",
+    "split": "heldout",
+    "source_rows": [
+      312,
+      313,
+      314
+    ],
+    "target_rows": [
+      315,
+      316,
+      317
+    ],
+    "kind": "different_entity"
+  },
+  {
+    "id": "budget:correction_preserves_fact",
+    "family": "budget",
+    "split": "heldout",
+    "source_rows": [
+      318,
+      319,
+      320
+    ],
+    "target_rows": [
+      321,
+      322,
+      323
+    ],
+    "kind": "correction_preserves_fact"
+  },
+  {
+    "id": "temperature:opposite_value",
+    "family": "temperature",
+    "split": "heldout",
+    "source_rows": [
+      324,
+      325,
+      326
+    ],
+    "target_rows": [
+      327,
+      328,
+      329
+    ],
+    "kind": "opposite_value"
+  },
+  {
+    "id": "temperature:explicit_negation",
+    "family": "temperature",
+    "split": "heldout",
+    "source_rows": [
+      330,
+      331,
+      332
+    ],
+    "target_rows": [
+      333,
+      334,
+      335
+    ],
+    "kind": "explicit_negation"
+  },
+  {
+    "id": "temperature:correction_reverses_fact",
+    "family": "temperature",
+    "split": "heldout",
+    "source_rows": [
+      336,
+      337,
+      338
+    ],
+    "target_rows": [
+      339,
+      340,
+      341
+    ],
+    "kind": "correction_reverses_fact"
+  },
+  {
+    "id": "temperature:paraphrase",
+    "family": "temperature",
+    "split": "heldout",
+    "source_rows": [
+      342,
+      343,
+      344
+    ],
+    "target_rows": [
+      345,
+      346,
+      347
+    ],
+    "kind": "paraphrase"
+  },
+  {
+    "id": "temperature:different_time",
+    "family": "temperature",
+    "split": "heldout",
+    "source_rows": [
+      348,
+      349,
+      350
+    ],
+    "target_rows": [
+      351,
+      352,
+      353
+    ],
+    "kind": "different_time"
+  },
+  {
+    "id": "temperature:uncertainty",
+    "family": "temperature",
+    "split": "heldout",
+    "source_rows": [
+      354,
+      355,
+      356
+    ],
+    "target_rows": [
+      357,
+      358,
+      359
+    ],
+    "kind": "uncertainty"
+  },
+  {
+    "id": "version:opposite_value",
+    "family": "version",
+    "split": "heldout",
+    "source_rows": [
+      360,
+      361,
+      362
+    ],
+    "target_rows": [
+      363,
+      364,
+      365
+    ],
+    "kind": "opposite_value"
+  },
+  {
+    "id": "version:explicit_negation",
+    "family": "version",
+    "split": "heldout",
+    "source_rows": [
+      366,
+      367,
+      368
+    ],
+    "target_rows": [
+      369,
+      370,
+      371
+    ],
+    "kind": "explicit_negation"
+  },
+  {
+    "id": "version:correction_reverses_fact",
+    "family": "version",
+    "split": "heldout",
+    "source_rows": [
+      372,
+      373,
+      374
+    ],
+    "target_rows": [
+      375,
+      376,
+      377
+    ],
+    "kind": "correction_reverses_fact"
+  },
+  {
+    "id": "version:paraphrase",
+    "family": "version",
+    "split": "heldout",
+    "source_rows": [
+      378,
+      379,
+      380
+    ],
+    "target_rows": [
+      381,
+      382,
+      383
+    ],
+    "kind": "paraphrase"
+  },
+  {
+    "id": "version:different_entity",
+    "family": "version",
+    "split": "heldout",
+    "source_rows": [
+      384,
+      385,
+      386
+    ],
+    "target_rows": [
+      387,
+      388,
+      389
+    ],
+    "kind": "different_entity"
+  },
+  {
+    "id": "version:correction_preserves_fact",
+    "family": "version",
+    "split": "heldout",
+    "source_rows": [
+      390,
+      391,
+      392
+    ],
+    "target_rows": [
+      393,
+      394,
+      395
+    ],
+    "kind": "correction_preserves_fact"
+  },
+  {
+    "id": "ownership:opposite_value",
+    "family": "ownership",
+    "split": "heldout",
+    "source_rows": [
+      396,
+      397,
+      398
+    ],
+    "target_rows": [
+      399,
+      400,
+      401
+    ],
+    "kind": "opposite_value"
+  },
+  {
+    "id": "ownership:explicit_negation",
+    "family": "ownership",
+    "split": "heldout",
+    "source_rows": [
+      402,
+      403,
+      404
+    ],
+    "target_rows": [
+      405,
+      406,
+      407
+    ],
+    "kind": "explicit_negation"
+  },
+  {
+    "id": "ownership:correction_reverses_fact",
+    "family": "ownership",
+    "split": "heldout",
+    "source_rows": [
+      408,
+      409,
+      410
+    ],
+    "target_rows": [
+      411,
+      412,
+      413
+    ],
+    "kind": "correction_reverses_fact"
+  },
+  {
+    "id": "ownership:paraphrase",
+    "family": "ownership",
+    "split": "heldout",
+    "source_rows": [
+      414,
+      415,
+      416
+    ],
+    "target_rows": [
+      417,
+      418,
+      419
+    ],
+    "kind": "paraphrase"
+  },
+  {
+    "id": "ownership:different_time",
+    "family": "ownership",
+    "split": "heldout",
+    "source_rows": [
+      420,
+      421,
+      422
+    ],
+    "target_rows": [
+      423,
+      424,
+      425
+    ],
+    "kind": "different_time"
+  },
+  {
+    "id": "ownership:uncertainty",
+    "family": "ownership",
+    "split": "heldout",
+    "source_rows": [
+      426,
+      427,
+      428
+    ],
+    "target_rows": [
+      429,
+      430,
+      431
+    ],
+    "kind": "uncertainty"
+  }
+]

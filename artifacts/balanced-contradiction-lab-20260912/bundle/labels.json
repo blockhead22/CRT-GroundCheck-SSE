@@ -1,0 +1,434 @@
+[
+  {
+    "id": "inventory:opposite_value",
+    "contradiction": true,
+    "rationale": "Incompatible exclusive values for the same entity and valid time.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "inventory:explicit_negation",
+    "contradiction": true,
+    "rationale": "Explicit denial of the same proposition; lexical overlap does not imply agreement.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "inventory:correction_reverses_fact",
+    "contradiction": true,
+    "rationale": "Final corrected assertion contradicts the source fact for the same valid time; a legitimate update can still expose a conflict with old memory.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "inventory:paraphrase",
+    "contradiction": false,
+    "rationale": "Same proposition with different framing.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "inventory:different_entity",
+    "contradiction": false,
+    "rationale": "Opposing value refers to a different entity.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "inventory:correction_preserves_fact",
+    "contradiction": false,
+    "rationale": "Opposing clause is explicitly retracted; final assertion agrees.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "seating:opposite_value",
+    "contradiction": true,
+    "rationale": "Incompatible exclusive values for the same entity and valid time.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "seating:explicit_negation",
+    "contradiction": true,
+    "rationale": "Explicit denial of the same proposition; lexical overlap does not imply agreement.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "seating:correction_reverses_fact",
+    "contradiction": true,
+    "rationale": "Final corrected assertion contradicts the source fact for the same valid time; a legitimate update can still expose a conflict with old memory.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "seating:paraphrase",
+    "contradiction": false,
+    "rationale": "Same proposition with different framing.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "seating:different_time",
+    "contradiction": false,
+    "rationale": "Different valid time; state may change, with no persistence assumption.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "seating:uncertainty",
+    "contradiction": false,
+    "rationale": "Opposing proposition is mentioned as unverified, not asserted.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "location:opposite_value",
+    "contradiction": true,
+    "rationale": "Incompatible exclusive values for the same entity and valid time.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "location:explicit_negation",
+    "contradiction": true,
+    "rationale": "Explicit denial of the same proposition; lexical overlap does not imply agreement.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "location:correction_reverses_fact",
+    "contradiction": true,
+    "rationale": "Final corrected assertion contradicts the source fact for the same valid time; a legitimate update can still expose a conflict with old memory.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "location:paraphrase",
+    "contradiction": false,
+    "rationale": "Same proposition with different framing.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "location:different_entity",
+    "contradiction": false,
+    "rationale": "Opposing value refers to a different entity.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "location:correction_preserves_fact",
+    "contradiction": false,
+    "rationale": "Opposing clause is explicitly retracted; final assertion agrees.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "lock:opposite_value",
+    "contradiction": true,
+    "rationale": "Incompatible exclusive values for the same entity and valid time.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "lock:explicit_negation",
+    "contradiction": true,
+    "rationale": "Explicit denial of the same proposition; lexical overlap does not imply agreement.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "lock:correction_reverses_fact",
+    "contradiction": true,
+    "rationale": "Final corrected assertion contradicts the source fact for the same valid time; a legitimate update can still expose a conflict with old memory.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "lock:paraphrase",
+    "contradiction": false,
+    "rationale": "Same proposition with different framing.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "lock:different_time",
+    "contradiction": false,
+    "rationale": "Different valid time; state may change, with no persistence assumption.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "lock:uncertainty",
+    "contradiction": false,
+    "rationale": "Opposing proposition is mentioned as unverified, not asserted.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "access:opposite_value",
+    "contradiction": true,
+    "rationale": "Incompatible exclusive values for the same entity and valid time.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "access:explicit_negation",
+    "contradiction": true,
+    "rationale": "Explicit denial of the same proposition; lexical overlap does not imply agreement.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "access:correction_reverses_fact",
+    "contradiction": true,
+    "rationale": "Final corrected assertion contradicts the source fact for the same valid time; a legitimate update can still expose a conflict with old memory.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "access:paraphrase",
+    "contradiction": false,
+    "rationale": "Same proposition with different framing.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "access:different_entity",
+    "contradiction": false,
+    "rationale": "Opposing value refers to a different entity.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "access:correction_preserves_fact",
+    "contradiction": false,
+    "rationale": "Opposing clause is explicitly retracted; final assertion agrees.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "power:opposite_value",
+    "contradiction": true,
+    "rationale": "Incompatible exclusive values for the same entity and valid time.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "power:explicit_negation",
+    "contradiction": true,
+    "rationale": "Explicit denial of the same proposition; lexical overlap does not imply agreement.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "power:correction_reverses_fact",
+    "contradiction": true,
+    "rationale": "Final corrected assertion contradicts the source fact for the same valid time; a legitimate update can still expose a conflict with old memory.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "power:paraphrase",
+    "contradiction": false,
+    "rationale": "Same proposition with different framing.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "power:different_time",
+    "contradiction": false,
+    "rationale": "Different valid time; state may change, with no persistence assumption.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "power:uncertainty",
+    "contradiction": false,
+    "rationale": "Opposing proposition is mentioned as unverified, not asserted.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "schedule:opposite_value",
+    "contradiction": true,
+    "rationale": "Incompatible exclusive values for the same entity and valid time.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "schedule:explicit_negation",
+    "contradiction": true,
+    "rationale": "Explicit denial of the same proposition; lexical overlap does not imply agreement.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "schedule:correction_reverses_fact",
+    "contradiction": true,
+    "rationale": "Final corrected assertion contradicts the source fact for the same valid time; a legitimate update can still expose a conflict with old memory.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "schedule:paraphrase",
+    "contradiction": false,
+    "rationale": "Same proposition with different framing.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "schedule:different_entity",
+    "contradiction": false,
+    "rationale": "Opposing value refers to a different entity.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "schedule:correction_preserves_fact",
+    "contradiction": false,
+    "rationale": "Opposing clause is explicitly retracted; final assertion agrees.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "threshold:opposite_value",
+    "contradiction": true,
+    "rationale": "Incompatible exclusive values for the same entity and valid time.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "threshold:explicit_negation",
+    "contradiction": true,
+    "rationale": "Explicit denial of the same proposition; lexical overlap does not imply agreement.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "threshold:correction_reverses_fact",
+    "contradiction": true,
+    "rationale": "Final corrected assertion contradicts the source fact for the same valid time; a legitimate update can still expose a conflict with old memory.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "threshold:paraphrase",
+    "contradiction": false,
+    "rationale": "Same proposition with different framing.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "threshold:different_time",
+    "contradiction": false,
+    "rationale": "Different valid time; state may change, with no persistence assumption.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "threshold:uncertainty",
+    "contradiction": false,
+    "rationale": "Opposing proposition is mentioned as unverified, not asserted.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "budget:opposite_value",
+    "contradiction": true,
+    "rationale": "Incompatible exclusive values for the same entity and valid time.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "budget:explicit_negation",
+    "contradiction": true,
+    "rationale": "Explicit denial of the same proposition; lexical overlap does not imply agreement.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "budget:correction_reverses_fact",
+    "contradiction": true,
+    "rationale": "Final corrected assertion contradicts the source fact for the same valid time; a legitimate update can still expose a conflict with old memory.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "budget:paraphrase",
+    "contradiction": false,
+    "rationale": "Same proposition with different framing.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "budget:different_entity",
+    "contradiction": false,
+    "rationale": "Opposing value refers to a different entity.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "budget:correction_preserves_fact",
+    "contradiction": false,
+    "rationale": "Opposing clause is explicitly retracted; final assertion agrees.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "temperature:opposite_value",
+    "contradiction": true,
+    "rationale": "Incompatible exclusive values for the same entity and valid time.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "temperature:explicit_negation",
+    "contradiction": true,
+    "rationale": "Explicit denial of the same proposition; lexical overlap does not imply agreement.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "temperature:correction_reverses_fact",
+    "contradiction": true,
+    "rationale": "Final corrected assertion contradicts the source fact for the same valid time; a legitimate update can still expose a conflict with old memory.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "temperature:paraphrase",
+    "contradiction": false,
+    "rationale": "Same proposition with different framing.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "temperature:different_time",
+    "contradiction": false,
+    "rationale": "Different valid time; state may change, with no persistence assumption.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "temperature:uncertainty",
+    "contradiction": false,
+    "rationale": "Opposing proposition is mentioned as unverified, not asserted.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "version:opposite_value",
+    "contradiction": true,
+    "rationale": "Incompatible exclusive values for the same entity and valid time.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "version:explicit_negation",
+    "contradiction": true,
+    "rationale": "Explicit denial of the same proposition; lexical overlap does not imply agreement.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "version:correction_reverses_fact",
+    "contradiction": true,
+    "rationale": "Final corrected assertion contradicts the source fact for the same valid time; a legitimate update can still expose a conflict with old memory.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "version:paraphrase",
+    "contradiction": false,
+    "rationale": "Same proposition with different framing.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "version:different_entity",
+    "contradiction": false,
+    "rationale": "Opposing value refers to a different entity.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "version:correction_preserves_fact",
+    "contradiction": false,
+    "rationale": "Opposing clause is explicitly retracted; final assertion agrees.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "ownership:opposite_value",
+    "contradiction": true,
+    "rationale": "Incompatible exclusive values for the same entity and valid time.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "ownership:explicit_negation",
+    "contradiction": true,
+    "rationale": "Explicit denial of the same proposition; lexical overlap does not imply agreement.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "ownership:correction_reverses_fact",
+    "contradiction": true,
+    "rationale": "Final corrected assertion contradicts the source fact for the same valid time; a legitimate update can still expose a conflict with old memory.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "ownership:paraphrase",
+    "contradiction": false,
+    "rationale": "Same proposition with different framing.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "ownership:different_time",
+    "contradiction": false,
+    "rationale": "Different valid time; state may change, with no persistence assumption.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  },
+  {
+    "id": "ownership:uncertainty",
+    "contradiction": false,
+    "rationale": "Opposing proposition is mentioned as unverified, not asserted.",
+    "author": "Codex single author/reviewer; constructed labels; no external adjudication"
+  }
+]

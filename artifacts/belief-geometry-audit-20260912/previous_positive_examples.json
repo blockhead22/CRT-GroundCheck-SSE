@@ -1,0 +1,154 @@
+{
+  "fs_004": {
+    "prompt_id": "fs_004",
+    "domain": "factual_settled",
+    "prompt_text": "How many continents are there on Earth?",
+    "classification": "GENUINE_SPLIT",
+    "silhouette": 0.9922298192977905,
+    "n_clusters": 2,
+    "noise_count": 1,
+    "clusters": [
+      {
+        "cluster_id": 0,
+        "size": 68,
+        "intra_cluster_distance": 0.008995,
+        "representative_responses": [
+          "There are seven continents on Earth: Africa, Antarctica, Asia, Europe, North America, Australia (Oceania), and South America.",
+          "There are seven continents on Earth: Africa, Antarctica, Asia, Europe, North America, Australia (Oceania), and South America."
+        ]
+      },
+      {
+        "cluster_id": 1,
+        "size": 11,
+        "intra_cluster_distance": 0.0,
+        "representative_responses": [
+          "",
+          ""
+        ]
+      }
+    ],
+    "cluster_pairs": [
+      {
+        "cluster_a": 0,
+        "cluster_b": 1,
+        "centroid_distance": 1.004149,
+        "mean_cross_distance": 1.004131
+      }
+    ],
+    "separation_ratio": 111.6348
+  },
+  "fs_006": {
+    "prompt_id": "fs_006",
+    "domain": "factual_settled",
+    "prompt_text": "What is the speed of light in a vacuum?",
+    "classification": "GENUINE_SPLIT",
+    "silhouette": 0.9193480610847473,
+    "n_clusters": 2,
+    "noise_count": 2,
+    "clusters": [
+      {
+        "cluster_id": 0,
+        "size": 23,
+        "intra_cluster_distance": 0.099813,
+        "representative_responses": [
+          "The speed of light in a vacuum is approximately 299,792,458 meters per second.",
+          "The speed of light in a vacuum is exactly 299,792,458 meters per second, often rounded to 3.00 \u00d7 10\u2078 m/s."
+        ]
+      },
+      {
+        "cluster_id": 1,
+        "size": 5,
+        "intra_cluster_distance": 0.0,
+        "representative_responses": [
+          "",
+          ""
+        ]
+      }
+    ],
+    "cluster_pairs": [
+      {
+        "cluster_a": 0,
+        "cluster_b": 1,
+        "centroid_distance": 1.022207,
+        "mean_cross_distance": 1.02112
+      }
+    ],
+    "separation_ratio": 10.2412
+  },
+  "fs_009": {
+    "prompt_id": "fs_009",
+    "domain": "factual_settled",
+    "prompt_text": "What element does the symbol 'Au' represent?",
+    "classification": "GENUINE_SPLIT",
+    "silhouette": 0.9941607117652893,
+    "n_clusters": 2,
+    "noise_count": 0,
+    "clusters": [
+      {
+        "cluster_id": 0,
+        "size": 25,
+        "intra_cluster_distance": 0.00468,
+        "representative_responses": [
+          "The symbol 'Au' represents the element gold.",
+          "The symbol 'Au' represents the element gold."
+        ]
+      },
+      {
+        "cluster_id": 1,
+        "size": 5,
+        "intra_cluster_distance": 0.0,
+        "representative_responses": [
+          "Gold.",
+          "Gold."
+        ]
+      }
+    ],
+    "cluster_pairs": [
+      {
+        "cluster_a": 0,
+        "cluster_b": 1,
+        "centroid_distance": 0.648556,
+        "mean_cross_distance": 0.649346
+      }
+    ],
+    "separation_ratio": 138.5871
+  },
+  "fs_010": {
+    "prompt_id": "fs_010",
+    "domain": "factual_settled",
+    "prompt_text": "How many bones are in the adult human body?",
+    "classification": "GENUINE_SPLIT",
+    "silhouette": 1.0,
+    "n_clusters": 2,
+    "noise_count": 0,
+    "clusters": [
+      {
+        "cluster_id": 0,
+        "size": 27,
+        "intra_cluster_distance": 0.0,
+        "representative_responses": [
+          "The adult human body has 206 bones.",
+          "The adult human body has 206 bones."
+        ]
+      },
+      {
+        "cluster_id": 1,
+        "size": 3,
+        "intra_cluster_distance": 0.0,
+        "representative_responses": [
+          "",
+          ""
+        ]
+      }
+    ],
+    "cluster_pairs": [
+      {
+        "cluster_a": 0,
+        "cluster_b": 1,
+        "centroid_distance": 0.935645,
+        "mean_cross_distance": 0.935645
+      }
+    ],
+    "separation_ratio": 7848761.5
+  }
+}
