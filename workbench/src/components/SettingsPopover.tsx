@@ -72,7 +72,7 @@ export function SettingsPopover({
         onChange={(event) => onRenderProvider(event.target.value as RenderProvider)}
       >
         <option value="local">Local model</option>
-        <option value="grok_build">Grok 4.5 via Grok CLI (hosted)</option>
+        <option value="grok_build">Grok via Grok CLI (hosted)</option>
       </select>
       <p className={`provider-disclosure ${renderProvider === 'grok_build' ? 'hosted' : ''}`}>
         {renderProvider === 'grok_build'

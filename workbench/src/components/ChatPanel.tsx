@@ -424,7 +424,7 @@ export function ChatPanel({
           <span>
             {isSimple
               ? (renderProvider === 'grok_build' ? 'Hosted wording · Aether in charge' : 'Local on this PC')
-              : (renderProvider === 'grok_build' ? 'Grok 4.5 · governed renderer' : model)}
+              : (renderProvider === 'grok_build' ? 'Grok · governed renderer' : model)}
           </span>
         </div>
         <div className={`strength-indicator ${showStronger ? 'needs' : ''}`}>
@@ -627,7 +627,7 @@ export function ChatPanel({
                   </>
                 ) : (
                   <>
-                    <span>{turn.render_provider?.effective === 'grok_build' ? 'Grok 4.5' : 'Local'}</span>
+                    <span>{turn.render_provider?.effective === 'grok_build' ? 'Grok' : 'Local'}</span>
                     <span>Governed</span>
                     <span>{completionCheckLabel(
                       trace?.turn_id === turn.turn_id ? trace : thinkingTraceCache[turn.turn_id],

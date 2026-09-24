@@ -195,10 +195,11 @@ function resolveSidecarRuntime({
   platform = process.platform,
   existsSync = fs.existsSync,
 } = {}) {
+  const platformPath = platform === 'win32' ? path.win32 : path.posix
   const executableName = platform === 'win32' ? 'aether-sidecar.exe' : 'aether-sidecar'
   const explicitExecutable = String(env.AETHER_SIDECAR_EXECUTABLE || '').trim()
   if (explicitExecutable) {
-    const command = path.resolve(explicitExecutable)
+    const command = platformPath.resolve(explicitExecutable)
     if (!existsSync(command)) {
       throw new Error(`Configured Aether sidecar executable was not found: ${command}`)
     }
@@ -206,7 +207,7 @@ function resolveSidecarRuntime({
   }
 
   if (isPackaged && resourcesPath) {
-    const command = path.join(resourcesPath, 'sidecar', executableName)
+    const command = platformPath.join(resourcesPath, 'sidecar', executableName)
     if (existsSync(command)) return { command, args: [], kind: 'bundled-executable' }
   }
 

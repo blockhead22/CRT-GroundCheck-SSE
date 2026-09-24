@@ -363,6 +363,27 @@ function summarizeTrace(trace: Trace) {
     }
   }
 
+  const withheldSummary = bridge?.withheld_summary
+  if (withheldSummary && typeof withheldSummary === 'object') {
+    const counts = withheldSummary as Record<string, unknown>
+    const quarantined = Number(counts.quarantined_slots || 0)
+    const conflicted = Number(counts.conflicted_slots || 0)
+    if (quarantined > 0 && !heldBack.some((item) => /quarantin/i.test(item.label))) {
+      heldBack.push({
+        key: 'bridge-quarantined-slots',
+        label: 'Quarantined profile memory',
+        detail: `${quarantined} ${quarantined === 1 ? 'slot needs' : 'slots need'} review; stored values were not released.`,
+      })
+    }
+    if (conflicted > 0 && !heldBack.some((item) => /conflict/i.test(item.label))) {
+      heldBack.push({
+        key: 'bridge-conflicted-slots',
+        label: 'Conflicting profile memory',
+        detail: `${conflicted} ${conflicted === 1 ? 'slot needs' : 'slots need'} review; Aether did not choose a value.`,
+      })
+    }
+  }
+
   const tools: Array<{ key: string; label: string; detail: string; paths?: string[] }> = []
   for (const run of trace.tool_runs || []) {
     const tool = String(run.tool || '').replaceAll('_', ' ')

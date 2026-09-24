@@ -216,7 +216,7 @@ test('labels hosted governed rendering without claiming local generation authori
   const route = screen.getByLabelText('Response route')
   expect(within(route).getByText('Aether governed')).toBeInTheDocument()
   expect(within(route).getByText('Requested provider')).toBeInTheDocument()
-  expect(within(route).getByText('Grok 4.5')).toBeInTheDocument()
+  expect(within(route).getByText('Grok')).toBeInTheDocument()
   expect(within(route).getByText('Render proof')).toBeInTheDocument()
   expect(within(route).getByText('1 attempt; rendered')).toBeInTheDocument()
   expect(within(route).getByText('Selection receipt')).toBeInTheDocument()

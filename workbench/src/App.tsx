@@ -112,6 +112,13 @@ export default function App() {
     return unsubscribe
   }, [])
 
+  function refreshMemory() {
+    setMemoryRefresh((value) => value + 1)
+    // Health contains the profile's total slot count. Refresh it alongside
+    // memory rows after a completed chat or an explicit memory edit.
+    void api.health().then(setHealth).catch(() => {})
+  }
+
   async function setAutoApprovePolicy(next: boolean) {
     setAutoApproveExactPatchApply(next)
     try {
@@ -289,7 +296,7 @@ export default function App() {
           onDeleteConversation={() => void deleteCurrentConversation()}
           onTrace={setTrace}
           onOpenTrace={(turnId) => void openTurnTrace(turnId)}
-          onTurns={setTurns}
+          onTurns={(nextTurns) => { setTurns(nextTurns); refreshMemory() }}
         />
         <nav className="bottom-nav" aria-label="Workbench panels">
           <button
@@ -387,7 +394,7 @@ export default function App() {
                   preselectedSlotId={memoryPreselectSlot}
                   draftHandoff={memoryDraftHandoff}
                   health={health}
-                  onMutated={() => setMemoryRefresh((value) => value + 1)}
+                  onMutated={refreshMemory}
                 />
               )
               : drawer === 'reflect'

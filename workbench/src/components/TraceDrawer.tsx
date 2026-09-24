@@ -815,7 +815,7 @@ function responseRoute(trace: Trace) {
     { label: 'Generated', value: generationModel },
     externalRenderer?.requested ? {
       label: 'Requested provider',
-      value: externalRenderer.requested_provider === 'grok_build' ? 'Grok 4.5' : 'Local',
+      value: externalRenderer.requested_provider === 'grok_build' ? 'Grok' : 'Local',
     } : null,
     externalRenderer?.requested ? {
       label: 'Render proof',

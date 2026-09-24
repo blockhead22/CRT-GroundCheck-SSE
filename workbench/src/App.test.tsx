@@ -756,3 +756,40 @@ test('shows read-only route model policy in settings after opening a trace', asy
   expect(policy).toHaveTextContent('qwen3:14b')
   expect(policy).toHaveTextContent('no automatic switch')
 })
+
+
+test('refreshes the open memory list and total count after a chat writes a fact', async () => {
+  const fallback = vi.mocked(fetch).getMockImplementation()!
+  let completed = false
+  vi.mocked(fetch).mockImplementation(async (input, init) => {
+    const url = String(input)
+    if (url.endsWith('/health')) {
+      return new Response(JSON.stringify({
+        ...health, substrate: { ...health.substrate, slots: completed ? 1 : 0 },
+      }), { status: 200 })
+    }
+    if (url.includes('/v1/slots')) {
+      return new Response(JSON.stringify({ revision_hash: 'after-write', slots: completed ? [{
+        slot_id: 'user:name', current_values: ['Mara'], conflict: false,
+        quarantined: false, state_count: 1, updated_at: 2,
+      }] : [] }), { status: 200 })
+    }
+    if (url.endsWith('/v1/chat/stream')) {
+      completed = true
+      return new Response(
+        'event: turn\ndata: {"turn_id":"turn-new","conversation_id":"conv-1"}\n\n'
+        + 'event: done\ndata: {"needs_stronger_model":false,"memory_writes":[{"slot_id":"user:name"}]}\n\n',
+        { status: 200, headers: { 'Content-Type': 'text/event-stream' } },
+      )
+    }
+    return fallback(input, init)
+  })
+  render(<App />)
+  await screen.findByText('On this PC')
+  fireEvent.click(screen.getByRole('button', { name: 'Memory' }))
+  expect(await screen.findByLabelText('Active memory profile')).toHaveTextContent('0 facts')
+  fireEvent.change(screen.getByLabelText('Message Aether'), { target: { value: 'My name is Mara.' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
+  await waitFor(() => expect(screen.getByLabelText('Active memory profile')).toHaveTextContent('1 facts'))
+  expect(await screen.findByRole('button', { name: /user:name.*Mara/ })).toBeInTheDocument()
+})

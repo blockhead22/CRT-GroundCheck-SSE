@@ -1,5 +1,7 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const path = require('node:path')
+const os = require('node:os')
 const { dockBounds } = require('./window.cjs')
 const { SidecarManager, resolveSidecarRuntime } = require('./sidecar.cjs')
 const { configureDevUserData, devUserDataPath } = require('./dev-config.cjs')
@@ -227,7 +229,7 @@ test('development userData uses an isolated temp directory', () => {
   const app = {
     getPath(name) {
       assert.equal(name, 'temp')
-      return 'C:\\Temp'
+      return os.tmpdir()
     },
     setPath(name, value) {
       calls.push([name, value])
@@ -237,7 +239,7 @@ test('development userData uses an isolated temp directory', () => {
   const userDataPath = configureDevUserData(app, { NODE_ENV: 'development' })
 
   assert.equal(userDataPath, devUserDataPath(app))
-  assert.deepEqual(calls, [['userData', 'C:\\Temp\\aether-workbench-dev']])
+  assert.deepEqual(calls, [['userData', path.join(os.tmpdir(), 'aether-workbench-dev')]])
 })
 
 test('production userData is left unchanged', () => {

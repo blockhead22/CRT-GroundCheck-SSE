@@ -123,4 +123,22 @@ describe('WhyThisAnswer', () => {
     )
     expect(screen.getByText(/This run was stopped/i)).toBeInTheDocument()
   })
+
+  test('shows quarantined bridge memory without exposing its value', () => {
+    render(
+      <WhyThisAnswer
+        trace={baseTrace({
+          context_bridge: {
+            profile_summary: [
+              { slot_id: 'user:name', value: 'Mara' },
+            ],
+            withheld_summary: { quarantined_slots: 1 },
+          } as never,
+        })}
+      />,
+    )
+    expect(screen.getByText(/Quarantined profile memory/i)).toBeInTheDocument()
+    expect(screen.getByText(/1 slot needs review/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Northstar Studio/i)).not.toBeInTheDocument()
+  })
 })

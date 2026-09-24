@@ -275,7 +275,7 @@ describe('Continuity Resume action', () => {
       }],
     })
 
-    expect(screen.getByText('Grok 4.5 · governed renderer')).toBeInTheDocument()
+    expect(screen.getByText('Grok · governed renderer')).toBeInTheDocument()
     expect(screen.getByText('Hosted Grok answer')).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Message Aether'), {
       target: { value: 'Explain this governed packet.' },
